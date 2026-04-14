@@ -4,7 +4,7 @@ date: 2026-04-14
 pr: "#2"
 author: MachuaninEzequiel
 branch: feat/python-fastapi-base
-commit: 19c221ac
+commit: d9ab02bc
 tags: [session]
 status: fallback
 ---
@@ -27,11 +27,13 @@ Adds the base FastAPI test project with:
 This is the foundation for the Cortex API domain detection tests.
 
 ## Changes
-examples/python-fastapi/README.md          | 10 ++++++++++
- examples/python-fastapi/main.py            | 23 +++++++++++++++++++++++
- examples/python-fastapi/pyproject.toml     | 16 ++++++++++++++++
- examples/python-fastapi/tests/test_main.py | 29 +++++++++++++++++++++++++++++
- 4 files changed, 78 insertions(+)
+examples/python-fastapi/README.md                  | 10 +++++
+ examples/python-fastapi/main.py                    | 23 +++++++++++
+ examples/python-fastapi/pyproject.toml             | 16 ++++++++
+ examples/python-fastapi/tests/test_main.py         | 29 +++++++++++++
+ vault/.cortex_index.json                           |  2 +-
+ ...base-project-with-health-and-items-endpoints.md | 47 ++++++++++++++++++++++
+ 6 files changed, 126 insertions(+), 1 deletion(-)
 
 ## Pipeline Results
 | Check | Result |
@@ -45,3 +47,5 @@ examples/python-fastapi/README.md          | 10 ++++++++++
 - `examples/python-fastapi/main.py`
 - `examples/python-fastapi/pyproject.toml`
 - `examples/python-fastapi/tests/test_main.py`
+- `vault/.cortex_index.json`
+- `vault/sessions/2026-04-14_featapi-add-python-fastapi-base-project-with-health-and-items-endpoints.md`
