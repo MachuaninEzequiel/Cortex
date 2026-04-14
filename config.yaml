@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────
+# Cortex Configuration
+# ─────────────────────────────────────────────────────────────
+
+# ── Episodic Memory (vector DB) ──────────────────────────────
+episodic:
+  persist_dir: .memory/chroma       # where ChromaDB stores data
+  collection_name: cortex_episodic
+  embedding_model: all-MiniLM-L6-v2 # local, no API key needed
+  embedding_backend: local           # local | openai
+
+# ── Semantic Memory (markdown vault) ─────────────────────────
+semantic:
+  vault_path: vault                  # path to your .md notes folder
+
+# ── Hybrid Retrieval ─────────────────────────────────────────
+retrieval:
+  top_k: 5                           # results per source
+  episodic_weight: 1.0               # RRF weight for episodic results
+  semantic_weight: 1.0               # RRF weight for semantic results
+
+# ── LLM (for memory summarization) ───────────────────────────
+llm:
+  provider: none                     # none | openai | anthropic | ollama
+  model: ""                          # e.g. "gpt-4o-mini" or "claude-haiku-4-5-20251001"
+
+# ── Context Enricher (proactive context injection) ───────────
+context_enricher:
+  # Thresholds
+  min_score: 0.1                     # Minimum score to consider relevant
+  domain_confidence: 0.5             # Min confidence for domain detection
+
+  # Budget
+  max_items: 8                       # Max context items to show
+  max_chars: 2000                    # Max characters of injected context
+
+  # Scoring
+  multi_match_boost: 1.5             # Boost per extra strategy match
+  co_occurrence_boost: 0.3           # Max boost from file co-occurrence
+
+  # Enabled strategies
+  strategies:
+    topic: true                      # Search by domain/topic
+    files: true                      # Search by file names
+    keywords: true                   # Search by extracted keywords
+    pr_title: true                   # Search by PR title
+    graph_expansion: true            # Co-occurrence boost

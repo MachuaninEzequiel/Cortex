@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(sudo *)",
+      "Bash(pip3 install *)",
+      "Bash(apt *)",
+      "Bash(virtualenv *)",
+      "Bash(source *)",
+      "Bash(pip install *)",
+      "Read(//mnt/c/Users/CHUCHO/proyectos/ObsidianQwen/Obsidian/**)",
+      "Read(//mnt/c/Users/CHUCHO/proyectos/CICD/**)",
+      "Read(//mnt/c/Users/CHUCHO/proyectos/**)",
+      "Bash(.venv/bin/python *)",
+      "Bash(timeout *)",
+      "Bash(.venv/bin/ruff *)",
+      "Bash(ruff *)"
+    ]
+  },
+  "$version": 3
+}

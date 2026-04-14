@@ -1,0 +1,167 @@
+name: CI - Pull Requests (DevSecDocOps)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  quality-and-security-gate:
+    name: Quality & Security Gate + Cortex Memory
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git diff
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Install Cortex memory
+        run: |
+          pip install cortex-memory
+          # Or from local path if developing:
+          # pip install /path/to/cortex-repo
+
+      # ── CORTEX: Capture PR Context ──────────────────────────────
+      - name: Cortex — Capture PR Context
+        run: |
+          cortex pr-context capture \
+            --title "${{ github.event.pull_request.title }}" \
+            --body "${{ github.event.pull_request.body || '' }}" \
+            --author "${{ github.event.pull_request.user.login }}" \
+            --branch "${{ github.event.pull_request.head.ref }}" \
+            --commit "${{ github.event.pull_request.head.sha }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --target-branch "${{ github.event.pull_request.base.ref }}" \
+            --output .pr-context.json
+
+      # ── SAST NATIVO ────────────────────────────────────────────
+      - name: Run Linting & Security Rules (SAST)
+        run: npm run lint
+        id: lint
+        continue-on-error: true
+
+      - name: Cortex — Store Lint Result
+        if: always()
+        run: |
+          LINT_STATUS="${{ steps.lint.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --lint-result "$LINT_STATUS"
+
+      # ── SCA ESTRICTO ───────────────────────────────────────────
+      - name: Audit Dependencies Security (SCA)
+        run: npm audit --omit=dev --audit-level=high
+        id: audit
+        continue-on-error: true
+
+      - name: Cortex — Store Audit Result
+        if: always()
+        run: |
+          AUDIT_STATUS="${{ steps.audit.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --audit-result "$AUDIT_STATUS"
+
+      # ── CALIDAD: Tests ─────────────────────────────────────────
+      - name: Run Integration Tests
+        run: npm run test:integration
+        id: int_test
+        continue-on-error: true
+
+      - name: Run All Tests
+        run: npm test
+        id: tests
+        continue-on-error: true
+
+      - name: Cortex — Store Test Result
+        if: always()
+        run: |
+          TEST_STATUS="${{ steps.tests.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --test-result "$TEST_STATUS"
+
+      # ── CORTEX: Search Past Context ────────────────────────────
+      - name: Cortex — Search Past Context
+        if: always()
+        run: |
+          cortex pr-context search \
+            --context-file .pr-context.json \
+            --output .past-context.json
+        continue-on-error: true
+
+      # ── CORTEX: Generate Documentation ─────────────────────────
+      - name: Cortex — Generate Documentation
+        if: always()
+        run: |
+          cortex pr-context generate \
+            --context-file .pr-context.json \
+            --vault vault
+
+      # ── CORTEX: Sync Vault ─────────────────────────────────────
+      - name: Cortex — Sync Vault
+        if: always()
+        run: cortex sync-vault
+
+      # ── Upload Context Artifact ────────────────────────────────
+      - name: Upload Cortex Context Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-pr-context-${{ github.event.pull_request.number }}
+          path: |
+            .pr-context.json
+            .past-context.json
+          retention-days: 7
+
+      # ── Enforce Gates ──────────────────────────────────────────
+      - name: Check Lint Gate
+        if: steps.lint.outcome != 'success'
+        run: |
+          echo "❌ ESLint security check failed. Fix issues before merging."
+          exit 1
+
+      - name: Check Audit Gate
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo "❌ npm audit found HIGH/CRITICAL vulnerabilities. Fix before merging."
+          exit 1
+
+      - name: Check Test Gate
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "❌ Tests failed. Fix before merging."
+          exit 1
+
+  slack-notify:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    needs: quality-and-security-gate
+    if: always()
+
+    steps:
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_PR }}
+        run: |
+          STATUS="${{ needs.quality-and-security-gate.result }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\": \"PR CI Status: $STATUS\\nTitle: $PR_TITLE\\nAuthor: $PR_AUTHOR\\n\\n🧠 Cortex DevSecDocOps: Documentation auto-generated in vault\"}" \
+            $SLACK_WEBHOOK
