@@ -1,0 +1,16 @@
+[project]
+name = "python-fastapi"
+version = "0.1.0"
+description = "Mini FastAPI app — test project for Cortex pipeline"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.104", "uvicorn>=0.24"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "httpx>=0.25", "ruff>=0.1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
