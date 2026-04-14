@@ -32,28 +32,27 @@ jobs:
           pip install -e ".[dev]"
 
       # ── CORTEX: Restore Episodic Memory (ChromaDB) ──────────────
-      # Restores the ChromaDB from the most recent previous run.
-      # This is what makes Cortex "remember" all past PRs.
-      # Strategy:
-      #   - key: unique per run (cortex-memory-{run_id}) → always saves a new snapshot
-      #   - restore-keys: prefix match → picks up the latest snapshot from any run
+      # Key strategy: use a FIXED key "cortex-memory-main" so ALL
+      # PR branches share the same ChromaDB snapshot.
+      # The save step overwrites this key after every run,
+      # so each PR adds its memories for the next one to find.
       - name: Restore Cortex Memory Cache
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
           path: .memory/chroma
-          key: cortex-memory-${{ github.run_id }}
+          key: cortex-memory-main
           restore-keys: |
             cortex-memory-
 
       - name: Memory Cache Status
         run: |
           if [ "${{ steps.cache-restore.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Memory restored from cache (exact hit)"
+            echo "✅ Memory restored from cache (hit: true)"
+            ls -la .memory/chroma/ || true
           else
-            echo "🆕 Partial or cold start — loading recent memory snapshot if available"
+            echo "🆕 Cold start — no previous memory found"
           fi
-          ls -la .memory/chroma 2>/dev/null && echo "  ChromaDB files found" || echo "  .memory/chroma is empty (cold start)"
 
       # ── CORTEX: Capture PR Context ──────────────────────────────
       - name: Cortex — Capture PR Context
@@ -143,14 +142,13 @@ jobs:
         run: cortex sync-vault
 
       # ── CORTEX: Save Memory Cache ──────────────────────────────
-      # Always save — even if tests failed — so memories accumulate.
-      # The unique key (run_id) ensures GitHub stores a new snapshot.
+      # Overwrites cortex-memory-main so the NEXT run picks it up.
       - name: Save Cortex Memory Cache
         if: always()
         uses: actions/cache/save@v4
         with:
           path: .memory/chroma
-          key: cortex-memory-${{ github.run_id }}
+          key: cortex-memory-main
 
       # ── Auto Commit Generated Docs ─────────────────────────────
       - name: Auto-commit documentation
