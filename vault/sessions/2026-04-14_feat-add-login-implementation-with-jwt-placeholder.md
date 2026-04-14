@@ -4,7 +4,7 @@ date: 2026-04-14
 pr: "#1"
 author: MachuaninEzequiel
 branch: feat/auth-login
-commit: 92385b48
+commit: eee5afec
 tags: [session]
 status: fallback
 ---
@@ -19,8 +19,11 @@ status: fallback
 This PR creates a placeholder auth system to trigger Cortex Domain Detector (auth) and Context Enricher.
 
 ## Changes
-examples/auth.py | 3 +++
- 1 file changed, 3 insertions(+)
+.github/workflows/ci-pull-request.yml              |  3 +-
+ examples/auth.py                                   |  3 ++
+ vault/.cortex_index.json                           |  2 +-
+ ...dd-login-implementation-with-jwt-placeholder.md | 33 ++++++++++++++++++++++
+ 4 files changed, 38 insertions(+), 3 deletions(-)
 
 ## Pipeline Results
 | Check | Result |
@@ -30,4 +33,7 @@ examples/auth.py | 3 +++
 | Tests | not run |
 
 ## Files Modified
+- `.github/workflows/ci-pull-request.yml`
 - `examples/auth.py`
+- `vault/.cortex_index.json`
+- `vault/sessions/2026-04-14_feat-add-login-implementation-with-jwt-placeholder.md`
