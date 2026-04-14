@@ -31,6 +31,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      # ── CORTEX: Restore Episodic Memory (ChromaDB) ──────────────
+      # Restores the ChromaDB from the most recent previous run.
+      # This is what makes Cortex "remember" all past PRs.
+      # Strategy:
+      #   - key: unique per run (cortex-memory-{run_id}) → always saves a new snapshot
+      #   - restore-keys: prefix match → picks up the latest snapshot from any run
+      - name: Restore Cortex Memory Cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Memory Cache Status
+        run: |
+          if [ "${{ steps.cache-restore.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Memory restored from cache (exact hit)"
+          else
+            echo "🆕 Partial or cold start — loading recent memory snapshot if available"
+          fi
+          ls -la .memory/chroma 2>/dev/null && echo "  ChromaDB files found" || echo "  .memory/chroma is empty (cold start)"
+
       # ── CORTEX: Capture PR Context ──────────────────────────────
       - name: Cortex — Capture PR Context
         run: |
@@ -59,6 +83,7 @@ jobs:
             --test-result "$TEST_STATUS"
 
       # ── CORTEX: Search Past Context ────────────────────────────
+      # With memory restored, Cortex will now FIND related past PRs.
       - name: Cortex — Search Past Context
         if: always()
         run: |
@@ -74,12 +99,33 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f .past-context.json ]; then
-            # We create a simple markdown from the CLI search output
-            echo "🧠 **Cortex Memory Context Enricher**" > context-comment.md
-            echo "Aquí tienes el contexto de diseño y decisiones pasadas relacionadas con tu código:" >> context-comment.md
-            echo '```json' >> context-comment.md
-            cat .past-context.json >> context-comment.md
-            echo '```' >> context-comment.md
+            HITS=$(python3 -c "
+          import json
+          data = json.load(open('.past-context.json'))
+          hits = data.get('unified_hits', []) or data.get('episodic_hits', [])
+          print(len(hits))
+          " 2>/dev/null || echo "0")
+
+            echo "## 🧠 Cortex Memory — Context Enricher" > context-comment.md
+            echo "" >> context-comment.md
+
+            if [ "$HITS" -gt "0" ]; then
+              echo "Found **$HITS** related memories from past PRs:" >> context-comment.md
+              echo "" >> context-comment.md
+              python3 -c "
+          import json
+          data = json.load(open('.past-context.json'))
+          hits = data.get('unified_hits', []) or data.get('episodic_hits', [])
+          for h in hits[:3]:
+              src = h.get('source', '?').upper()
+              title = (h.get('display_title') or '')[:100]
+              score = h.get('score', 0)
+              print(f'- [{src}] **{title}** — score: {score:.3f}')
+          " >> context-comment.md 2>/dev/null || echo "- (could not parse hits)" >> context-comment.md
+            else
+              echo "🆕 No related memories found yet — this is a cold start or first PR in this domain." >> context-comment.md
+            fi
+
             gh pr comment ${{ github.event.pull_request.number }} -F context-comment.md || true
           fi
 
@@ -96,23 +142,34 @@ jobs:
         if: always()
         run: cortex sync-vault
 
+      # ── CORTEX: Save Memory Cache ──────────────────────────────
+      # Always save — even if tests failed — so memories accumulate.
+      # The unique key (run_id) ensures GitHub stores a new snapshot.
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+
       # ── Auto Commit Generated Docs ─────────────────────────────
       - name: Auto-commit documentation
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs(cortex): auto-generate DevSecDocOps context and sync vault"
-          file_pattern: "vault/*"
+          file_pattern: "vault/**"
 
       # ── Upload Context Artifact ────────────────────────────────
       - name: Upload Cortex Context Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cortex-pr-context-${{ github.event.pull_request.number }}
+          name: cortex-pr-context-${{ github.event.pull_request.number }}-${{ github.run_id }}
           path: |
             .pr-context.json
             .past-context.json
-          retention-days: 7
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Check Test Gate
         if: steps.tests.outcome != 'success'
