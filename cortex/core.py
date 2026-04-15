@@ -33,7 +33,7 @@ class EpisodicConfig(BaseModel):
     persist_dir: str = ".memory/chroma"
     collection_name: str = "cortex_episodic"
     embedding_model: str = "all-MiniLM-L6-v2"
-    embedding_backend: Literal["local", "openai"] = "local"
+    embedding_backend: Literal["onnx", "local", "openai"] = "onnx"
 
 
 class SemanticConfig(BaseModel):
