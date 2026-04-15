@@ -109,6 +109,13 @@ Instalar a través de Pip en tu entorno de desarrollo Python (>= 3.10):
 pip install cortex-memory
 ```
 
+> **🚧 Nota para Early Adopters:** El paquete `cortex-memory` se encuentra próximo a su publicación oficial en PyPI. Mientras tanto, instala el motor clonando este repositorio en modo desarrollo editable:
+> ```bash
+> git clone https://github.com/MachuaninEzequiel/Cortex.git
+> cd Cortex
+> pip install -e .
+> ```
+
 Luego, inicializá el orquestador automático en la raíz de tu proyecto:
 
 ```bash
