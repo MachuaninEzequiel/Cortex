@@ -63,11 +63,15 @@ class UnifiedHit(BaseModel):
 
     @property
     def display_title(self) -> str:
-        if self.source == "episodic" and self.entry:
-            return f"[{self.entry.memory_type}] {self.entry.content[:100]}"
-        elif self.source == "semantic" and self.doc:
+        """User-friendly title for the hit."""
+        if self.source == "semantic" and self.doc:
             return self.doc.title
-        return "(unknown)"
+        if self.source == "episodic" and self.entry:
+            # Try to extract the first line as title
+            lines = [L for L in self.entry.content.split("\n") if L.strip()]
+            first_line = lines[0].strip("# ") if lines else "Untitled Session"
+            return f"[{self.entry.memory_type.upper()}] {first_line[:100]}"
+        return "Untitled Memory"
 
     @property
     def display_content(self) -> str:
