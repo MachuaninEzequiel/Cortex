@@ -4,7 +4,7 @@ date: 2026-04-15
 pr: "#6"
 author: MachuaninEzequiel
 branch: perf/onnx-embedder
-commit: 06eaae36
+commit: 1c35019d
 tags: [session]
 status: fallback
 ---
@@ -19,17 +19,20 @@ status: fallback
 Integrated ONNX backend for lightweight embeddings and dual-profile strategy (init/work) for token optimization. Also fixed Unicode encoding issues on Windows.
 
 ## Changes
-config.yaml                     |   2 +-
- cortex/agent_guidelines.md      | 268 +++++++---------------------------------
- cortex/agent_guidelines_work.md |   9 ++
- cortex/cli/main.py              |   2 +-
- cortex/core.py                  |   2 +-
- cortex/episodic/embedder.py     | 120 ++++++++++++++----
- cortex/episodic/memory_store.py |   2 +-
- cortex/ide_installer.py         |  82 +++++++-----
- cortex/semantic/vault_reader.py |   2 +-
- pyproject.toml                  |  14 ++-
- 10 files changed, 214 insertions(+), 289 deletions(-)
+.github/workflows/ci-pull-request.yml              |   3 +-
+ config.yaml                                        |   2 +-
+ cortex/agent_guidelines.md                         | 268 ++++-----------------
+ cortex/agent_guidelines_work.md                    |   9 +
+ cortex/cli/main.py                                 |   2 +-
+ cortex/core.py                                     |   2 +-
+ cortex/episodic/embedder.py                        | 120 +++++++--
+ cortex/episodic/memory_store.py                    |   2 +-
+ cortex/ide_installer.py                            |  82 ++++---
+ cortex/semantic/vault_reader.py                    |   2 +-
+ pyproject.toml                                     |  14 +-
+ vault/.cortex_index.json                           |   2 +-
+ ...15_perf-onnx-migration-dual-profile-strategy.md |  51 ++++
+ 13 files changed, 267 insertions(+), 292 deletions(-)
 
 ## Pipeline Results
 | Check | Result |
@@ -39,6 +42,7 @@ config.yaml                     |   2 +-
 | Tests | not run |
 
 ## Files Modified
+- `.github/workflows/ci-pull-request.yml`
 - `config.yaml`
 - `cortex/agent_guidelines.md`
 - `cortex/agent_guidelines_work.md`
@@ -49,3 +53,5 @@ config.yaml                     |   2 +-
 - `cortex/ide_installer.py`
 - `cortex/semantic/vault_reader.py`
 - `pyproject.toml`
+- `vault/.cortex_index.json`
+- `vault/sessions/2026-04-15_perf-onnx-migration-dual-profile-strategy.md`
