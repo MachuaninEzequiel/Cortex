@@ -35,29 +35,24 @@ def install_opencode_profile():
     if "agent" not in config_data:
         config_data["agent"] = {}
         
-    # Get the absolute path to our agent_guidelines.md
+    # Get the absolute path to our guidelines files
     base_dir = Path(__file__).resolve().parent
     guidelines_path = base_dir / "agent_guidelines.md"
-    
+    guidelines_work_path = base_dir / "agent_guidelines_work.md"
+
     if not guidelines_path.exists():
         print(f"  [X] Error: Could not find {guidelines_path}. Cortex installation might be corrupt.")
         return False
 
-    # Create the Cortex orchestrator definition
-    # Using {file:...} syntax native to OpenCode if it supports it, 
-    # but to be safe and compatible with standard OpenCode features, 
-    # we inject `{file:ABSOLUTE_PATH}` which OpenCode expands.
-    cortex_agent = {
+    # -- Profile 1: cortex-init ----------------------------------------------
+    # Full pre-flight protocol. Use this for the FIRST message of the day.
+    # Triggers git fetch, vault update check, and context injection.
+    # ~450 tokens system prompt. Switch to cortex-work after pre-flight.
+    cortex_init_agent = {
         "mode": "primary",
-        "description": "Cortex Orchestrator - Enterprise Governance Memory Enabled.",
+        "description": "Cortex Init - Pre-flight + context. Use for FIRST message of the day.",
         "model": "anthropic/claude-3-5-sonnet-20241022",
         "prompt": f"{{file:{str(guidelines_path)}}}",
-        "permission": {
-            "task": {
-                "*": "deny",
-                "sdd-*": "allow"
-            }
-        },
         "tools": {
             "read": True,
             "write": True,
@@ -65,11 +60,31 @@ def install_opencode_profile():
             "bash": True,
             "delegate": True,
             "delegation_read": True,
-            "delegation_list": True
-        }
+            "delegation_list": True,
+        },
     }
-    
-    config_data["agent"]["cortex-orchestrator"] = cortex_agent
+
+    # -- Profile 2: cortex-work ----------------------------------------------
+    # Minimal prompt (~60 tokens). Use after pre-flight is complete.
+    # Maximizes coding efficiency — no repetitive thinking overhead.
+    cortex_work_agent = {
+        "mode": "primary",
+        "description": "Cortex Work - Lean coding mode. Use AFTER cortex-init pre-flight.",
+        "model": "anthropic/claude-3-5-sonnet-20241022",
+        "prompt": f"{{file:{str(guidelines_work_path)}}}",
+        "tools": {
+            "read": True,
+            "write": True,
+            "edit": True,
+            "bash": True,
+            "delegate": True,
+            "delegation_read": True,
+            "delegation_list": True,
+        },
+    }
+
+    config_data["agent"]["cortex-init"] = cortex_init_agent
+    config_data["agent"]["cortex-work"] = cortex_work_agent
     
     # Backup original config
     if config_file.exists():
@@ -80,8 +95,10 @@ def install_opencode_profile():
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2)
         
-    print(f"  [ok] Installed 'cortex-orchestrator' into {config_file}.")
-    print("  [ok] You can now switch to Cortex by pressing Tab in OpenCode.")
+    print(f"  [ok] Installed 'cortex-init' and 'cortex-work' profiles into {config_file}.")
+    print("  [ok] Press Tab in OpenCode to select a profile:")
+    print("       cortex-init  -> pre-flight (use for FIRST message of the day)")
+    print("       cortex-work  -> lean coding mode (use AFTER pre-flight)")
     return True
 
 def install_claude_code():
@@ -95,7 +112,7 @@ def install_claude_code():
     
     instruction_block = (
         "\n\n<!-- CORTEX INTEGRATION START -->\n"
-        "# 🧠 Cortex Context Checklist\n"
+        "# Cortex Context Checklist\n"
         "You are working in a Cortex-governed repository. Before fulfilling ANY task:\n"
         "1. Check for updates in the vault/ folder. Run `git fetch`.\n"
         "2. If remote commits exist that are not available locally, you MUST STOP and explicitly ask:\n"
@@ -141,17 +158,20 @@ def uninstall_opencode_profile():
         print(f"  [X] Error: Could not parse {config_file}.")
         return False
         
-    if "agent" in config_data and "cortex-orchestrator" in config_data["agent"]:
-        # Backup before modifying
-        backup_file = config_file.with_suffix(".json.bak.uninstall")
-        shutil.copy2(config_file, backup_file)
-        
-        del config_data["agent"]["cortex-orchestrator"]
-        with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=2)
-        print("  [ok] Successfully removed 'cortex-orchestrator' from OpenCode.")
-    else:
-        print("  [ok] 'cortex-orchestrator' not found in OpenCode config. Nothing to do.")
+    if "agent" in config_data:
+        removed = []
+        for profile in ["cortex-init", "cortex-work", "cortex-orchestrator"]:
+            if profile in config_data["agent"]:
+                del config_data["agent"][profile]
+                removed.append(profile)
+        if removed:
+            backup_file = config_file.with_suffix(".json.bak.uninstall")
+            shutil.copy2(config_file, backup_file)
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=2)
+            print(f"  [ok] Removed profiles: {', '.join(removed)} from OpenCode.")
+        else:
+            print("  [ok] No Cortex profiles found in OpenCode config. Nothing to do.")
     return True
 
 def uninstall_claude_code():

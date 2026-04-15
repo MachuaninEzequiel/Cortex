@@ -55,7 +55,7 @@ all = ["cortex-memory[local,openai,anthropic,ollama,dev]"]
 cortex = "cortex.cli.main:app"
 
 [tool.setuptools.package-data]
-"cortex" = ["agent_guidelines.md", "skills/**/*.md"]
+"cortex" = ["agent_guidelines.md", "agent_guidelines_work.md", "skills/**/*.md"]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/cortex"
