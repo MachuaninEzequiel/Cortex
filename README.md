@@ -57,6 +57,50 @@ Instala de manera automática (en OpenCode / VSCode) nuestra estrategia dividida
 
 ---
 
+## 🧠 Integración Nativa con IAs (MCP Server)
+
+Cortex incluye un servidor **MCP (Model Context Protocol)** embebido. Esto permite que asistentes de IA (como Antigravity, Claude Desktop o extensiones de VSCode) consuman nativamente la memoria de tu repositorio como herramientas integradas (`cortex_search`, `cortex_context`, `cortex_sync_vault`), sin que el humano tenga que estar inyectando contexto manualmente.
+
+### Configuración por IDE
+
+Para habilitar que tu IA tenga acceso directo a la base de conocimiento de Cortex, configura el servidor MCP en tu entorno:
+
+#### 1. Antigravity / Claude Desktop
+Agrega este bloque en tu archivo de configuración (ej. `%APPDATA%/antigravity/config.json` o en la config de Claude Desktop):
+```json
+"mcpServers": {
+  "cortex": {
+    "command": "python",
+    "args": ["-m", "cortex.mcp_server"],
+    "cwd": "C:/Ruta/A/Tu/Proyecto"
+  }
+}
+```
+
+#### 2. VSCode (Extensiones como Cline / Roo Code)
+Edita el archivo de configuración MCP de tu extensión (ej. `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`):
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "python",
+      "args": ["-m", "cortex.mcp_server"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+#### 3. Cursor
+1. Ve a **Cursor Settings** > **Features** > **MCP**.
+2. Haz clic en **+ Add New MCP Server**.
+3. Configura los siguientes campos:
+   - **Name**: `Cortex`
+   - **Type**: `command`
+   - **Command**: `python -m cortex.mcp_server`
+
+---
+
 ## Instalación y Setup en 1 Minuto
 
 Instalar a través de Pip en tu entorno de desarrollo Python (>= 3.10):
