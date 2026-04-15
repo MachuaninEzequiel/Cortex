@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class MemoryEntry(BaseModel):
@@ -61,6 +61,7 @@ class UnifiedHit(BaseModel):
     # Semantic fields (set when source == "semantic")
     doc: SemanticDocument | None = None
 
+    @computed_field
     @property
     def display_title(self) -> str:
         """User-friendly title for the hit."""
@@ -73,6 +74,7 @@ class UnifiedHit(BaseModel):
             return f"[{self.entry.memory_type.upper()}] {first_line[:100]}"
         return "Untitled Memory"
 
+    @computed_field
     @property
     def display_content(self) -> str:
         if self.source == "episodic" and self.entry:
@@ -81,6 +83,7 @@ class UnifiedHit(BaseModel):
             return self.doc.content
         return ""
 
+    @computed_field
     @property
     def display_path(self) -> str:
         if self.source == "episodic" and self.entry:
