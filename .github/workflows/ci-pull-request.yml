@@ -2,7 +2,7 @@ name: CI - Pull Requests (DevSecDocOps)
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, main]
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   quality-and-security-gate:
-    name: quality-and-security-gate
     runs-on: ubuntu-latest
 
     steps:
