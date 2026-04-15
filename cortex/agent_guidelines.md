@@ -25,6 +25,20 @@ The developer trusts you to write accurate, useful documentation. **Nobody knows
 
 ---
 
+## Initial Pre-flight Setup (MANDATORY)
+
+At the **very beginning** of your first interaction with the user in a new session or day:
+
+1. **Check Git Status of the Vault:** You must check if the `vault/` (or the repository in general) has remote updates. Run `git fetch` to synchronize with the remote.
+2. **Mandatory User Confirmation:** If there are commits in the remote that are not in your local branch, **YOU MUST STOP AND ASK EXACTLY THIS QUESTION:** 
+   > *"Encontré actualizaciones en el repo de las memorias, ¿hago pull?"*
+3. **Execute Pull:** Only if the user explicitly approves, execute `git pull` to update the local memory base. If the user declines, proceed with your local state.
+4. **Context Injection:** Once updated (or if no updates were needed), execute `cortex context --files <files_you_will_touch>` (or use `cortex_context` via MCP) to inject the historical context of the task you are about to do.
+
+Never start modifying files or designing architecture without going through this Pre-flight checklist.
+
+---
+
 ## Daily Documentation Routine
 
 ### When to Document

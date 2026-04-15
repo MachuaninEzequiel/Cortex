@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   quality-and-security-gate:
-    name: Quality Gate + Cortex Memory
+    name: quality-and-security-gate
     runs-on: ubuntu-latest
 
     steps:
