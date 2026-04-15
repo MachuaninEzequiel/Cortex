@@ -44,13 +44,13 @@ def install_opencode_profile():
         print(f"  [X] Error: Could not find {guidelines_path}. Cortex installation might be corrupt.")
         return False
 
-    # -- Profile 1: cortex-init ----------------------------------------------
+    # -- Profile 1: cortex-sync ----------------------------------------------
     # Full pre-flight protocol. Use this for the FIRST message of the day.
     # Triggers git fetch, vault update check, and context injection.
     # ~450 tokens system prompt. Switch to cortex-work after pre-flight.
-    cortex_init_agent = {
+    cortex_sync_agent = {
         "mode": "primary",
-        "description": "Cortex Init - Pre-flight + context. Use for FIRST message of the day.",
+        "description": "Cortex Sync - Pre-flight + context. Use for FIRST message of the day.",
         "model": "anthropic/claude-3-5-sonnet-20241022",
         "prompt": f"{{file:{str(guidelines_path)}}}",
         "tools": {
@@ -69,7 +69,7 @@ def install_opencode_profile():
     # Maximizes coding efficiency — no repetitive thinking overhead.
     cortex_work_agent = {
         "mode": "primary",
-        "description": "Cortex Work - Lean coding mode. Use AFTER cortex-init pre-flight.",
+        "description": "Cortex Work - Lean coding mode. Use AFTER cortex-sync pre-flight.",
         "model": "anthropic/claude-3-5-sonnet-20241022",
         "prompt": f"{{file:{str(guidelines_work_path)}}}",
         "tools": {
@@ -83,7 +83,12 @@ def install_opencode_profile():
         },
     }
 
-    config_data["agent"]["cortex-init"] = cortex_init_agent
+    # Cleanup old known profiles before adding new ones
+    for old_name in ["cortex-orchestrator", "cortex-init"]:
+        if old_name in config_data["agent"]:
+            del config_data["agent"][old_name]
+
+    config_data["agent"]["cortex-sync"] = cortex_sync_agent
     config_data["agent"]["cortex-work"] = cortex_work_agent
     
     # Backup original config
@@ -95,9 +100,9 @@ def install_opencode_profile():
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2)
         
-    print(f"  [ok] Installed 'cortex-init' and 'cortex-work' profiles into {config_file}.")
+    print(f"  [ok] Installed 'cortex-sync' and 'cortex-work' profiles into {config_file}.")
     print("  [ok] Press Tab in OpenCode to select a profile:")
-    print("       cortex-init  -> pre-flight (use for FIRST message of the day)")
+    print("       cortex-sync  -> pre-flight (use for FIRST message of the day)")
     print("       cortex-work  -> lean coding mode (use AFTER pre-flight)")
     return True
 
@@ -160,7 +165,7 @@ def uninstall_opencode_profile():
         
     if "agent" in config_data:
         removed = []
-        for profile in ["cortex-init", "cortex-work", "cortex-orchestrator"]:
+        for profile in ["cortex-sync", "cortex-work", "cortex-init", "cortex-orchestrator"]:
             if profile in config_data["agent"]:
                 del config_data["agent"][profile]
                 removed.append(profile)
