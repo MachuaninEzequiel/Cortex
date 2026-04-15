@@ -7,7 +7,7 @@ episodic:
   persist_dir: .memory/chroma       # where ChromaDB stores data
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2 # local, no API key needed
-  embedding_backend: local           # local | openai
+  embedding_backend: onnx           # onnx | local | openai
 
 # ── Semantic Memory (markdown vault) ─────────────────────────
 semantic:
