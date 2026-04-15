@@ -218,7 +218,8 @@ jobs:
                 const body = `🧠 **Cortex Context** — Found ${{context.items.length}} related memories\n\n` +
                   context.items.map((item, i) => {{
                     const source = item.source === 'episodic' ? '📝' : '📖';
-                    return `${{source}} **${{i+1}}. ${{item.title}}**\\n> ${{item.content.substring(0, 200)}}` +
+                    const title = item.display_title || 'Untitled Memory';
+                    return `${{source}} **${{i+1}}. ${{title}}**\\n> ${{item.content.substring(0, 200)}}` +
                       (item.content.length > 200 ? '…' : '');
                   }}).join('\\n\\n');
                 github.rest.issues.createComment({{

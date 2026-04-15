@@ -124,13 +124,13 @@ class HybridSearch:
         # Score episodic hits by rank
         for rank, hit in enumerate(episodic_hits, start=1):
             key = f"episodic:{hit.entry.id}"
-            fused_scores[key] = self.episodic_weight * (1.0 / (_RRF_K + rank))
+            fused_scores[key] = fused_scores.get(key, 0.0) + self.episodic_weight * (1.0 / (_RRF_K + rank))
             episodic_map[key] = hit
 
         # Score semantic hits by rank
         for rank, doc in enumerate(semantic_hits, start=1):
             key = f"semantic:{doc.path}"
-            fused_scores[key] = self.semantic_weight * (1.0 / (_RRF_K + rank))
+            fused_scores[key] = fused_scores.get(key, 0.0) + self.semantic_weight * (1.0 / (_RRF_K + rank))
             semantic_map[key] = doc
 
         # Sort all candidates by fused score

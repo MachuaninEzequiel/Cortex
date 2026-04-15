@@ -62,8 +62,10 @@ class TestSetupOrchestrator:
 
         script = orchestrator_no_memory.root / "scripts" / "devsecdocops.sh"
         assert script.exists()
-        # Check executable permission
-        assert script.stat().st_mode & 0o111
+        # Check executable permission (POSIX only)
+        import os
+        if os.name != "nt":
+            assert script.stat().st_mode & 0o111
 
     def test_creates_agent_guidelines(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
