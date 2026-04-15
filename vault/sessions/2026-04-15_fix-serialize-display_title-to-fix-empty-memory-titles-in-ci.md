@@ -4,7 +4,7 @@ date: 2026-04-15
 pr: "#14"
 author: MachuaninEzequiel
 branch: fix/ci-memory-display
-commit: 627e558e
+commit: 05b914ed
 tags: [session]
 status: fallback
 ---
@@ -19,10 +19,11 @@ status: fallback
 Re-applies the @computed_field decorator to UnifiedHit and updates the CI script. These changes were accidentally lost during a previous branch cleanup and reset, causing the bot to still render asterisks for memory titles.
 
 ## Changes
-.github/workflows/ci-pull-request.yml | 3 ++-
- README.md                             | 7 +++++++
- cortex/models.py                      | 5 ++++-
- 3 files changed, 13 insertions(+), 2 deletions(-)
+.github/workflows/ci-pull-request.yml              |  3 +-
+ cortex/models.py                                   |  5 ++-
+ vault/.cortex_index.json                           |  2 +-
+ ...splay_title-to-fix-empty-memory-titles-in-ci.md | 37 ++++++++++++++++++++++
+ 4 files changed, 44 insertions(+), 3 deletions(-)
 
 ## Pipeline Results
 | Check | Result |
@@ -33,5 +34,6 @@ Re-applies the @computed_field decorator to UnifiedHit and updates the CI script
 
 ## Files Modified
 - `.github/workflows/ci-pull-request.yml`
-- `README.md`
 - `cortex/models.py`
+- `vault/.cortex_index.json`
+- `vault/sessions/2026-04-15_fix-serialize-display_title-to-fix-empty-memory-titles-in-ci.md`
