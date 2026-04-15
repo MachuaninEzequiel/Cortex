@@ -163,7 +163,7 @@ def capture_from_json(path: str | Path) -> PRContext:
     """
     Load a PRContext from a previously saved JSON file.
     """
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
     return PRContext.model_validate(data)
 
 
@@ -172,7 +172,7 @@ def save_context(ctx: PRContext, path: str | Path = ".pr-context.json") -> Path:
     Save a PRContext to a JSON file.
     """
     p = Path(path)
-    p.write_text(ctx.model_dump_json(indent=2))
+    p.write_text(ctx.model_dump_json(indent=2), encoding="utf-8")
     return p
 
 

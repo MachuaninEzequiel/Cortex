@@ -134,7 +134,7 @@ class ProjectDetector:
 
     def _read_json(self, path: Path) -> dict | None:
         try:
-            return json.loads(path.read_text())
+            return json.loads(path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return None
 
@@ -162,7 +162,7 @@ class ProjectDetector:
     def _detect_go(self) -> dict | None:
         go_mod = self.root / "go.mod"
         if go_mod.exists():
-            content = go_mod.read_text()
+            content = go_mod.read_text(encoding="utf-8")
             module_match = re.search(r"^module\s+(\S+)", content, re.MULTILINE)
             name = module_match.group(1) if module_match else self.root.name
             return {
@@ -179,7 +179,7 @@ class ProjectDetector:
         # Cargo.toml isn't JSON, just check existence
         cargo_toml = self.root / "Cargo.toml"
         if cargo_toml.exists():
-            content = cargo_toml.read_text()
+            content = cargo_toml.read_text(encoding="utf-8")
             name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
             return {
                 "package_manager": "cargo",
@@ -219,7 +219,7 @@ class ProjectDetector:
     def _detect_ruby(self) -> dict | None:
         gemfile = self.root / "Gemfile"
         if gemfile.exists():
-            content = gemfile.read_text()
+            content = gemfile.read_text(encoding="utf-8")
             frameworks = []
             if "rails" in content or "gem 'rails'" in content:
                 frameworks.append("rails")
