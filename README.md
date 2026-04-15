@@ -1,379 +1,112 @@
-# 🧠 cortex
+<div align="center">
+  <br />
+    <a href="https://github.com/MachuaninEzequiel/cortex-devsecdocops-test" target="_blank">
+      <img src="https://raw.githubusercontent.com/MachuaninEzequiel/cortex-devsecdocops-test/main/docs/public/logo.svg" alt="Cortex Logo Placeholder" width="200">
+    </a>
+  <br />
 
-> **Hybrid cognitive memory for AI agents.**  
-> Combines episodic memory (vector DB) and semantic memory (markdown knowledge base) into a unified retrieval layer — so your agents remember *what they did* and *what they know*.
+  <h1>CORTEX</h1>
 
-[![PyPI version](https://img.shields.io/pypi/v/cortex-memory.svg)](https://pypi.org/project/cortex-memory/)
-[![Python](https://img.shields.io/pypi/pyversions/cortex-memory.svg)](https://pypi.org/project/cortex-memory/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://github.com/yourusername/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/cortex/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/yourusername/cortex)](https://codecov.io/gh/yourusername/cortex)
+  <p>
+    <strong>Memoria Institucional Híbrida para Agentes de IA en Flujos DevSecDocOps</strong>
+  </p>
 
----
+  <p>
+    <a href="https://pypi.org/project/cortex-memory/"><img src="https://img.shields.io/pypi/v/cortex-memory.svg" alt="PyPI version" /></a>
+    <a href="https://pypi.org/project/cortex-memory/"><img src="https://img.shields.io/pypi/pyversions/cortex-memory.svg" alt="Python" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  </p>
 
-## The Problem
-
-Most AI agents have no persistent memory. They start fresh on every call, re-discovering context that already existed. Some solutions add a vector store, but ignore structured knowledge. Others use a knowledge base, but miss the agent's lived experience.
-
-**Cortex solves this with two complementary memory types** — modelling how human cognition actually works.
-
----
-
-## Cognitive Model
-
-```
-                     LLM Agent
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-   Episodic Memory               Semantic Memory
-   (what the agent did)          (what the agent knows)
-          │                             │
-    Vector DB (Chroma)           Markdown Vault
-    + embeddings                 (Obsidian-compatible)
-    + LLM summarizer             + wiki-links [[note]]
-          │                             │
-          └──────────────┬──────────────┘
-                         │
-                  Hybrid Retrieval
-                (Reciprocal Rank Fusion)
-                         │
-                  Context → LLM
-```
-
-### Episodic Memory
-Captures *what the agent did*. Agent actions, bug fixes, tool calls, conversations — all stored as dense vector embeddings, searchable by semantic similarity.
-
-```python
-memory.remember(
-    "Fixed login refresh token bug. Middleware was not invalidating old token after rotation.",
-    memory_type="bugfix",
-    tags=["auth", "login"],
-    files=["auth.ts"],
-)
-```
-
-### Semantic Memory
-Integrates with your **markdown knowledge base** — Obsidian vaults, project docs, architecture notes. The agent can read, create and edit notes, and follow `[[wiki-links]]`.
-
-```
-vault/
-  auth.md          ← describes the auth system
-  architecture.md  ← system design decisions
-  api.md           ← API reference
-```
-
-### Hybrid Retrieval
-A single query searches both memory types and fuses results using **Reciprocal Rank Fusion (RRF)** — returning a ranked, deduplicated context ready to inject into any LLM prompt.
-
-```python
-result = memory.retrieve("login bug")
-# → episodic: bug fix from last week
-# → semantic: auth.md docs
-print(result.to_prompt())  # ready-to-use LLM context string
-```
+</div>
 
 ---
 
-## Installation
+## Visión General: El Paradigma Agent-First
+
+La mayoría de los agentes de Inteligencia Artificial (Copilot, Cursor, Claude Code) sufren de **Amnesia de Sesión**. Inician en blanco. No conocen tus *Architecture Decision Records (ADRs)*, ni recuerdan el bug que fixearon la semana pasada.
+
+**Cortex soluciona esto.** No es un simple RAG, es un motor DevSecDocOps que captura el contexto de tu trabajo local, lo enriquece matemáticamente, exige que tus agentes escriban documentación continua, y lo valida todo algorítmicamente en tu pipeline de Integración Continua (CI/CD).
+
+### Documentación Completa Oficial
+> 👉 Lee el manual arquitectónico exhaustivo en **[Cortex Documentation Portal](http://localhost:5173/)**.
+
+---
+
+## Arquitectura Core v2.0
+
+### 1. El Motor Proactivo (Context Enricher)
+Cortex observa tus archivos modificados y ejecuta 6 estrategias de búsqueda concurrentes (Topic, File, Keyword, Entity, etc.) para inyectar contexto a tu agente **antes de que pregunte**. Todo el sistema es balanceado por:
+- **Typed Co-occurrence Graph:** Entiende dependencias a nivel de código fuente (`imported_by` > `references`).
+- **Memory Decay:** Decaimiento temporal exponencial de la memoria antigua (half-life de 168 horas), protegiendo eternamente registros de arquitectura vitales.
+- **Domain Detector:** Matelización estricta por regex hacia 12 dominios críticos con fallback hacia distancia Euclidiana vía *Embeddings*.
+
+### 2. Zero-Dependency y Backend ONNX
+Desarrollado para entornos empresariales, Cortex transicionó de la dependencia pesada de PyTorch hacia **ONNX Runtime embebido** (`all-MiniLM-L6-v2`).
+- Inicialización en CPU en **< 1 ms**.
+- Latencia cero en CI/CD. Cero GPUs necesarias.
+
+### 3. Memoria Híbrida (Episódica + Semántica)
+Cortex emula la mente humana usando algoritmos de *Reciprocal Rank Fusion* (RRF):
+- **Episódica**: Eventos de CI, logs y resúmenes de PRs indexados automáticamente en base de datos vectorial local (ChromaDB).
+- **Semántica**: El "saber hacer" de la empresa escrito por agentes de IA directamente a un _Obsidian Markdown Vault_.
+
+### 4. Eficiencia de Tokens Extrema (Estrategia Dual-Profile)
+Instala de manera automática (en OpenCode / VSCode) nuestra estrategia dividida:
+- **`Cortex-Sync`**: Perfil inicial (carga alta: ~450 tokens) que lee, entiende el vault y coordina integraciones de GitHub.
+- **`Cortex-Work`**: Perfil productivo (ultra-ligero: ~60 tokens). Tras estar "cebado", ahorrá hasta un **90%** en tus cuotas mensuales mediante purga sistemática de gobernanza.
+
+---
+
+## Instalación y Setup en 1 Minuto
+
+Instalar a través de Pip en tu entorno de desarrollo Python (>= 3.10):
 
 ```bash
 pip install cortex-memory
 ```
 
-With optional backends:
-
-```bash
-pip install "cortex-memory[openai]"       # OpenAI embeddings + summarizer
-pip install "cortex-memory[anthropic]"    # Anthropic summarizer
-pip install "cortex-memory[ollama]"       # local LLM via Ollama
-pip install "cortex-memory[all]"          # everything
-```
-
----
-
-## Quick Setup (One Command)
-
-Once you have Cortex installed, set up your entire project with a single command:
+Luego, inicializá el orquestador automático en la raíz de tu proyecto:
 
 ```bash
 cortex setup
 ```
-
-This auto-detects your project's stack (language, package manager, frameworks, CI/CD) and automatically:
-
-- **Generates `config.yaml`** with smart defaults for your stack
-- **Creates `vault/`** with starter docs (architecture, decisions, runbooks)
-- **Initializes `.memory/`** with ChromaDB vector store
-- **Adds GitHub Actions workflows** with Cortex integration (if they don't already exist):
-  - `ci-pull-request.yml` — PR validation with lint/audit/test gates + Cortex memory
-  - `ci-feature.yml` — Feature branch CI
-  - `cd-deploy.yml` — Deployment pipeline with Cortex tracking
-- **Installs `scripts/devsecdocops.sh`** — orchestration script for the full PR pipeline
-- **Runs initial vault sync** and stores a setup memory
-
-Want to preview what would happen without making changes?
-
-```bash
-cortex setup --dry-run
-```
-
-### What the developer gets
-
-After running `cortex setup`, every PR automatically:
-
-1. **Captures PR context** (title, author, branch, files changed)
-2. **Stores CI results** (lint, audit, tests) as searchable episodic memories
-3. **Searches for similar past PRs** using hybrid RRF search
-4. **Generates documentation** into the markdown vault
-5. **Syncs the vault** so all docs are indexed and searchable
-
-No configuration needed — it adapts to your project's stack automatically.
+Este sub-comando es "mágia oscura": Detecta tu lenguaje, tu framework, tu orquestador de CI, inicializa el almacén de ChromaDB en `.memory/`, escupe el Vault Markdown inicial, y acopla los workflows `.yml` de Github Actions todo a la vez.
 
 ---
 
-## Manual Setup
+## El Pipeline DevSecDocOps
+Una vez inicializado, ¿qué sucede en tu rutina diaria?
 
-### 1. Initialize
-
-```bash
-cortex init
-```
-
-Creates:
-```
-.memory/       ← ChromaDB vector store
-vault/         ← markdown knowledge base
-config.yaml    ← configuration
-```
-
-### 2. Store memories
-
-```python
-from cortex import AgentMemory
-
-memory = AgentMemory()
-
-# Store an episodic memory
-memory.remember(
-    "Deployed new payment service using BullMQ for async processing.",
-    memory_type="deployment",
-    tags=["payments", "queue"],
-    files=["payment_service.ts"],
-)
-
-# Create a semantic note
-memory.semantic.create_note(
-    title="Payment Architecture",
-    content="## Overview\n\nWe use BullMQ for async payment processing...",
-    tags=["payments", "architecture"],
-)
-```
-
-### 3. Retrieve context
-
-```python
-result = memory.retrieve("how does payment processing work?")
-
-# Inject into your LLM
-prompt = result.to_prompt()
-response = llm.ask(prompt + "\n\nUser question: " + user_input)
-```
+1. El developer programa co-piloteado por su Agente IA favorito.
+2. Al final, **el agente escribe la documentación de la sesión en el Vault `(cortex/vault)`**.
+3. El developer hace un PR a GitHub.
+4. Las pruebas de Lint, SAST y Security se corren en CI. Sus fallos son absorbidos como recuerdos de fallos para Cortex.
+5. Cortex **verifica** el PR. Si halla la documentación del agente, la indexa a la base vectorial semántica. Si no la halla, genera actas de fallback muy primitivas evidenciando al equipo que no se ha cumplido el estándar.
 
 ---
 
-## CLI
+## CLI (Command Line Interface)
 
-```bash
-# Full project setup with auto-detection (recommended)
-cortex setup
-cortex setup --dry-run     # Preview without making changes
+Todas las funciones están gobernadas por el envoltorio CLI de Typer:
 
-# Initialize the memory system (manual setup)
-cortex init
-
-# Store a memory from the terminal
-cortex remember "Fixed OAuth2 callback URL bug" --type bugfix --tag auth --file oauth.py
-
-# Search both memory layers
-cortex search "oauth login"
-
-# Sync the markdown vault after external edits
-cortex sync-vault
-
-# Print stats
-cortex stats
-
-# Delete a specific memory
-cortex forget mem_abc123
-```
+| Comando | Descripción de Acción |
+|---------|-----------------------|
+| `cortex install-ide` | Interviene los config locales del IDE instalando los perfiles `Sync` y `Work`. |
+| `cortex search "query"`| Ejecuta la Búsqueda Híbrida RRF y devuelve scores cruzados. |
+| `cortex sync-vault` | Fuerza validación por Pydantic indexando todos los archivos Markdown nuevamente. |
+| `cortex context` | Fuerza detección temprana inyectado el grafo tipado (staged/unstaged files). |
+| `cortex pr-context *` | Set maestro ejecutado dentro del CI/CD de GitHub. |
 
 ---
 
-## Python API
+## Cómo Contribuir
 
-### `AgentMemory`
-
-The main entry point. Accepts a `config.yaml` path.
-
-```python
-from cortex import AgentMemory
-
-memory = AgentMemory(config_path="config.yaml")
-```
-
-| Method | Description |
-|--------|-------------|
-| `memory.remember(content, ...)` | Store an episodic memory |
-| `memory.retrieve(query, top_k=5)` | Hybrid search → `RetrievalResult` |
-| `memory.sync_vault()` | Re-index the markdown vault |
-| `memory.forget(memory_id)` | Delete an episodic memory |
-| `memory.stats()` | Stats dict with counts and paths |
-
-### `RetrievalResult`
-
-```python
-result = memory.retrieve("auth bug")
-
-result.episodic_hits    # list[EpisodicHit]
-result.semantic_hits    # list[SemanticDocument]
-result.to_prompt()      # str  ← ready to inject into LLM
-```
+Cortex es desarrollado para revolucionar el paradigma de documentación del software. Por favor, lee nuestra **[Guía de Contribución](CONTRIBUTING.md)** antes de hacer Pull Requests, proponer heurísticas nuevas, o reportar bugs de decaimiento en el algoritmo.
 
 ---
 
-## Agent Integrations
+## Licencia
 
-### Generic (any agent)
+Este proyecto está distribuido y protegido bajo la **[Licencia MIT](LICENSE)**.
 
-```python
-from cortex import AgentMemory
-from cortex.hooks import CortexHook
-
-memory = AgentMemory()
-hook = CortexHook(memory)
-
-@hook.capture(memory_type="task", tags=["prod"])
-def run_agent(prompt: str) -> str:
-    return llm.run(prompt)
-```
-
-### LangChain
-
-```python
-from cortex.hooks import CortexLangChainCallback
-
-callback = CortexLangChainCallback(memory)
-
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    callbacks=[callback],  # ← attach cortex
-)
-```
-
-### OpenAI Agents SDK / CrewAI / Claude Code
-
-See [`examples/`](examples/) for integration patterns with other frameworks.
-
----
-
-## Configuration
-
-`config.yaml` controls all cortex behaviour:
-
-```yaml
-episodic:
-  persist_dir: .memory/chroma          # ChromaDB storage path
-  collection_name: cortex_episodic
-  embedding_model: all-MiniLM-L6-v2    # local, no API key needed
-  embedding_backend: local             # local | openai
-
-semantic:
-  vault_path: vault                    # your markdown notes folder
-
-retrieval:
-  top_k: 5                             # results per source
-  episodic_weight: 1.0                 # RRF weight
-  semantic_weight: 1.0                 # RRF weight
-
-llm:
-  provider: none                       # none | openai | anthropic | ollama
-  model: ""                            # e.g. gpt-4o-mini
-```
-
----
-
-## Embedding Backends
-
-| Backend | Model | Requires |
-|---------|-------|---------|
-| `local` (default) | `all-MiniLM-L6-v2` | `sentence-transformers` |
-| `local` | `all-mpnet-base-v2` | `sentence-transformers` |
-| `openai` | `text-embedding-3-small` | `OPENAI_API_KEY` |
-
----
-
-## Repository Structure
-
-```
-cortex/
-│
-├── cortex/                     ← Python package
-│   ├── core.py                 ← AgentMemory (main public API)
-│   ├── models.py               ← Pydantic data models
-│   │
-│   ├── episodic/               ← Episodic memory layer
-│   │   ├── memory_store.py     ← ChromaDB store + CRUD
-│   │   ├── embedder.py         ← local / OpenAI embeddings
-│   │   └── summarizer.py       ← LLM memory compression
-│   │
-│   ├── semantic/               ← Semantic memory layer
-│   │   ├── vault_reader.py     ← Vault index + search + write
-│   │   └── markdown_parser.py  ← Frontmatter, wiki-links, tags
-│   │
-│   ├── retrieval/              ← Hybrid retrieval engine
-│   │   └── hybrid_search.py    ← RRF fusion
-│   │
-│   ├── hooks/                  ← Agent framework integrations
-│   │   └── agent_hooks.py      ← LangChain, generic decorator
-│   │
-│   └── cli/                    ← Command-line interface
-│       └── main.py             ← Typer CLI commands
-│
-├── vault/                      ← Example markdown knowledge base
-├── tests/                      ← Pytest test suite
-├── examples/                   ← Usage examples
-├── config.yaml                 ← Default configuration
-├── pyproject.toml
-└── README.md
-```
-
----
-
-## Roadmap
-
-- [x] ChromaDB episodic memory
-- [x] Markdown vault (Obsidian-compatible)
-- [x] Reciprocal Rank Fusion retrieval
-- [x] LangChain callback hook
-- [x] Typer CLI
-- [ ] Qdrant backend
-- [ ] BM25 hybrid for semantic search
-- [ ] Auto knowledge graph (entity extraction + link inference)
-- [ ] Web UI for browsing memories
-- [ ] CrewAI + OpenAI Agents SDK hooks
-- [ ] Memory decay / forgetting strategies
-- [ ] Multi-agent shared memory
-
----
-
-## Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide and areas where help is needed.
-
----
-
-## License
-
-MIT © cortex contributors
+> *Hecho con rigor por el Cortex Core Team.*
