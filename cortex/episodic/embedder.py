@@ -92,12 +92,12 @@ class Embedder:
     def _embed_onnx(self, text: str) -> list[float]:
         fn = self._get_onnx_fn()
         result = fn([text])
-        return list(result[0])
+        return [float(x) for x in result[0]]
 
     def _embed_onnx_batch(self, texts: list[str]) -> list[list[float]]:
         fn = self._get_onnx_fn()
         result = fn(texts)
-        return [list(v) for v in result]
+        return [[float(x) for x in v] for v in result]
 
     @lru_cache(maxsize=1)
     def _get_onnx_fn(self):
