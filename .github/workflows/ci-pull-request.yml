@@ -105,10 +105,9 @@ jobs:
           print(len(hits))
           " 2>/dev/null || echo "0")
 
-            echo "## 🧠 Cortex Memory — Context Enricher" > context-comment.md
-            echo "" >> context-comment.md
-
             if [ "$HITS" -gt "0" ]; then
+              echo "## 🧠 Cortex Memory — Context Enricher" > context-comment.md
+              echo "" >> context-comment.md
               echo "Found **$HITS** related memories from past PRs:" >> context-comment.md
               echo "" >> context-comment.md
               python3 -c "
@@ -117,7 +116,7 @@ jobs:
           hits = data.get('unified_hits', []) or data.get('episodic_hits', [])
           for h in hits[:3]:
               src = h.get('source', '?').upper()
-              title = (h.get('display_title') or '')[:100]
+              title = h.get('display_title', 'Untitled Memory')
               score = h.get('score', 0)
               print(f'- [{src}] **{title}** — score: {score:.3f}')
           " >> context-comment.md 2>/dev/null || echo "- (could not parse hits)" >> context-comment.md
