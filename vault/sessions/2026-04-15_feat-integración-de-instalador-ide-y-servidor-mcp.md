@@ -4,7 +4,7 @@ date: 2026-04-15
 pr: "#5"
 author: MachuaninEzequiel
 branch: feature/ide-integration
-commit: dc481784
+commit: 3adcbc95
 tags: [session]
 status: fallback
 ---
@@ -19,14 +19,15 @@ status: fallback
 Implementación de Cortex MCP Server e Instalador de IDE para integración local nativa.
 
 ## Changes
-cortex/agent_guidelines.md                         |  14 ++
+.github/workflows/ci-pull-request.yml              |   2 +-
+ cortex/agent_guidelines.md                         |  14 ++
  cortex/cli/main.py                                 |  22 ++-
  cortex/ide_installer.py                            | 208 +++++++++++++++++++++
  cortex/mcp_server.py                               |  64 +++++++
  pyproject.toml                                     |   2 +
  vault/.cortex_index.json                           |   2 +-
- ...i\303\263n-de-instalador-ide-y-servidor-mcp.md" |  41 ++++
- 7 files changed, 351 insertions(+), 2 deletions(-)
+ ...i\303\263n-de-instalador-ide-y-servidor-mcp.md" |  45 +++++
+ 8 files changed, 356 insertions(+), 3 deletions(-)
 
 ## Pipeline Results
 | Check | Result |
@@ -36,6 +37,7 @@ cortex/agent_guidelines.md                         |  14 ++
 | Tests | not run |
 
 ## Files Modified
+- `.github/workflows/ci-pull-request.yml`
 - `cortex/agent_guidelines.md`
 - `cortex/cli/main.py`
 - `cortex/ide_installer.py`
