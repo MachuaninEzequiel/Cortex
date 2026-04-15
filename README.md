@@ -1,7 +1,7 @@
 <div align="center">
   <br />
     <a href="https://github.com/MachuaninEzequiel/cortex-devsecdocops-test" target="_blank">
-      <img src="https://raw.githubusercontent.com/MachuaninEzequiel/cortex-devsecdocops-test/main/docs/public/logo.svg" alt="Cortex Logo Placeholder" width="200">
+      <img src="assets/logo.png" alt="Cortex Logo" width="200">
     </a>
   <br />
 

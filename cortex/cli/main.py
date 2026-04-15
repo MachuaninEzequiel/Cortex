@@ -162,7 +162,7 @@ def pr_context_search(
     result = mem.retrieve(query, top_k=top_k)
 
     # Save to JSON
-    Path(output).write_text(result.model_dump_json(indent=2))
+    Path(output).write_text(result.model_dump_json(indent=2), encoding="utf-8")
     typer.echo(f"Past context search saved -> {output}")
 
     # Print summary
@@ -313,7 +313,7 @@ def init(
         cfg = dict(_DEFAULT_CONFIG)
         cfg["episodic"]["persist_dir"] = f"{memory}/chroma"
         cfg["semantic"]["vault_path"] = vault
-        config_path.write_text(yaml.dump(cfg, sort_keys=False))
+        config_path.write_text(yaml.dump(cfg, sort_keys=False), encoding="utf-8")
         typer.echo("Created config.yaml")
 
     Path(memory).mkdir(parents=True, exist_ok=True)
@@ -326,7 +326,8 @@ def init(
         example.write_text(
             "---\ntitle: Getting Started\ntags: [cortex, intro]\n---\n\n"
             "# Getting Started with Cortex\n\n"
-            "Add your markdown notes here. Cortex will index them automatically.\n"
+            "Add your markdown notes here. Cortex will index them automatically.\n",
+            encoding="utf-8"
         )
     typer.echo(f"Vault dir: {vault}/")
     typer.echo(
@@ -443,7 +444,7 @@ def context(
         typer.echo(enriched.to_prompt_format(expand=expand))
 
     if output:
-        Path(output).write_text(enriched.to_prompt_format())
+        Path(output).write_text(enriched.to_prompt_format(), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -472,7 +473,7 @@ def verify_docs(
     vault_path = Path(vault)
     if not vault_path.exists():
         typer.echo(f"⚠ Vault directory not found: {vault}", err=True)
-        Path(output).write_text('{"has_agent_docs": false, "errors": ["vault not found"]}')
+        Path(output).write_text('{"has_agent_docs": false, "errors": ["vault not found"]}', encoding="utf-8")
         typer.echo("false")
         raise typer.Exit(1)
 
@@ -485,7 +486,7 @@ def verify_docs(
         result = verifier.verify_from_diff(base_branch=base_branch)
 
     # Write status
-    Path(output).write_text(result.to_json())
+    Path(output).write_text(result.to_json(), encoding="utf-8")
 
     if result.has_agent_docs:
         typer.echo(f"✅ Agent documentation found ({result.total_vault_files} files)")
@@ -556,9 +557,9 @@ def agent_guidelines() -> None:
     """
     import importlib.resources as importlib_resources
     try:
-        content = importlib_resources.files("cortex").joinpath("agent_guidelines.md").read_text()
+        content = importlib_resources.files("cortex").joinpath("agent_guidelines.md").read_text(encoding="utf-8")
     except AttributeError:
-        content = (Path(__file__).parent.parent / "agent_guidelines.md").read_text()
+        content = (Path(__file__).parent.parent / "agent_guidelines.md").read_text(encoding="utf-8")
 
     typer.echo(content)
 

@@ -167,7 +167,7 @@ class DocGenerator:
             target_dir = self.vault_path / doc.vault_subfolder
             target_dir.mkdir(parents=True, exist_ok=True)
             target_file = target_dir / doc.filename
-            target_file.write_text(doc.content)
+            target_file.write_text(doc.content, encoding="utf-8")
             written.append(target_file)
         return written
 

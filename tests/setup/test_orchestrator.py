@@ -70,8 +70,8 @@ class TestSetupOrchestrator:
 
         guidelines = orchestrator_no_memory.root / ".cortex" / "AGENT.md"
         assert guidelines.exists()
-        content = guidelines.read_text()
-        assert "Agent Behavior Guidelines" in content or "Your Role" in content
+        content = guidelines.read_text(encoding="utf-8")
+        assert "Governance Rules" in content or "Cortex Agent" in content
         assert "document" in content.lower()
 
     def test_installs_skills(self, orchestrator_no_memory: SetupOrchestrator) -> None:
@@ -90,20 +90,20 @@ class TestSetupOrchestrator:
         root = orchestrator_no_memory.root
         existing = root / ".qwen" / "skills" / "obsidian-markdown"
         existing.mkdir(parents=True)
-        (existing / "SKILL.md").write_text("existing")
+        (existing / "SKILL.md").write_text("existing", encoding="utf-8")
 
         summary = orchestrator_no_memory.run()
 
         assert any("obsidian-markdown" in s and "already exists" in s for s in summary["skipped"])
         # The existing file should not be overwritten
-        assert (existing / "SKILL.md").read_text() == "existing"
+        assert (existing / "SKILL.md").read_text(encoding="utf-8") == "existing"
 
     def test_skips_existing_files(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         root = orchestrator_no_memory.root
         # Create existing files
-        (root / "config.yaml").write_text("existing: true")
+        (root / "config.yaml").write_text("existing: true", encoding="utf-8")
         (root / "vault").mkdir()
-        (root / "vault" / "architecture.md").write_text("existing")
+        (root / "vault" / "architecture.md").write_text("existing", encoding="utf-8")
 
         summary = orchestrator_no_memory.run()
 
@@ -114,7 +114,7 @@ class TestSetupOrchestrator:
         root = orchestrator_no_memory.root
         workflows = root / ".github" / "workflows"
         workflows.mkdir(parents=True)
-        (workflows / "ci-pull-request.yml").write_text("existing")
+        (workflows / "ci-pull-request.yml").write_text("existing", encoding="utf-8")
 
         summary = orchestrator_no_memory.run()
 
@@ -147,7 +147,7 @@ class TestNodeProjectSetup:
             "scripts": {"test": "jest", "lint": "eslint ."},
             "dependencies": {"express": "^4.18"},
         }
-        (tmp_path / "package.json").write_text(json.dumps(pkg))
+        (tmp_path / "package.json").write_text(json.dumps(pkg), encoding="utf-8")
 
         with patch("cortex.core.AgentMemory") as mock_mem:
             mock_instance = MagicMock()
@@ -164,7 +164,7 @@ class TestNodeProjectSetup:
 
     def test_config_reflects_node_project(self, tmp_path: Path) -> None:
         pkg = {"name": "test-app"}
-        (tmp_path / "package.json").write_text(json.dumps(pkg))
+        (tmp_path / "package.json").write_text(json.dumps(pkg), encoding="utf-8")
 
         with patch("cortex.core.AgentMemory") as mock_mem:
             mock_instance = MagicMock()
@@ -175,7 +175,7 @@ class TestNodeProjectSetup:
             orchestrator.run()
 
         config = tmp_path / "config.yaml"
-        content = config.read_text()
+        content = config.read_text(encoding="utf-8")
         # Config should exist and be valid
         assert "episodic" in content
 

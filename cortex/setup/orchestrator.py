@@ -77,7 +77,7 @@ class SetupOrchestrator:
             return
 
         content = render_config_yaml(self.ctx)
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         self.created.append("config.yaml")
 
     # ------------------------------------------------------------------
@@ -99,7 +99,7 @@ class SetupOrchestrator:
             if path.exists():
                 self.skipped.append(f"vault/{filename} (already exists)")
             else:
-                path.write_text(renderer(self.ctx))
+                path.write_text(renderer(self.ctx), encoding="utf-8")
                 self.created.append(f"vault/{filename}")
 
     # ------------------------------------------------------------------
@@ -121,7 +121,7 @@ class SetupOrchestrator:
             if path.exists():
                 self.skipped.append(f".github/workflows/{filename} (already exists)")
             else:
-                path.write_text(renderer(self.ctx))
+                path.write_text(renderer(self.ctx), encoding="utf-8")
                 self.created.append(f".github/workflows/{filename}")
 
     # ------------------------------------------------------------------
@@ -136,7 +136,7 @@ class SetupOrchestrator:
         if path.exists():
             self.skipped.append("scripts/devsecdocops.sh (already exists)")
         else:
-            path.write_text(DEVSECDOCSOPS_SCRIPT)
+            path.write_text(DEVSECDOCSOPS_SCRIPT, encoding="utf-8")
             path.chmod(0o755)
             self.created.append("scripts/devsecdocops.sh")
 
@@ -153,17 +153,17 @@ class SetupOrchestrator:
         import importlib.resources as importlib_resources
         try:
             # Python 3.9+
-            agent_content = importlib_resources.files("cortex").joinpath("agent_guidelines.md").read_text()
+            agent_content = importlib_resources.files("cortex").joinpath("agent_guidelines.md").read_text(encoding="utf-8")
         except AttributeError:
             # Fallback for older Python
             import pathlib
-            agent_content = (pathlib.Path(__file__).parent.parent / "agent_guidelines.md").read_text()
+            agent_content = (pathlib.Path(__file__).parent.parent / "agent_guidelines.md").read_text(encoding="utf-8")
 
         path = cortex_dir / "AGENT.md"
         if path.exists():
             self.skipped.append(".cortex/AGENT.md (already exists)")
         else:
-            path.write_text(agent_content)
+            path.write_text(agent_content, encoding="utf-8")
             self.created.append(".cortex/AGENT.md")
 
     # ------------------------------------------------------------------

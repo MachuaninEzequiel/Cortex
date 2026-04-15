@@ -66,7 +66,7 @@ def install_skills(target_dir: Path) -> list[str]:
                 _copy_tree(src_ref, dest)
             else:
                 # Single file skill
-                dest.write_text(src_ref.read_text())
+                dest.write_text(src_ref.read_text(encoding="utf-8"), encoding="utf-8")
 
             installed.append(skill_name)
         except Exception:
@@ -90,6 +90,6 @@ def _copy_tree(src_ref, dest: Path) -> None:
             if entry_ref.is_dir():
                 _copy_tree(entry_ref, target)
             else:
-                target.write_text(entry_ref.read_text())
+                target.write_text(entry_ref.read_text(encoding="utf-8"), encoding="utf-8")
         except Exception:
             pass
