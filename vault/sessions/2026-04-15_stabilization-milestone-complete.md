@@ -22,5 +22,5 @@ Successfully completed the stabilization phase of the Cortex ecosystem. The syst
 - **Decision**: Future expansion -> Focus on Documentation Portal (VitePress).
 
 ## Next Steps
-- [ ] Phase 4: Implementation of the VitePress Documentation Portal.
-- [ ] Evaluation of context-window optimization for long-running sessions.
+- [ ] 
+- [ ] 
