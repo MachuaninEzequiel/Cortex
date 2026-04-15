@@ -47,7 +47,7 @@ class VaultReader:
         self,
         vault_path: str = "vault",
         embedding_model: str = "all-MiniLM-L6-v2",
-        embedding_backend: str = "local",
+        embedding_backend: str = "onnx",
     ) -> None:
         self.vault_path = Path(vault_path)
         self._parser = MarkdownParser()

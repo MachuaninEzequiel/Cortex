@@ -40,7 +40,7 @@ class EpisodicMemoryStore:
         self,
         persist_dir: str = ".memory/chroma",
         embedding_model: str = "all-MiniLM-L6-v2",
-        embedding_backend: str = "local",
+        embedding_backend: str = "onnx",
         collection_name: str = "cortex_episodic",
     ) -> None:
         self.persist_dir = Path(persist_dir)
