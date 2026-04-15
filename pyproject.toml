@@ -30,6 +30,8 @@ dependencies = [
     "chromadb>=0.5",
     # Local embeddings (default backend)
     "sentence-transformers>=3.0",
+    # Model Context Protocol
+    "mcp>=1.2.0",
 ]
 
 [project.optional-dependencies]

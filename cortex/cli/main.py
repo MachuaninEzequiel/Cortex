@@ -17,7 +17,9 @@ search            Query both memory layers and print results.
 sync-vault        Re-index the markdown vault.
 stats             Print memory store statistics.
 forget            Delete an episodic memory by ID.
-pr-context         PR documentation pipeline (DevSecDocOps).
+pr-context        PR documentation pipeline (DevSecDocOps).
+install-ide       Install Cortex inside OpenCode / Claude Code locally.
+mcp-server        Start the standard MCP Server for universal IDE usage.
 """
 
 from __future__ import annotations
@@ -696,6 +698,24 @@ def sync_vault() -> None:
 # ---------------------------------------------------------------------------
 # stats
 # ---------------------------------------------------------------------------
+
+@app.command()
+def install_ide() -> None:
+    """Install Cortex inside OpenCode / Claude Code locally."""
+    from cortex.ide_installer import install
+    install()
+
+@app.command()
+def uninstall_ide() -> None:
+    """Uninstall Cortex from OpenCode / Claude Code locally."""
+    from cortex.ide_installer import uninstall
+    uninstall()
+
+@app.command()
+def mcp_server() -> None:
+    """Start the standard MCP Server for universal IDE usage."""
+    from cortex.mcp_server import start_mcp
+    start_mcp()
 
 @app.command()
 def stats() -> None:
