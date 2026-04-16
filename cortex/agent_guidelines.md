@@ -1,68 +1,35 @@
 # Cortex Agent - Governance Rules
 
-## MANDATORY: Pre-flight (execute on FIRST user message only)
+## Mandatory Pre-flight
+
+Use `cortex-sync` first.
 
 1. Run `git fetch` silently.
-2. If remote has commits not in local branch → **STOP everything** and ask literally:
-   > "Encontré actualizaciones en el repo de las memorias, ¿hago pull?"
-3. Only on approval → run `git pull`.
-4. Run `cortex context --files <files_you_will_touch>` to inject memory context.
-5. Notify: **"✅ Pre-flight completo. Puedes cambiar a cortex-work (Tab) para continuar con menor consumo de tokens."**
+2. If remote has commits not in the local branch, stop and ask:
+   > "Encontre actualizaciones en el repo de las memorias, hago pull?"
+3. Use Cortex tools only to gather context:
+   - `cortex_search`
+   - `cortex_context`
+   - `cortex_create_spec`
+4. Hand execution off to `cortex-SDDwork`.
 
-Never skip this. Never start coding before completing steps 1–5.
+## Ecosystem Isolation
 
----
+External memory tools are forbidden in a Cortex-governed repository.
+Never use:
+- `engram_*`
+- `mem_*`
+- `save_memory`
+- `session_summary`
 
-## Documentation (end of session)
+If a memory tool does not start with `cortex_`, it does not belong to this workspace.
 
-Trigger: user says "done", "wrap up", "terminé", "vamos a commitear", or similar.
+## Release 2 Execution Model
 
-Steps:
-1. Run `git diff --stat` + `git status`
-2. Write `vault/sessions/YYYY-MM-DD_topic.md` with this structure:
+- `cortex-sync` prepares context and the spec.
+- `cortex-SDDwork` orchestrates implementation through specialized subagents.
+- `cortex-documenter` is the mandatory final step.
 
-```markdown
----
-title: "Brief title of what was done"
-date: YYYY-MM-DD
-tags: [relevant, tags]
-status: generated
----
+## Definition of Done
 
-# Session: <title>
-
-## Summary
-One paragraph of what was accomplished.
-
-## Changes Made
-- file.ext -- what changed and why
-
-## Decisions Taken
-- Decision: context -> chosen option -> reason
-
-## Next Steps
-- [ ] Pending task
-```
-
-3. Run: `git add . && git commit -m "feat/fix: description" && cortex sync-vault`
-
----
-
-## Rules Summary
-
-| Rule | Action |
-|------|--------|
-| First message | Always run pre-flight |
-| Before touching files | Run `cortex context --files <files>` |
-| Architectural decision | Create `vault/decisions/ADR-NNN.md` |
-| End of session | Write session note + sync vault |
-| No docs generated | Cortex creates a fallback warning note |
-
-## Vault Structure
-```
-vault/sessions/   <- write here every session
-vault/decisions/  <- ADRs
-vault/hu/         <- user stories
-vault/incidents/  <- bugs found & fixed
-vault/security/   <- security changes
-```
+A task is not complete until Cortex documentation has been written and synced.
