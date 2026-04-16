@@ -113,10 +113,10 @@ class DocVerifier:
 
         # Classify files
         for fpath in files:
-            if fpath.startswith(vault_rel + "/") or fpath == vault_rel:
+            if fpath == vault_rel:
                 continue  # the vault directory itself isn't a doc
 
-            if fpath.startswith(vault_rel):
+            if fpath.startswith(vault_rel + "/"):
                 rel_to_vault = fpath[len(vault_rel) + 1:]
                 if rel_to_vault.endswith(".md"):
                     result.vault_files.append(rel_to_vault)

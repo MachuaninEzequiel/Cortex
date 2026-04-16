@@ -68,6 +68,7 @@ class TestDocVerifier:
         result = verifier.verify_from_list(changed)
 
         assert result.has_agent_docs is True
+        assert "sessions/2026-04-13_test.md" in result.vault_files
         assert "sessions/2026-04-13_test.md" in result.modified_files
 
     def test_ignores_non_md_files(self, tmp_path: Path) -> None:

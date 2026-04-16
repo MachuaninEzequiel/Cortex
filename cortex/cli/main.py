@@ -8,6 +8,8 @@ Commands
 init              Bootstrap .memory/ and vault/ directory with default config.
 setup             Full project setup with auto-detection and CI/CD integration.
 context           Get enriched context for current work.
+save-session      Persist a structured session note into the Cortex vault.
+create-spec       Persist an implementation specification into the Cortex vault.
 verify-docs       Check if PR includes agent-generated documentation.
 index-docs        Index vault docs as semantic memory.
 agent-guidelines  Display agent behavior guidelines for session-end documentation.
@@ -444,7 +446,74 @@ def context(
         typer.echo(enriched.to_prompt_format(expand=expand))
 
     if output:
-        Path(output).write_text(enriched.to_prompt_format(), encoding="utf-8")
+        if format == "json":
+            Path(output).write_text(enriched.model_dump_json(indent=2), encoding="utf-8")
+        elif format == "compact":
+            Path(output).write_text(enriched.to_prompt_format(compact=True), encoding="utf-8")
+        else:
+            Path(output).write_text(enriched.to_prompt_format(expand=expand), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# save-session
+# ---------------------------------------------------------------------------
+
+@app.command(name="save-session")
+def save_session(
+    title: str = typer.Option(..., help="Session title."),
+    spec_summary: str = typer.Option(..., help="Original specification or task summary."),
+    changes_made: list[str] = typer.Option([], "--change", help="Change description (repeatable)."),
+    files_touched: list[str] = typer.Option([], "--file", help="Touched file (repeatable)."),
+    key_decisions: list[str] = typer.Option([], "--decision", help="Key decision (repeatable)."),
+    next_steps: list[str] = typer.Option([], "--next-step", help="Follow-up task (repeatable)."),
+    tags: list[str] = typer.Option([], "--tag", help="Session tags (repeatable)."),
+    no_sync: bool = typer.Option(False, "--no-sync", help="Skip vault sync after writing."),
+) -> None:
+    """Persist a structured session note into the vault."""
+    mem = _load_memory()
+    path = mem.save_session_note(
+        title=title,
+        spec_summary=spec_summary,
+        changes_made=changes_made,
+        files_touched=files_touched,
+        key_decisions=key_decisions,
+        next_steps=next_steps,
+        tags=tags,
+        sync_vault=not no_sync,
+    )
+    typer.echo(f"Session note saved -> {path}")
+
+
+# ---------------------------------------------------------------------------
+# create-spec
+# ---------------------------------------------------------------------------
+
+@app.command(name="create-spec")
+def create_spec(
+    title: str = typer.Option(..., help="Specification title."),
+    goal: str = typer.Option(..., help="Primary implementation goal."),
+    requirements: list[str] = typer.Option([], "--requirement", help="Requirement (repeatable)."),
+    files_in_scope: list[str] = typer.Option([], "--file", help="File in scope (repeatable)."),
+    constraints: list[str] = typer.Option([], "--constraint", help="Constraint (repeatable)."),
+    acceptance_criteria: list[str] = typer.Option(
+        [], "--acceptance", help="Acceptance criterion (repeatable)."
+    ),
+    tags: list[str] = typer.Option([], "--tag", help="Spec tags (repeatable)."),
+    no_sync: bool = typer.Option(False, "--no-sync", help="Skip vault sync after writing."),
+) -> None:
+    """Persist an implementation spec into the vault."""
+    mem = _load_memory()
+    path = mem.create_spec_note(
+        title=title,
+        goal=goal,
+        requirements=requirements,
+        files_in_scope=files_in_scope,
+        constraints=constraints,
+        acceptance_criteria=acceptance_criteria,
+        tags=tags,
+        sync_vault=not no_sync,
+    )
+    typer.echo(f"Specification saved -> {path}")
 
 
 # ---------------------------------------------------------------------------

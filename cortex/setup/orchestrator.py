@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from cortex.setup.cortex_workspace import ensure_cortex_workspace
 from cortex.setup.detector import ProjectContext, ProjectDetector
 from cortex.setup.templates import (
     DEVSECDOCSOPS_SCRIPT,
@@ -58,7 +59,16 @@ class SetupOrchestrator:
     # ------------------------------------------------------------------
 
     def _create_directories(self) -> None:
-        for d in [".memory", "vault"]:
+        for d in [
+            ".memory",
+            "vault",
+            "vault/sessions",
+            "vault/decisions",
+            "vault/runbooks",
+            "vault/incidents",
+            "vault/hu",
+            "vault/specs",
+        ]:
             path = self.root / d
             if path.exists():
                 self.skipped.append(f"{d}/ (already exists)")
@@ -145,26 +155,12 @@ class SetupOrchestrator:
     # ------------------------------------------------------------------
 
     def _create_agent_guidelines(self) -> None:
-        """Create .cortex/ directory with agent behavior file."""
-        cortex_dir = self.root / ".cortex"
-        cortex_dir.mkdir(exist_ok=True)
-
-        # Copy agent guidelines from package
-        import importlib.resources as importlib_resources
-        try:
-            # Python 3.9+
-            agent_content = importlib_resources.files("cortex").joinpath("agent_guidelines.md").read_text(encoding="utf-8")
-        except AttributeError:
-            # Fallback for older Python
-            import pathlib
-            agent_content = (pathlib.Path(__file__).parent.parent / "agent_guidelines.md").read_text(encoding="utf-8")
-
-        path = cortex_dir / "AGENT.md"
-        if path.exists():
-            self.skipped.append(".cortex/AGENT.md (already exists)")
-        else:
-            path.write_text(agent_content, encoding="utf-8")
-            self.created.append(".cortex/AGENT.md")
+        """
+        Create the full Release 2 Cortex workspace structure.
+        """
+        result = ensure_cortex_workspace(self.root)
+        self.created.extend(result["created"])
+        self.skipped.extend(f"{path} (already exists)" for path in result["skipped"])
 
     # ------------------------------------------------------------------
     # Install Qwen skills

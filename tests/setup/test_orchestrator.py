@@ -73,8 +73,17 @@ class TestSetupOrchestrator:
         guidelines = orchestrator_no_memory.root / ".cortex" / "AGENT.md"
         assert guidelines.exists()
         content = guidelines.read_text(encoding="utf-8")
-        assert "Governance Rules" in content or "Cortex Agent" in content
+        assert "Governance Rules" in content or "Cortex" in content
         assert "document" in content.lower()
+
+    def test_creates_release2_cortex_workspace(self, orchestrator_no_memory: SetupOrchestrator) -> None:
+        orchestrator_no_memory.run()
+
+        root = orchestrator_no_memory.root
+        assert (root / ".cortex" / "system-prompt.md").exists()
+        assert (root / ".cortex" / "skills" / "cortex-sync.md").exists()
+        assert (root / ".cortex" / "skills" / "cortex-SDDwork.md").exists()
+        assert (root / ".cortex" / "subagents" / "cortex-documenter.md").exists()
 
     def test_installs_skills(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
@@ -128,6 +137,7 @@ class TestSetupOrchestrator:
         assert "config.yaml" in summary["created"]
         assert "vault/architecture.md" in summary["created"]
         assert "scripts/devsecdocops.sh" in summary["created"]
+        assert ".cortex/skills/cortex-SDDwork.md" in summary["created"]
 
     def test_summary_has_project_info(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         summary = orchestrator_no_memory.run()

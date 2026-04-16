@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.episodic.summarizer import Summarizer
+from cortex.documentation import write_session_note, write_spec_note
 from cortex.models import (
     EnrichedContext,
     GeneratedDoc,
@@ -189,6 +190,99 @@ class AgentMemory:
             Number of documents indexed.
         """
         return self.semantic.sync()
+
+    def save_session_note(
+        self,
+        *,
+        title: str,
+        spec_summary: str,
+        changes_made: list[str] | None = None,
+        files_touched: list[str] | None = None,
+        key_decisions: list[str] | None = None,
+        next_steps: list[str] | None = None,
+        tags: list[str] | None = None,
+        sync_vault: bool = True,
+        remember: bool = True,
+    ) -> Path:
+        """
+        Persist a structured session note into the vault and optionally remember it.
+        """
+        path = write_session_note(
+            self.config.semantic.vault_path,
+            title=title,
+            spec_summary=spec_summary,
+            changes_made=changes_made or [],
+            files_touched=files_touched or [],
+            key_decisions=key_decisions or [],
+            next_steps=next_steps or [],
+            tags=tags or [],
+        )
+
+        if sync_vault:
+            self.sync_vault()
+
+        if remember:
+            summary_parts = [
+                f"Session: {title}",
+                f"Specification: {spec_summary}",
+            ]
+            if changes_made:
+                summary_parts.append("Changes: " + "; ".join(changes_made[:8]))
+            if key_decisions:
+                summary_parts.append("Decisions: " + "; ".join(key_decisions[:5]))
+
+            self.remember(
+                "\n".join(summary_parts),
+                memory_type="session",
+                tags=["session"] + list(tags or []),
+                files=files_touched or [],
+            )
+
+        return path
+
+    def create_spec_note(
+        self,
+        *,
+        title: str,
+        goal: str,
+        requirements: list[str] | None = None,
+        files_in_scope: list[str] | None = None,
+        constraints: list[str] | None = None,
+        acceptance_criteria: list[str] | None = None,
+        tags: list[str] | None = None,
+        sync_vault: bool = True,
+        remember: bool = True,
+    ) -> Path:
+        """
+        Persist an implementation spec into the vault and optionally remember it.
+        """
+        path = write_spec_note(
+            self.config.semantic.vault_path,
+            title=title,
+            goal=goal,
+            requirements=requirements or [],
+            files_in_scope=files_in_scope or [],
+            constraints=constraints or [],
+            acceptance_criteria=acceptance_criteria or [],
+            tags=tags or [],
+        )
+
+        if sync_vault:
+            self.sync_vault()
+
+        if remember:
+            summary_parts = [f"Specification: {title}", f"Goal: {goal}"]
+            if requirements:
+                summary_parts.append("Requirements: " + "; ".join(requirements[:8]))
+
+            self.remember(
+                "\n".join(summary_parts),
+                memory_type="spec",
+                tags=["spec"] + list(tags or []),
+                files=files_in_scope or [],
+            )
+
+        return path
 
     def forget(self, memory_id: str) -> bool:
         """Delete a specific episodic memory by ID."""
