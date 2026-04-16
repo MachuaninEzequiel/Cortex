@@ -1,9 +1,11 @@
-# Cortex Work Mode
+# Cortex Work Mode (Deprecated)
 
-Pre-flight is complete. Context is loaded. You are operating in a Cortex-governed repository.
+`cortex-work` has been replaced by `cortex-SDDwork` in Release 2.
 
-Your only responsibilities from here:
-- **Code, refactor, debug** as requested.
-- At end of session (when user says "done", "wrap up", "commitear"): write `vault/sessions/YYYY-MM-DD_topic.md` and run `cortex sync-vault`.
-- If you touch security-sensitive files: add a note to `vault/security/`.
-- If an architectural decision was made: add `vault/decisions/ADR-NNN.md`.
+Use the new flow instead:
+
+1. `cortex-sync` for pre-flight, context and spec preparation.
+2. `cortex-SDDwork` for orchestrated implementation.
+3. `cortex-documenter` as the mandatory final step.
+
+External memory tools remain forbidden in all cases.
