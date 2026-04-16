@@ -1,19 +1,19 @@
 <div align="center">
   <br />
-    <a href="https://github.com/MachuaninEzequiel/cortex-devsecdocops-test" target="_blank">
+    <a href="https://github.com/MachuaninEzequiel/Cortex" target="_blank">
       <img src="assets/logo.png" alt="Cortex Logo" width="500">
     </a>
   <br />
 
-  <h1>CORTEX</h1>
+  <h1>CORTEX v2.0</h1>
 
   <p>
-    <strong>Memoria Institucional Híbrida para Agentes de IA en Flujos DevSecDocOps</strong>
+    <strong>Calidad, Seguridad y Documentación como sistema de gobernanza para empresas y agentes</strong>
   </p>
 
   <p>
-    <a href="https://pypi.org/project/cortex-memory/"><img src="https://img.shields.io/pypi/v/cortex-memory.svg" alt="PyPI version" /></a>
-    <a href="https://pypi.org/project/cortex-memory/"><img src="https://img.shields.io/pypi/pyversions/cortex-memory.svg" alt="Python" /></a>
+    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Release-2.0.0--Core-blueviolet.svg" alt="Release 2.0.0" /></a>
+    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Architecture-Hybrid--Memory-orange.svg" alt="Architecture" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
   </p>
 
@@ -21,143 +21,91 @@
 
 ---
 
-## Visión General: El Paradigma Agent-First
+##  El Manifiesto Cortex: Gobernanza Total
 
-La mayoría de los agentes de Inteligencia Artificial (Copilot, Cursor, Claude Code) sufren de **Amnesia de Sesión**. Inician en blanco. No conocen tus *Architecture Decision Records (ADRs)*, ni recuerdan el bug que fixearon la semana pasada.
+En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de la productividad. Los agentes convencionales inician cada tarea en blanco, ignorando las decisiones arquitectónicas pasadas, las vulnerabilidades detectadas y el contexto histórico de tu negocio.
 
-**Cortex soluciona esto.** No es un simple RAG, es un motor DevSecDocOps que captura el contexto de tu trabajo local, lo enriquece matemáticamente, exige que tus agentes escriban documentación continua, y lo valida todo algorítmicamente en tu pipeline de Integración Continua (CI/CD).
-
-### Documentación Completa Oficial
-> 👉 Lee el manual arquitectónico exhaustivo en **[Cortex Documentation Portal](http://localhost:5173/)**.
+**Cortex redefine la relación humano-agente.** No es solo una base de conocimientos; es un **Sistema de Gobernanza** que obliga a la IA a seguir un ciclo de vida disciplinado de ingeniería de software, garantizando que el "saber hacer" nunca se pierda y que cada commit esté respaldado por documentación técnica de alta fidelidad.
 
 ---
 
-## Arquitectura Core v2.0
+##  El Modelo de Ejecución Tripartito (SDDwork)
 
-### 1. El Motor Proactivo (Context Enricher)
-Cortex observa tus archivos modificados y ejecuta 6 estrategias de búsqueda concurrentes (Topic, File, Keyword, Entity, etc.) para inyectar contexto a tu agente **antes de que pregunte**. Todo el sistema es balanceado por:
-- **Typed Co-occurrence Graph:** Entiende dependencias a nivel de código fuente (`imported_by` > `references`).
-- **Memory Decay:** Decaimiento temporal exponencial de la memoria antigua (half-life de 168 horas), protegiendo eternamente registros de arquitectura vitales.
-- **Domain Detector:** Matelización estricta por regex hacia 12 dominios críticos con fallback hacia distancia Euclidiana vía *Embeddings*.
+La Release 2.0 introduce **Cortex-SDDwork**, un sistema de orquestación donde la responsabilidad se divide en tres roles especializados para maximizar la precisión:
 
-### 2. Zero-Dependency y Backend ONNX
-Desarrollado para entornos empresariales, Cortex transicionó de la dependencia pesada de PyTorch hacia **ONNX Runtime embebido** (`all-MiniLM-L6-v2`).
-- Inicialización en CPU en **< 1 ms**.
-- Latencia cero en CI/CD. Cero GPUs necesarias.
+### 1. `cortex-sync` (El Analista)
+Su misión es la **preparación**. Recupera contexto histórico del Vault y de la memoria episódica para refinar los requisitos.
+- **Output**: Generación de una **Especificación Técnica (`create-spec`)** validada antes de tocar una sola línea de código.
 
-### 3. Memoria Híbrida (Episódica + Semántica)
-Cortex emula la mente humana usando algoritmos de *Reciprocal Rank Fusion* (RRF):
-- **Episódica**: Eventos de CI, logs y resúmenes de PRs indexados automáticamente en base de datos vectorial local (ChromaDB).
-- **Semántica**: El "saber hacer" de la empresa escrito por agentes de IA directamente a un _Obsidian Markdown Vault_.
+### 2. `cortex-SDDwork` (El Orquestador)
+Coordina la implementación técnica mediante subagentes especializados:
+- **CodeSubAgent**: Encargado de la lógica funcional.
+- **SecuritySubAgent**: Revisa vulnerabilidades y cumplimiento de estándares en tiempo real.
+- **TestSubAgent**: Asegura la cobertura y estabilidad del cambio.
 
-### 4. Eficiencia de Tokens Extrema (Estrategia Dual-Profile)
-Instala de manera automática (en OpenCode / VSCode) nuestra estrategia dividida:
-- **`Cortex-Sync`**: Perfil inicial (carga alta: ~450 tokens) que lee, entiende el vault y coordina integraciones de GitHub.
-- **`Cortex-Work`**: Perfil productivo (ultra-ligero: ~60 tokens). Tras estar "cebado", ahorrá hasta un **90%** en tus cuotas mensuales mediante purga sistemática de gobernanza.
+### 3. `cortex-documenter` (El Guardián)
+Es el paso final obligatorio. Ninguna tarea se considera terminada si este agente no ha persistido el conocimiento en el Vault.
+- **Output**: **Notas de Sesión (`save-session`)** estructuradas que alimentan la memoria futura de todo el equipo.
 
 ---
 
-## 🧠 Integración Nativa con IAs (MCP Server)
+##  Pilares Tecnológicos
 
-Cortex incluye un servidor **MCP (Model Context Protocol)** embebido. Esto permite que asistentes de IA (como Antigravity, Claude Desktop o extensiones de VSCode) consuman nativamente la memoria de tu repositorio como herramientas integradas (`cortex_search`, `cortex_context`, `cortex_sync_vault`), sin que el humano tenga que estar inyectando contexto manualmente.
+###  Memoria Híbrida RRF (Reciprocal Rank Fusion)
+Cortex combina dos capas cognitivas para una recuperación perfecta:
+- **Capa Episódica**: Eventos de CI, logs y resúmenes de PRs almacenados en **ChromaDB**.
+- **Capa Semántica**: El conocimiento profundo de la empresa almacenado como archivos **Markdown** en tu Vault.
+- El motor realiza búsquedas cruzadas y fusiona resultados para dar al agente el contexto exacto.
 
-### Configuración por IDE
+###  Aislamiento y Anti-Amnesia
+Cortex prohíbe explícitamente el uso de memorias genéricas o volátiles (como Engram). En un repositorio gobernado por Cortex, la **única fuente de verdad** es el sistema local sincronizado, eliminando alucinaciones y fugas de contexto.
 
-Para habilitar que tu IA tenga acceso directo a la base de conocimiento de Cortex, configura el servidor MCP en tu entorno:
-
-#### 1. Antigravity / Claude Desktop
-Agrega este bloque en tu archivo de configuración (ej. `%APPDATA%/antigravity/config.json` o en la config de Claude Desktop):
-```json
-"mcpServers": {
-  "cortex": {
-    "command": "python",
-    "args": ["-m", "cortex.mcp_server"],
-    "cwd": "C:/Ruta/A/Tu/Proyecto"
-  }
-}
-```
-
-#### 2. VSCode (Extensiones como Cline / Roo Code)
-Edita el archivo de configuración MCP de tu extensión (ej. `%APPDATA%/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`):
-```json
-{
-  "mcpServers": {
-    "cortex": {
-      "command": "python",
-      "args": ["-m", "cortex.mcp_server"],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-#### 3. Cursor
-1. Ve a **Cursor Settings** > **Features** > **MCP**.
-2. Haz clic en **+ Add New MCP Server**.
-3. Configura los siguientes campos:
-   - **Name**: `Cortex`
-   - **Type**: `command`
-   - **Command**: `python -m cortex.mcp_server`
+###  Eficiencia ONNX
+Sin dependencias pesadas. Cortex utiliza un backend basado en **ONNX Runtime** para embeddings, permitiendo inicializaciones en `< 1ms` incluso en hardware modesto.
 
 ---
 
-## Instalación y Setup en 1 Minuto
-
-Instalar a través de Pip en tu entorno de desarrollo Python (>= 3.10):
-
-```bash
-pip install cortex-memory
-```
-
-> **🚧 Nota para Early Adopters:** El paquete `cortex-memory` se encuentra próximo a su publicación oficial en PyPI. Mientras tanto, instala el motor clonando este repositorio en modo desarrollo editable:
-> ```bash
-> git clone https://github.com/MachuaninEzequiel/Cortex.git
-> cd Cortex
-> pip install -e .
-> ```
-
-Luego, inicializá el orquestador automático en la raíz de tu proyecto:
-
-```bash
-cortex setup
-```
-Este sub-comando es "mágia oscura": Detecta tu lenguaje, tu framework, tu orquestador de CI, inicializa el almacén de ChromaDB en `.memory/`, escupe el Vault Markdown inicial, y acopla los workflows `.yml` de Github Actions todo a la vez.
-
----
-
-## El Pipeline DevSecDocOps
-Una vez inicializado, ¿qué sucede en tu rutina diaria?
-
-1. El developer programa co-piloteado por su Agente IA favorito.
-2. Al final, **el agente escribe la documentación de la sesión en el Vault `(cortex/vault)`**.
-3. El developer hace un PR a GitHub.
-4. Las pruebas de Lint, SAST y Security se corren en CI. Sus fallos son absorbidos como recuerdos de fallos para Cortex.
-5. Cortex **verifica** el PR. Si halla la documentación del agente, la indexa a la base vectorial semántica. Si no la halla, genera actas de fallback muy primitivas evidenciando al equipo que no se ha cumplido el estándar.
-
----
-
-## CLI (Command Line Interface)
+##  CLI Reference (v2.0)
 
 Todas las funciones están gobernadas por el envoltorio CLI de Typer:
 
-| Comando | Descripción de Acción |
-|---------|-----------------------|
-| `cortex install-ide` | Interviene los config locales del IDE instalando los perfiles `Sync` y `Work`. |
-| `cortex search "query"`| Ejecuta la Búsqueda Híbrida RRF y devuelve scores cruzados. |
-| `cortex sync-vault` | Fuerza validación por Pydantic indexando todos los archivos Markdown nuevamente. |
-| `cortex context` | Fuerza detección temprana inyectado el grafo tipado (staged/unstaged files). |
-| `cortex pr-context *` | Set maestro ejecutado dentro del CI/CD de GitHub. |
+| Comando | Función en el Ciclo de Vida |
+|---------|-----------------------------|
+| `cortex create-spec` | **Pre-Work**: Define metas, requerimientos y criterios de aceptación. |
+| `cortex save-session` | **Post-Work**: Persiste cambios, decisiones y TODOs en el Vault. |
+| `cortex setup` | **Bootstrap**: Detección de stack, inicialización de DB y workflows de CI/CD. |
+| `cortex search` | **Retrieve**: Búsqueda híbrida en ambas capas de memoria. |
+| `cortex context` | **Enrich**: Inyecta contexto temprano basado en archivos modificados. |
+| `cortex verify-docs` | **Guard**: Valida en el PR de GitHub si el agente cumplió con documentar. |
+| `cortex install-skills`| **Coach**: Inyecta habilidades de Obsidian (`.qwen/skills`) al proyecto. |
+| `cortex mcp-server` | **Bridge**: Inicia el servidor universal para integración con IDEs. |
 
 ---
 
-## Cómo Contribuir
+##  Integración Universal (MCP Server)
 
-Cortex es desarrollado para revolucionar el paradigma de documentación del software. Por favor, lee nuestra **[Guía de Contribución](CONTRIBUTING.md)** antes de hacer Pull Requests, proponer heurísticas nuevas, o reportar bugs de decaimiento en el algoritmo.
+Cortex expone sus capacidades nativamente mediante el **Model Context Protocol (MCP)**. Configúralo en tu IDE favorito para que tus asistentes tengan "superpoderes" cognitivos:
+
+- **Antigravity / Claude Desktop**: Configura el comando `python -m cortex.mcp_server`.
+- **VSCode (Cline / Roo)**: Agrega Cortex a tus `mcp_settings.json`.
+- **Cursor**: Registra un nuevo MCP Server apuntando a `python -m cortex.mcp_server`.
 
 ---
 
-## Licencia
+##  Instalación
 
-Este proyecto está distribuido y protegido bajo la **[Licencia MIT](LICENSE)**.
+Clona el repositorio e instala en modo desarrollo ( Early Access):
 
-> *Hecho con rigor por el Cortex Core Team.*
+```bash
+git clone https://github.com/MachuaninEzequiel/Cortex.git
+cd Cortex
+pip install -e .
+cortex setup
+```
+
+---
+
+##  Licencia
+Este proyecto es de código abierto bajo la **[Licencia MIT](LICENSE)**.
+
+> *Cortex Core Team: Rigor en Calidad, Seguridad y Documentación.*
