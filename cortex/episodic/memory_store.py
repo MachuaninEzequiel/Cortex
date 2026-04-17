@@ -170,11 +170,36 @@ class EpisodicMemoryStore:
                 entities[entity_type] = cleaned_matches[:15]  # Increased cap to 15
         return entities
 
-    def search(self, query: str, top_k: int = 5) -> list[EpisodicHit]:
-        """Return the top-k most relevant memories for a query."""
+    def search(self, query: str, top_k: int = 5, use_embeddings: bool = True) -> list[EpisodicHit]:
+        """
+        Return the top-k most relevant memories for a query.
+        
+        Args:
+            query: The search string.
+            top_k: Max results.
+            use_embeddings: If False, performs a simple keyword search via ChromaDB 
+                            'where_document' without using the embedding model.
+        """
         if self._collection.count() == 0:
             return []
 
+        if not use_embeddings:
+            # Bypass: Simple keyword search via ChromaDB 'where_document'
+            # This does NOT trigger the embedder or ONNX loading.
+            results = self._collection.query(
+                where_document={"$contains": query},
+                n_results=min(top_k, self._collection.count()),
+                include=["documents", "metadatas"],
+            )
+            
+            hits: list[EpisodicHit] = []
+            if results["documents"]:
+                for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+                    entry = self._deserialize_metadata(doc, meta)
+                    hits.append(EpisodicHit(entry=entry, score=1.0)) # Flat score for keyword match
+            return hits
+
+        # Vector Search (Normal flow - triggers ONNX load if first call)
         embedding = self.embedder.embed(query)
         results = self._collection.query(
             query_embeddings=[embedding],

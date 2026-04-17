@@ -140,7 +140,13 @@ class AgentMemory:
         )
         return entry
 
-    def retrieve(self, query: str, *, top_k: int | None = None) -> RetrievalResult:
+    def retrieve(
+        self,
+        query: str,
+        *,
+        top_k: int | None = None,
+        use_embeddings: bool = True
+    ) -> RetrievalResult:
         """
         Query both memory layers and return ranked, fused results.
 
@@ -148,15 +154,14 @@ class AgentMemory:
         and semantic results compete on the same ranking scale.
 
         Args:
-            query:  Natural-language query string.
-            top_k:  Override default top-k from config.
+            query:          Natural-language query string.
+            top_k:          Max results (overrides config).
+            use_embeddings: If False, skips vector search (Bypass ONNX load).
 
         Returns:
-            RetrievalResult with episodic hits, semantic hits, and
-            a unified RRF-fused list accessible via ``result.unified_hits``
-            and ``result.to_prompt()``.
+            RetrievalResult with ranked, deduplicated hits.
         """
-        return self.retriever.search(query, top_k=top_k)
+        return self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
 
     def create_note(
         self,
@@ -201,7 +206,7 @@ class AgentMemory:
         key_decisions: list[str] | None = None,
         next_steps: list[str] | None = None,
         tags: list[str] | None = None,
-        sync_vault: bool = True,
+        sync_vault: bool = False, # Default to False (We use selective index now)
         remember: bool = True,
     ) -> Path:
         """
@@ -217,6 +222,11 @@ class AgentMemory:
             next_steps=next_steps or [],
             tags=tags or [],
         )
+
+        # SELECTIVE INDEXING (v2.22 Architecture)
+        # Vectorize ONLY the new session note to link it with its Spec.
+        rel_path = str(path.relative_to(self.config.semantic.vault_path))
+        self.semantic.index_file(rel_path)
 
         if sync_vault:
             self.sync_vault()
@@ -250,7 +260,7 @@ class AgentMemory:
         constraints: list[str] | None = None,
         acceptance_criteria: list[str] | None = None,
         tags: list[str] | None = None,
-        sync_vault: bool = True,
+        sync_vault: bool = False, # Default to False
         remember: bool = True,
     ) -> Path:
         """
@@ -266,6 +276,11 @@ class AgentMemory:
             acceptance_criteria=acceptance_criteria or [],
             tags=tags or [],
         )
+
+        # SELECTIVE INDEXING (v2.22 Architecture)
+        # Vectorize ONLY the new spec.
+        rel_path = str(path.relative_to(self.config.semantic.vault_path))
+        self.semantic.index_file(rel_path)
 
         if sync_vault:
             self.sync_vault()

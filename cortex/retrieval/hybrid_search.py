@@ -63,7 +63,7 @@ class HybridSearch:
         self.episodic_weight = episodic_weight
         self.semantic_weight = semantic_weight
 
-    def search(self, query: str, top_k: int | None = None) -> RetrievalResult:
+    def search(self, query: str, top_k: int | None = None, use_embeddings: bool = True) -> RetrievalResult:
         """
         Run hybrid search and return a fused RetrievalResult.
 
@@ -73,6 +73,7 @@ class HybridSearch:
         Args:
             query:  Natural-language query.
             top_k:  Override instance top_k for this call.
+            use_embeddings: If False, both sources perform keyword-only search.
 
         Returns:
             RetrievalResult with:
@@ -81,12 +82,12 @@ class HybridSearch:
             - unified_hits: cross-source RRF-fused ranked list
         """
         k = top_k or self.top_k
-        logger.debug("Hybrid search: '%s' (top_k=%d)", query, k)
+        logger.debug("Hybrid search: '%s' (top_k=%d, embeddings=%s)", query, k, use_embeddings)
 
         # Fetch from both sources (over-fetch to give RRF enough candidates)
         fetch_k = k * 2
-        episodic_hits = self.episodic.search(query, top_k=fetch_k)
-        semantic_hits = self.semantic.search(query, top_k=fetch_k)
+        episodic_hits = self.episodic.search(query, top_k=fetch_k, use_embeddings=use_embeddings)
+        semantic_hits = self.semantic.search(query, top_k=fetch_k, use_embeddings=use_embeddings)
 
         # Build unified RRF-fused ranking
         unified = self._rrf_fuse(episodic_hits, semantic_hits, top_k=k)

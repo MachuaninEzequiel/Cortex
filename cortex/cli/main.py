@@ -13,7 +13,7 @@ create-spec       Persist an implementation specification into the Cortex vault.
 verify-docs       Check if PR includes agent-generated documentation.
 index-docs        Index vault docs as semantic memory.
 agent-guidelines  Display agent behavior guidelines for session-end documentation.
-install-skills    Install Obsidian skills into the project's .qwen/skills/ directory.
+install-skills    Install Obsidian skills into the project's .cortex/skills/ directory.
 remember          Store a new episodic memory from the command line.
 search            Query both memory layers and print results.
 sync-vault        Re-index the markdown vault.
@@ -26,12 +26,22 @@ mcp-server        Start the standard MCP Server for universal IDE usage.
 
 from __future__ import annotations
 
-import json
 import sys
-from pathlib import Path
+import warnings
 
+# SILENCE PROTOCOL v2.14: Suprimir advertencias de runpy/typer antes de que toquen stdout
+warnings.filterwarnings("ignore")
+
+import asyncio
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Optional
+import json
 import typer
-import yaml
+
+from cortex.core import AgentMemory
 
 app = typer.Typer(
     name="cortex",
@@ -318,11 +328,15 @@ def init(
         config_path.write_text(yaml.dump(cfg, sort_keys=False), encoding="utf-8")
         typer.echo("Created config.yaml")
 
+    # 1. Memory structure
     Path(memory).mkdir(parents=True, exist_ok=True)
     typer.echo(f"Memory dir: {memory}/")
 
+    # 2. Vault structure (Obsidian-compatible)
     vault_path = Path(vault)
-    vault_path.mkdir(parents=True, exist_ok=True)
+    (vault_path / "specs").mkdir(parents=True, exist_ok=True)
+    (vault_path / "sessions").mkdir(parents=True, exist_ok=True)
+    
     example = vault_path / "getting_started.md"
     if not example.exists():
         example.write_text(
@@ -331,7 +345,14 @@ def init(
             "Add your markdown notes here. Cortex will index them automatically.\n",
             encoding="utf-8"
         )
-    typer.echo(f"Vault dir: {vault}/")
+    typer.echo(f"Vault dir: {vault}/ (with specs/ and sessions/ folders)")
+
+    # 3. Governance structure (.cortex)
+    cortex_dir = Path(".cortex")
+    (cortex_dir / "skills").mkdir(parents=True, exist_ok=True)
+    (cortex_dir / "subagents").mkdir(parents=True, exist_ok=True)
+    typer.echo("Governance dir: .cortex/ (with skills/ and subagents/ folders)")
+
     typer.echo(
         "\nCortex initialized. Run `cortex --help` to explore commands.\n"
         "Note: The first search will download an embedding model (~80 MB)."
@@ -639,8 +660,8 @@ def agent_guidelines() -> None:
 
 @app.command(name="install-skills")
 def install_skills(
-    target: str = typer.Option(
-        ".qwen/skills", help="Directory to install skills into."
+    dest: str = typer.Option(
+        ".cortex/skills", help="Directory to install skills into."
     ),
 ) -> None:
     """
@@ -766,7 +787,7 @@ def sync_vault() -> None:
 
 
 # ---------------------------------------------------------------------------
-# stats
+# IDE / MCP
 # ---------------------------------------------------------------------------
 
 @app.command()
@@ -781,11 +802,44 @@ def uninstall_ide() -> None:
     from cortex.ide_installer import uninstall
     uninstall()
 
-@app.command()
-def mcp_server() -> None:
-    """Start the standard MCP Server for universal IDE usage."""
-    from cortex.mcp_server import start_mcp
-    start_mcp()
+@app.command(name="mcp-server")
+def mcp_server(
+    stdio: bool = typer.Option(True, "--stdio", help="Use stdio transport (required for IDE integration)."),
+) -> None:
+    """Start the Cortex v2.1 MCP Server (stdio transport)."""
+    import asyncio
+    import sys
+    
+    # Redirección temporal de stdout a stderr para proteger el handshake JSON-RPC
+    old_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    
+    try:
+        from cortex.mcp.server import CortexMCPServer
+        server = CortexMCPServer(project_root=Path.cwd())
+    finally:
+        sys.stdout = old_stdout
+        
+    asyncio.run(server.run())
+
+@app.command(name="mcp-serve", hidden=True)
+def mcp_serve_legacy() -> None:
+    """Legacy alias for mcp-server."""
+    mcp_server()
+
+@app.command(name="inject")
+def inject(
+    agent: str = typer.Option("opencode", help="Agent/IDE to inject (opencode, claude).")
+) -> None:
+    """Inject Cortex MCP configuration into the specified agent/IDE."""
+    from cortex.ide_installer import install_opencode_profile, install_claude_desktop_profile
+    
+    if agent == "opencode":
+        install_opencode_profile()
+    elif agent == "claude":
+        install_claude_desktop_profile()
+    else:
+        typer.echo(f"Agent '{agent}' not supported yet.")
 
 @app.command()
 def stats() -> None:

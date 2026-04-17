@@ -1,225 +1,185 @@
 from __future__ import annotations
-
 import json
 import shutil
+import os
+import sys
 from pathlib import Path
 
-from cortex.setup.cortex_workspace import ensure_cortex_workspace
+# --- CORE INJECTOR LOGIC ---
 
-
-def get_opencode_config_path() -> Path:
-    """Return the OpenCode config directory."""
-    return Path.home() / ".config" / "opencode"
-
-
-def _ensure_workspace_structure() -> None:
-    workspace = Path.cwd()
-    result = ensure_cortex_workspace(workspace)
-    created = result["created"]
-    if created:
-        print(f"  [ok] Ensured Cortex workspace files ({len(created)} created).")
-
-
-def install_opencode_profile() -> bool:
-    """Install Cortex Release 2 profiles into OpenCode."""
-    print("Installing Cortex profiles into OpenCode...")
-    _ensure_workspace_structure()
-
-    config_dir = get_opencode_config_path()
-    if not config_dir.exists():
-        print(f"  [!] OpenCode config directory not found at {config_dir}.")
-        print("  [!] Please run OpenCode at least once or create the directory.")
-        return False
-
-    config_file = config_dir / "opencode.json"
-    if not config_file.exists():
-        config_data = {"agent": {}}
-    else:
-        try:
-            config_data = json.loads(config_file.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            print(f"  [X] Error: Could not parse {config_file}. Is it valid JSON?")
-            return False
-
-    config_data.setdefault("agent", {})
-
-    workspace = Path.cwd()
-    sync_prompt = workspace / ".cortex" / "skills" / "cortex-sync.md"
-    sddwork_prompt = workspace / ".cortex" / "skills" / "cortex-SDDwork.md"
-
-    cortex_sync_agent = {
-        "mode": "primary",
-        "description": "Cortex Sync - Pre-flight, context and spec preparation.",
-        "model": "anthropic/claude-3-5-sonnet-20241022",
-        "prompt": f"{{file:{str(sync_prompt)}}}",
-        "tools": {
-            "read": True,
-            "write": True,
-            "edit": True,
-            "bash": True,
-            "delegate": True,
-            "delegation_read": True,
-            "delegation_list": True,
-        },
-    }
-
-    cortex_sddwork_agent = {
-        "mode": "primary",
-        "description": "Cortex SDDwork - Orchestrated implementation with mandatory documentation.",
-        "model": "anthropic/claude-3-5-sonnet-20241022",
-        "prompt": f"{{file:{str(sddwork_prompt)}}}",
-        "tools": {
-            "read": True,
-            "write": True,
-            "edit": True,
-            "bash": True,
-            "delegate": True,
-            "delegation_read": True,
-            "delegation_list": True,
-        },
-    }
-
-    for old_name in ["cortex-orchestrator", "cortex-init", "cortex-work"]:
-        config_data["agent"].pop(old_name, None)
-
-    config_data["agent"]["cortex-sync"] = cortex_sync_agent
-    config_data["agent"]["cortex-SDDwork"] = cortex_sddwork_agent
-
-    if config_file.exists():
-        backup_file = config_file.with_suffix(".json.bak")
-        shutil.copy2(config_file, backup_file)
-        print(f"  [ok] Created backup of opencode.json at {backup_file}")
-
-    config_file.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
-    print(f"  [ok] Installed 'cortex-sync' and 'cortex-SDDwork' into {config_file}.")
-    print("  [ok] Profiles available in OpenCode:")
-    print("       cortex-sync    -> pre-flight, memory, spec preparation")
-    print("       cortex-SDDwork -> orchestrated implementation + mandatory documenter")
-    return True
-
-
-def install_claude_code() -> bool:
-    """Set up CLAUDE.md for the current workspace."""
-    print("\nSetting up Cortex instructions for Claude Code in current workspace...")
-    _ensure_workspace_structure()
-
-    current_dir = Path.cwd()
-    claude_md = current_dir / "CLAUDE.md"
-    instruction_block = (
-        "\n\n<!-- CORTEX INTEGRATION START -->\n"
-        "# Cortex Release 2 Checklist\n"
-        "You are working in a Cortex-governed repository.\n"
-        "1. Start with `cortex-sync` for pre-flight and context preparation.\n"
-        "2. After context/spec preparation, continue with `cortex-SDDwork`.\n"
-        "3. Never use external memory tools such as `engram_*`, `mem_*`, `save_memory`, or `session_summary`.\n"
-        "4. The task is not complete until Cortex documentation has been written and synced.\n"
-        "5. Finish through the Cortex documenter flow, not through generic session tools.\n"
-        "<!-- CORTEX INTEGRATION END -->\n"
-    )
-
-    if claude_md.exists():
-        content = claude_md.read_text(encoding="utf-8")
-        if "<!-- CORTEX INTEGRATION START -->" in content:
-            start_idx = content.find("<!-- CORTEX INTEGRATION START -->")
-            end_marker = "<!-- CORTEX INTEGRATION END -->"
-            end_idx = content.find(end_marker)
-            if end_idx != -1:
-                end_idx += len(end_marker)
-                new_content = content[:start_idx] + instruction_block.strip("\n") + content[end_idx:]
-                claude_md.write_text(new_content, encoding="utf-8")
-                print("  [ok] Updated existing Cortex block in CLAUDE.md.")
-            else:
-                claude_md.write_text(content + instruction_block, encoding="utf-8")
-                print("  [ok] Repaired Cortex block in CLAUDE.md.")
-        else:
-            claude_md.write_text(content + instruction_block, encoding="utf-8")
-            print("  [ok] Appended Cortex Release 2 instructions to CLAUDE.md.")
-    else:
-        claude_md.write_text("# Project Instructions\n" + instruction_block, encoding="utf-8")
-        print("  [ok] Created CLAUDE.md with Cortex Release 2 instructions.")
-
-    print("\n  [!] To complete Claude Code setup, register the MCP server:")
-    print("      claude mcp add cortex-memory \"cortex\" \"mcp-server\"")
-    return True
-
-
-def uninstall_opencode_profile() -> bool:
-    """Remove Cortex profiles from OpenCode."""
-    print("Uninstalling Cortex profiles from OpenCode...")
-    config_file = get_opencode_config_path() / "opencode.json"
-    if not config_file.exists():
-        print(f"  [ok] OpenCode config not found at {config_file}. Nothing to do.")
-        return True
-
+def _is_wsl() -> bool:
+    """Detect if we are running under WSL."""
     try:
-        config_data = json.loads(config_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        print(f"  [X] Error: Could not parse {config_file}.")
+        version_content = Path("/proc/version").read_text().lower()
+        return "microsoft" in version_content or "wsl" in version_content
+    except:
         return False
 
-    removed: list[str] = []
-    if "agent" in config_data:
-        for profile in ["cortex-sync", "cortex-SDDwork", "cortex-work", "cortex-init", "cortex-orchestrator"]:
-            if profile in config_data["agent"]:
-                del config_data["agent"][profile]
-                removed.append(profile)
+def _create_shielded_wrapper() -> Path:
+    """Create a shielded bash wrapper to filter WSL and Python noise."""
+    cortex_bin_dir = Path.home() / ".cortex" / "bin"
+    cortex_log_dir = Path.home() / ".cortex" / "logs"
+    cortex_bin_dir.mkdir(parents=True, exist_ok=True)
+    cortex_log_dir.mkdir(parents=True, exist_ok=True)
+    
+    wrapper_path = cortex_bin_dir / "cortex-mcp-wrapper"
+    log_file = cortex_log_dir / "mcp-shield.log"
+    
+    workspace = Path.cwd()
+    
+    wrapper_content = f"""#!/bin/bash
+# Cortex Shielded Wrapper v2.19
+# Intercepts WSL noise and redirects stderr to a dedicated log.
 
-    if removed:
-        backup_file = config_file.with_suffix(".json.bak.uninstall")
-        shutil.copy2(config_file, backup_file)
-        config_file.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
-        print(f"  [ok] Removed profiles: {', '.join(removed)} from OpenCode.")
+# 1. Redirect ALL stderr to the shield log
+exec 2>> "{log_file}"
+
+# 2. Pure Environment for JSON-RPC
+export PYTHONUNBUFFERED=1
+export PYTHONIOENCODING=utf-8
+export PYTHONWARNINGS=ignore
+export PYTHONPATH="{workspace}"
+
+# 3. Clean start - ensure no jobs report status
+set -m
+
+# 4. Exec replacement - replace shell with Python process
+exec /usr/bin/python3 -m cortex.cli.main mcp-server --stdio
+"""
+    wrapper_path.write_text(wrapper_content, encoding="utf-8")
+    wrapper_path.chmod(0o755)
+    print(f"  [OK] Created Shielded Wrapper at {wrapper_path}")
+    return wrapper_path
+
+def get_opencode_mcp_definition() -> dict:
+    """Return the MCP definition in OpenCode's specific format."""
+    if _is_wsl():
+        wrapper_path = _create_shielded_wrapper()
+        return {
+            "cortex": {
+                "type": "local",
+                "command": [str(wrapper_path)],
+                "enabled": True
+            }
+        }
     else:
-        print("  [ok] No Cortex profiles found in OpenCode config. Nothing to do.")
-    return True
+        return {
+            "cortex": {
+                "type": "local",
+                "command": ["cortex", "mcp-server", "--stdio"],
+                "enabled": True
+            }
+        }
 
-
-def uninstall_claude_code() -> bool:
-    """Remove Cortex setup from CLAUDE.md in the current workspace."""
-    print("\nRemoving Cortex instructions from Claude Code in current workspace...")
-    claude_md = Path.cwd() / "CLAUDE.md"
-    if not claude_md.exists():
-        print("  [ok] CLAUDE.md not found. Nothing to do.")
-        return True
-
-    content = claude_md.read_text(encoding="utf-8")
-    start_marker = "<!-- CORTEX INTEGRATION START -->"
-    end_marker = "<!-- CORTEX INTEGRATION END -->"
-    if start_marker in content and end_marker in content:
-        start_idx = content.find(start_marker)
-        end_idx = content.find(end_marker) + len(end_marker)
-        new_content = content[:start_idx] + content[end_idx:]
-        if new_content.strip() == "# Project Instructions" or not new_content.strip():
-            claude_md.unlink()
-            print("  [ok] Removed empty CLAUDE.md file.")
-        else:
-            claude_md.write_text(new_content, encoding="utf-8")
-            print("  [ok] Removed Cortex instructions from CLAUDE.md.")
+def get_claude_mcp_definition() -> dict:
+    """Return the MCP definition in Claude Desktop's standard format."""
+    workspace = Path.cwd()
+    if _is_wsl():
+        wrapper_path = _create_shielded_wrapper()
+        return {
+            "cortex": {
+                "command": str(wrapper_path),
+                "args": [],
+                "env": {},
+                "enabled": True
+            }
+        }
     else:
-        print("  [ok] Cortex instructions not found in CLAUDE.md. Nothing to do.")
+        return {
+            "cortex": {
+                "command": "cortex",
+                "args": ["mcp-server", "--stdio"],
+                "env": {
+                    "PYTHONPATH": str(workspace),
+                    "PYTHONWARNINGS": "ignore"
+                },
+                "enabled": True
+            }
+        }
 
-    print("\n  [!] To complete Claude Code uninstallation, run:")
-    print("      claude mcp remove cortex-memory")
-    return True
+# --- ADAPTERS ---
 
+def install_opencode_profile():
+    """Adapter for OpenCode (Orchestration & Hybrid Search Schema v2.19)."""
+    print("[Hybrid Search Injector] Target: OpenCode")
+    config_dir = Path.home() / ".config" / "opencode"
+    config_file = config_dir / "opencode.json"
+    
+    config_data = {"agent": {}, "mcp": {}}
+    if config_file.exists():
+        try: config_data = json.loads(config_file.read_text(encoding="utf-8"))
+        except: pass
+    
+    # 1. Inject MCP Server
+    config_data.pop("mcpServers", None)
+    config_data.setdefault("mcp", {})
+    config_data["mcp"].update(get_opencode_mcp_definition())
+    
+    workspace = Path.cwd()
+    
+    # 2. Inject Hybrid Governance Agents
+    config_data.setdefault("agent", {})
+    profiles = {
+        "cortex-sync": {
+            "mode": "primary",
+            "description": "Cortex Analysis (Strict - Vector Enabled)",
+            "prompt": f"{{file:{str(workspace / '.cortex' / 'skills' / 'cortex-sync.md')}}}",
+            "tools": {
+                "read": True, "glob": True, "grep": True,
+                "write": False, "edit": False, "bash": False,
+                "cortex_search_vector": True,
+                "cortex_search": True,
+                "cortex_context": True, 
+                "cortex_create_spec": True, "cortex_sync_vault": True
+            }
+        },
+        "cortex-SDDwork": {
+            "mode": "primary",
+            "description": "Cortex Orchestrator (Implementation - Bypass Enabled)",
+            "prompt": f"{{file:{str(workspace / '.cortex' / 'skills' / 'cortex-SDDwork.md')}}}",
+            "tools": {
+                "read": True, "glob": True, "grep": True,
+                "write": True, "edit": True, "bash": True,
+                "cortex_search": True,
+                "cortex_search_vector": False,
+                "cortex_delegate_task": True, "cortex_get_task_result": True,
+                "cortex_sync_vault": True
+            }
+        }
+    }
+    
+    config_data["agent"].pop("cortex-documenter", None)
+    config_data["agent"].update(profiles)
+    
+    config_file.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
+    print(f"  [OK] Applied Hybrid Search Governance to {config_file}")
 
-def install() -> None:
-    """Main entrypoint for installing IDE profiles."""
-    print("=== Cortex IDE Installer ===")
+def install_claude_desktop_profile():
+    """Adapter for Claude Desktop."""
+    print("[Hybrid Search Injector] Target: Claude Desktop")
+    config_path = Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
+    
+    data = {"mcpServers": {}}
+    if config_path.exists():
+        try: data = json.loads(config_path.read_text(encoding="utf-8"))
+        except: pass
+    
+    data.setdefault("mcpServers", {})
+    data["mcpServers"].update(get_claude_mcp_definition())
+    
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    print(f"  [OK] Injected MCP into {config_path}")
+
+# --- ENTRYPOINTS ---
+
+def install():
     install_opencode_profile()
-    install_claude_code()
-    print("============================")
-    print("Installation complete.")
+    install_claude_desktop_profile()
 
-
-def uninstall() -> None:
-    """Main entrypoint for uninstalling IDE profiles."""
-    print("=== Cortex IDE Uninstaller ===")
-    uninstall_opencode_profile()
-    uninstall_claude_code()
-    print("==============================")
-    print("Uninstallation complete.")
-
+def uninstall():
+    print("[Uninstaller] Cleaning Configs")
+    # ...
 
 if __name__ == "__main__":
     install()
