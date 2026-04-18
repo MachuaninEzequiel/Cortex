@@ -310,113 +310,84 @@ def pr_context_full(
 
 
 # ---------------------------------------------------------------------------
-# init
-# ---------------------------------------------------------------------------
-
-@app.command()
-def init(
-    vault: str = typer.Option("vault", help="Path for the markdown vault."),
-    memory: str = typer.Option(".memory", help="Path for the memory store."),
-) -> None:
-    """Bootstrap cortex: create directories and default config.yaml."""
-    config_path = Path("config.yaml")
-    if config_path.exists():
-        typer.echo("config.yaml already exists. Skipping.")
-    else:
-        cfg = dict(_DEFAULT_CONFIG)
-        cfg["episodic"]["persist_dir"] = f"{memory}/chroma"
-        cfg["semantic"]["vault_path"] = vault
-        config_path.write_text(yaml.dump(cfg, sort_keys=False), encoding="utf-8")
-        typer.echo("Created config.yaml")
-
-    # 1. Memory structure
-    Path(memory).mkdir(parents=True, exist_ok=True)
-    typer.echo(f"Memory dir: {memory}/")
-
-    # 2. Vault structure (Obsidian-compatible)
-    vault_path = Path(vault)
-    (vault_path / "specs").mkdir(parents=True, exist_ok=True)
-    (vault_path / "sessions").mkdir(parents=True, exist_ok=True)
-    
-    example = vault_path / "getting_started.md"
-    if not example.exists():
-        example.write_text(
-            "---\ntitle: Getting Started\ntags: [cortex, intro]\n---\n\n"
-            "# Getting Started with Cortex\n\n"
-            "Add your markdown notes here. Cortex will index them automatically.\n",
-            encoding="utf-8"
-        )
-    typer.echo(f"Vault dir: {vault}/ (with specs/ and sessions/ folders)")
-
-    # 3. Governance structure (.cortex)
-    cortex_dir = Path(".cortex")
-    (cortex_dir / "skills").mkdir(parents=True, exist_ok=True)
-    (cortex_dir / "subagents").mkdir(parents=True, exist_ok=True)
-    typer.echo("Governance dir: .cortex/ (with skills/ and subagents/ folders)")
-
-    typer.echo(
-        "\nCortex initialized. Run `cortex --help` to explore commands.\n"
-        "Note: The first search will download an embedding model (~80 MB)."
-    )
-
-
-# ---------------------------------------------------------------------------
 # setup
 # ---------------------------------------------------------------------------
 
-@app.command()
-def setup(
+setup_app = typer.Typer(help="Project setup with specialized profiles (agent, pipeline, full).")
+app.add_typer(setup_app, name="setup")
+
+
+@setup_app.command(name="agent")
+def setup_agent(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be done without making changes."
+    ),
+    git_depth: int = typer.Option(
+        None, "--git-depth", help="Number of git commits to index for context."
+    ),
+) -> None:
+    """
+    Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
+    """
+    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
+    if git_depth is None:
+        git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
+    typer.echo("🧠 Cortex — Setting up Agent profile...")
+    typer.echo("")
+    orchestrator = SetupOrchestrator()
+    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth)
+    typer.echo(format_summary(summary))
+
+
+@setup_app.command(name="pipeline")
+def setup_pipeline(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be done without making changes."
     ),
 ) -> None:
     """
-    Full project setup with auto-detection.
-
-    Detects your project's stack (language, frameworks, CI/CD) and automatically:
-    - Generates config.yaml with smart defaults
-    - Creates vault/ starter docs (architecture, decisions, runbooks)
-    - Initializes .memory/ with ChromaDB
-    - Adds GitHub Actions workflows with Cortex integration (if missing)
-    - Installs devsecdocops.sh script
-    - Runs initial vault sync and stores setup memory
+    Setup only CI/CD / DevOps components (Workflows, Scripts, Config).
     """
-    from cortex.setup.orchestrator import SetupOrchestrator, format_summary
+    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
 
-    typer.echo("🧠 Cortex — Setting up project...")
+    typer.echo("🧠 Cortex — Setting up Pipeline profile...")
     typer.echo("")
 
-    if dry_run:
-        from cortex.setup.detector import ProjectDetector
-        detector = ProjectDetector()
-        ctx = detector.detect()
-        typer.echo("Dry run — detected project context:")
-        typer.echo(f"  Project: {ctx.stack.project_name}")
-        typer.echo(f"  Language: {ctx.stack.language} ({ctx.stack.package_manager})")
-        if ctx.stack.frameworks:
-            typer.echo(f"  Frameworks: {', '.join(ctx.stack.frameworks)}")
-        typer.echo(f"  CI/CD: {ctx.ci.ci_type}")
-        typer.echo(f"  Has tests: {ctx.stack.has_tests}")
-        typer.echo("")
-        typer.echo("Files that would be created:")
-        if not (Path("config.yaml").exists()):
-            typer.echo("  • config.yaml")
-        for f in ["vault/architecture.md", "vault/decisions.md", "vault/runbooks.md"]:
-            if not (Path(f).exists()):
-                typer.echo(f"  • {f}")
-        workflows_dir = Path(".github/workflows")
-        for wf in ["ci-pull-request.yml", "ci-feature.yml", "cd-deploy.yml"]:
-            if not (workflows_dir / wf).exists():
-                typer.echo(f"  • .github/workflows/{wf}")
-        if not (Path("scripts/devsecdocops.sh").exists()):
-            typer.echo("  • scripts/devsecdocops.sh")
-        typer.echo("")
-        typer.echo("Run `cortex setup` (without --dry-run) to apply.")
-        return
-
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run()
+    summary = orchestrator.run(mode=SetupMode.PIPELINE)
     typer.echo(format_summary(summary))
+
+
+@setup_app.command(name="full")
+def setup_full(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be done without making changes."
+    ),
+    git_depth: int = typer.Option(
+        None, "--git-depth", help="Number of git commits to index for context."
+    ),
+) -> None:
+    """
+    Full project setup (Agent + Pipeline).
+    """
+    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
+    if git_depth is None:
+        git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
+    typer.echo("🧠 Cortex — Setting up Full project...")
+    typer.echo("")
+    orchestrator = SetupOrchestrator()
+    summary = orchestrator.run(mode=SetupMode.FULL, git_depth=git_depth)
+    typer.echo(format_summary(summary))
+
+
+# ---------------------------------------------------------------------------
+# init (Alias for setup agent)
+# ---------------------------------------------------------------------------
+
+@app.command()
+def init() -> None:
+    """Bootstrap cortex: Alias for `cortex setup agent`."""
+    setup_agent(dry_run=False)
 
 
 # ---------------------------------------------------------------------------

@@ -458,21 +458,16 @@ def run_cold_start(
     project_root: str | Path,
     memory_store: Any,
     vault_path: str | Path | None = None,
+    git_depth: int = 50,
 ) -> dict:
     """
-    Run all Cold Start layers in sequence.
+    Run all Cold Start layers as complementary context sources.
     
     Returns:
-        Dict with results from each layer:
-        {
-            "layer1_preseed": [...],  # memory IDs
-            "layer2_git_history": [...],
-            "layer3_readme": [...],
-            "total": int,
-            "success": bool,
-        }
+        Dict with results from each layer.
     """
     from pathlib import Path
+    import subprocess
     
     project = Path(project_root)
     vault = Path(vault_path) if vault_path else project / "vault"
@@ -483,25 +478,36 @@ def run_cold_start(
         "layer3_readme": [],
         "total": 0,
         "success": False,
+        "warnings": []
     }
     
-    # Check if already initialized (has memories)
+    # Si ya hay memoria, no hacemos nada
     if memory_store.count() > 0:
-        logger.debug("Memory already has entries, skipping cold start")
         results["success"] = True
         return results
     
-    # Layer 1: Pre-seed from vault
+    # Capa 1: Vault (Siempre se intenta)
     if vault.exists():
         results["layer1_preseed"] = layer1_preseed_vault(vault, memory_store)
     
-    # Layer 2: Git history (only if needed)
-    if not results["layer1_preseed"]:
-        results["layer2_git_history"] = layer2_git_history(project, memory_store)
+    # Capa 2: Git History (Resiliente)
+    try:
+        is_git = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=project, capture_output=True, text=True
+        ).returncode == 0
+        
+        if is_git:
+            results["layer2_git_history"] = layer2_git_history(project, memory_store, max_commits=git_depth)
+            if not results["layer2_git_history"]:
+                 results["warnings"].append("Git repo detectado pero no se pudieron extraer commits.")
+        else:
+            results["warnings"].append("No se detecto repositorio Git. Saltando Capa 2.")
+    except Exception:
+        results["warnings"].append("Error al intentar acceder a Git. Saltando Capa 2.")
     
-    # Layer 3: README fallback (only if still needed)
-    if not results["layer1_preseed"] and not results["layer2_git_history"]:
-        results["layer3_readme"] = layer3_readme_fallback(project, memory_store)
+    # Capa 3: README (Siempre se intenta)
+    results["layer3_readme"] = layer3_readme_fallback(project, memory_store)
     
     results["total"] = (
         len(results["layer1_preseed"]) 
@@ -510,5 +516,4 @@ def run_cold_start(
     )
     results["success"] = results["total"] > 0
     
-    logger.info(f"Cold start complete: {results['total']} memories created")
     return results
