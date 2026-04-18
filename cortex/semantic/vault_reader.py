@@ -122,23 +122,18 @@ class VaultReader:
     # Semantic (vector) search
     # ------------------------------------------------------------------
 
-    def search(self, query: str, top_k: int = 5) -> list[SemanticDocument]:
+    def search(self, query: str, top_k: int = 5, use_embeddings: bool = True) -> list[SemanticDocument]:
         """
-        **Semantic vector search** over the vault.
-
-        Embeds the query and ranks documents by cosine similarity.
-        Falls back to BM25 keyword search if no embeddings are available.
+        **Hybrid Search** over the vault.
 
         Args:
-            query:  Natural-language query string.
-            top_k:  Maximum number of results.
-
-        Returns:
-            Documents ranked by cosine similarity (or BM25 fallback).
+            query:          Natural-language query string.
+            top_k:          Maximum number of results.
+            use_embeddings: If False, skips vector search and uses BM25 only (Bypass IA).
         """
         self._ensure_loaded()
 
-        if not self._embeddings:
+        if not use_embeddings or not self._embeddings:
             return self._bm25_search(query, top_k)
 
         query_vec = self._embedder.embed(query)
@@ -259,6 +254,42 @@ class VaultReader:
     # ------------------------------------------------------------------
     # Write operations
     # ------------------------------------------------------------------
+
+    def index_file(self, relative_path: str) -> bool:
+        """
+        Vectorize and index a single file from the vault.
+        Avoids a full vault scan (sync).
+        """
+        path = self.vault_path / relative_path
+        if not path.exists():
+            logger.error("Cannot index non-existent file: %s", path)
+            return False
+        
+        try:
+            doc = self._parser.parse(path)
+            self._index[relative_path] = doc
+            
+            # Vectorize only this file
+            search_text = f"{doc.title} {doc.content}"
+            self._embeddings[relative_path] = self._embedder.embed(search_text)
+            
+            # Update BM25 metadata for this file
+            word_count = len(search_text.split())
+            self._doc_lengths[relative_path] = word_count
+            
+            # Recalculate average doc length
+            if self._doc_lengths:
+                self._avgdl = sum(self._doc_lengths.values()) / len(self._doc_lengths)
+            
+            # Update IDF stats
+            self._compute_idf()
+            
+            # Save lightweight meta (without full sync)
+            self._save_index_meta()
+            return True
+        except Exception as e:
+            logger.error("Failed to index file %s: %s", relative_path, e)
+            return False
 
     def create_note(
         self,
