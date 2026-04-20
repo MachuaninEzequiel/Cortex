@@ -1,4 +1,7 @@
+import asyncio
 import os
+import re
+import shutil
 import sys
 import subprocess
 from pathlib import Path
@@ -17,6 +20,7 @@ class CortexMCPServer:
     """
     def __init__(self, project_root: Path):
         self.project_root = project_root
+        self._task_results: dict[str, dict[str, str]] = {}
         
         # Buscar config.yaml en el root del proyecto
         config_path = project_root / "config.yaml"
@@ -69,9 +73,55 @@ class CortexMCPServer:
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "query": {"type": "string", "description": "Consulta de contexto."}
+                            "query": {"type": "string", "description": "Consulta de contexto."},
+                            "changed_files": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Archivos modificados para enriquecer el contexto.",
+                            },
+                            "keywords": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Palabras clave opcionales para complementar la consulta.",
+                            },
+                            "pr_title": {
+                                "type": "string",
+                                "description": "Titulo opcional del PR o tarea actual.",
+                            },
                         },
                         "required": ["query"]
+                    }
+                ),
+                types.Tool(
+                    name="cortex_sync_ticket",
+                    description="Paso obligatorio de cortex-sync. Inyecta el pedido actual del usuario junto con contexto historico similar recuperado por ONNX/hybrid retrieval para preparar una spec.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "user_request": {
+                                "type": "string",
+                                "description": "Pedido textual actual del usuario en la terminal.",
+                            },
+                            "changed_files": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Archivos ya identificados para el ticket actual.",
+                            },
+                            "keywords": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Palabras clave opcionales para reforzar la recuperacion.",
+                            },
+                            "title_hint": {
+                                "type": "string",
+                                "description": "Titulo corto opcional para orientar la spec.",
+                            },
+                            "top_k": {
+                                "type": "integer",
+                                "default": 5,
+                            },
+                        },
+                        "required": ["user_request"]
                     }
                 ),
                 types.Tool(
@@ -81,9 +131,41 @@ class CortexMCPServer:
                         "type": "object",
                         "properties": {
                             "agent": {"type": "string", "description": "Nombre del subagente (ej. cortex-code-explorer)."},
-                            "task": {"type": "string", "description": "La tarea a realizar."}
+                            "task": {"type": "string", "description": "La tarea a realizar."},
+                            "timeout_seconds": {
+                                "type": "integer",
+                                "default": 120,
+                                "description": "Timeout opcional para subagentes lentos.",
+                            },
                         },
                         "required": ["agent", "task"]
+                    }
+                ),
+                types.Tool(
+                    name="cortex_delegate_batch",
+                    description="Lanzar una ronda de subagentes y devolver sus resultados consolidados. Usala desde cortex-SDDwork para orquestar explorer/planner/implementer/reviewer/tester/documenter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "tasks": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "agent": {"type": "string"},
+                                        "task": {"type": "string"},
+                                    },
+                                    "required": ["agent", "task"],
+                                },
+                                "description": "Lista de tareas a delegar en paralelo para una misma ronda.",
+                            },
+                            "timeout_seconds": {
+                                "type": "integer",
+                                "default": 120,
+                                "description": "Timeout opcional aplicado a cada subagente de la ronda.",
+                            },
+                        },
+                        "required": ["tasks"]
                     }
                 ),
                 types.Tool(
@@ -152,14 +234,24 @@ class CortexMCPServer:
                     return [types.TextContent(type="text", text=str(results.to_prompt()))]
 
                 elif name == "cortex_context":
-                    query = arguments.get("query", "")
-                    ctx = self.memory.enrich(changed_files=[])
+                    ctx = self._enrich_context(arguments)
                     return [types.TextContent(type="text", text=ctx.to_prompt_format())]
+
+                elif name == "cortex_sync_ticket":
+                    sync_context = self._build_sync_ticket_context(arguments)
+                    return [types.TextContent(type="text", text=sync_context)]
 
                 elif name == "cortex_delegate_task":
                     agent = arguments.get("agent", "")
                     task = arguments.get("task", "")
-                    result = await self._delegate_task(agent, task)
+                    timeout_seconds = arguments.get("timeout_seconds")
+                    result = await self._delegate_task(agent, task, timeout_seconds=timeout_seconds)
+                    return [types.TextContent(type="text", text=result)]
+
+                elif name == "cortex_delegate_batch":
+                    tasks = arguments.get("tasks", [])
+                    timeout_seconds = arguments.get("timeout_seconds")
+                    result = await self._delegate_batch(tasks, timeout_seconds=timeout_seconds)
                     return [types.TextContent(type="text", text=result)]
 
                 elif name == "cortex_create_spec":
@@ -193,28 +285,255 @@ class CortexMCPServer:
                     return [types.TextContent(type="text", text=f"Vault synced - {count} documents indexed.")]
 
                 elif name == "cortex_get_task_result":
-                    return [types.TextContent(type="text", text="La tarea finalizó exitosamente.")]
-                
+                    agent = str(arguments.get("agent", "")).strip()
+                    if not agent:
+                        return [types.TextContent(type="text", text="Error: el nombre del subagente es obligatorio.")]
+                    return [types.TextContent(type="text", text=self._get_task_result(agent))]
+
                 return [types.TextContent(type="text", text=f"Herramienta desconocida: {name}")]
             except Exception as e:
                 return [types.TextContent(type="text", text=f"Error ejecutando {name}: {str(e)}")]
 
-    async def _delegate_task(self, agent_name: str, task: str) -> str:
+    @staticmethod
+    def _extract_query_keywords(query: str) -> list[str]:
+        """Build lightweight keywords from a free-form context query."""
+        words = re.findall(r"\b[a-zA-Z][\w./-]{2,}\b", query.lower())
+        return list(dict.fromkeys(words))[:10]
+
+    def _enrich_context(self, arguments: dict[str, Any]) -> EnrichedContext:
+        """Convert MCP arguments into a useful context enrichment request."""
+        query = str(arguments.get("query", "")).strip()
+        changed_files = self._normalize_string_list(arguments.get("changed_files", []))
+        keywords = self._normalize_string_list(arguments.get("keywords", []))
+
+        if not keywords and query:
+            keywords = self._extract_query_keywords(query)
+
+        pr_title = str(arguments.get("pr_title", "")).strip() or query or None
+
+        return self.memory.enrich(
+            changed_files=changed_files,
+            keywords=keywords,
+            pr_title=pr_title,
+        )
+
+    @staticmethod
+    def _normalize_string_list(values: Any) -> list[str]:
+        return [
+            str(value).strip()
+            for value in values or []
+            if str(value).strip()
+        ]
+
+    def _extract_candidate_files(self, query: str) -> list[str]:
+        project_root = self.project_root.resolve()
+        candidates: list[str] = []
+
+        for raw_path in re.findall(r"\b[\w./\\-]+\.[A-Za-z0-9]+\b", query):
+            normalized = raw_path.strip().replace("\\", "/")
+            path = Path(normalized)
+            if path.is_absolute():
+                continue
+
+            candidate = (project_root / path).resolve()
+            try:
+                candidate.relative_to(project_root)
+            except ValueError:
+                continue
+
+            if candidate.is_file():
+                candidates.append(normalized)
+
+        return list(dict.fromkeys(candidates))
+
+    def _build_sync_ticket_context(self, arguments: dict[str, Any]) -> str:
+        user_request = str(arguments.get("user_request", "")).strip()
+        if not user_request:
+            raise ValueError("user_request es obligatorio para cortex_sync_ticket.")
+
+        changed_files = self._normalize_string_list(arguments.get("changed_files", []))
+        if not changed_files:
+            changed_files = self._extract_candidate_files(user_request)
+
+        keywords = self._normalize_string_list(arguments.get("keywords", []))
+        if not keywords:
+            keywords = self._extract_query_keywords(user_request)
+
+        title_hint = str(arguments.get("title_hint", "")).strip() or user_request
+        top_k = int(arguments.get("top_k", 5) or 5)
+
+        related = self.memory.retrieve(user_request, top_k=top_k)
+        enriched = self.memory.enrich(
+            changed_files=changed_files,
+            keywords=keywords,
+            pr_title=title_hint,
+            top_k=top_k,
+        )
+
+        changed_files_text = ", ".join(changed_files) if changed_files else "(sin archivos inferidos)"
+        keywords_text = ", ".join(keywords) if keywords else "(sin keywords)"
+
+        sections = [
+            "## Ticket actual",
+            user_request,
+            "",
+            "## Scope detectado",
+            changed_files_text,
+            "",
+            "## Keywords",
+            keywords_text,
+            "",
+            "## Contexto historico similar (Vault + memoria episodica)",
+            related.to_prompt(),
+            "",
+            "## Contexto enriquecido del proyecto",
+            enriched.to_prompt_format(),
+        ]
+        return "\n".join(sections)
+
+    def _resolve_delegate_timeout(self, agent_name: str, timeout_seconds: Any) -> int:
+        if timeout_seconds is not None:
+            try:
+                return max(30, int(timeout_seconds))
+            except (TypeError, ValueError):
+                return 120
+
+        defaults = {
+            "cortex-code-implementer": 300,
+            "cortex-code-tester": 300,
+            "cortex-documenter": 180,
+        }
+        return defaults.get(agent_name, 120)
+
+    async def _delegate_task(self, agent_name: str, task: str, timeout_seconds: Any = None) -> str:
+        agent_name = agent_name.strip()
+        task = task.strip()
+        if not agent_name:
+            return "Error: el nombre del subagente es obligatorio."
+        if not task:
+            return "Error: la tarea a delegar no puede estar vacia."
+
         subagent_path = self.project_root / ".cortex" / "subagents" / f"{agent_name}.md"
         if not subagent_path.exists():
             subagent_path = Path.home() / ".config" / "opencode" / "subagents" / f"{agent_name}.md"
             if not subagent_path.exists():
-                return f"Error: Subagente '{agent_name}' no encontrado."
+                message = f"Error: Subagente '{agent_name}' no encontrado."
+                self._store_task_result(agent_name, "error", message, task)
+                return message
+
+        opencode = shutil.which("opencode")
+        if not opencode:
+            message = "Error: no se encontro el ejecutable 'opencode' en PATH."
+            self._store_task_result(agent_name, "error", message, task)
+            return message
 
         try:
-            cmd = ["opencode", "run", "--agent", agent_name, "--message", task]
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate()
+            cmd = [opencode, "run", "--agent", agent_name, "--message", task]
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            effective_timeout = self._resolve_delegate_timeout(agent_name, timeout_seconds)
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=effective_timeout)
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.communicate()
+                message = f"Error: el subagente '{agent_name}' excedio el timeout de {effective_timeout}s."
+                self._store_task_result(agent_name, "timeout", message, task)
+                return message
+
+            stdout_text = stdout.decode("utf-8", errors="replace").strip()
+            stderr_text = stderr.decode("utf-8", errors="replace").strip()
             if process.returncode != 0:
-                return f"Error critico en subagente {agent_name}: {stderr}"
-            return stdout
+                message = stderr_text or f"Error critico en subagente {agent_name}."
+                self._store_task_result(agent_name, "error", message, task)
+                return message
+
+            message = stdout_text or f"Subagente '{agent_name}' finalizo sin salida textual."
+            self._store_task_result(agent_name, "success", message, task)
+            return message
         except Exception as e:
-            return f"Error al invocar subagente via CLI: {str(e)}"
+            message = f"Error al invocar subagente via CLI: {str(e)}"
+            self._store_task_result(agent_name, "error", message, task)
+            return message
+
+    async def _delegate_batch(self, tasks: list[dict[str, Any]], timeout_seconds: Any = None) -> str:
+        if not isinstance(tasks, list) or not tasks:
+            return "Error: tasks debe contener al menos una delegacion."
+
+        normalized_tasks: list[tuple[str, str]] = []
+        for index, item in enumerate(tasks, start=1):
+            if not isinstance(item, dict):
+                return f"Error: la tarea #{index} no es un objeto valido."
+
+            agent = str(item.get("agent", "")).strip()
+            task = str(item.get("task", "")).strip()
+            if not agent or not task:
+                return f"Error: la tarea #{index} debe incluir agent y task."
+            normalized_tasks.append((agent, task))
+
+        results = await asyncio.gather(
+            *[
+                self._delegate_task(agent, task, timeout_seconds=timeout_seconds)
+                for agent, task in normalized_tasks
+            ]
+        )
+
+        lines = ["Ronda de subagentes completada."]
+        has_failures = False
+        for (agent, task), message in zip(normalized_tasks, results, strict=False):
+            stored = self._task_results.get(agent, {})
+            status = stored.get("status", "unknown")
+            if status != "success":
+                has_failures = True
+
+            lines.extend(
+                [
+                    "",
+                    f"Subagente: {agent}",
+                    f"Estado: {status}",
+                    f"Tarea: {task}",
+                    "Resultado:",
+                    message,
+                ]
+            )
+
+        if has_failures:
+            lines.extend(
+                [
+                    "",
+                    "Resultado global: revisa los subagentes con error o timeout antes de avanzar a la siguiente ronda.",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "",
+                    "Resultado global: todos los subagentes de la ronda finalizaron correctamente.",
+                ]
+            )
+
+        return "\n".join(lines)
+
+    def _store_task_result(self, agent_name: str, status: str, message: str, task: str) -> None:
+        self._task_results[agent_name] = {
+            "status": status,
+            "message": message,
+            "task": task,
+        }
+
+    def _get_task_result(self, agent_name: str) -> str:
+        result = self._task_results.get(agent_name)
+        if not result:
+            return f"No hay resultados guardados para el subagente '{agent_name}'."
+        return (
+            f"Subagente: {agent_name}\n"
+            f"Estado: {result['status']}\n"
+            f"Tarea: {result['task']}\n"
+            f"Resultado:\n{result['message']}"
+        )
 
     async def run(self):
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):

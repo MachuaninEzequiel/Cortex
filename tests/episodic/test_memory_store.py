@@ -61,3 +61,36 @@ def test_timestamp_preserved_on_retrieval(episodic_store):
     assert retrieved_ts == original_ts
     assert isinstance(retrieved_ts, datetime)
     assert retrieved_ts.tzinfo is not None
+
+
+def test_metadata_round_trip_preserves_entities_and_extra_fields(episodic_store):
+    episodic_store.add(
+        content="def login_user(token):\n    return token",
+        memory_type="bugfix",
+        extra_metadata={"ticket": "DX-1"},
+    )
+
+    results = episodic_store.search("login_user")
+
+    assert len(results) == 1
+    metadata = results[0].entry.metadata
+    assert metadata["ticket"] == "DX-1"
+    assert "login_user" in metadata["entities"]["function"]
+
+
+def test_search_by_entity_returns_matching_memories(episodic_store):
+    episodic_store.add(
+        content="def login_user(token):\n    return token",
+        memory_type="bugfix",
+        files=["auth.py"],
+    )
+    episodic_store.add(
+        content="def charge_card(amount):\n    return amount",
+        memory_type="feature",
+        files=["payments.py"],
+    )
+
+    results = episodic_store.search_by_entity("function", "login_user")
+
+    assert len(results) == 1
+    assert results[0].entry.files == ["auth.py"]

@@ -222,6 +222,60 @@ class TestGraphExpansion:
         co_occurrence = enricher._build_co_occurrence()
         assert co_occurrence == {}
 
+    def test_build_co_occurrence_reuses_cache_across_instances(self, mock_semantic, config):
+        entries = [
+            MemoryEntry(id="mem_1", content="Auth graph", files=["auth.py", "jwt.ts"]),
+        ]
+
+        class FakeEpisodic:
+            def __init__(self):
+                self.cache_token = 7
+                self.list_calls = 0
+
+            def list_entries(self):
+                self.list_calls += 1
+                return entries
+
+            def count(self):
+                return len(entries)
+
+        episodic = FakeEpisodic()
+        first = ContextEnricher(episodic, mock_semantic, config)
+        second = ContextEnricher(episodic, mock_semantic, config)
+
+        co_occurrence_a = first._build_co_occurrence()
+        co_occurrence_b = second._build_co_occurrence()
+
+        assert co_occurrence_a is co_occurrence_b
+        assert episodic.list_calls == 1
+
+    def test_build_typed_graph_reuses_cache_across_instances(self, mock_semantic, config):
+        entries = [
+            MemoryEntry(id="mem_1", content="Auth graph", files=["auth.py", "jwt.ts"]),
+        ]
+
+        class FakeEpisodic:
+            def __init__(self):
+                self.cache_token = 9
+                self.list_calls = 0
+
+            def list_entries(self):
+                self.list_calls += 1
+                return entries
+
+            def count(self):
+                return len(entries)
+
+        episodic = FakeEpisodic()
+        first = ContextEnricher(episodic, mock_semantic, config)
+        second = ContextEnricher(episodic, mock_semantic, config)
+
+        graph_a = first._build_typed_graph()
+        graph_b = second._build_typed_graph()
+
+        assert graph_a is graph_b
+        assert episodic.list_calls == 1
+
 
 class TestConfig:
     """ContextEnricherConfig validation."""

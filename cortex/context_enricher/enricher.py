@@ -42,6 +42,9 @@ class ContextEnricher:
         config: Enricher configuration.
     """
 
+    _co_occurrence_cache: dict[int, tuple[int, dict[str, dict[str, int]]]] = {}
+    _typed_graph_cache: dict[int, tuple[int, object]] = {}
+
     def __init__(
         self,
         episodic: EpisodicMemoryStore,
@@ -406,14 +409,17 @@ class ContextEnricher:
         Returns:
             {file_a: {file_b: count, ...}, ...}
         """
+        store_id = id(self.episodic)
+        cache_token = self._store_cache_token()
+        cached = self._co_occurrence_cache.get(store_id)
+        if cached and cached[0] == cache_token:
+            return cached[1]
+
         co_occurrence: dict[str, dict[str, int]] = {}
 
         try:
-            # Get all episodic memories to build co-occurrence
-            # We search with an empty query to get all memories
-            all_hits = self.episodic.search("", top_k=1000)
-            for hit in all_hits:
-                files = hit.entry.files
+            for entry in self._graph_entries(limit=1000):
+                files = entry.files
                 if len(files) < 2:
                     continue
                 for f1 in files:
@@ -425,6 +431,7 @@ class ContextEnricher:
         except Exception as exc:
             logger.debug("Could not build co-occurrence map: %s", exc)
 
+        self._co_occurrence_cache[store_id] = (cache_token, co_occurrence)
         return co_occurrence
 
     def _build_entity_index(self) -> dict[str, dict[str, list[str]]]:
@@ -464,32 +471,55 @@ class ContextEnricher:
             TypedCooccurrenceGraph instance
         """
         from cortex.context_enricher.co_occurrence import TypedCooccurrenceGraph
-        
+
+        store_id = id(self.episodic)
+        cache_token = self._store_cache_token()
+        cached = self._typed_graph_cache.get(store_id)
+        if cached and cached[0] == cache_token:
+            return cached[1]
+
         try:
             graph = TypedCooccurrenceGraph(project_root=None)
-            
-            # Get all files from existing memories
-            all_hits = self.episodic.search("", top_k=500)
-            
+
+            entries = self._graph_entries(limit=500)
+
             # Collect unique files
             all_files: set[str] = set()
-            for hit in all_hits:
-                all_files.update(hit.entry.files)
-            
+            for entry in entries:
+                all_files.update(entry.files)
+
             if not all_files:
+                self._typed_graph_cache[store_id] = (cache_token, graph)
                 return graph
-            
+
             # Build graph from files using heuristics (AST would require file access)
             graph.build_from_memories(
-                [hit.entry for hit in all_hits],
+                entries,
                 files_extractor=lambda m: m.files,
             )
-            
+
+            self._typed_graph_cache[store_id] = (cache_token, graph)
             return graph
-            
+
         except Exception as exc:
             logger.debug("Could not build typed graph: %s", exc)
             return TypedCooccurrenceGraph()
+
+    def _graph_entries(self, limit: int | None = None) -> list:
+        entries_getter = getattr(self.episodic, "list_entries", None)
+        if callable(entries_getter):
+            entries = entries_getter()
+            if isinstance(entries, list):
+                return entries[:limit] if limit is not None else entries
+
+        all_hits = self.episodic.search("", top_k=limit or 1000)
+        entries = [hit.entry for hit in all_hits]
+        return entries[:limit] if limit is not None else entries
+
+    def _store_cache_token(self) -> int:
+        if hasattr(self.episodic, "cache_token"):
+            return int(self.episodic.cache_token)
+        return int(self.episodic.count())
 
     @staticmethod
     def _co_occurrence_score(

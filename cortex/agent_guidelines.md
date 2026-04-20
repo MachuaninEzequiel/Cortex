@@ -8,6 +8,7 @@ Use `cortex-sync` first.
 2. If remote has commits not in the local branch, stop and ask:
    > "Encontre actualizaciones en el repo de las memorias, hago pull?"
 3. Use Cortex tools only to gather context:
+   - `cortex_sync_ticket`
    - `cortex_search`
    - `cortex_context`
    - `cortex_create_spec`
@@ -27,7 +28,7 @@ If a memory tool does not start with `cortex_`, it does not belong to this works
 ## Release 2 Execution Model
 
 - `cortex-sync` prepares context and the spec.
-- `cortex-SDDwork` orchestrates implementation through specialized subagents.
+- `cortex-SDDwork` orchestrates implementation through specialized subagents using `cortex_delegate_batch` / `cortex_delegate_task`.
 - `cortex-documenter` is the mandatory final step.
 
 ## Definition of Done

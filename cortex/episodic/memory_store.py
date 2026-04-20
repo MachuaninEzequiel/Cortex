@@ -59,6 +59,11 @@ class EpisodicMemoryStore:
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+        self._cache_token = 0
+        self._entries_cache: list[MemoryEntry] | None = None
+        self._entries_cache_token = -1
+        self._entity_index_cache: dict[str, dict[str, list[MemoryEntry]]] | None = None
+        self._entity_index_cache_token = -1
         logger.info(
             "EpisodicMemoryStore initialized — collection '%s' has %d entries",
             collection_name,
@@ -82,7 +87,7 @@ class EpisodicMemoryStore:
         entities = self._extract_entities(content)
         
         # Merge entities with extra_metadata
-        metadata = extra_metadata or {}
+        metadata = dict(extra_metadata or {})
         if entities:
             metadata["entities"] = entities
         
@@ -100,6 +105,7 @@ class EpisodicMemoryStore:
             documents=[content],
             metadatas=[self._serialize_metadata(entry)],
         )
+        self._invalidate_caches()
         logger.debug("Stored memory %s [%s]", entry.id, memory_type)
         return entry
 
@@ -224,48 +230,11 @@ class EpisodicMemoryStore:
         """Search for memories that mention a specific entity (function, class, etc.)."""
         if self._collection.count() == 0:
             return []
-             
-        # Get all memories and filter by entity
-        all_results = self._collection.get(
-            include=["documents", "metadatas"]
-        )
-        
-        hits: list[EpisodicHit] = []
-        for doc, meta in zip(
-            all_results["documents"],
-            all_results["metadatas"],
-        ):
-            entry = self._deserialize_metadata(doc, meta)
-            # Check if this memory contains the entity
-            entities = entry.metadata.get("entities", {})
-            if entity_value in entities.get(entity_type, []):
-                # Calculate relevance score based on entity match frequency and recency
-                base_score = 1.0  # Base score for entity match
-                
-                # Boost for multiple occurrences of same entity in memory
-                entity_count = entities.get(entity_type, []).count(entity_value)
-                frequency_boost = min(0.3, (entity_count - 1) * 0.1)  # Max 0.3 boost
-                
-                # Recency boost (newer memories get slightly higher score)
-                from datetime import datetime, timezone
-                try:
-                    mem_time = datetime.fromisoformat(entry.timestamp.replace('Z', '+00:00'))
-                    now = datetime.now(timezone.utc)
-                    hours_old = (now - mem_time).total_seconds() / 3600
-                    # Memories younger than 24h get boost, older than 7 days get penalty
-                    if hours_old < 24:
-                        recency_boost = 0.2
-                    elif hours_old > 168:  # 7 days
-                        recency_boost = -0.1
-                    else:
-                        recency_boost = 0.0
-                except:
-                    recency_boost = 0.0
-                
-                score = min(1.0, base_score + frequency_boost + recency_boost)
-                hits.append(EpisodicHit(entry=entry, score=score))
-                
-        # Sort by score descending and limit
+
+        hits = self._search_by_entity_where(entity_type, entity_value)
+        if not hits:
+            hits = self._search_by_entity_legacy(entity_type, entity_value)
+
         hits.sort(key=lambda x: x.score, reverse=True)
         return hits[:top_k]
 
@@ -278,12 +247,34 @@ class EpisodicMemoryStore:
             if not existing["ids"]:
                 return False
             self._collection.delete(ids=[memory_id])
+            self._invalidate_caches()
             return True
         except Exception:
             return False
 
     def count(self) -> int:
         return self._collection.count()
+
+    @property
+    def cache_token(self) -> int:
+        """Mutation token for downstream caches derived from this store."""
+        return self._cache_token
+
+    def list_entries(self) -> list[MemoryEntry]:
+        """Return every stored entry, using an in-process cache when possible."""
+        if self._entries_cache is not None and self._entries_cache_token == self._cache_token:
+            return list(self._entries_cache)
+
+        all_results = self._collection.get(include=["documents", "metadatas"])
+        documents = all_results.get("documents") or []
+        metadatas = all_results.get("metadatas") or []
+        entries = [
+            self._deserialize_metadata(doc, meta)
+            for doc, meta in zip(documents, metadatas)
+        ]
+        self._entries_cache = entries
+        self._entries_cache_token = self._cache_token
+        return list(entries)
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -292,13 +283,24 @@ class EpisodicMemoryStore:
     @staticmethod
     def _serialize_metadata(entry: MemoryEntry) -> dict:
         """Flatten MemoryEntry fields into ChromaDB-compatible metadata."""
-        return {
+        metadata = {
             "id": entry.id,
             "memory_type": entry.memory_type,
             "tags": json.dumps(entry.tags),
             "files": json.dumps(entry.files),
             "timestamp": entry.timestamp.isoformat(),
+            "metadata_json": json.dumps(entry.metadata, sort_keys=True),
         }
+
+        entities = entry.metadata.get("entities", {})
+        if isinstance(entities, dict):
+            for entity_type, values in entities.items():
+                if not isinstance(values, list):
+                    continue
+                for value in values:
+                    metadata[EpisodicMemoryStore._entity_filter_key(entity_type, str(value))] = True
+
+        return metadata
 
     @staticmethod
     def _deserialize_metadata(document: str, meta: dict) -> MemoryEntry:
@@ -316,6 +318,19 @@ class EpisodicMemoryStore:
         else:
             timestamp = datetime.now(timezone.utc)
 
+        metadata: dict[str, Any] = {}
+        metadata_json = meta.get("metadata_json")
+        if metadata_json:
+            try:
+                parsed = json.loads(metadata_json)
+                if isinstance(parsed, dict):
+                    metadata = parsed
+            except (TypeError, ValueError):
+                metadata = {}
+
+        if not metadata:
+            metadata = EpisodicMemoryStore._extract_metadata_from_flat_fields(meta)
+
         return MemoryEntry(
             id=meta["id"],
             content=document,
@@ -323,4 +338,126 @@ class EpisodicMemoryStore:
             tags=json.loads(meta.get("tags", "[]")),
             files=json.loads(meta.get("files", "[]")),
             timestamp=timestamp,
+            metadata=metadata,
         )
+
+    def _invalidate_caches(self) -> None:
+        self._cache_token += 1
+        self._entries_cache = None
+        self._entries_cache_token = -1
+        self._entity_index_cache = None
+        self._entity_index_cache_token = -1
+
+    def _search_by_entity_where(self, entity_type: str, entity_value: str) -> list[EpisodicHit]:
+        entity_key = self._entity_filter_key(entity_type, entity_value)
+        try:
+            results = self._collection.get(
+                where={entity_key: True},
+                include=["documents", "metadatas"],
+            )
+        except Exception as exc:
+            logger.debug("Entity filter lookup failed for %s=%s: %s", entity_type, entity_value, exc)
+            return []
+
+        documents = results.get("documents") or []
+        metadatas = results.get("metadatas") or []
+        return [
+            EpisodicHit(
+                entry=entry,
+                score=self._entity_match_score(entry, entity_type, entity_value),
+            )
+            for entry in (
+                self._deserialize_metadata(doc, meta)
+                for doc, meta in zip(documents, metadatas)
+            )
+        ]
+
+    def _search_by_entity_legacy(self, entity_type: str, entity_value: str) -> list[EpisodicHit]:
+        normalized_type = entity_type.strip().lower()
+        normalized_value = entity_value.strip().lower()
+        entity_index = self._entity_index()
+        matches = entity_index.get(normalized_type, {}).get(normalized_value, [])
+        return [
+            EpisodicHit(
+                entry=entry,
+                score=self._entity_match_score(entry, entity_type, entity_value),
+            )
+            for entry in matches
+        ]
+
+    def _entity_index(self) -> dict[str, dict[str, list[MemoryEntry]]]:
+        if self._entity_index_cache is not None and self._entity_index_cache_token == self._cache_token:
+            return self._entity_index_cache
+
+        entity_index: dict[str, dict[str, list[MemoryEntry]]] = {}
+        for entry in self.list_entries():
+            entities = entry.metadata.get("entities", {})
+            if not isinstance(entities, dict):
+                continue
+            for entity_type, values in entities.items():
+                if not isinstance(values, list):
+                    continue
+                normalized_type = str(entity_type).strip().lower()
+                bucket = entity_index.setdefault(normalized_type, {})
+                for value in values:
+                    normalized_value = str(value).strip().lower()
+                    if not normalized_value:
+                        continue
+                    bucket.setdefault(normalized_value, []).append(entry)
+
+        self._entity_index_cache = entity_index
+        self._entity_index_cache_token = self._cache_token
+        return entity_index
+
+    @staticmethod
+    def _entity_match_score(entry: MemoryEntry, entity_type: str, entity_value: str) -> float:
+        entities = entry.metadata.get("entities", {})
+        values = entities.get(entity_type, []) if isinstance(entities, dict) else []
+        if not isinstance(values, list):
+            values = []
+
+        normalized_target = entity_value.strip().lower()
+        entity_count = sum(
+            1 for value in values
+            if str(value).strip().lower() == normalized_target
+        )
+        frequency_boost = min(0.3, max(entity_count - 1, 0) * 0.1)
+
+        try:
+            now = datetime.now(timezone.utc)
+            timestamp = entry.timestamp
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            hours_old = (now - timestamp).total_seconds() / 3600
+            if hours_old < 24:
+                recency_boost = 0.2
+            elif hours_old > 168:
+                recency_boost = -0.1
+            else:
+                recency_boost = 0.0
+        except Exception:
+            recency_boost = 0.0
+
+        return min(1.0, 1.0 + frequency_boost + recency_boost)
+
+    @staticmethod
+    def _entity_filter_key(entity_type: str, entity_value: str) -> str:
+        normalized_type = re.sub(r"[^a-z0-9_]+", "_", entity_type.strip().lower())
+        normalized_value = re.sub(r"[^a-z0-9_]+", "_", entity_value.strip().lower())
+        return f"entity_{normalized_type}_{normalized_value}".strip("_")
+
+    @staticmethod
+    def _extract_metadata_from_flat_fields(meta: dict[str, Any]) -> dict[str, Any]:
+        entities: dict[str, list[str]] = {}
+        prefix = "entity_"
+        for key, value in meta.items():
+            if not key.startswith(prefix) or value is not True:
+                continue
+            raw = key[len(prefix):]
+            parts = raw.split("_", 1)
+            if len(parts) != 2:
+                continue
+            entity_type, entity_value = parts
+            entities.setdefault(entity_type, []).append(entity_value)
+
+        return {"entities": entities} if entities else {}

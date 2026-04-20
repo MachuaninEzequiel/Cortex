@@ -645,11 +645,11 @@ def install_skills(
     """
     from cortex.skills import install_skills as _install_skills
 
-    target_path = Path(target)
+    target_path = Path(dest)
     installed = _install_skills(target_path)
 
     if installed:
-        typer.echo(f"✅ Installed {len(installed)} skills into {target}/")
+        typer.echo(f"✅ Installed {len(installed)} skills into {dest}/")
         for skill in installed:
             typer.echo(f"   • {skill}")
     else:

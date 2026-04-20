@@ -192,7 +192,7 @@ class DomainDetector:
             from cortex.episodic.embedder import Embedder
             self._embedder = Embedder(
                 model_name="all-MiniLM-L6-v2",
-                backend="local"
+                backend="onnx"
             )
             
             # Pre-compute domain centroids for embedding fallback

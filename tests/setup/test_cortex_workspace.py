@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cortex.setup.cortex_workspace import ensure_cortex_workspace
+from cortex.setup.cortex_workspace import ensure_cortex_workspace, workspace_file_map
 
 
 def test_ensure_cortex_workspace_creates_release2_files(tmp_path: Path) -> None:
@@ -25,3 +25,10 @@ def test_ensure_cortex_workspace_skips_existing_files(tmp_path: Path) -> None:
 
     assert ".cortex/skills/cortex-sync.md" in result["skipped"]
     assert sync_path.read_text(encoding="utf-8") == "custom"
+
+
+def test_release2_workspace_prompts_require_sync_and_batch_orchestration() -> None:
+    files = workspace_file_map()
+
+    assert "cortex_sync_ticket" in files[".cortex/skills/cortex-sync.md"]
+    assert "cortex_delegate_batch" in files[".cortex/skills/cortex-SDDwork.md"]
