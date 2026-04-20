@@ -43,7 +43,7 @@ Coordina la implementación técnica mediante subagentes especializados:
 - **SecuritySubAgent**: Revisa vulnerabilidades y cumplimiento de estándares en tiempo real.
 - **TestSubAgent**: Asegura la cobertura y estabilidad del cambio.
 
-### 3. `Sug-agent cortex-documenter` (El Guardián)
+### 3. `Subagent cortex-documenter` (El Guardián)
 Es el paso final obligatorio. Ninguna tarea se considera terminada si este agente no ha persistido el conocimiento en el Vault. Es un subagente llamado por el orquestador de forma obligatoria al final de la realizacion completa de un SPEC, posee reglas definidas y SKILLS optimizadas para la generacion de documentacion tecnica de alta fidelidad, con los estandares estrictos de Obsidian.
 - **Output**: **Notas de Sesión (`save-session`)** estructuradas que alimentan la memoria futura de todo el equipo.
 
