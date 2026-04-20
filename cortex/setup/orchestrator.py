@@ -177,11 +177,11 @@ class SetupOrchestrator:
 
     def _install_ide(self) -> None:
         try:
-            from cortex.ide_installer import install
-            install()
-            self.created.append("IDE Integration Applied")
+            from cortex.profile_injector import inject
+            inject(ide=None)  # Inject for all IDEs
+            self.created.append("IDE Profiles Injected")
         except Exception as e:
-            self.warnings.append(f"IDE fail: {e}")
+            self.warnings.append(f"IDE profile injection fail: {e}")
 
     def _init_memory(self) -> None:
         try:

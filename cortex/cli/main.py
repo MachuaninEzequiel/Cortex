@@ -801,17 +801,25 @@ def mcp_serve_legacy() -> None:
 
 @app.command(name="inject")
 def inject(
-    agent: str = typer.Option("opencode", help="Agent/IDE to inject (opencode, claude).")
+    ide: str = typer.Option(None, "--ide", help="IDE to inject (opencode, cursor, claude, claude-desktop, vscode, zed)."),
+    all_ides: bool = typer.Option(False, "--all", help="Inject profiles for all IDEs.")
 ) -> None:
-    """Inject Cortex MCP configuration into the specified agent/IDE."""
-    from cortex.ide_installer import install_opencode_profile, install_claude_desktop_profile
+    """Inject Cortex agent profiles into the specified IDE.
     
-    if agent == "opencode":
-        install_opencode_profile()
-    elif agent == "claude":
-        install_claude_desktop_profile()
+    This injects Cortex agent prompts (cortex-sync, cortex-SDDwork) in the
+    native format of each IDE. The profiles instruct the IDE's native agent
+    to use Cortex Engine tools for memory/search and IDE-native delegation
+    tools for subagent orchestration.
+    """
+    from cortex.profile_injector import inject
+    
+    if all_ides:
+        inject(ide=None)
+    elif ide:
+        inject(ide=ide)
     else:
-        typer.echo(f"Agent '{agent}' not supported yet.")
+        typer.echo("Please specify --ide <name> or --all")
+        typer.echo("Supported IDEs: opencode, cursor, claude, claude-desktop, vscode, zed")
 
 @app.command()
 def stats() -> None:

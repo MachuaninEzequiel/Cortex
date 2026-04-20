@@ -1,9 +1,11 @@
 import asyncio
+import logging
 import os
 import re
 import shutil
-import sys
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
 import mcp.server.stdio
@@ -13,14 +15,38 @@ import mcp.types as types
 from cortex.core import AgentMemory
 from cortex.models import EnrichedContext
 
+# Configure logging for MCP tool call tracking
+logger = logging.getLogger(__name__)
+
 class CortexMCPServer:
     """
-    Cortex v2.1 Federated Server.
-    Provides tools for search, context, and subagent delegation.
+    Cortex v3.0 Engine Server.
+    Provides tools for search, context, and memory.
+    
+    This is the Cortex Engine - a passive MCP server that exposes memory and
+    semantic search capabilities. Delegation is now handled by IDE-native tools
+    (Task, runSubagent, etc.) configured via profile injection.
     """
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self._task_results: dict[str, dict[str, str]] = {}
+        
+        # Capa 1: Sistema de tracking de herramientas llamadas para logging y validación
+        self._tool_call_history: list[dict[str, Any]] = []
+        self._called_tools: set[str] = set()
+        
+        # Configurar logging para archivo
+        log_dir = project_root / ".cortex" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / f"mcp_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler(sys.stderr)
+            ]
+        )
         
         # Buscar config.yaml en el root del proyecto
         config_path = project_root / "config.yaml"
@@ -38,6 +64,33 @@ class CortexMCPServer:
             
         self.server = Server("cortex-federated-server")
         self._setup_tools()
+        
+        logger.info(f"Cortex MCP Server inicializado. Log file: {log_file}")
+
+    def _log_tool_call(self, tool_name: str, arguments: dict[str, Any], result: str | None = None) -> None:
+        """
+        Capa 1: Logging genérico de todas las llamadas a herramientas.
+        Registra timestamp, herramienta, argumentos y resultado para auditoría completa.
+        """
+        timestamp = datetime.now().isoformat()
+        
+        # Registrar en el set de herramientas llamadas
+        self._called_tools.add(tool_name)
+        
+        # Crear entrada de historial
+        log_entry = {
+            "timestamp": timestamp,
+            "tool": tool_name,
+            "arguments": arguments,
+            "result": result if result else "pending"
+        }
+        self._tool_call_history.append(log_entry)
+        
+        # Log al archivo y stderr
+        logger.info(f"TOOL_CALL: {tool_name} | args: {arguments}")
+        
+        if result:
+            logger.info(f"TOOL_RESULT: {tool_name} | {result[:200]}...")  # Primeros 200 chars
 
     def _setup_tools(self):
         @self.server.list_tools()
@@ -125,50 +178,6 @@ class CortexMCPServer:
                     }
                 ),
                 types.Tool(
-                    name="cortex_delegate_task",
-                    description="Delegar una tarea a un subagente de Cortex (SDDwork flow).",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "agent": {"type": "string", "description": "Nombre del subagente (ej. cortex-code-explorer)."},
-                            "task": {"type": "string", "description": "La tarea a realizar."},
-                            "timeout_seconds": {
-                                "type": "integer",
-                                "default": 120,
-                                "description": "Timeout opcional para subagentes lentos.",
-                            },
-                        },
-                        "required": ["agent", "task"]
-                    }
-                ),
-                types.Tool(
-                    name="cortex_delegate_batch",
-                    description="Lanzar una ronda de subagentes y devolver sus resultados consolidados. Usala desde cortex-SDDwork para orquestar explorer/planner/implementer/reviewer/tester/documenter.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "tasks": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "agent": {"type": "string"},
-                                        "task": {"type": "string"},
-                                    },
-                                    "required": ["agent", "task"],
-                                },
-                                "description": "Lista de tareas a delegar en paralelo para una misma ronda.",
-                            },
-                            "timeout_seconds": {
-                                "type": "integer",
-                                "default": 120,
-                                "description": "Timeout opcional aplicado a cada subagente de la ronda.",
-                            },
-                        },
-                        "required": ["tasks"]
-                    }
-                ),
-                types.Tool(
                     name="cortex_create_spec",
                     description="Persistir una especificacion técnica (Spec) en el vault.",
                     inputSchema={
@@ -209,52 +218,56 @@ class CortexMCPServer:
                     description="Sincronizar el vault y re-indexar documentos semanticamente.",
                     inputSchema={"type": "object", "properties": {}}
                 ),
-                types.Tool(
-                    name="cortex_get_task_result",
-                    description="Recuperar el resultado de una operacion de delegado.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "agent": {"type": "string"}
-                        },
-                        "required": ["agent"]
-                    }
-                )
             ]
 
         @self.server.call_tool()
         async def handle_call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
             if not arguments: arguments = {}
 
+            # Capa 1: Logging genérico al inicio de cada llamada
+            self._log_tool_call(name, arguments)
+
             try:
+                result_text = None
+                
                 if name == "cortex_search":
                     query = arguments.get("query", "")
                     limit = arguments.get("limit", 5)
                     results = self.memory.search(query, top_k=limit)
-                    return [types.TextContent(type="text", text=str(results.to_prompt()))]
+                    result_text = str(results.to_prompt())
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_context":
                     ctx = self._enrich_context(arguments)
-                    return [types.TextContent(type="text", text=ctx.to_prompt_format())]
+                    result_text = ctx.to_prompt_format()
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_sync_ticket":
                     sync_context = self._build_sync_ticket_context(arguments)
-                    return [types.TextContent(type="text", text=sync_context)]
+                    result_text = sync_context
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
-                elif name == "cortex_delegate_task":
-                    agent = arguments.get("agent", "")
-                    task = arguments.get("task", "")
-                    timeout_seconds = arguments.get("timeout_seconds")
-                    result = await self._delegate_task(agent, task, timeout_seconds=timeout_seconds)
-                    return [types.TextContent(type="text", text=result)]
-
-                elif name == "cortex_delegate_batch":
-                    tasks = arguments.get("tasks", [])
-                    timeout_seconds = arguments.get("timeout_seconds")
-                    result = await self._delegate_batch(tasks, timeout_seconds=timeout_seconds)
-                    return [types.TextContent(type="text", text=result)]
 
                 elif name == "cortex_create_spec":
+                    # Capa 1: Validación técnica - rechazar si cortex_sync_ticket no fue llamado
+                    if "cortex_sync_ticket" not in self._called_tools:
+                        error_msg = (
+                            "❌ **VIOLACIÓN DE GOBERNANZA**: cortex_create_spec fue llamado sin "
+                            "ejecutar primero cortex_sync_ticket.\n\n"
+                            "Según las reglas de Cortex v2.0, cortex-sync DEBE llamar a "
+                            "cortex_sync_ticket como PRIMER paso para inyectar contexto histórico "
+                            "vía ONNX/hybrid retrieval antes de crear cualquier spec.\n\n"
+                            "Por favor, corrige el flujo:\n"
+                            "1. Llama a cortex_sync_ticket con el pedido del usuario\n"
+                            "2. Luego llama a cortex_create_spec\n\n"
+                            f"Herramientas llamadas en esta sesión: {', '.join(sorted(self._called_tools))}"
+                        )
+                        logger.error(f"GOVERNANCE_VIOLATION: cortex_create_spec called without cortex_sync_ticket. Tools called: {self._called_tools}")
+                        return [types.TextContent(type="text", text=error_msg)]
+                    
                     path = self.memory.create_spec_note(
                         title=arguments.get("title", ""),
                         goal=arguments.get("goal", ""),
@@ -265,7 +278,9 @@ class CortexMCPServer:
                         tags=arguments.get("tags", []),
                         sync_vault=not arguments.get("no_sync", False)
                     )
-                    return [types.TextContent(type="text", text=f"Specification saved -> {path}")]
+                    result_text = f"Specification saved -> {path}"
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_save_session":
                     path = self.memory.save_session_note(
@@ -278,21 +293,25 @@ class CortexMCPServer:
                         tags=arguments.get("tags", []),
                         sync_vault=not arguments.get("no_sync", False)
                     )
-                    return [types.TextContent(type="text", text=f"Session note saved -> {path}")]
+                    result_text = f"Session note saved -> {path}"
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_sync_vault":
                     count = self.memory.sync_vault()
-                    return [types.TextContent(type="text", text=f"Vault synced - {count} documents indexed.")]
+                    result_text = f"Vault synced - {count} documents indexed."
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
-                elif name == "cortex_get_task_result":
-                    agent = str(arguments.get("agent", "")).strip()
-                    if not agent:
-                        return [types.TextContent(type="text", text="Error: el nombre del subagente es obligatorio.")]
-                    return [types.TextContent(type="text", text=self._get_task_result(agent))]
 
-                return [types.TextContent(type="text", text=f"Herramienta desconocida: {name}")]
+                error_msg = f"Herramienta desconocida: {name}"
+                self._log_tool_call(name, arguments, error_msg)
+                return [types.TextContent(type="text", text=error_msg)]
             except Exception as e:
-                return [types.TextContent(type="text", text=f"Error ejecutando {name}: {str(e)}")]
+                error_msg = f"Error ejecutando {name}: {str(e)}"
+                self._log_tool_call(name, arguments, error_msg)
+                logger.exception(f"Exception in tool call: {name}")
+                return [types.TextContent(type="text", text=error_msg)]
 
     @staticmethod
     def _extract_query_keywords(query: str) -> list[str]:
@@ -391,149 +410,6 @@ class CortexMCPServer:
         ]
         return "\n".join(sections)
 
-    def _resolve_delegate_timeout(self, agent_name: str, timeout_seconds: Any) -> int:
-        if timeout_seconds is not None:
-            try:
-                return max(30, int(timeout_seconds))
-            except (TypeError, ValueError):
-                return 120
-
-        defaults = {
-            "cortex-code-implementer": 300,
-            "cortex-code-tester": 300,
-            "cortex-documenter": 180,
-        }
-        return defaults.get(agent_name, 120)
-
-    async def _delegate_task(self, agent_name: str, task: str, timeout_seconds: Any = None) -> str:
-        agent_name = agent_name.strip()
-        task = task.strip()
-        if not agent_name:
-            return "Error: el nombre del subagente es obligatorio."
-        if not task:
-            return "Error: la tarea a delegar no puede estar vacia."
-
-        subagent_path = self.project_root / ".cortex" / "subagents" / f"{agent_name}.md"
-        if not subagent_path.exists():
-            subagent_path = Path.home() / ".config" / "opencode" / "subagents" / f"{agent_name}.md"
-            if not subagent_path.exists():
-                message = f"Error: Subagente '{agent_name}' no encontrado."
-                self._store_task_result(agent_name, "error", message, task)
-                return message
-
-        opencode = shutil.which("opencode")
-        if not opencode:
-            message = "Error: no se encontro el ejecutable 'opencode' en PATH."
-            self._store_task_result(agent_name, "error", message, task)
-            return message
-
-        try:
-            cmd = [opencode, "run", "--agent", agent_name, "--message", task]
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            effective_timeout = self._resolve_delegate_timeout(agent_name, timeout_seconds)
-            try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=effective_timeout)
-            except asyncio.TimeoutError:
-                process.kill()
-                await process.communicate()
-                message = f"Error: el subagente '{agent_name}' excedio el timeout de {effective_timeout}s."
-                self._store_task_result(agent_name, "timeout", message, task)
-                return message
-
-            stdout_text = stdout.decode("utf-8", errors="replace").strip()
-            stderr_text = stderr.decode("utf-8", errors="replace").strip()
-            if process.returncode != 0:
-                message = stderr_text or f"Error critico en subagente {agent_name}."
-                self._store_task_result(agent_name, "error", message, task)
-                return message
-
-            message = stdout_text or f"Subagente '{agent_name}' finalizo sin salida textual."
-            self._store_task_result(agent_name, "success", message, task)
-            return message
-        except Exception as e:
-            message = f"Error al invocar subagente via CLI: {str(e)}"
-            self._store_task_result(agent_name, "error", message, task)
-            return message
-
-    async def _delegate_batch(self, tasks: list[dict[str, Any]], timeout_seconds: Any = None) -> str:
-        if not isinstance(tasks, list) or not tasks:
-            return "Error: tasks debe contener al menos una delegacion."
-
-        normalized_tasks: list[tuple[str, str]] = []
-        for index, item in enumerate(tasks, start=1):
-            if not isinstance(item, dict):
-                return f"Error: la tarea #{index} no es un objeto valido."
-
-            agent = str(item.get("agent", "")).strip()
-            task = str(item.get("task", "")).strip()
-            if not agent or not task:
-                return f"Error: la tarea #{index} debe incluir agent y task."
-            normalized_tasks.append((agent, task))
-
-        results = await asyncio.gather(
-            *[
-                self._delegate_task(agent, task, timeout_seconds=timeout_seconds)
-                for agent, task in normalized_tasks
-            ]
-        )
-
-        lines = ["Ronda de subagentes completada."]
-        has_failures = False
-        for (agent, task), message in zip(normalized_tasks, results, strict=False):
-            stored = self._task_results.get(agent, {})
-            status = stored.get("status", "unknown")
-            if status != "success":
-                has_failures = True
-
-            lines.extend(
-                [
-                    "",
-                    f"Subagente: {agent}",
-                    f"Estado: {status}",
-                    f"Tarea: {task}",
-                    "Resultado:",
-                    message,
-                ]
-            )
-
-        if has_failures:
-            lines.extend(
-                [
-                    "",
-                    "Resultado global: revisa los subagentes con error o timeout antes de avanzar a la siguiente ronda.",
-                ]
-            )
-        else:
-            lines.extend(
-                [
-                    "",
-                    "Resultado global: todos los subagentes de la ronda finalizaron correctamente.",
-                ]
-            )
-
-        return "\n".join(lines)
-
-    def _store_task_result(self, agent_name: str, status: str, message: str, task: str) -> None:
-        self._task_results[agent_name] = {
-            "status": status,
-            "message": message,
-            "task": task,
-        }
-
-    def _get_task_result(self, agent_name: str) -> str:
-        result = self._task_results.get(agent_name)
-        if not result:
-            return f"No hay resultados guardados para el subagente '{agent_name}'."
-        return (
-            f"Subagente: {agent_name}\n"
-            f"Estado: {result['status']}\n"
-            f"Tarea: {result['task']}\n"
-            f"Resultado:\n{result['message']}"
-        )
 
     async def run(self):
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
