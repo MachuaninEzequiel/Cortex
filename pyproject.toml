@@ -42,6 +42,10 @@ local = ["sentence-transformers>=3.0"]
 openai = ["openai>=1.0"]
 anthropic = ["anthropic>=0.25"]
 ollama = ["httpx>=0.27"]
+webgraph = [
+    "flask>=3.0",
+    "flask-compress>=1.14",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov",
@@ -49,13 +53,19 @@ dev = [
     "mypy",
     "pre-commit",
 ]
-all = ["cortex-memory[local,openai,anthropic,ollama,dev]"]
+all = ["cortex-memory[local,openai,anthropic,ollama,webgraph,dev]"]
 
 [project.scripts]
 cortex = "cortex.cli.main:app"
 
 [tool.setuptools.package-data]
-"cortex" = ["agent_guidelines.md", "agent_guidelines_work.md", "skills/**/*.md"]
+"cortex" = [
+    "agent_guidelines.md",
+    "agent_guidelines_work.md",
+    "skills/**/*.md",
+    "webgraph/templates/*.html",
+    "webgraph/static/*",
+]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/cortex"

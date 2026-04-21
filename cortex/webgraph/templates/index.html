@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cortex WebGraph</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="shell">
+        <header class="hero">
+            <h1>Cortex WebGraph</h1>
+            <p>Explore the visible brain of Cortex across semantic notes, episodic memories, and the explainable links between them.</p>
+        </header>
+
+        <section class="workspace">
+            <section class="canvas-panel">
+                <div class="toolbar">
+                    <div class="toolbar-group">
+                        <label for="mode">Mode</label>
+                        <select id="mode">
+                            <option value="hybrid" {% if default_mode == "hybrid" %}selected{% endif %}>Hybrid</option>
+                            <option value="semantic" {% if default_mode == "semantic" %}selected{% endif %}>Semantic</option>
+                            <option value="episodic" {% if default_mode == "episodic" %}selected{% endif %}>Episodic</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="search">Search</label>
+                        <div class="search-row">
+                            <input id="search" type="search" placeholder="Find a node by label">
+                            <button id="search-button">Find</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="depth">Depth</label>
+                        <select id="depth">
+                            <option value="1" selected>1 hop</option>
+                            <option value="2">2 hops</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group toolbar-actions">
+                        <button id="reload">Reload</button>
+                        <button id="reset-view" disabled>Reset View</button>
+                    </div>
+                </div>
+
+                <div class="statusbar">
+                    <div class="status-item"><span class="status-label">Mode</span><span id="status-mode">-</span></div>
+                    <div class="status-item"><span class="status-label">Nodes</span><span id="status-nodes">0</span></div>
+                    <div class="status-item"><span class="status-label">Edges</span><span id="status-edges">0</span></div>
+                    <div class="status-item"><span class="status-label">Fingerprint</span><span id="status-fingerprint">-</span></div>
+                </div>
+
+                <div id="network" class="network-canvas" aria-label="Cortex graph canvas"></div>
+            </section>
+
+            <aside class="detail-panel">
+                <section class="detail-card">
+                    <p class="eyebrow">Selection</p>
+                    <h2 id="detail-title">No node selected</h2>
+                    <p id="detail-summary" class="detail-summary">
+                        Click a node to inspect its memory details, related artifacts, and available actions.
+                    </p>
+                    <div id="detail-meta" class="detail-meta"></div>
+                    <div class="detail-actions">
+                        <button id="open-node" disabled>Open Document</button>
+                        <button id="load-subgraph" disabled>Load Subgraph</button>
+                    </div>
+                </section>
+
+                <section class="detail-card">
+                    <p class="eyebrow">Relations</p>
+                    <ul id="relation-list" class="detail-list">
+                        <li class="detail-empty">No relationships yet.</li>
+                    </ul>
+                </section>
+
+                <section class="detail-card">
+                    <p class="eyebrow">Neighbors</p>
+                    <ul id="neighbor-list" class="detail-list">
+                        <li class="detail-empty">Select a node to inspect its local neighborhood.</li>
+                    </ul>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

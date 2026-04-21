@@ -26,6 +26,7 @@ class SetupMode(str, Enum):
     AGENT = "agent"
     PIPELINE = "pipeline"
     FULL = "full"
+    WEBGRAPH = "webgraph"
 
 class SetupOrchestrator:
     """Runs the setup pipeline based on mode and reports results."""
@@ -46,6 +47,8 @@ class SetupOrchestrator:
             self._run_agent_flow()
         elif mode == SetupMode.PIPELINE:
             self._run_pipeline_flow()
+        elif mode == SetupMode.WEBGRAPH:
+            self._run_webgraph_flow()
         else:
             self._run_full_flow()
         return self._summary()
@@ -78,6 +81,10 @@ class SetupOrchestrator:
         self._install_skills()
         self._init_memory()
         self._install_ide()
+
+    def _run_webgraph_flow(self) -> None:
+        """Setup only the webgraph module with minimal supporting files."""
+        self._install_webgraph()
 
     def _create_directories(self, only_agent: bool = False) -> None:
         dirs = [
@@ -182,6 +189,28 @@ class SetupOrchestrator:
             self.created.append("IDE Profiles Injected")
         except Exception as e:
             self.warnings.append(f"IDE profile injection fail: {e}")
+
+    def _install_webgraph(self) -> None:
+        try:
+            from cortex.webgraph.setup import (
+                get_missing_webgraph_dependencies,
+                install_webgraph,
+            )
+
+            if install_webgraph(self.root, interactive=False):
+                self.created.append(".cortex/webgraph/ (configured)")
+            else:
+                missing = get_missing_webgraph_dependencies()
+                if missing:
+                    self.warnings.append(
+                        "Webgraph dependencies could not be installed automatically: "
+                        + ", ".join(missing)
+                        + ". Retry with: pip install -e '.[webgraph]' or pip install 'cortex-memory[webgraph]'"
+                    )
+                else:
+                    self.warnings.append("Webgraph setup did not complete.")
+        except Exception as e:
+            self.warnings.append(f"Webgraph setup fail: {e}")
 
     def _init_memory(self) -> None:
         try:

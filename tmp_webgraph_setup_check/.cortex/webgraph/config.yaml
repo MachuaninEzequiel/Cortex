@@ -1,0 +1,12 @@
+server_host: 127.0.0.1
+server_port: 8765
+auto_open_browser: true
+default_mode: hybrid
+semantic_neighbor_threshold: 0.82
+semantic_neighbor_max_edges_per_node: 2
+semantic_neighbor_max_nodes: 220
+enable_semantic_neighbors: true
+max_subgraph_depth: 2
+ignored_tags:
+- release-2
+- general

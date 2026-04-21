@@ -16,7 +16,7 @@ import logging
 import math
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from cortex.episodic.embedder import Embedder
 from cortex.semantic.markdown_parser import MarkdownParser
@@ -250,6 +250,23 @@ class VaultReader:
     def count(self) -> int:
         self._ensure_loaded()
         return len(self._index)
+
+    def iter_documents(self) -> Iterable[tuple[str, SemanticDocument]]:
+        """
+        Iterate over indexed semantic documents.
+
+        Returns:
+            Tuples of ``(relative_path, SemanticDocument)``.
+
+        Notes:
+            - This is a read-only public view for downstream consumers such as
+              ``cortex.webgraph``.
+            - Callers receive model copies so they cannot mutate the in-memory
+              index held by ``VaultReader``.
+        """
+        self._ensure_loaded()
+        for rel_path, doc in self._index.items():
+            yield rel_path, doc.model_copy(deep=True)
 
     # ------------------------------------------------------------------
     # Write operations

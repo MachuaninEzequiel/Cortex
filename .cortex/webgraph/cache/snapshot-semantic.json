@@ -1,0 +1,419 @@
+{
+  "version": "2.0",
+  "fingerprint": "c5933ade58f38b1318457b8c579718121092d8fbbb24d1ce7718c26db86625ac",
+  "generated_at": "2026-04-21T13:28:48.536459+00:00",
+  "mode": "semantic",
+  "stats": {
+    "node_count": 18,
+    "edge_count": 5,
+    "mode": "semantic",
+    "truncated": false
+  },
+  "capabilities": {
+    "filters": true,
+    "subgraph": true,
+    "open_file": true,
+    "relation_explanations": true
+  },
+  "nodes": [
+    {
+      "id": "semantic:decisions/ADR-001-hybrid-search-fusion.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "ADR-001: Hybrid Search Cross-Source Fusion",
+      "summary": "# ADR-001: Hybrid Search Cross-Source Fusion ## Context Cortex uses Reciprocal Rank Fusion (RRF) to combine episodic memories (PRs, sessions) and semantic documents (Vault notes). The initial implementation used source-…",
+      "rel_path": "decisions/ADR-001-hybrid-search-fusion.md",
+      "memory_id": null,
+      "tags": [
+        "architecture",
+        "retrieval",
+        "rrf",
+        "memory"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 1,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\decisions\\ADR-001-hybrid-search-fusion.md"
+      }
+    },
+    {
+      "id": "semantic:auth.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "Authentication System",
+      "summary": "# Authentication System This document describes the auth architecture used in the project. ## Overview The auth system uses JWT-based refresh tokens with a middleware layer that validates sessions on every protected rou…",
+      "rel_path": "auth.md",
+      "memory_id": null,
+      "tags": [
+        "auth",
+        "security",
+        "backend"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 2,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\auth.md"
+      }
+    },
+    {
+      "id": "semantic:getting_started.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "Getting Started",
+      "summary": "# Getting Started with Cortex Add your markdown notes here. Cortex will index them automatically.",
+      "rel_path": "getting_started.md",
+      "memory_id": null,
+      "tags": [
+        "cortex",
+        "intro"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\getting_started.md"
+      }
+    },
+    {
+      "id": "semantic:incidents/2026-04-15_incidente-perfiles-sync-work-engram.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "Incidente: Desviación de Comportamiento y Confusión de Identidad (Sync vs Work)",
+      "summary": "# Incidente: Desviación de Comportamiento y Confusión de Identidad ## Descripción del Problema Se ha detectado una falla crítica en la ejecución de los perfiles `Cortex-Sync` y `Cortex-Work`. Durante una sesión de prueb…",
+      "rel_path": "incidents/2026-04-15_incidente-perfiles-sync-work-engram.md",
+      "memory_id": null,
+      "tags": [
+        "incidente",
+        "gobernanza",
+        "prompts",
+        "perfiles"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\incidents\\2026-04-15_incidente-perfiles-sync-work-engram.md"
+      }
+    },
+    {
+      "id": "semantic:architecture/release-2-known-weaknesses.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "Release 2 Known Weaknesses and Hardening Backlog",
+      "summary": "# Release 2 Known Weaknesses and Hardening Backlog > [!info] > This note captures implementation weaknesses confirmed during the initial > architecture review for Release 2. The goal is not to interrupt the current > fe…",
+      "rel_path": "architecture/release-2-known-weaknesses.md",
+      "memory_id": null,
+      "tags": [
+        "architecture",
+        "technical-debt",
+        "release-2",
+        "hardening",
+        "backlog"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 3,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\architecture\\release-2-known-weaknesses.md"
+      }
+    },
+    {
+      "id": "semantic:architecture.md",
+      "node_type": "semantic_doc",
+      "source": "semantic",
+      "label": "System Architecture",
+      "summary": "# System Architecture High-level overview of the project structure and design decisions. ## Stack | Layer | Technology | |-------------|-------------------| | API | Node.js / Express | | Auth | JWT + Redis | | Database…",
+      "rel_path": "architecture.md",
+      "memory_id": null,
+      "tags": [
+        "architecture",
+        "backend",
+        "overview"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 4,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\architecture.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_choreide-rename-cortex-init-to-cortex-sync.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "chore(ide): rename 'cortex-init' to 'cortex-sync'",
+      "summary": "# chore(ide): rename 'cortex-init' to 'cortex-sync' > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper doc…",
+      "rel_path": "sessions/2026-04-15_choreide-rename-cortex-init-to-cortex-sync.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_choreide-rename-cortex-init-to-cortex-sync.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_docscambio-de-logo.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "Docs/cambio de logo",
+      "summary": "# Docs/cambio de logo > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper docs > next time using your AI ag…",
+      "rel_path": "sessions/2026-04-15_docscambio-de-logo.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_docscambio-de-logo.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_docs-add-early-adopter-installation-note-to-readme.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "docs: add early adopter installation note to README",
+      "summary": "# docs: add early adopter installation note to README > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper d…",
+      "rel_path": "sessions/2026-04-15_docs-add-early-adopter-installation-note-to-readme.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_docs-add-early-adopter-installation-note-to-readme.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_docs-document-mcp-server-integration-for-ides.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "docs: document MCP server integration for IDEs",
+      "summary": "# docs: document MCP server integration for IDEs > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper docs >…",
+      "rel_path": "sessions/2026-04-15_docs-document-mcp-server-integration-for-ides.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_docs-document-mcp-server-integration-for-ides.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_docs-formalize-project-structure-and-extensive-architectural-docs.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "docs: formalize project structure and extensive architectural docs",
+      "summary": "# docs: formalize project structure and extensive architectural docs > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider w…",
+      "rel_path": "sessions/2026-04-15_docs-formalize-project-structure-and-extensive-architectural-docs.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_docs-formalize-project-structure-and-extensive-architectural-docs.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_featretrieval-finalize-memory-engine-optimization-and-formal-docs.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "feat(retrieval): finalize memory engine optimization and formal docs",
+      "summary": "# feat(retrieval): finalize memory engine optimization and formal docs > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider…",
+      "rel_path": "sessions/2026-04-15_featretrieval-finalize-memory-engine-optimization-and-formal-docs.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_featretrieval-finalize-memory-engine-optimization-and-formal-docs.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-14_feat-add-login-implementation-with-jwt-placeholder.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "feat: add login implementation with jwt placeholder",
+      "summary": "# feat: add login implementation with jwt placeholder > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper d…",
+      "rel_path": "sessions/2026-04-14_feat-add-login-implementation-with-jwt-placeholder.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-14_feat-add-login-implementation-with-jwt-placeholder.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_feat-integración-de-instalador-ide-y-servidor-mcp.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "feat: Integración de Instalador IDE y servidor MCP",
+      "summary": "# feat: Integración de Instalador IDE y servidor MCP > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper do…",
+      "rel_path": "sessions/2026-04-15_feat-integración-de-instalador-ide-y-servidor-mcp.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_feat-integración-de-instalador-ide-y-servidor-mcp.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_fix-serialize-display_title-to-fix-empty-memory-titles-in-ci.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "fix: serialize display_title to fix empty memory titles in CI",
+      "summary": "# fix: serialize display_title to fix empty memory titles in CI > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writin…",
+      "rel_path": "sessions/2026-04-15_fix-serialize-display_title-to-fix-empty-memory-titles-in-ci.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_fix-serialize-display_title-to-fix-empty-memory-titles-in-ci.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_memory-engine-optimization.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "Memory Engine Optimization & CI Visualization Fix",
+      "summary": "# Session: Memory Engine Optimization & CI Visualization Fix ## Summary Optimized the retrieval engine to support additive cross-source fusion (RRF) and fixed a critical visualization bug in the CI/CD pipeline where mem…",
+      "rel_path": "sessions/2026-04-15_memory-engine-optimization.md",
+      "memory_id": null,
+      "tags": [
+        "memory",
+        "rrf",
+        "bug-fix",
+        "ci-cd",
+        "windows"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_memory-engine-optimization.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_perf-onnx-migration-dual-profile-strategy.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "perf: ONNX migration & Dual-Profile strategy",
+      "summary": "# perf: ONNX migration & Dual-Profile strategy > [!warning] Fallback Documentation > This note was auto-generated by Cortex because no agent-written > documentation was found in this PR. Consider writing proper docs > n…",
+      "rel_path": "sessions/2026-04-15_perf-onnx-migration-dual-profile-strategy.md",
+      "memory_id": null,
+      "tags": [
+        "session"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_perf-onnx-migration-dual-profile-strategy.md"
+      }
+    },
+    {
+      "id": "semantic:sessions/2026-04-15_stabilization-milestone-complete.md",
+      "node_type": "semantic_session",
+      "source": "semantic",
+      "label": "Project Stabilization Milestone Complete",
+      "summary": "# Session: Project Stabilization Milestone Complete ## Summary Successfully completed the stabilization phase of the Cortex ecosystem. The system now features a professional identity (Logo/README), a robust hybrid memor…",
+      "rel_path": "sessions/2026-04-15_stabilization-milestone-complete.md",
+      "memory_id": null,
+      "tags": [
+        "milestone",
+        "stabilization",
+        "memory",
+        "ci-cd",
+        "docs"
+      ],
+      "files": [],
+      "timestamp": null,
+      "degree": 0,
+      "metadata": {
+        "abs_path": "D:\\DevSecDocOps\\DevSecDocOps-3erCortex\\cortex-repo\\cortex\\vault\\sessions\\2026-04-15_stabilization-milestone-complete.md"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "wikilink:semantic:architecture.md:semantic:auth.md",
+      "source": "semantic:architecture.md",
+      "target": "semantic:auth.md",
+      "edge_type": "wikilink",
+      "weight": 1.0,
+      "evidence": [
+        "auth"
+      ]
+    },
+    {
+      "id": "wikilink:semantic:architecture.md:semantic:architecture/release-2-known-weaknesses.md",
+      "source": "semantic:architecture.md",
+      "target": "semantic:architecture/release-2-known-weaknesses.md",
+      "edge_type": "wikilink",
+      "weight": 1.0,
+      "evidence": [
+        "release-2-known-weaknesses"
+      ]
+    },
+    {
+      "id": "wikilink:semantic:auth.md:semantic:architecture.md",
+      "source": "semantic:auth.md",
+      "target": "semantic:architecture.md",
+      "edge_type": "wikilink",
+      "weight": 1.0,
+      "evidence": [
+        "architecture"
+      ]
+    },
+    {
+      "id": "wikilink:semantic:architecture/release-2-known-weaknesses.md:semantic:architecture.md",
+      "source": "semantic:architecture/release-2-known-weaknesses.md",
+      "target": "semantic:architecture.md",
+      "edge_type": "wikilink",
+      "weight": 1.0,
+      "evidence": [
+        "architecture"
+      ]
+    },
+    {
+      "id": "wikilink:semantic:architecture/release-2-known-weaknesses.md:semantic:decisions/ADR-001-hybrid-search-fusion.md",
+      "source": "semantic:architecture/release-2-known-weaknesses.md",
+      "target": "semantic:decisions/ADR-001-hybrid-search-fusion.md",
+      "edge_type": "wikilink",
+      "weight": 1.0,
+      "evidence": [
+        "ADR-001-hybrid-search-fusion"
+      ]
+    }
+  ]
+}

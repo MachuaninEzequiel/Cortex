@@ -43,12 +43,14 @@ import typer
 import yaml
 
 from cortex.core import AgentMemory
+from cortex.webgraph.cli import app as webgraph_app
 
 app = typer.Typer(
     name="cortex",
     help="Cortex -- hybrid cognitive memory for AI agents.",
     add_completion=False,
 )
+app.add_typer(webgraph_app, name="webgraph")
 
 _DEFAULT_CONFIG = {
     "episodic": {
@@ -377,6 +379,26 @@ def setup_full(
     typer.echo("")
     orchestrator = SetupOrchestrator()
     summary = orchestrator.run(mode=SetupMode.FULL, git_depth=git_depth)
+    typer.echo(format_summary(summary))
+
+
+@setup_app.command(name="webgraph")
+def setup_webgraph(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be done without making changes."
+    ),
+) -> None:
+    """
+    Setup only the hybrid memory visualization module.
+    """
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    del dry_run
+    typer.echo("🧠 Cortex — Setting up WebGraph profile...")
+    typer.echo("")
+
+    orchestrator = SetupOrchestrator()
+    summary = orchestrator.run(mode=SetupMode.WEBGRAPH)
     typer.echo(format_summary(summary))
 
 
