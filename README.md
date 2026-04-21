@@ -46,7 +46,7 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 
 ## El Modelo de Ejecución Tripartito (SDDwork)
 
-La Release 2.0 introduce **Cortex-SDDwork**, un sistema de orquestación donde la responsabilidad se divide en tres roles especializados para maximizar la precisión:
+La Pre-Release 2.0 introduce un sistema de orquestación donde la responsabilidad se divide en tres roles especializados para maximizar la precisión:
 
 ### 1. `Cortex-sync` (El Analista / SPECsWriter)
 
