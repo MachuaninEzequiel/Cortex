@@ -160,8 +160,10 @@ class SetupOrchestrator:
         self.skipped.extend(f"{path} (already exists)" for path in result["skipped"])
 
     def _install_skills(self) -> None:
-        """Copy bundled Obsidian skills into project's .cortex/skills/."""
+        """Copy bundled Obsidian skills into project's .cortex/skills/ and .qwen/skills/."""
         from cortex.skills import install_skills as _inst
+
+        # Primary: .cortex/skills/ (Release 2 location)
         cortex_skills = self.root / ".cortex" / "skills"
         installed = _inst(cortex_skills)
         for skill in installed:
@@ -169,6 +171,15 @@ class SetupOrchestrator:
                 self.skipped.append(f".cortex/skills/{skill}")
             else:
                 self.created.append(f".cortex/skills/{skill}")
+
+        # Legacy: .qwen/skills/ (backward-compatible location for Qwen-based IDEs)
+        qwen_skills = self.root / ".qwen" / "skills"
+        legacy_installed = _inst(qwen_skills)
+        for skill in legacy_installed:
+            if "already exists" in skill:
+                self.skipped.append(f".qwen/skills/{skill} (already exists)")
+            else:
+                self.created.append(f".qwen/skills/{skill}")
 
     def _check_vault_pipeline_interactive(self) -> None:
         vp = self.root / "vault"
@@ -256,4 +267,11 @@ def format_summary(summary: dict) -> str:
         lines.append("  ⚠ Warnings:")
         for w in summary["warnings"]: lines.append(f"    • {w}")
     lines.append("═"*55)
+    lines.append("")
+    lines.append("🚀 Next steps:")
+    lines.append("  1. Open this project in VS Code, Cursor, or your preferred IDE.")
+    lines.append("  2. Install the Cortex MCP extension and connect it.")
+    lines.append("  3. Run `cortex setup pipeline` to configure CI/CD workflows.")
+    lines.append("  4. Use cortex-sync inside the IDE to start a session.")
+    lines.append("")
     return "\n".join(lines)

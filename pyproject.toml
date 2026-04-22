@@ -52,6 +52,7 @@ dev = [
     "ruff",
     "mypy",
     "pre-commit",
+    "hypothesis",
 ]
 all = ["cortex-memory[local,openai,anthropic,ollama,webgraph,dev]"]
 

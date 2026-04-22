@@ -64,21 +64,21 @@ Si los tres pasan sin errores, estás listo. 🎉
 
 Cortex sigue una arquitectura modular en capas:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │         CLI Layer (Typer)           │  ← Interfaz usuario
 ├─────────────────────────────────────┤
-│       Core Orchestrator             │  ← AgentMemory (core.py)
+│   Facade Orchestrator & Services    │  ← core.py (Facade) + services/
 ├──────────────┬──────────────────────┤
 │   Episodic   │   Semantic Memory    │  ← Capas de memoria
 │  (ChromaDB)  │  (Markdown Vault)    │
 ├──────────────┴──────────────────────┤
-│     Retrieval Engine (Hybrid RRF)   │  ← Fusión de resultados
+│  Retrieval Engine (Adaptive RRF)    │  ← Fusión inteligente de resultados
 ├──────────────┬──────────────────────┤
-│     ONNX     │   Context Enricher   │  ← Embeddings + Contexto
-│   Embedder   │  (Proactive Inject)  │
+│ Embedder     │  Async Context       │  ← Carga perezosa + Concurrencia
+│ Factory      │  Enricher            │
 ├──────────────┴──────────────────────┤
-│          MCP Server Layer           │  ← Integración IDE
+│          MCP Server Layer           │  ← Integración IDE (Delegación paralela)
 └─────────────────────────────────────┘
 ```
 
@@ -86,13 +86,14 @@ Cortex sigue una arquitectura modular en capas:
 
 | Módulo                         | Responsabilidad                                                              |
 | ------------------------------ | ---------------------------------------------------------------------------- |
-| `core.py`                      | Orquestador principal (`AgentMemory`). Solo delega, nunca lógica de negocio. |
+| `core.py`                      | Fachada principal (`AgentMemory`). Solo delega a la capa de servicios.       |
+| `services/`                    | Lógica de negocio (ej. `pr_service.py`, `spec_service.py`).                  |
+| `pipeline/`                    | Abstracciones formales para CI/CD y DevSecDocOps.                            |
 | `episodic/memory_store.py`     | Interfaz con ChromaDB. Almacena eventos: CI logs, PR summaries.              |
 | `semantic/vault_reader.py`     | Lee archivos Markdown del Vault (Obsidian-compatible).                       |
-| `retrieval/hybrid_search.py`   | RRF cross-source: episódico y semántico compiten en ranking unificado.       |
-| `embedders/onnx_embedder.py`   | Backend default (<1ms, sin deps pesadas).                                    |
-| `enricher/context_enricher.py` | Analiza archivos modificados y sugiere contexto proactivamente.              |
-| `cli/main.py`                  | App Typer. Lógica mínima aquí, delegar al core.                              |
+| `retrieval/hybrid_search.py`   | Búsqueda adaptativa RRF con pesos dinámicos.                                 |
+| `embedders/factory.py`         | Instanciación perezosa de backends (ONNX, OpenAI, Local).                    |
+| `enricher/context_enricher.py` | Resolución asíncrona concurrente de contexto proactivo.                      |
 
 ---
 
@@ -150,9 +151,11 @@ Un commit = un cambio lógico. PRs pequeños y enfocados siempre ganan.
 ```bash
 pytest                                          # Suite completa
 pytest --cov=cortex --cov-report=term-missing  # Con coverage
-pytest tests/test_retrieval/ -v                # Un módulo específico
+pytest tests/unit/retrieval/ -v                # Un módulo específico
 pytest -k "rrf"                                # Por nombre de test
 ```
+
+Nuestra suite está dividida en `tests/unit/`, `tests/integration/` y `tests/e2e/`. Usamos *Hypothesis* para property-based testing en algoritmos complejos.
 
 **Qué hace un buen test:**
 

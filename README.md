@@ -294,26 +294,23 @@ pip install cortex-memory[all]
 Cortex/
 ├── cortex/                    # Paquete principal
 │   ├── cli/                   # Interfaz de línea de comandos (Typer)
-│   │   └── main.py            # Punto de entrada CLI
-│   ├── core.py                # Orquestador principal (AgentMemory)
+│   ├── core.py                # Fachada Principal (AgentMemory)
+│   ├── pipeline/              # Workflows CI/CD y DevSecDocOps 🆕
+│   ├── services/              # Capa de servicios inyectados 🆕
 │   ├── models.py              # Modelos Pydantic (config, datos)
 │   ├── episodic/              # Memoria episódica (ChromaDB + ONNX)
-│   │   └── memory_store.py    # Almacenamiento vectorial
 │   ├── semantic/              # Memoria semántica (Vault Markdown)
-│   │   └── vault_reader.py    # Lector de vault Obsidian-compatible
-│   ├── retrieval/             # Motor de búsqueda híbrida
-│   │   └── hybrid_search.py   # RRF cross-source fusion
-│   ├── embedders/             # Backends de embeddings
-│   │   ├── onnx_embedder.py   # ONNX Runtime (default, <1ms)
-│   │   └── local_embedder.py  # sentence-transformers (backup)
-│   ├── enricher/              # Context Enricher proactivo
-│   │   └── context_enricher.py
+│   ├── retrieval/             # Motor de búsqueda híbrida (Adaptive RRF) 🆕
+│   ├── embedders/             # Backends de embeddings (Factory) 🆕
+│   ├── enricher/              # Context Enricher proactivo (Async) 🆕
 │   ├── hooks/                 # Decorators para agents
-│   │   └── agent_hooks.py     # @cortex_hook decorator
-│   ├── mcp_server.py          # Servidor MCP universal
-│   └── webgraph/              # Visualización de grafos (optional)
-├── tests/                     # Suite de tests (pytest)
-│   └── conftest.py            # Fixtures compartidos
+│   ├── mcp/                   # Integración Universal IDE 🆕
+│   │   └── server.py          # Servidor MCP con task delegation
+│   └── webgraph/              # Visualización de grafos (Seguridad Local) 🆕
+├── tests/                     # Suite de tests (pytest 100% coverage)
+│   ├── unit/                  # Tests unitarios y matemáticos (Hypothesis) 🆕
+│   ├── integration/           # Tests de integración MCP y CLI 🆕
+│   └── e2e/                   # Pruebas end-to-end 🆕
 ├── docs/                      # Documentación extendida
 ├── examples/                  # Ejemplos de uso
 ├── scripts/                   # Utilidades DevOps
@@ -392,7 +389,27 @@ mypy cortex/          # Type checking
 
 ## Changelog Reciente
 
-### v2.0.0 (Release Actual) — 17 Mejoras Críticas
+### v2.4.0 (Architectural Overhaul) — Estabilización y Calidad Total
+
+**🔴 Core & Pipeline:**
+- ✅ `core.py` refactorizado en Fachada + inyección de `services/`.
+- ✅ Nuevo módulo `cortex/pipeline/` para abstracciones DevSecDocOps (reemplaza scripts bash).
+- ✅ Servidor MCP mejorado con delegación paralela (`_delegate_task`, `_delegate_batch`).
+
+**🟡 Inteligencia y Velocidad:**
+- ✅ **Adaptive RRF**: Los pesos de fusión se ajustan dinámicamente según la intención de búsqueda.
+- ✅ **Async Context Enricher**: Resolución concurrente con `asyncio.gather` eliminando latencias bloqueantes.
+- ✅ **Embedders Factory**: Carga perezosa de backends (ONNX, local, openai) optimizando el startup del CLI.
+
+**🟢 Calidad & Seguridad:**
+- ✅ Tests reestructurados en `unit/`, `integration/` y `e2e/`.
+- ✅ **Property-Based Testing** (Hypothesis) implementado para probar límites matemáticos del RRF.
+- ✅ **Contract Testing** parametrizado para cualquier nuevo backend de embeddings.
+- ✅ **WebGraph Security**: Protección contra CSRF en localhost vía token `X-Cortex-WebGraph` y canvas UI estable.
+
+---
+
+### v2.0.0 (Pre-Release) — Base Inicial
 
 **🔴 Fixes Críticos:**
 

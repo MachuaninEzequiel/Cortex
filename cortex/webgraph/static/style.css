@@ -132,14 +132,24 @@ button:disabled {
     font-weight: 700;
 }
 
-.network-canvas {
-    flex: 1 1 auto;
+.network-wrapper {
+    flex: 1;
+    position: relative;
     min-height: 580px;
     border-radius: 16px;
     border: 1px solid rgba(24, 48, 69, 0.1);
     background:
         radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.7), transparent 26%),
         linear-gradient(180deg, rgba(245, 249, 252, 0.95), rgba(228, 237, 245, 0.96));
+    overflow: hidden;
+}
+
+.network-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .detail-panel {

@@ -35,7 +35,7 @@ episodic:
   persist_dir: .memory/chroma
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
-  embedding_backend: onnx
+  embedding_backend: local
 
 semantic:
   vault_path: vault

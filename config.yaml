@@ -45,3 +45,29 @@ context_enricher:
     keywords: true                   # Search by extracted keywords
     pr_title: true                   # Search by PR title
     graph_expansion: true            # Co-occurrence boost
+
+# ── Pipeline (DevSecDocOps CI/CD gates) ──────────────────────────
+pipeline:
+  # Abort pipeline on first blocking gate failure (true = strict mode)
+  abort_early: true
+
+  # Stages and their gate configuration
+  # Order matters — stages run in the order listed here.
+  stages:
+    security:
+      enabled: true
+      block_on_failure: true         # Fails on HIGH/CRITICAL vulnerabilities
+      audit_level: high              # low | moderate | high | critical
+
+    lint:
+      enabled: true
+      block_on_failure: true         # Lint errors block the merge
+
+    test:
+      enabled: true
+      block_on_failure: true
+      min_coverage: 0                # 0 = no coverage enforcement. Set to e.g. 85
+
+    documentation:
+      enabled: true
+      block_on_failure: false        # Missing docs warns but does not block
