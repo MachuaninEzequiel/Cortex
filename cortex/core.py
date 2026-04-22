@@ -1,8 +1,30 @@
 """
 cortex.core
 -----------
-Main AgentMemory class. Unified interface that wires together
-episodic memory, semantic memory and the hybrid retrieval engine.
+``AgentMemory`` — the unified public façade for the Cortex memory system.
+
+Architecture (v2.3 — Hexagonal / Services Layer)
+-------------------------------------------------
+``AgentMemory`` is now a **thin façade**. It wires together the
+infrastructure layer (episodic store, semantic store, retriever) and
+delegates all business logic to dedicated domain services:
+
+- ``SpecService``    → create_spec_note()
+- ``SessionService`` → save_session_note()
+- ``PRService``      → store_pr_context(), generate_pr_docs(), write_pr_docs()
+
+The façade keeps a stable public API so that no consumer (CLI, MCP
+server, hooks, external code) needs to change.
+
+Infrastructure dependencies are wired via dependency injection in
+``__init__``, making each component independently testable.
+
+Quick start::
+
+    memory = AgentMemory()
+    memory.remember("Fixed login refresh token bug in auth.ts", tags=["bugfix", "auth"])
+    results = memory.retrieve("login bug")
+    print(results.to_prompt())
 """
 
 from __future__ import annotations
@@ -15,7 +37,6 @@ from pydantic import BaseModel, Field
 
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.episodic.summarizer import Summarizer
-from cortex.documentation import write_session_note, write_spec_note
 from cortex.models import (
     EnrichedContext,
     GeneratedDoc,
@@ -25,6 +46,9 @@ from cortex.models import (
 )
 from cortex.retrieval.hybrid_search import HybridSearch
 from cortex.semantic.vault_reader import VaultReader
+from cortex.services.pr_service import PRService
+from cortex.services.session_service import SessionService
+from cortex.services.spec_service import SpecService
 
 # ------------------------------------------------------------------
 # Config models — validated with Pydantic
@@ -59,6 +83,10 @@ class CortexConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
 
+# ------------------------------------------------------------------
+# AgentMemory — the public façade
+# ------------------------------------------------------------------
+
 class AgentMemory:
     """
     Hybrid cognitive memory for LLM agents.
@@ -68,6 +96,11 @@ class AgentMemory:
     - Semantic memory  → markdown knowledge base (Obsidian-compatible,
       **vector-embedded** for true semantic search)
     - Hybrid retrieval → cross-source Reciprocal Rank Fusion
+
+    Business logic is delegated to domain services:
+    - :class:`~cortex.services.SpecService`
+    - :class:`~cortex.services.SessionService`
+    - :class:`~cortex.services.PRService`
 
     Quick start::
 
@@ -82,6 +115,7 @@ class AgentMemory:
         self._raw_config = self._load_config(self._config_path)
         self.config = self._validate_config(self._raw_config)
 
+        # --- Infrastructure layer (wired here, injected into services) ---
         self.episodic = EpisodicMemoryStore(
             persist_dir=self.config.episodic.persist_dir,
             embedding_model=self.config.episodic.embedding_model,
@@ -105,8 +139,24 @@ class AgentMemory:
             semantic_weight=self.config.retrieval.semantic_weight,
         )
 
+        # --- Domain services (injected with infrastructure dependencies) ---
+        self._spec_service = SpecService(
+            vault_path=self.config.semantic.vault_path,
+            semantic=self.semantic,
+            episodic=self.episodic,
+        )
+        self._session_service = SessionService(
+            vault_path=self.config.semantic.vault_path,
+            semantic=self.semantic,
+            episodic=self.episodic,
+        )
+        self._pr_service = PRService(
+            vault_path=self.config.semantic.vault_path,
+            episodic=self.episodic,
+        )
+
     # ------------------------------------------------------------------
-    # Public API
+    # Core memory API
     # ------------------------------------------------------------------
 
     def remember(
@@ -132,20 +182,19 @@ class AgentMemory:
             The stored MemoryEntry with its generated ID.
         """
         text = self.summarizer.compress(content) if summarize else content
-        entry = self.episodic.add(
+        return self.episodic.add(
             content=text,
             memory_type=memory_type,
             tags=tags or [],
             files=files or [],
         )
-        return entry
 
     def retrieve(
         self,
         query: str,
         *,
         top_k: int | None = None,
-        use_embeddings: bool = True
+        use_embeddings: bool = True,
     ) -> RetrievalResult:
         """
         Query both memory layers and return ranked, fused results.
@@ -156,12 +205,29 @@ class AgentMemory:
         Args:
             query:          Natural-language query string.
             top_k:          Max results (overrides config).
-            use_embeddings: If False, skips vector search (Bypass ONNX load).
+            use_embeddings: If False, skips vector search (bypasses ONNX load).
 
         Returns:
             RetrievalResult with ranked, deduplicated hits.
         """
         return self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
+
+    def forget(self, memory_id: str) -> bool:
+        """Delete a specific episodic memory by ID."""
+        return self.episodic.delete(memory_id)
+
+    def stats(self) -> dict[str, Any]:
+        """Return basic stats about both memory stores."""
+        return {
+            "episodic_count": self.episodic.count(),
+            "semantic_docs": self.semantic.count(),
+            "vault_path": str(self.semantic.vault_path),
+            "persist_dir": str(self.episodic.persist_dir),
+        }
+
+    # ------------------------------------------------------------------
+    # Semantic vault API
+    # ------------------------------------------------------------------
 
     def create_note(
         self,
@@ -173,8 +239,6 @@ class AgentMemory:
     ) -> Path:
         """
         Create a new markdown note in the semantic vault.
-
-        This is a convenience delegation to ``self.semantic.create_note``.
 
         Args:
             title:      Note title.
@@ -196,59 +260,9 @@ class AgentMemory:
         """
         return self.semantic.sync()
 
-    def save_session_note(
-        self,
-        *,
-        title: str,
-        spec_summary: str,
-        changes_made: list[str] | None = None,
-        files_touched: list[str] | None = None,
-        key_decisions: list[str] | None = None,
-        next_steps: list[str] | None = None,
-        tags: list[str] | None = None,
-        sync_vault: bool = False, # Default to False (We use selective index now)
-        remember: bool = True,
-    ) -> Path:
-        """
-        Persist a structured session note into the vault and optionally remember it.
-        """
-        path = write_session_note(
-            self.config.semantic.vault_path,
-            title=title,
-            spec_summary=spec_summary,
-            changes_made=changes_made or [],
-            files_touched=files_touched or [],
-            key_decisions=key_decisions or [],
-            next_steps=next_steps or [],
-            tags=tags or [],
-        )
-
-        # SELECTIVE INDEXING (v2.22 Architecture)
-        # Vectorize ONLY the new session note to link it with its Spec.
-        rel_path = str(path.relative_to(self.config.semantic.vault_path))
-        self.semantic.index_file(rel_path)
-
-        if sync_vault:
-            self.sync_vault()
-
-        if remember:
-            summary_parts = [
-                f"Session: {title}",
-                f"Specification: {spec_summary}",
-            ]
-            if changes_made:
-                summary_parts.append("Changes: " + "; ".join(changes_made[:8]))
-            if key_decisions:
-                summary_parts.append("Decisions: " + "; ".join(key_decisions[:5]))
-
-            self.remember(
-                "\n".join(summary_parts),
-                memory_type="session",
-                tags=["session"] + list(tags or []),
-                files=files_touched or [],
-            )
-
-        return path
+    # ------------------------------------------------------------------
+    # Spec workflow — delegated to SpecService
+    # ------------------------------------------------------------------
 
     def create_spec_note(
         self,
@@ -260,60 +274,64 @@ class AgentMemory:
         constraints: list[str] | None = None,
         acceptance_criteria: list[str] | None = None,
         tags: list[str] | None = None,
-        sync_vault: bool = False, # Default to False
+        sync_vault: bool = False,
         remember: bool = True,
     ) -> Path:
         """
-        Persist an implementation spec into the vault and optionally remember it.
+        Persist an implementation spec into the vault.
+
+        Delegates to :class:`~cortex.services.SpecService`.
+        See its ``create()`` method for full parameter documentation.
         """
-        path = write_spec_note(
-            self.config.semantic.vault_path,
+        return self._spec_service.create(
             title=title,
             goal=goal,
-            requirements=requirements or [],
-            files_in_scope=files_in_scope or [],
-            constraints=constraints or [],
-            acceptance_criteria=acceptance_criteria or [],
-            tags=tags or [],
+            requirements=requirements,
+            files_in_scope=files_in_scope,
+            constraints=constraints,
+            acceptance_criteria=acceptance_criteria,
+            tags=tags,
+            sync_vault=sync_vault,
+            remember=remember,
         )
 
-        # SELECTIVE INDEXING (v2.22 Architecture)
-        # Vectorize ONLY the new spec.
-        rel_path = str(path.relative_to(self.config.semantic.vault_path))
-        self.semantic.index_file(rel_path)
+    # ------------------------------------------------------------------
+    # Session workflow — delegated to SessionService
+    # ------------------------------------------------------------------
 
-        if sync_vault:
-            self.sync_vault()
+    def save_session_note(
+        self,
+        *,
+        title: str,
+        spec_summary: str,
+        changes_made: list[str] | None = None,
+        files_touched: list[str] | None = None,
+        key_decisions: list[str] | None = None,
+        next_steps: list[str] | None = None,
+        tags: list[str] | None = None,
+        sync_vault: bool = False,
+        remember: bool = True,
+    ) -> Path:
+        """
+        Persist a structured session note into the vault.
 
-        if remember:
-            summary_parts = [f"Specification: {title}", f"Goal: {goal}"]
-            if requirements:
-                summary_parts.append("Requirements: " + "; ".join(requirements[:8]))
-
-            self.remember(
-                "\n".join(summary_parts),
-                memory_type="spec",
-                tags=["spec"] + list(tags or []),
-                files=files_in_scope or [],
-            )
-
-        return path
-
-    def forget(self, memory_id: str) -> bool:
-        """Delete a specific episodic memory by ID."""
-        return self.episodic.delete(memory_id)
-
-    def stats(self) -> dict[str, Any]:
-        """Return basic stats about both memory stores."""
-        return {
-            "episodic_count": self.episodic.count(),
-            "semantic_docs": self.semantic.count(),
-            "vault_path": str(self.semantic.vault_path),
-            "persist_dir": str(self.episodic.persist_dir),
-        }
+        Delegates to :class:`~cortex.services.SessionService`.
+        See its ``create()`` method for full parameter documentation.
+        """
+        return self._session_service.create(
+            title=title,
+            spec_summary=spec_summary,
+            changes_made=changes_made,
+            files_touched=files_touched,
+            key_decisions=key_decisions,
+            next_steps=next_steps,
+            tags=tags,
+            sync_vault=sync_vault,
+            remember=remember,
+        )
 
     # ------------------------------------------------------------------
-    # PR Context & Documentation methods — DevSecDocOps
+    # PR / DevSecDocOps workflow — delegated to PRService
     # ------------------------------------------------------------------
 
     def store_pr_context(
@@ -327,42 +345,22 @@ class AgentMemory:
         """
         Store a PR context as an episodic memory.
 
+        Delegates to :class:`~cortex.services.PRService`.
+
         Args:
-            ctx: The PR context to store.
-            lint_result: ESLint/SAST result.
+            ctx:          The PR context to store.
+            lint_result:  ESLint/SAST result.
             audit_result: npm audit/SCA result.
-            test_result: Test suite result.
+            test_result:  Test suite result.
 
         Returns:
             The stored MemoryEntry.
         """
-        from cortex.pr_capture import enrich_with_pipeline
-
-        ctx = enrich_with_pipeline(
+        return self._pr_service.store_pr_context(
             ctx,
             lint_result=lint_result,
             audit_result=audit_result,
             test_result=test_result,
-        )
-
-        summary = (
-            f"PR #{ctx.pr_number}: {ctx.title} by {ctx.author} "
-            f"({ctx.source_branch} -> {ctx.target_branch})"
-        )
-        content_parts = [summary]
-        if ctx.body:
-            content_parts.append(f"\nDescription: {ctx.body[:500]}")
-        if ctx.diff_summary:
-            content_parts.append(f"\nDiff:\n{ctx.diff_summary}")
-        content_parts.append(f"\nLint: {ctx.lint_result or 'n/a'}")
-        content_parts.append(f"\nAudit: {ctx.audit_result or 'n/a'}")
-        content_parts.append(f"\nTests: {ctx.test_result or 'n/a'}")
-
-        return self.remember(
-            content="\n".join(content_parts),
-            memory_type="pr",
-            tags=["pr", ctx.author] + ctx.labels,
-            files=ctx.files_changed[:20],
         )
 
     def generate_pr_docs(
@@ -372,35 +370,19 @@ class AgentMemory:
         skip_types: list[str] | None = None,
     ) -> list[GeneratedDoc]:
         """
-        Generate documentation from a PR context.
+        Generate fallback documentation from a PR context.
 
-        Args:
-            ctx: The PR context to generate from.
-            skip_types: Document types to skip.
-
-        Returns:
-            List of GeneratedDoc objects (not yet written to disk).
+        Delegates to :class:`~cortex.services.PRService`.
         """
-        from cortex.doc_generator import DocGenerator
-
-        gen = DocGenerator(vault_path=self.config.semantic.vault_path)
-        return gen.generate_all(ctx, skip_types=skip_types or [])
+        return self._pr_service.generate_pr_docs(ctx, skip_types=skip_types)
 
     def write_pr_docs(self, docs: list[GeneratedDoc]) -> list[str]:
         """
         Write generated PR documents to the vault.
 
-        Args:
-            docs: List of GeneratedDoc to write.
-
-        Returns:
-            List of written file paths.
+        Delegates to :class:`~cortex.services.PRService`.
         """
-        from cortex.doc_generator import DocGenerator
-
-        gen = DocGenerator(vault_path=self.config.semantic.vault_path)
-        written = gen.write_docs(docs)
-        return [str(p) for p in written]
+        return self._pr_service.write_pr_docs(docs)
 
     def get_pr_context(self, query: str, *, top_k: int = 3) -> RetrievalResult:
         """
@@ -438,21 +420,17 @@ class AgentMemory:
 
         Args:
             changed_files: Files being modified.
-            keywords: Extracted keywords from the work.
-            pr_title: PR title (if from a PR).
-            pr_body: PR body (if from a PR).
-            pr_labels: PR labels (if from a PR).
-            top_k: Override default max items.
+            keywords:      Extracted keywords from the work.
+            pr_title:      PR title (if from a PR).
+            pr_body:       PR body (if from a PR).
+            pr_labels:     PR labels (if from a PR).
+            top_k:         Override default max items.
 
         Returns:
             EnrichedContext with deduplicated, ranked items.
         """
-        from cortex.context_enricher import (
-            ContextEnricher,
-            ContextObserver,
-        )
+        from cortex.context_enricher import ContextEnricher, ContextObserver
 
-        # Build observer input
         observer = ContextObserver()
         work = observer.observe_from_files(
             files=changed_files,
@@ -462,10 +440,7 @@ class AgentMemory:
             pr_labels=pr_labels or [],
         )
 
-        # Get config from YAML if available
         enricher_config = self._get_enricher_config()
-
-        # Enrich
         enricher = ContextEnricher(
             episodic=self.episodic,
             semantic=self.semantic,
@@ -473,23 +448,18 @@ class AgentMemory:
         )
         return enricher.enrich(work, top_k=top_k)
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
     def _get_enricher_config(self):
-        """
-        Build ContextEnricherConfig from YAML config.
-
-        Falls back to defaults if the section is missing.
-        """
+        """Build ContextEnricherConfig from raw YAML config."""
         from cortex.context_enricher import ContextEnricherConfig
-
         try:
             raw = self._raw_config.get("context_enricher", {})
             return ContextEnricherConfig(**raw)
         except Exception:
             return ContextEnricherConfig()
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _load_config(path: Path) -> dict:

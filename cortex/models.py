@@ -100,6 +100,8 @@ class RetrievalResult(BaseModel):
     episodic_hits: list[EpisodicHit] = Field(default_factory=list)
     semantic_hits: list[SemanticDocument] = Field(default_factory=list)
     unified_hits: list[UnifiedHit] = Field(default_factory=list)
+    # Adaptive RRF intent metadata (set when adaptive_weights=True)
+    intent: object | None = Field(default=None, exclude=True)
 
     def to_prompt(self, max_chars: int = 4000) -> str:
         """

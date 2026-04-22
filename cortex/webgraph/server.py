@@ -29,6 +29,13 @@ def create_app(project_root: Path | None = None):
     if Compress is not None:
         Compress(app)
 
+    @app.before_request
+    def require_cortex_header():
+        if request.path.startswith("/api/"):
+            if request.headers.get("X-Cortex-WebGraph") != "1":
+                from flask import abort
+                abort(403, "Missing or invalid Cortex WebGraph security header.")
+
     @app.get("/")
     def index():
         return render_template("index.html", default_mode=config.default_mode)

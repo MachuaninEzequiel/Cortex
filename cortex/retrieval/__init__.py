@@ -1,3 +1,9 @@
 from cortex.retrieval.hybrid_search import HybridSearch
+from cortex.retrieval.intent import QueryIntentDetector, QueryIntent, IntentResult
 
-__all__ = ["HybridSearch"]
+__all__ = [
+    "HybridSearch",
+    "QueryIntentDetector",
+    "QueryIntent",
+    "IntentResult",
+]

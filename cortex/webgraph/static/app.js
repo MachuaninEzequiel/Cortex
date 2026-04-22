@@ -259,7 +259,9 @@ function buildNetwork(snapshot) {
 }
 
 async function loadSnapshot(mode = modeSelect.value) {
-  const response = await fetch(`/api/snapshot?mode=${encodeURIComponent(mode)}`);
+  const response = await fetch(`/api/snapshot?mode=${encodeURIComponent(mode)}`, {
+    headers: { "X-Cortex-WebGraph": "1" }
+  });
   if (!response.ok) {
     throw new Error(`Snapshot request failed with ${response.status}`);
   }
@@ -273,7 +275,9 @@ async function loadSnapshot(mode = modeSelect.value) {
 }
 
 async function selectNode(nodeId) {
-  const response = await fetch(`/api/node/${encodeURIComponent(nodeId)}?mode=${encodeURIComponent(modeSelect.value)}`);
+  const response = await fetch(`/api/node/${encodeURIComponent(nodeId)}?mode=${encodeURIComponent(modeSelect.value)}`, {
+    headers: { "X-Cortex-WebGraph": "1" }
+  });
   if (!response.ok) {
     throw new Error(`Node detail request failed with ${response.status}`);
   }
@@ -299,7 +303,10 @@ async function openNode(nodeId = selectedNode?.id) {
   }
   const response = await fetch("/api/open", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Cortex-WebGraph": "1"
+    },
     body: JSON.stringify({ node_id: nodeId }),
   });
   const payload = await response.json();
@@ -319,7 +326,9 @@ async function loadSubgraph(nodeId = selectedNode?.id) {
     depth: depthSelect.value,
     mode: modeSelect.value,
   });
-  const response = await fetch(`/api/subgraph?${params.toString()}`);
+  const response = await fetch(`/api/subgraph?${params.toString()}`, {
+    headers: { "X-Cortex-WebGraph": "1" }
+  });
   if (!response.ok) {
     throw new Error(`Subgraph request failed with ${response.status}`);
   }

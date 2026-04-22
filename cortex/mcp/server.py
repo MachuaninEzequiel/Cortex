@@ -425,3 +425,176 @@ class CortexMCPServer:
                     ),
                 ),
             )
+
+    # ------------------------------------------------------------------
+    # Subagent delegation layer (used by cortex-SDDwork flow)
+    # ------------------------------------------------------------------
+
+    def _store_task_result(
+        self,
+        agent_name: str,
+        status: str,
+        message: str,
+        task: str = "",
+    ) -> None:
+        """
+        Persist a subagent task result so it can be retrieved later
+        via ``_get_task_result``.
+
+        Args:
+            agent_name: Identifier of the subagent (e.g. 'cortex-code-explorer').
+            status:     Outcome status string ('success', 'error', etc.).
+            message:    Human-readable output from the subagent.
+            task:       Original task description that was delegated.
+        """
+        if not hasattr(self, "_task_results"):
+            self._task_results: dict[str, dict] = {}
+        self._task_results[agent_name] = {
+            "status": status,
+            "task": task,
+            "message": message,
+        }
+        logger.info(
+            "Stored task result: agent=%s status=%s task=%s",
+            agent_name, status, task[:60],
+        )
+
+    def _get_task_result(self, agent_name: str) -> str:
+        """
+        Retrieve a formatted summary of a stored subagent result.
+
+        Args:
+            agent_name: Identifier used when ``_store_task_result`` was called.
+
+        Returns:
+            Human-readable string with status, task, and message.
+        """
+        if not hasattr(self, "_task_results"):
+            self._task_results = {}
+
+        result = self._task_results.get(agent_name)
+        if result is None:
+            return f"No result found for subagent '{agent_name}'."
+
+        return (
+            f"Subagente: {agent_name}\n"
+            f"Estado: {result['status']}\n"
+            f"Tarea: {result['task']}\n"
+            f"Resultado: {result['message']}"
+        )
+
+    async def _delegate_task(
+        self,
+        agent_name: str,
+        task: str,
+        timeout_seconds: int | None = 60,
+    ) -> str:
+        """
+        Delegate a single task to a named subagent.
+
+        Attempts to invoke the subagent via ``opencode`` CLI if available.
+        Falls back to a deterministic "not available" message when the
+        binary is not present, so calling code can handle the degraded path.
+
+        Args:
+            agent_name:      Subagent profile name (e.g. 'cortex-code-explorer').
+            task:            Plain-text task description to send to the subagent.
+            timeout_seconds: Max seconds to wait for subagent completion.
+
+        Returns:
+            Subagent output string (or an error message if unavailable).
+        """
+        if not hasattr(self, "_task_results"):
+            self._task_results = {}
+
+        # Locate the subagent definition file
+        subagent_file = (
+            self.project_root / ".cortex" / "subagents" / f"{agent_name}.md"
+        )
+
+        # Check for the opencode runtime
+        opencode_bin = shutil.which("opencode")
+        if not opencode_bin:
+            msg = (
+                f"opencode binary not found. Cannot delegate to '{agent_name}'. "
+                "Install opencode or configure an alternative delegate runtime."
+            )
+            self._store_task_result(agent_name, "error", msg, task)
+            return msg
+
+        if not subagent_file.exists():
+            msg = f"Subagent definition not found: {subagent_file}"
+            self._store_task_result(agent_name, "error", msg, task)
+            return msg
+
+        try:
+            proc = await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    opencode_bin,
+                    "run",
+                    "--agent", str(subagent_file),
+                    "--task", task,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                ),
+                timeout=timeout_seconds,
+            )
+            stdout, stderr = await proc.communicate()
+            output = stdout.decode("utf-8", errors="replace").strip()
+            status = "success" if proc.returncode == 0 else "error"
+            if proc.returncode != 0:
+                output = stderr.decode("utf-8", errors="replace").strip() or output
+
+        except asyncio.TimeoutError:
+            output = f"Timeout after {timeout_seconds}s delegating to '{agent_name}'."
+            status = "timeout"
+        except Exception as exc:
+            output = f"Delegation error for '{agent_name}': {exc}"
+            status = "error"
+
+        self._store_task_result(agent_name, status, output, task)
+        return output
+
+    async def _delegate_batch(
+        self,
+        tasks: list[dict[str, str]],
+        timeout_seconds: int | None = 60,
+    ) -> str:
+        """
+        Delegate multiple tasks to subagents concurrently.
+
+        Each item in ``tasks`` must be a dict with ``agent`` and ``task`` keys.
+        All delegations run in parallel via ``asyncio.gather``.
+
+        Args:
+            tasks:           List of ``{agent: str, task: str}`` dicts.
+            timeout_seconds: Shared timeout applied to each delegation.
+
+        Returns:
+            Human-readable summary of all subagent results.
+        """
+        if not hasattr(self, "_task_results"):
+            self._task_results = {}
+
+        coroutines = [
+            self._delegate_task(
+                item["agent"],
+                item["task"],
+                timeout_seconds=timeout_seconds,
+            )
+            for item in tasks
+        ]
+        results = await asyncio.gather(*coroutines, return_exceptions=True)
+
+        lines = ["## Resultados de todos los subagentes", ""]
+        for item, result in zip(tasks, results):
+            agent = item["agent"]
+            if isinstance(result, Exception):
+                outcome = f"Error: {result}"
+            else:
+                outcome = str(result)
+            lines.append(f"### Subagente: {agent}")
+            lines.append(outcome)
+            lines.append("")
+
+        return "\n".join(lines)
