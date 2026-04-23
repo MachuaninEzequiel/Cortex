@@ -26,7 +26,7 @@ class WebGraphConfig(BaseModel):
         return root / ".cortex" / "webgraph" / "config.yaml"
 
     @classmethod
-    def load(cls, project_root: Path | None = None) -> "WebGraphConfig":
+    def load(cls, project_root: Path | None = None) -> WebGraphConfig:
         path = cls.default_path(project_root)
         if not path.exists():
             return cls()

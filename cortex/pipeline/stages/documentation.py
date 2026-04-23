@@ -157,9 +157,9 @@ class DocumentationStage:
     def _verify_docs(self, ctx: PipelineContext) -> bool:
         """Check whether agent-written docs exist for the current PR."""
         try:
-            from cortex.doc_verifier import DocVerifier  # type: ignore
+            from cortex.doc_verifier import DocVerifier
             verifier = DocVerifier(vault_path=str(ctx.vault_path))
-            status = verifier.verify(pr_ctx=self._pr_ctx)
+            status = verifier.verify_from_list(changed_files=self._pr_ctx.files_changed if self._pr_ctx else [])
             return bool(status and getattr(status, "has_agent_docs", False))
         except Exception as exc:
             logger.debug("Doc verification failed (non-blocking): %s", exc)

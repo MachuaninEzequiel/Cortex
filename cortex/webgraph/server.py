@@ -31,8 +31,7 @@ def create_app(project_root: Path | None = None):
 
     @app.before_request
     def require_cortex_header():
-        if request.path.startswith("/api/"):
-            if request.headers.get("X-Cortex-WebGraph") != "1":
+        if request.path.startswith("/api/") and request.headers.get("X-Cortex-WebGraph") != "1":
                 from flask import abort
                 abort(403, "Missing or invalid Cortex WebGraph security header.")
 

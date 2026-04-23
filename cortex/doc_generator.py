@@ -32,12 +32,12 @@ Usage
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-import re
+from typing import Any
 
 from cortex.models import GeneratedDoc, PRContext
-
 
 # ------------------------------------------------------------------
 # Fallback session template
@@ -171,7 +171,7 @@ class DocGenerator:
             written.append(target_file)
         return written
 
-    def generate_and_write(self, ctx: PRContext, **kwargs: str) -> list[Path]:
+    def generate_and_write(self, ctx: PRContext, **kwargs: Any) -> list[Path]:
         """One-shot: generate all docs from context and write them to vault."""
         docs = self.generate_all(ctx, **kwargs)
         return self.write_docs(docs)

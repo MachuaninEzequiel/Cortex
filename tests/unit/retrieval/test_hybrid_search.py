@@ -1,6 +1,5 @@
 """Tests for HybridSearch."""
 
-import pytest
 
 
 def test_search_returns_result(hybrid_search_mocks):

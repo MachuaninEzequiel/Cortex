@@ -88,7 +88,7 @@ class TestSetupOrchestrator:
     def test_installs_skills(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        skills_dir = orchestrator_no_memory.root / ".qwen" / "skills"
+        skills_dir = orchestrator_no_memory.root / ".cortex" / "skills"
         assert (skills_dir / "obsidian-markdown").exists()
         assert (skills_dir / "obsidian-markdown" / "SKILL.md").exists()
         assert (skills_dir / "obsidian-markdown" / "references").exists()
@@ -99,7 +99,7 @@ class TestSetupOrchestrator:
 
     def test_skips_existing_skills(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         root = orchestrator_no_memory.root
-        existing = root / ".qwen" / "skills" / "obsidian-markdown"
+        existing = root / ".cortex" / "skills" / "obsidian-markdown"
         existing.mkdir(parents=True)
         (existing / "SKILL.md").write_text("existing", encoding="utf-8")
 

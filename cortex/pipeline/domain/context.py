@@ -112,7 +112,8 @@ class PipelineContext:
             PipelineContext populated from GITHUB_* env vars.
         """
         import os
-        from cortex.pr_capture import _get_files_changed, _get_diff_summary  # type: ignore
+
+        from cortex.pr_capture import _get_files_changed  # type: ignore
 
         pr_number    = int(os.getenv("PR_NUMBER", "0"))
         pr_title     = os.getenv("PR_TITLE", os.getenv("GITHUB_EVENT_PR_TITLE", ""))
@@ -121,7 +122,7 @@ class PipelineContext:
         target_branch = os.getenv("TARGET_BRANCH", os.getenv("GITHUB_BASE_REF", "main"))
         commit_sha   = os.getenv("PR_COMMIT", os.getenv("GITHUB_SHA", ""))
         labels_raw   = os.getenv("PR_LABELS", "")
-        labels       = [l.strip() for l in labels_raw.split(",") if l.strip()]
+        labels       = [lbl.strip() for lbl in labels_raw.split(",") if lbl.strip()]
         changed_files = _get_files_changed(target_branch, commit_sha)
 
         return cls(

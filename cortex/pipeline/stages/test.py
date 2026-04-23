@@ -104,8 +104,7 @@ class TestStage:
                 )
 
             # Tests passed — now check coverage threshold
-            if self._min_coverage > 0 and coverage is not None:
-                if coverage < self._min_coverage:
+            if self._min_coverage > 0 and coverage is not None and coverage < self._min_coverage:
                     return StageResult(
                         stage_type=self.stage_type,
                         stage_name=self.name,

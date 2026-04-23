@@ -12,9 +12,8 @@ threshold and budget, and returns an EnrichedContext.
 from __future__ import annotations
 
 import logging
-import re
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.models import EnrichedContext, EnrichedItem, EpisodicHit
@@ -205,7 +204,7 @@ class ContextEnricher:
 
         # Phase 4c: Apply temporal decay (recent memories rank higher)
         if self.config.memory_decay:
-            from cortex.memory_decay import MemoryDecay, DecayConfig
+            from cortex.memory_decay import DecayConfig, MemoryDecay
             
             decay_config = DecayConfig(
                 decay_rate=0.995,
@@ -311,11 +310,11 @@ class ContextEnricher:
             return result.unified_hits
 
         # Fallback: combine episodic + semantic
-        hits = []
-        for hit in result.episodic_hits:
-            hits.append(("episodic", hit))
-        for hit in result.semantic_hits:
-            hits.append(("semantic", hit))
+        hits: list[Any] = []
+        for e_hit in result.episodic_hits:
+            hits.append(("episodic", e_hit))
+        for s_hit in result.semantic_hits:
+            hits.append(("semantic", s_hit))
         return hits
 
     def _hit_to_enriched_item(self, hit, strategy: str) -> EnrichedItem | None:

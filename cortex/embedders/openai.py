@@ -81,7 +81,7 @@ class OpenAIEmbedder:
 
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise EnvironmentError(
+            raise OSError(
                 "OPENAI_API_KEY environment variable not set. "
                 "Export it before using the OpenAI embedding backend."
             )

@@ -1,10 +1,10 @@
 """
 cortex.skills
 -------------
-Bundled Qwen Code skills for Obsidian Markdown documentation.
+Bundled Obsidian skills for Markdown documentation.
 
-These skills are installed into the project's .qwen/skills/ directory
-during ``cortex setup`` so that AI agents working on the project know
+These skills are installed into the project's .cortex/skills/ directory
+during ``cortex setup agent`` so that AI agents working on the project know
 how to write proper documentation.
 
 Available skills
@@ -19,9 +19,7 @@ Available skills
 from __future__ import annotations
 
 import importlib.resources
-import shutil
 from pathlib import Path
-
 
 SKILL_NAMES = [
     "obsidian-markdown",
@@ -39,7 +37,7 @@ def install_skills(target_dir: Path) -> list[str]:
     Parameters
     ----------
     target_dir : Path
-        Destination directory (typically ``.qwen/skills/``).
+        Destination directory (typically ``.cortex/skills/``).
 
     Returns
     -------

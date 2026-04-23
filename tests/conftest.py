@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import math
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Embedder helpers — bag-of-words deterministic vectors
@@ -127,8 +126,8 @@ def markdown_parser():
 @pytest.fixture
 def hybrid_search_mocks():
     """Return mock episodic store and semantic reader for HybridSearch tests."""
-    from cortex.retrieval.hybrid_search import HybridSearch
     from cortex.models import EpisodicHit, MemoryEntry, SemanticDocument
+    from cortex.retrieval.hybrid_search import HybridSearch
 
     mock_episodic = MagicMock()
     mock_episodic.search.return_value = [

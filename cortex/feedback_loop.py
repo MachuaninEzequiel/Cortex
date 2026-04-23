@@ -148,7 +148,7 @@ class ImplicitFeedbackAnalyzer:
             "did", "will", "would", "could", "should", "may", "might", "must",
             # Common code
             "function", "return", "class", "def", "import", "export", "const",
-            "let", "var", "if", "else", "for", "while", "switch", "case",
+            "let", "var", "if", "else", "while", "switch", "case",
         }
 
     def analyze(
@@ -329,7 +329,7 @@ class FeedbackCollector:
         
         feedback_by_id: dict[str, ImplicitFeedback] = {}
         
-        for item, feedback in zip(retrieved_items, results):
+        for item, feedback in zip(retrieved_items, results, strict=False):
             mem_id = item.get("id", "")
             if mem_id:
                 feedback_by_id[mem_id] = feedback

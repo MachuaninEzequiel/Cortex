@@ -13,11 +13,10 @@ Returns the best-matching domain only if confidence > threshold.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import numpy as np
-    from numpy.typing import NDArray
+    pass
 
 
 @dataclass
@@ -182,8 +181,8 @@ class DomainDetector:
 
     def __init__(self, min_confidence: float = 0.5) -> None:
         self.min_confidence = min_confidence
-        self._embedder = None
-        self._domain_centroids = {}
+        self._embedder: Any = None
+        self._domain_centroids: dict[str, Any] = {}
         self._initialize_embedding_fallback()
 
     def _initialize_embedding_fallback(self) -> None:

@@ -76,4 +76,5 @@ print(result.to_prompt())
 # ── 7. Stats ──────────────────────────────────────────────────
 print("\n📊 Memory stats:")
 import json
+
 print(json.dumps(memory.stats(), indent=2))

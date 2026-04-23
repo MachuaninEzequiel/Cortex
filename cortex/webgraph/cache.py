@@ -61,9 +61,9 @@ class WebGraphCache:
         return hasher.hexdigest()
 
     @staticmethod
-    def _hash_tree(hasher: "hashlib._Hash", root: Path) -> None:
+    def _hash_tree(hasher: hashlib._Hash, root: Path) -> None:
         if not root.exists():
-            hasher.update(f"missing:{root}".encode("utf-8"))
+            hasher.update(f"missing:{root}".encode())
             return
         for path in sorted(p for p in root.rglob("*") if p.is_file()):
             stat = path.stat()

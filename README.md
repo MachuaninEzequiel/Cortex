@@ -184,46 +184,166 @@ $ cortex search "error handling en middleware"
 
 ## Integración Universal (MCP Server)
 
-Cortex expone sus capacidades nativamente mediante el **Model Context Protocol (MCP)**. Configúralo en tu IDE favorito para que tus asistentes tengan "superpoderes" cognitivos:
+Cortex expone sus capacidades nativamente mediante el **Model Context Protocol (MCP)**. Configúralo en tu IDE favorito para que tus asistentes tengan "superpoderes" cognitivos.
 
-**Antigravity / Claude Desktop:**
+### Prerrequisitos para MCP
+
+Antes de configurar MCP en cualquier IDE, asegúrate de:
+
+1. **Tener Cortex instalado** en tu entorno Python:
+
+   ```bash
+   pip install cortex-memory
+   # O en modo desarrollo:
+   pip install -e ".[dev]"
+   ```
+
+2. **Tener el proyecto inicializado** con `config.yaml`:
+
+   ```bash
+   cd /ruta/a/tu/proyecto
+   cortex setup agent  # Esto crea config.yaml y el vault
+   ```
+
+3. **Verificar que el servidor MCP funciona**:
+   ```bash
+   cortex mcp-server --project-root /ruta/a/tu/proyecto
+   ```
+
+### Configuración por IDE
+
+#### Cursor
+
+**Paso 1: Abrir configuración MCP**
+
+- Ve a `Settings` → `MCP` → `Add Server`
+
+**Paso 2: Configurar el servidor Cortex**
+
+- **Name**: `cortex`
+- **Command**: `python`
+- **Args**:
+
+  ```
+  -m
+  cortex.cli.main
+  mcp-server
+  --project-root
+  C:\ruta\absoluta\a\tu\proyecto
+  ```
+
+  ⚠️ **IMPORTANTE**: Reemplaza `C:\ruta\absoluta\a\tu\proyecto` con la ruta REAL donde está tu `config.yaml`. Usa siempre rutas absolutas (completas), no relativas.
+
+**Paso 3: Verificar conexión**
+
+- Cursor debería mostrar `Connected: true` en la sección MCP
+- Si muestra error, revisa los logs en `Settings` → `MCP` → `Logs`
+
+**Solución de problemas comunes en Cursor:**
+
+| Error                                      | Causa                                             | Solución                                                                        |
+| ------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `FileNotFoundError: Config file not found` | La ruta `--project-root` es incorrecta o relativa | Usa ruta absoluta completa al directorio del proyecto                           |
+| `Connection closed`                        | El servidor no pudo iniciar                       | Ejecuta `cortex mcp-server --project-root <ruta>` en terminal para ver el error |
+| `Module not found: cortex`                 | Python no encuentra el paquete                    | Asegúrate de instalar Cortex en el mismo Python que usa Cursor                  |
+
+### Arquitectura Específica para Cursor
+
+**Limitación de Cursor:** Cursor solo soporta subagentes, no agentes de primer nivel. Por esto, Cortex usa una arquitectura híbrida específica para este IDE:
+
+**Subagentes inyectados en Cursor:**
+
+1. **`cortex-sync`**: Pre-flight analysis (sin cambios)
+   - Llama a `cortex_sync_ticket` para inyectar contexto histórico
+   - Crea la especificación técnica con `cortex_create_spec`
+   - NO tiene permisos de escritura
+
+2. **`cortex-SDDwork-cursor`**: Orquestador híbrido (combina explorer + implementer)
+   - **Fase de Exploración**: Analiza arquitectura, encuentra archivos relevantes, identifica patrones
+   - **Fase de Implementación**: Diseña y escribe el código, valida cambios
+   - **Fast Track**: Para tareas simples (1-2 archivos), implementa directamente
+   - **Deep Track**: Para tareas complejas, hace análisis profundo antes de implementar
+   - Delega obligatoriamente a `cortex-documenter` al final
+
+3. **`cortex-documenter`**: Especialista en documentación
+   - Genera notas de sesión en `vault/sessions/`
+   - Crea ADRs si hubo decisiones técnicas significativas
+   - Indexa en memoria episódica con `cortex_save_session`
+   - Usa skills de Obsidian (propiedades, backlinks, tags)
+
+**Flujo de trabajo en Cursor:**
+
+```
+Usuario → cortex-sync → cortex-SDDwork-cursor → cortex-documenter
+          (spec)       (explora + implementa)   (documenta)
+```
+
+**Diferencias con otros IDEs:**
+
+| IDE                     | Arquitectura                 | Subagentes                                          |
+| ----------------------- | ---------------------------- | --------------------------------------------------- |
+| Cursor                  | Híbrida (limitación del IDE) | 3: sync, sddwork-cursor, documenter                 |
+| OpenCode/Claude Desktop | Estándar completa            | 5: sync, sddwork, explorer, implementer, documenter |
+| VSCode                  | Estándar completa            | 5: sync, sddwork, explorer, implementer, documenter |
+
+#### Antigravity / Claude Desktop
+
+Edita tu archivo de configuración (ubicación varía según OS):
+
+**macOS/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "cortex": {
       "command": "python",
-      "args": ["-m", "cortex.mcp_server"]
+      "args": [
+        "-m",
+        "cortex.cli.main",
+        "mcp-server",
+        "--project-root",
+        "/ruta/absoluta/a/tu/proyecto"
+      ]
     }
   }
 }
 ```
 
-**VSCode (Cline / Roo)** — agrega a `.vscode/mcp_settings.json`:
+#### VSCode (Cline / Roo)
+
+Crea o edita `.vscode/mcp_settings.json` en tu proyecto:
 
 ```json
 {
   "servers": {
     "cortex": {
       "command": "python",
-      "args": ["-m", "cortex.mcp_server"]
+      "args": [
+        "-m",
+        "cortex.cli.main",
+        "mcp-server",
+        "--project-root",
+        "${workspaceFolder}"
+      ]
     }
   }
 }
 ```
 
-**Cursor** — Settings → MCP → Add Server:
+> **Nota**: `${workspaceFolder}` es una variable de VSCode que se expande automáticamente a la ruta del proyecto abierto.
 
-```
-Command: python -m cortex.mcp_server
-```
+### Herramientas MCP disponibles
 
-**Herramientas MCP disponibles:**
+Una vez conectado, tendrás acceso a estas herramientas:
 
-- `cortex_context`: Enriquecer contexto basado en archivos modificados
-- `cortex_search`: Búsqueda híbrida en memorias
-- `cortex_create_spec`: Crear especificaciones técnicas
-- `cortex_save_session`: Persistir sesiones de trabajo
+- **`cortex_search`**: Búsqueda híbrida en memorias (palabras clave instantánea)
+- **`cortex_search_vector`**: Búsqueda semántica profunda (requiere carga de modelo ONNX)
+- **`cortex_context`**: Enriquecer contexto basado en archivos modificados
+- **`cortex_sync_ticket`**: Inyectar contexto histórico para preparar specs (paso obligatorio de cortex-sync)
+- **`cortex_create_spec`**: Crear especificaciones técnicas
+- **`cortex_save_session`**: Persistir sesiones de trabajo
+- **`cortex_sync_vault`**: Sincronizar y re-indexar el vault
 
 ---
 
@@ -392,16 +512,19 @@ mypy cortex/          # Type checking
 ### v2.4.0 (Architectural Overhaul) — Estabilización y Calidad Total
 
 **🔴 Core & Pipeline:**
+
 - ✅ `core.py` refactorizado en Fachada + inyección de `services/`.
 - ✅ Nuevo módulo `cortex/pipeline/` para abstracciones DevSecDocOps (reemplaza scripts bash).
 - ✅ Servidor MCP mejorado con delegación paralela (`_delegate_task`, `_delegate_batch`).
 
 **🟡 Inteligencia y Velocidad:**
+
 - ✅ **Adaptive RRF**: Los pesos de fusión se ajustan dinámicamente según la intención de búsqueda.
 - ✅ **Async Context Enricher**: Resolución concurrente con `asyncio.gather` eliminando latencias bloqueantes.
 - ✅ **Embedders Factory**: Carga perezosa de backends (ONNX, local, openai) optimizando el startup del CLI.
 
 **🟢 Calidad & Seguridad:**
+
 - ✅ Tests reestructurados en `unit/`, `integration/` y `e2e/`.
 - ✅ **Property-Based Testing** (Hypothesis) implementado para probar límites matemáticos del RRF.
 - ✅ **Contract Testing** parametrizado para cualquier nuevo backend de embeddings.

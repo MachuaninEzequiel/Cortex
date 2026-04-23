@@ -84,13 +84,14 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "B008", "B019", "E402"]
 
 # ── Mypy ──────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.10"
 strict = false
 ignore_missing_imports = true
+disable_error_code = ["prop-decorator"]
 
 # ── Pytest ────────────────────────────────────────────────────
 [tool.pytest.ini_options]

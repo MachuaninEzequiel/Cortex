@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +43,6 @@ def layer1_preseed_vault(
     Returns:
         List of memory IDs created.
     """
-    import json
     from pathlib import Path
     
     vault = Path(vault_path)
@@ -227,9 +225,9 @@ def layer2_git_history(
     return memory_ids
 
 
-def _get_git_commits(project: Path, max_count: int) -> list[dict]:
+def _get_git_commits(project: Path, max_count: int) -> list[dict[str, Any]]:
     """Get commits from git log."""
-    commits: list[dict] = []
+    commits: list[dict[str, Any]] = []
     
     try:
         result = subprocess.run(
@@ -241,7 +239,6 @@ def _get_git_commits(project: Path, max_count: int) -> list[dict]:
         )
         
         current_commit = None
-        files = []
         
         for line in result.stdout.split("\n"):
             line = line.rstrip()
@@ -262,13 +259,14 @@ def _get_git_commits(project: Path, max_count: int) -> list[dict]:
             elif current_commit is not None and not line.startswith("commit"):
                 # File path
                 if line and not line.startswith("Author:"):
-                    current_commit["files"].append(line)
+                    files_list = current_commit["files"]
+                    if isinstance(files_list, list):
+                        files_list.append(line)
             elif line.startswith("commit "):
                 # New commit starting, save previous
                 if current_commit and current_commit.get("files"):
                     commits.append(current_commit)
                 current_commit = None
-                files = []
         
         # Add last commit
         if current_commit and current_commit.get("files"):
@@ -280,13 +278,13 @@ def _get_git_commits(project: Path, max_count: int) -> list[dict]:
     return commits
 
 
-def _chunk_commits_by_time(commits: list[dict]) -> list[list[dict]]:
+def _chunk_commits_by_time(commits: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     """Group commits by time proximity (same day = same chunk)."""
     if not commits:
         return []
     
-    chunks: list[list[dict]] = []
-    current_chunk: list[dict] = []
+    chunks: list[list[dict[str, Any]]] = []
+    current_chunk: list[dict[str, Any]] = []
     current_date = ""
     
     for commit in commits:
@@ -305,7 +303,7 @@ def _chunk_commits_by_time(commits: list[dict]) -> list[list[dict]]:
     return chunks
 
 
-def _classify_commit_chunk(commits: list[dict]) -> str:
+def _classify_commit_chunk(commits: list[dict[str, Any]]) -> str:
     """Classify the type of work in a commit chunk."""
     all_messages = " ".join(c.get("message", "").lower() for c in commits)
     
@@ -409,11 +407,11 @@ def layer3_readme_fallback(
     return memory_ids
 
 
-def _parse_readme_sections(content: str) -> dict[str, str]:
+def _parse_readme_sections(content: str) -> dict[str, Any]:
     """Parse README into sections."""
     import re
     
-    sections: dict[str, str] = {}
+    sections: dict[str, Any] = {}
     
     # Title
     title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
@@ -466,8 +464,8 @@ def run_cold_start(
     Returns:
         Dict with results from each layer.
     """
-    from pathlib import Path
     import subprocess
+    from pathlib import Path
     
     project = Path(project_root)
     vault = Path(vault_path) if vault_path else project / "vault"

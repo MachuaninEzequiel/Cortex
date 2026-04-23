@@ -5,8 +5,10 @@ Orchestration engine for modular setup (agent, pipeline, full).
 """
 
 from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
+
 import typer
 
 from cortex.setup.cortex_workspace import ensure_cortex_workspace
@@ -21,6 +23,7 @@ from cortex.setup.templates import (
     render_decisions_md,
     render_runbooks_md,
 )
+
 
 class SetupMode(str, Enum):
     AGENT = "agent"
@@ -39,9 +42,10 @@ class SetupOrchestrator:
         self.skipped: list[str] = []
         self.warnings: list[str] = []
 
-    def run(self, mode: SetupMode = SetupMode.FULL, git_depth: int = 50) -> dict:
+    def run(self, mode: SetupMode = SetupMode.FULL, git_depth: int = 50, ide: str | None = None) -> dict:
         """Execute the setup pipeline based on mode. Returns a summary dict."""
         self.git_depth = git_depth
+        self.ide = ide
         self.ctx = self.detector.detect()
         if mode == SetupMode.AGENT:
             self._run_agent_flow()
@@ -61,7 +65,8 @@ class SetupOrchestrator:
         self._create_agent_guidelines()
         self._install_skills()
         self._init_memory()
-        self._install_ide()
+        if self.ide:
+            self._install_ide()
 
     def _run_pipeline_flow(self) -> None:
         """Setup only CI/CD / DevOps components."""
@@ -106,6 +111,8 @@ class SetupOrchestrator:
                 self.created.append(f"{d}/")
 
     def _create_config(self) -> None:
+        if not self.ctx:
+            return
         path = self.root / "config.yaml"
         if path.exists():
             self.skipped.append("config.yaml (already exists)")
@@ -114,6 +121,8 @@ class SetupOrchestrator:
         self.created.append("config.yaml")
 
     def _create_vault_docs(self) -> None:
+        if not self.ctx:
+            return
         vault = self.root / "vault"
         vault.mkdir(exist_ok=True)
         for filename, renderer in [
@@ -129,6 +138,8 @@ class SetupOrchestrator:
                 self.created.append(f"vault/{filename}")
 
     def _create_workflows(self) -> None:
+        if not self.ctx:
+            return
         wdir = self.root / ".github" / "workflows"
         wdir.mkdir(parents=True, exist_ok=True)
         for fn, rd in [
@@ -160,7 +171,7 @@ class SetupOrchestrator:
         self.skipped.extend(f"{path} (already exists)" for path in result["skipped"])
 
     def _install_skills(self) -> None:
-        """Copy bundled Obsidian skills into project's .cortex/skills/ and .qwen/skills/."""
+        """Copy bundled Obsidian skills into project's .cortex/skills/."""
         from cortex.skills import install_skills as _inst
 
         # Primary: .cortex/skills/ (Release 2 location)
@@ -171,15 +182,6 @@ class SetupOrchestrator:
                 self.skipped.append(f".cortex/skills/{skill}")
             else:
                 self.created.append(f".cortex/skills/{skill}")
-
-        # Legacy: .qwen/skills/ (backward-compatible location for Qwen-based IDEs)
-        qwen_skills = self.root / ".qwen" / "skills"
-        legacy_installed = _inst(qwen_skills)
-        for skill in legacy_installed:
-            if "already exists" in skill:
-                self.skipped.append(f".qwen/skills/{skill} (already exists)")
-            else:
-                self.created.append(f".qwen/skills/{skill}")
 
     def _check_vault_pipeline_interactive(self) -> None:
         vp = self.root / "vault"
@@ -195,9 +197,9 @@ class SetupOrchestrator:
 
     def _install_ide(self) -> None:
         try:
-            from cortex.profile_injector import inject
-            inject(ide=None)  # Inject for all IDEs
-            self.created.append("IDE Profiles Injected")
+            from cortex.ide import inject
+            inject(self.ide, project_root=self.root)
+            self.created.append(f"IDE Profiles Injected ({self.ide})")
         except Exception as e:
             self.warnings.append(f"IDE profile injection fail: {e}")
 
@@ -259,13 +261,16 @@ def format_summary(summary: dict) -> str:
     lines.append("")
     if summary["created"]:
         lines.append(f"  ✅ Created ({len(summary['created'])} items):")
-        for f in summary["created"]: lines.append(f"    • {f}")
+        for f in summary["created"]:
+            lines.append(f"    • {f}")
     if summary["skipped"]:
         lines.append(f"  ⏭ Skipped ({len(summary['skipped'])}):")
-        for f in summary["skipped"]: lines.append(f"    • {f}")
+        for f in summary["skipped"]:
+            lines.append(f"    • {f}")
     if summary["warnings"]:
         lines.append("  ⚠ Warnings:")
-        for w in summary["warnings"]: lines.append(f"    • {w}")
+        for w in summary["warnings"]:
+            lines.append(f"    • {w}")
     lines.append("═"*55)
     lines.append("")
     lines.append("🚀 Next steps:")

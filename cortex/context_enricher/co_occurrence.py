@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -124,7 +125,7 @@ class TypedCooccurrenceGraph:
     def build_from_memories(
         self,
         memories: list[Any],
-        files_extractor: callable | None = None,
+        files_extractor: Callable | None = None,
     ) -> None:
         """
         Build the graph from episodic memories.
@@ -137,10 +138,7 @@ class TypedCooccurrenceGraph:
         
         for memory in memories:
             # Get files from this memory
-            if files_extractor:
-                files = files_extractor(memory)
-            else:
-                files = getattr(memory, "files", [])
+            files = files_extractor(memory) if files_extractor else getattr(memory, "files", [])
             
             if not files or len(files) < 2:
                 continue
@@ -258,7 +256,7 @@ class TypedCooccurrenceGraph:
         """
         from collections import deque
         
-        queue = deque([(from_file, [])])
+        queue: deque[tuple[str, list[Relationship]]] = deque([(from_file, [])])
         visited: set[str] = {from_file}
         
         while queue:
@@ -457,7 +455,6 @@ class TypedCooccurrenceGraph:
     ) -> list[Relationship]:
         """Extract Python relationships using AST."""
         import ast
-        import re
         
         relationships: list[Relationship] = []
         
@@ -467,7 +464,6 @@ class TypedCooccurrenceGraph:
             return relationships
         
         current_file = file_path
-        filepath_stem = Path(file_path).stem
         
         # Collect imports
         imports: set[str] = set()
@@ -475,9 +471,8 @@ class TypedCooccurrenceGraph:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.add(node.module.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.add(node.module.split(".")[0])
         
         # Collect class definitions and their bases
         class_bases: dict[str, list[str]] = {}
@@ -532,7 +527,7 @@ class TypedCooccurrenceGraph:
         import_pattern = re.compile(
             r"import\s+(?:{[^}]+}|\w+)\s+from\s+['\"]([^'\"]+)['\"]"
         )
-        require_pattern = re.compile(
+        re.compile(
             r"const\s+{?\s*([^}=]+) }?\s*=\s*require\(['\"]([^'\"]+)['\"]\)"
         )
         

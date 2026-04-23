@@ -24,6 +24,7 @@ CI/CD pipeline stages:
 """
 
 from cortex.core import AgentMemory
+from cortex.embedders import EmbedderFactory, EmbeddingConfig
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.models import (
     EnrichedContext,
@@ -33,19 +34,18 @@ from cortex.models import (
     UnifiedHit,
     WorkContext,
 )
+from cortex.pipeline import (
+    PipelineContext,
+    PipelineOrchestrator,
+    PipelineReport,
+    PipelineStage,
+    StageResult,
+    StageStatus,
+    StageType,
+)
 from cortex.retrieval.hybrid_search import HybridSearch
 from cortex.semantic.vault_reader import VaultReader
 from cortex.services import PRService, SessionService, SpecService
-from cortex.embedders import EmbedderFactory, EmbeddingConfig
-from cortex.pipeline import (
-    PipelineOrchestrator,
-    PipelineContext,
-    PipelineStage,
-    StageResult,
-    StageType,
-    StageStatus,
-    PipelineReport,
-)
 
 __version__ = "0.1.0"
 __author__ = "cortex contributors"

@@ -35,7 +35,7 @@ episodic:
   persist_dir: .memory/chroma
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
-  embedding_backend: local
+  embedding_backend: onnx  # onnx | local | openai
 
 semantic:
   vault_path: vault
@@ -143,6 +143,13 @@ jobs:
           cortex pr-context store \\
             --context-file .pr-context.json \\
             --audit-result "$AUDIT_STATUS"
+
+      # ── SECURITY: Secret Scanning ──────────────────────────────
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{{{ secrets.GITHUB_TOKEN }}}}
+        continue-on-error: true
 
       # ── TESTS ──────────────────────────────────────────────────
       - name: Run Tests

@@ -79,11 +79,11 @@ class TestConfigYaml:
         assert "retrieval" in data
         assert "llm" in data
 
-    def test_defaults_to_local_embedding(self, node_ctx: ProjectContext) -> None:
+    def test_defaults_to_onnx_embedding(self, node_ctx: ProjectContext) -> None:
         content = render_config_yaml(node_ctx)
         data = yaml.safe_load(content)
 
-        assert data["episodic"]["embedding_backend"] == "local"
+        assert data["episodic"]["embedding_backend"] == "onnx"
         assert data["llm"]["provider"] == "none"
 
     def test_uses_openai_when_key_detected(self, python_ctx: ProjectContext) -> None:

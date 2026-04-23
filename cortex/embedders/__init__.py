@@ -21,7 +21,7 @@ Usage
     vector = embedder.embed("Fix login refresh token bug")
 """
 
-from cortex.embedders.base import EmbeddingBackend, EmbedderProtocol
+from cortex.embedders.base import EmbedderProtocol, EmbeddingBackend
 from cortex.embedders.factory import EmbedderFactory, EmbeddingConfig
 
 __all__ = [

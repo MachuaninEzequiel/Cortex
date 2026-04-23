@@ -1,7 +1,9 @@
 """Tests for ContextObserver."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from cortex.context_enricher.observer import ContextObserver
 from cortex.models import WorkContext
 

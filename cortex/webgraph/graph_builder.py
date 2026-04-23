@@ -68,35 +68,35 @@ class GraphBuilder:
             degree_counter[edge.target] += 1
 
         nodes: list[WebGraphNode] = []
-        for record in semantic_records:
+        for s_record in semantic_records:
             nodes.append(
                 WebGraphNode(
-                    id=record.node_id,
-                    node_type=record.node_type,
+                    id=s_record.node_id,
+                    node_type=s_record.node_type,
                     source="semantic",
-                    label=record.title,
-                    summary=record.summary,
-                    rel_path=record.rel_path,
-                    tags=list(record.tags),
-                    degree=degree_counter.get(record.node_id, 0),
-                    metadata={"abs_path": record.abs_path},
+                    label=s_record.title,
+                    summary=s_record.summary,
+                    rel_path=s_record.rel_path,
+                    tags=list(s_record.tags),
+                    degree=degree_counter.get(s_record.node_id, 0),
+                    metadata={"abs_path": s_record.abs_path},
                 )
             )
 
-        for record in episodic_records:
+        for e_record in episodic_records:
             nodes.append(
                 WebGraphNode(
-                    id=record.node_id,
-                    node_type=record.node_type,
+                    id=e_record.node_id,
+                    node_type=e_record.node_type,
                     source="episodic",
-                    label=record.label,
-                    summary=record.summary,
-                    memory_id=record.memory_id,
-                    tags=list(record.tags),
-                    files=list(record.files),
-                    timestamp=record.timestamp,
-                    degree=degree_counter.get(record.node_id, 0),
-                    metadata=dict(record.metadata),
+                    label=e_record.label,
+                    summary=e_record.summary,
+                    memory_id=e_record.memory_id,
+                    tags=list(e_record.tags),
+                    files=list(e_record.files),
+                    timestamp=e_record.timestamp,
+                    degree=degree_counter.get(e_record.node_id, 0),
+                    metadata=dict(e_record.metadata),
                 )
             )
 

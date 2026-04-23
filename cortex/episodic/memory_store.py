@@ -11,7 +11,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import chromadb
 from chromadb.config import Settings
@@ -101,7 +101,7 @@ class EpisodicMemoryStore:
         embedding = self.embedder.embed(content)
         self._collection.add(
             ids=[entry.id],
-            embeddings=[embedding],
+            embeddings=[embedding],  # type: ignore[arg-type]
             documents=[content],
             metadatas=[self._serialize_metadata(entry)],
         )
@@ -199,32 +199,40 @@ class EpisodicMemoryStore:
             )
             
             hits: list[EpisodicHit] = []
-            if results["documents"]:
-                for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-                    entry = self._deserialize_metadata(doc, meta)
+            docs = results.get("documents")
+            metas = results.get("metadatas")
+            if docs and metas:
+                for doc, meta in zip(docs[0], metas[0], strict=False):
+                    entry = self._deserialize_metadata(doc, dict(meta) if meta else {})  # type: ignore[arg-type]
                     hits.append(EpisodicHit(entry=entry, score=1.0)) # Flat score for keyword match
             return hits
 
         # Vector Search (Normal flow - triggers ONNX load if first call)
         embedding = self.embedder.embed(query)
         results = self._collection.query(
-            query_embeddings=[embedding],
+            query_embeddings=[embedding],  # type: ignore[arg-type]
             n_results=min(top_k, self._collection.count()),
             include=["documents", "metadatas", "distances"],
         )
 
-        hits: list[EpisodicHit] = []
+        docs = results.get("documents")
+        metas = results.get("metadatas")
+        dists = results.get("distances")
+        if not docs or not metas or not dists:
+            return []
+
+        hits_vec: list[EpisodicHit] = []
         for doc, meta, dist in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
+            docs[0],
+            metas[0],
+            dists[0], strict=False,
         ):
-            entry = self._deserialize_metadata(doc, meta)
+            entry = self._deserialize_metadata(doc, dict(meta) if meta else {})  # type: ignore[arg-type]
             # Convert cosine distance -> similarity score [0, 1]
             score = max(0.0, 1.0 - dist)
-            hits.append(EpisodicHit(entry=entry, score=score))
+            hits_vec.append(EpisodicHit(entry=entry, score=score))
 
-        return hits
+        return hits_vec
 
     def search_by_entity(self, entity_type: str, entity_value: str, top_k: int = 5) -> list[EpisodicHit]:
         """Search for memories that mention a specific entity (function, class, etc.)."""
@@ -269,8 +277,8 @@ class EpisodicMemoryStore:
         documents = all_results.get("documents") or []
         metadatas = all_results.get("metadatas") or []
         entries = [
-            self._deserialize_metadata(doc, meta)
-            for doc, meta in zip(documents, metadatas)
+            self._deserialize_metadata(doc, dict(meta) if meta else {})  # type: ignore[arg-type]
+            for doc, meta in zip(documents, metadatas, strict=False)
         ]
         self._entries_cache = entries
         self._entries_cache_token = self._cache_token
@@ -298,7 +306,7 @@ class EpisodicMemoryStore:
                 if not isinstance(values, list):
                     continue
                 for value in values:
-                    metadata[EpisodicMemoryStore._entity_filter_key(entity_type, str(value))] = True
+                    metadata[EpisodicMemoryStore._entity_filter_key(entity_type, str(value))] = True  # type: ignore[assignment]
 
         return metadata
 
@@ -367,8 +375,8 @@ class EpisodicMemoryStore:
                 score=self._entity_match_score(entry, entity_type, entity_value),
             )
             for entry in (
-                self._deserialize_metadata(doc, meta)
-                for doc, meta in zip(documents, metadatas)
+                self._deserialize_metadata(doc, dict(meta) if meta else {})  # type: ignore[arg-type]
+                for doc, meta in zip(documents, metadatas, strict=False)
             )
         ]
 

@@ -14,10 +14,10 @@ Available stages
 - ``DocumentationStage`` → doc verification + fallback generation
 """
 
-from cortex.pipeline.stages.security import SecurityStage
-from cortex.pipeline.stages.lint import LintStage
-from cortex.pipeline.stages.test import TestStage
 from cortex.pipeline.stages.documentation import DocumentationStage
+from cortex.pipeline.stages.lint import LintStage
+from cortex.pipeline.stages.security import SecurityStage
+from cortex.pipeline.stages.test import TestStage
 
 __all__ = [
     "SecurityStage",

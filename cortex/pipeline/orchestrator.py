@@ -87,7 +87,7 @@ class PipelineOrchestrator:
                 continue
 
             logger.info("▶  Running stage: %s", stage.name)
-            stage_start = time.monotonic()
+            time.monotonic()
 
             result = stage.execute(ctx)
             results.append(result)

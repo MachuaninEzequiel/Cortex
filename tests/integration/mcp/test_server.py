@@ -47,7 +47,7 @@ class FakeMemory:
 
 def test_enrich_context_derives_keywords_from_query() -> None:
     server = CortexMCPServer.__new__(CortexMCPServer)
-    server.memory = FakeMemory()
+    server.memory = FakeMemory()  # type: ignore[assignment]
 
     context = server._enrich_context({"query": "auth refresh token flow"})
 
@@ -61,7 +61,7 @@ def test_enrich_context_derives_keywords_from_query() -> None:
 
 def test_enrich_context_preserves_explicit_files_and_keywords() -> None:
     server = CortexMCPServer.__new__(CortexMCPServer)
-    server.memory = FakeMemory()
+    server.memory = FakeMemory()  # type: ignore[assignment]
 
     server._enrich_context(
         {
@@ -99,7 +99,7 @@ def test_get_task_result_returns_saved_delegate_output() -> None:
 def test_sync_ticket_context_infers_scope_and_combines_historical_context(tmp_path: Path) -> None:
     server = CortexMCPServer.__new__(CortexMCPServer)
     server.project_root = tmp_path
-    server.memory = FakeMemory()
+    server.memory = FakeMemory()  # type: ignore[assignment]
     (tmp_path / "login.html").write_text("<html></html>", encoding="utf-8")
 
     result = server._build_sync_ticket_context(
