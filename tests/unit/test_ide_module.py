@@ -35,6 +35,7 @@ def test_inject_uses_adapter_and_prompts(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(ide, "get_adapter", lambda _: adapter)
     monkeypatch.setattr(ide, "build_all_prompts", lambda _: prompts)
+    monkeypatch.setattr(ide, "build_cursor_prompts", lambda _: prompts)
 
     files = ide.inject("cursor", project_root=tmp_path)
 
@@ -90,6 +91,15 @@ def test_find_project_root_walks_upwards(monkeypatch, tmp_path: Path) -> None:
 
 def test_find_project_root_raises_without_cortex(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(ide.Path, "cwd", staticmethod(lambda: tmp_path))
+    
+    # Mock exists to never find .cortex
+    original_exists = ide.Path.exists
+    def fake_exists(self):
+        if self.name == ".cortex":
+            return False
+        return original_exists(self)
+    
+    monkeypatch.setattr(ide.Path, "exists", fake_exists)
 
     with pytest.raises(FileNotFoundError):
         ide._find_project_root()

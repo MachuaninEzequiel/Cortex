@@ -6,7 +6,12 @@ import platform
 from pathlib import Path
 from typing import Any
 
-from cortex.ide.base import IDEAdapter, _backup_file, _deep_merge_dict, _append_to_markdown, _generate_autogen_header
+from cortex.ide.base import (
+    IDEAdapter,
+    _backup_file,
+    _deep_merge_dict,
+    _generate_autogen_header,
+)
 
 
 class VSCodeAdapter(IDEAdapter):

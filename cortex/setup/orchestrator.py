@@ -205,6 +205,8 @@ class SetupOrchestrator:
         self._create_directories()
 
     def _install_ide(self) -> None:
+        if not self.ide:
+            return
         try:
             from cortex.ide import inject
             inject(self.ide, project_root=self.root)

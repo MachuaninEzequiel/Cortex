@@ -7,10 +7,26 @@ Shared Pydantic models used across the cortex package.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, computed_field
+
+
+class MemoryType(str, Enum):
+    """Categorization for episodic memories."""
+
+    GENERAL = "general"
+    SESSION = "session"
+    HU = "hu"
+    ADR = "adr"
+    INCIDENT = "incident"
+    CHANGELOG = "changelog"
+    SECURITY = "security"
+    PR_SUMMARY = "pr_summary"
+    CI_FAILURE = "ci_failure"
+    CONVERSATION = "conversation"
 
 
 class MemoryEntry(BaseModel):

@@ -287,6 +287,7 @@ class AsyncContextEnricher(ContextEnricher):
         directly for clarity and correctness.
         """
         from collections import defaultdict
+
         from cortex.models import EnrichedItem
 
         total_raw_hits = sum(len(v) for v in strategy_results.values())

@@ -332,7 +332,6 @@ def setup_agent(
     Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
     """
     import cortex.ide as cortex_ide
-
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
     if git_depth is None:
@@ -943,7 +942,7 @@ def sync_ide(
 
     cortex_ide.inject(ide, project_root=Path.cwd())
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
-    typer.echo(f"Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
+    typer.echo("Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
 
 @app.command()
 def stats() -> None:

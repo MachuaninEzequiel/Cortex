@@ -42,16 +42,18 @@ def test_install_ide_specific_target_uses_adapter_layer(monkeypatch) -> None:
     assert called["project_root"] == Path.cwd()
 
 
-def test_inject_all_uses_new_ide_module(monkeypatch) -> None:
+def test_inject_uses_new_ide_module(monkeypatch) -> None:
     called: dict[str, object] = {}
 
-    def fake_inject_all(project_root: Path | None = None) -> dict[str, list[str]]:
+    def fake_inject(ide_name: str, project_root: Path | None = None) -> list[str]:
+        called["ide_name"] = ide_name
         called["project_root"] = project_root
-        return {"cursor": ["ok"]}
+        return ["ok"]
 
-    monkeypatch.setattr("cortex.ide.inject_all", fake_inject_all)
+    monkeypatch.setattr("cortex.ide.inject", fake_inject)
 
-    result = runner.invoke(app, ["inject", "--all"])
+    result = runner.invoke(app, ["inject", "--ide", "cursor"])
 
     assert result.exit_code == 0
+    assert called["ide_name"] == "cursor"
     assert called["project_root"] == Path.cwd()
