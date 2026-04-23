@@ -1,10 +1,12 @@
 """Tests for ContextPresenter."""
 
 import json
-import pytest
-from cortex.context_enricher.presenter import ContextPresenter
-from cortex.models import EnrichedContext, WorkContext, EnrichedItem
 from datetime import datetime, timezone
+
+import pytest
+
+from cortex.context_enricher.presenter import ContextPresenter
+from cortex.models import EnrichedContext, EnrichedItem, WorkContext
 
 
 @pytest.fixture

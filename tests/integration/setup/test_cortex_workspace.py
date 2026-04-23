@@ -27,8 +27,10 @@ def test_ensure_cortex_workspace_skips_existing_files(tmp_path: Path) -> None:
     assert sync_path.read_text(encoding="utf-8") == "custom"
 
 
-def test_release2_workspace_prompts_require_sync_and_batch_orchestration() -> None:
+def test_release2_workspace_prompts_require_sync_and_track_routing() -> None:
     files = workspace_file_map()
 
     assert "cortex_sync_ticket" in files[".cortex/skills/cortex-sync.md"]
-    assert "cortex_delegate_batch" in files[".cortex/skills/cortex-SDDwork.md"]
+    assert "FAST TRACK" in files[".cortex/skills/cortex-SDDwork.md"]
+    assert "DEEP TRACK" in files[".cortex/skills/cortex-SDDwork.md"]
+    assert "cortex_delegate_task" in files[".cortex/skills/cortex-SDDwork.md"]

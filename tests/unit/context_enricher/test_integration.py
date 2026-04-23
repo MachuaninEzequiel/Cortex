@@ -1,13 +1,14 @@
 """Integration tests for Context Enricher through AgentMemory."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
 
 
 @pytest.fixture
 def mock_memory():
     """Create a mock AgentMemory with mocked dependencies."""
-    with patch("cortex.core.AgentMemory") as MockAM:
+    with patch("cortex.core.AgentMemory"):
         mem = MagicMock()
         mem.enrich = MagicMock()
         yield mem
@@ -19,8 +20,9 @@ class TestAgentMemoryEnrich:
     def test_enrich_calls_observer_and_enricher(self):
         """Verify that AgentMemory.enrich() orchestrates correctly."""
         # This test verifies the API exists and has correct signature
-        from cortex.core import AgentMemory
         import inspect
+
+        from cortex.core import AgentMemory
 
         sig = inspect.signature(AgentMemory.enrich)
         params = list(sig.parameters.keys())
@@ -37,7 +39,7 @@ class TestModelsEnrichedContext:
     """EnrichedContext model tests."""
 
     def test_to_prompt_format_compact(self):
-        from cortex.models import EnrichedContext, WorkContext, EnrichedItem
+        from cortex.models import EnrichedContext, WorkContext
 
         work = WorkContext(source="manual", changed_files=["auth.py"])
         ctx = EnrichedContext(
@@ -50,8 +52,8 @@ class TestModelsEnrichedContext:
         assert "No related memories" in output
 
     def test_to_prompt_format_markdown(self):
-        from cortex.models import EnrichedContext, WorkContext, EnrichedItem
-        from datetime import datetime, timezone
+
+        from cortex.models import EnrichedContext, EnrichedItem, WorkContext
 
         work = WorkContext(source="manual", changed_files=["auth.py"])
         item = EnrichedItem(
@@ -74,7 +76,7 @@ class TestModelsEnrichedContext:
         assert "EPISODIC" in output
 
     def test_to_prompt_format_expand(self):
-        from cortex.models import EnrichedContext, WorkContext, EnrichedItem
+        from cortex.models import EnrichedContext, EnrichedItem, WorkContext
 
         work = WorkContext(source="manual", changed_files=["auth.py"])
         item = EnrichedItem(
@@ -118,8 +120,9 @@ class TestCLIContext:
     """CLI `cortex context` command tests."""
 
     def test_context_command_exists(self):
-        from cortex.cli.main import context
         import inspect
+
+        from cortex.cli.main import context
 
         sig = inspect.signature(context)
         params = list(sig.parameters.keys())

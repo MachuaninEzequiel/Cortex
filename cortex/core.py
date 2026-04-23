@@ -189,6 +189,18 @@ class AgentMemory:
             files=files or [],
         )
 
+    def store_memory(
+        self,
+        content: str,
+        memory_id: str | None = None,
+        memory_type: str = "general",
+        tags: list[str] | None = None,
+        files: list[str] | None = None,
+    ) -> MemoryEntry:
+        """Backward compatibility alias for remember()."""
+        # Note: memory_id is ignored in the new implementation as IDs are auto-generated
+        return self.remember(content, memory_type=memory_type, tags=tags, files=files)
+
     def retrieve(
         self,
         query: str,

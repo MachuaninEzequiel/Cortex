@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Any, Literal
+from datetime import datetime, timezone
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ PERMANENT_TYPES: set[str] = {
 PERMANENT_TAGS: set[str] = {
     "adr", "architecture", "decision", "permanent",
     "onboarding", "getting-started", "runbook",
-    "architecture", "design", "tech-spec",
+    "design", "tech-spec",
 }
 
 # Memory types with full decay (temporal work)
@@ -139,10 +139,7 @@ class MemoryDecay:
             return False
         
         # Special tag: "permanent" always has floor
-        if "permanent" in tags_lower:
-            return False
-        
-        return True
+        return "permanent" not in tags_lower
 
     def get_age_hours(self, timestamp: datetime) -> float:
         """Calculate age in hours."""
@@ -371,7 +368,7 @@ def create_decay_config(
     config = create_decay_config(decay_rate=1.0)
     """
     return DecayConfig(
-        decay_rate=decay_rate,
+        decay_rate=decay_rate or 0.995,
         half_life_hours=half_life_hours or 168.0,  # 1 week
         floor=floor,
     )
@@ -404,5 +401,5 @@ class EnricherDecayConfig:
         )
     
     @classmethod
-    def from_dict(cls, data: dict) -> "EnricherDecayConfig":
+    def from_dict(cls, data: dict) -> EnricherDecayConfig:
         return cls(**{k: v for k, v in data.items() if k in cls.__annotations__})

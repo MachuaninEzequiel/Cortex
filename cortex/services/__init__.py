@@ -18,9 +18,9 @@ Usage
     from cortex.services import SpecService, SessionService, PRService
 """
 
-from cortex.services.spec_service import SpecService
-from cortex.services.session_service import SessionService
 from cortex.services.pr_service import PRService
+from cortex.services.session_service import SessionService
+from cortex.services.spec_service import SpecService
 
 __all__ = [
     "SpecService",

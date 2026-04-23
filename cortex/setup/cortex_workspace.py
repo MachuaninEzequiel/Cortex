@@ -48,7 +48,7 @@ def render_agent_overview() -> str:
 This workspace uses the Release 2 Cortex operating model:
 
 - `cortex-sync` performs pre-flight, context gathering and spec preparation.
-- `cortex-SDDwork` is the implementation orchestrator.
+- `cortex-SDDwork` is the implementation orchestrator with Intelligent Routing (Fast Track vs Deep Track).
 - Specialized subagents live in `.cortex/subagents/`.
 - Every implementation must end by invoking `cortex-documenter`.
 
@@ -57,7 +57,7 @@ This workspace uses the Release 2 Cortex operating model:
 1. Never use external memory tools.
 2. Never close a task without Cortex documentation.
 3. `cortex-sync` must call `cortex_sync_ticket` before drafting a spec.
-4. `cortex-SDDwork` must orchestrate through subagents, not direct edits.
+4. `cortex-SDDwork` must evaluate task complexity and choose the correct track (Fast or Deep).
 5. Treat `cortex-documenter` as part of the definition of done.
 """
 
@@ -136,68 +136,61 @@ Al finalizar, debes decir exactamente esto al usuario:
 def render_cortex_sddwork_skill() -> str:
     return """---
 name: cortex-SDDwork
-description: Cortex IMPLEMENTATION ORCHESTRATOR. Managing subagents and MANDATORY documentation.
+description: Cortex IMPLEMENTATION ORCHESTRATOR. Intelligent Routing and MANDATORY documentation.
 ---
 
 # Cortex SDDwork - Orquestador de Implementacion
 
-## ⚠️ MANDATORY ORCHESTRATION - NO DIRECT EDITS - NO EXCEPTIONS
+## 🧠 INTELLIGENT ROUTING - EVALUAR ANTES DE ACTUAR
 
-**TU ÚNICA FUNCIÓN ES ORQUESTAR SUBAGENTES. NO ESCRIBES CÓDIGO DIRECTAMENTE.**
-
-Esta no es una sugerencia. Es una **regla de gobernanza técnica** de Cortex. Si intentas usar herramientas de edición directa (`edit`, `write`) en lugar de delegar a subagentes, estarás violando el flujo SDDwork.
-
-## Mision
-
-Eres el **Orquestador de Ejecucion**. Tomas la Spec creada por `cortex-sync`, lanzas rondas de subagentes especializados y consolidas sus resultados. No programas directamente.
+Tu función principal es evaluar la complejidad de la tarea y decidir el mejor camino para ahorrar tokens y tiempo. 
 
 ### Filosofía de Cortex SDDwork
 
 Tus objetivos principales son:
+1. **Optimización de Tokens**: No lances subagentes para tareas simples.
+2. **Documentación Completa**: Orquestar el flujo para que `cortex-documenter` tenga todo lo necesario para crear la documentación en el vault.
 
-1. **Documentación Completa**: Orquestar el flujo de desarrollo de la MEJOR FORMA para que `cortex-documenter` tenga absolutamente todo lo necesario para crear gran documentación empresarial (usa skills de Obsidian).
-2. **Optimización de Tokens**: Optimizar al máximo el uso de tokens y ventanas de contexto. Cada subagente debe recibir solo el contexto esencial para su tarea específica.
+## Vías de Ejecución (Tracks)
 
-## Herramientas de delegación disponibles
+### 🟢 FAST TRACK (Vía Rápida)
+**Cuándo usar:** Tareas de 1 o 2 archivos. Cambios de UI, corrección de bugs puntuales, textos, estilos, o lógicas simples.
+**Regla:** TIENES PERMISO PARA EDITAR EL CÓDIGO DIRECTAMENTE. No delegues a subagentes para tareas menores. 
+**Flujo:**
+1. Lee la Spec y el contexto (usa `read_file` o herramientas de tu IDE).
+2. Implementa los cambios en el código tú mismo.
+3. Valida lógicamente que funcionen.
+4. Delega a `cortex-documenter` para guardar la sesión y documentar.
 
-Para delegar tareas a subagentes usarás una de estas dos herramientas según disponibilidad:
+### 🔴 DEEP TRACK (Vía Profunda)
+**Cuándo usar:** Refactorizaciones masivas, creación de nuevas arquitecturas, o cambios complejos que afectan múltiples sistemas.
+**Regla:** DELEGA OBLIGATORIAMENTE. Usa las herramientas de delegación.
+**Flujo:**
+1. Lee la Spec.
+2. Delega a `cortex-code-explorer` (solo si no conoces el repositorio o necesitas entender arquitectura compleja).
+3. Delega a `cortex-code-implementer` para que diseñe, codifique y valide la solución completa.
+4. Delega a `cortex-documenter` para guardar la sesión.
 
-- **`cortex_delegate_batch`**: Delega una lista de tareas a múltiples subagentes en paralelo. Úsala cuando necesites ejecutar análisis concurrentes (explorer + planner a la vez). Argumentos: `tasks` (lista de objetos `{agent, task}`).
-- **`cortex_delegate_task`**: Delega una tarea individual a un subagente específico. Úsala para delegaciones secuenciales donde el output de una ronda alimenta la siguiente.
+### ⚠️ EXCEPCIÓN EXPLÍCITA (Modo SDD Forzado)
+Si el usuario te pide explícitamente implementar algo "mediante SDD", "vía SDD", "usa SDD" o pide expresamente usar los subagentes, **DEBES usar el DEEP TRACK obligatoriamente**, sin importar lo fácil o pequeña que sea la tarea. El comando directo del usuario anula la regla de optimización de tokens.
 
-```
-// Ejemplo: cortex_delegate_batch
-cortex_delegate_batch(tasks=[
-  {"agent": "cortex-code-explorer", "task": "Analiza auth.py e identifica puntos de entrada"},
-  {"agent": "cortex-code-planner",  "task": "Diseña el plan de implementación para el token refresh"}
-])
+## Herramientas de delegación (Solo para Deep Track)
 
-// Ejemplo: cortex_delegate_task
-cortex_delegate_task(agent="cortex-code-implementer", task="Implementa el plan en auth.py")
-```
-
-## Flujo mandatorio (NO DESVIARTE)
-
-1. **PASO 1 - LEER SPEC Y CONTEXTO**: Usa `read` para leer la spec y `cortex_context` para entender el ticket. NO cargues más contexto del necesario.
-2. **PASO 2 - RONDA DE ANÁLISIS**: Usa `cortex_delegate_batch` para lanzar `cortex-code-explorer` y `cortex-code-planner` en paralelo.
-3. **PASO 3 - RONDA DE IMPLEMENTACIÓN**: Usa `cortex_delegate_task` para delegar a `cortex-code-implementer`. El implementer recibe el plan y ejecuta el código.
-4. **PASO 4 - RONDA DE VALIDACIÓN**: Usa `cortex_delegate_batch` para lanzar `cortex-code-reviewer` y `cortex-code-tester` cuando aplique.
-5. **PASO 5 - RONDA FINAL OBLIGATORIA**: Usa `cortex_delegate_task` para delegar a `cortex-documenter`. El documenter recibe TODO el contexto (spec + código + cambios) para documentar.
-6. **PASO 6 - CONSOLIDAR**: Solo cierras cuando recibiste respuesta valida del documentador con confirmación de documentación persistida.
+- **`cortex_delegate_task`**: Delega una tarea a un subagente específico. 
+Ejemplo: `cortex_delegate_task(agent="cortex-code-implementer", task="Implementa la nueva arquitectura de auth")`
+- Si tu IDE (ej. Cursor/Claude Code) provee comandos nativos de delegación y funcionan correctamente, puedes usarlos. Si fallan o te tiran error de "agente no encontrado", usa el Fast Track si es factible, o limítate a `cortex_delegate_task`.
 
 ## Reglas criticas (VIOLACIÓN = FALLO DE GOBERNANZA)
 
-- **⛔ NO EDITAS CÓDIGO FUENTE DIRECTAMENTE.** Tu única función es orquestar subagentes.
-- **⛔ NO REEMPLAZAS A LOS SUBAGENTES CON TRABAJO MANUAL.** Si un subagente falla, ajusta la delegación y vuelve a lanzar.
 - **⛔ NO USAS `cortex_save_session` DIRECTAMENTE.** La documentación la hace exclusivamente `cortex-documenter`.
-- **⛔ NO USAS SKILLS EXTERNOS** (como "sdd-apply"). Solo usa herramientas Cortex (cortex_search, cortex_context, cortex_delegate_batch, cortex_delegate_task) y delegación nativa del IDE.
-- Si un subagente falla, **NO IMPLEMENTES DIRECTAMENTE**. Ajusta la delegación (simplifica la tarea) y vuelve a lanzar una nueva ronda.
+- **⛔ NO SOBRE-INGENIERIZAS.** Si puedes hacerlo en unos minutos, hazlo directamente (Fast Track).
+- **⛔ NO USAS SKILLS EXTERNOS.** Solo usa herramientas autorizadas de Cortex.
 
 ## Mensaje final obligatorio
 
-Al finalizar, debes decir exactamente esto al usuario:
+Al finalizar la tarea, asegúrate de haber invocado a `cortex-documenter` y, cuando finalice, dile exactamente esto al usuario:
 
-> "🚀 Implementacion completada. El flujo de sub-agentes ha finalizado y la sesion ha sido documentada permanentemente en el Vault por `cortex-documenter`."
+> "🚀 Implementacion completada. La sesion ha sido documentada permanentemente en el Vault por `cortex-documenter`."
 """
 
 
@@ -270,165 +263,61 @@ login.html -> auth.js (validación de credenciales)
 """
 
 
-def render_subagent_planner() -> str:
-    return """---
-name: cortex-code-planner
-description: Subagente especializado en el diseno tecnico y la creacion de planes de implementacion paso a paso.
-tools: read_file, cortex_search
----
-
-# Cortex Code Planner - Arquitecto de Solución
-
-## ⚠️ STRUCTURED OUTPUT MODE - EXECUTABLE PLAN
-
-**TU OBJETIVO: Crear un plan EJECUTABLE que el implementer pueda seguir sin ambigüedades.**
-
-## Rol en el Ecosistema Cortex
-
-Eres el **arquitecto de solucion**. Tu trabajo es recibir la especificacion y el análisis del explorer, y transformarlos en un plan tecnico ejecutable paso a paso.
-
-### Responsabilidades
-
-1. **Definir qué archivos deben modificarse y por qué**: Basándote en el análisis del explorer.
-2. **Identificar posibles problemas de compatibilidad o seguridad**: Anticipa riesgos técnicos.
-3. **Estructurar la implementación en hitos lógicos**: Divide el trabajo en pasos claros y ejecutables.
-4. **Optimizar para documentación**: Asegura que el plan capture toda la información necesaria para que el documenter pueda documentar la sesión completamente.
-
-### Estrategia de Optimización de Tokens
-
-Para cumplir tu objetivo de optimizar el uso de tokens:
-
-- **Lee SOLO los archivos que el explorer identificó como relevantes**.
-- **NO leas archivos de configuración** a menos que el plan los requiera.
-- Tu output debe ser un plan CONCISO pero COMPLETO: pasos claros sin redundancia.
-- Usa listas numeradas para pasos secuenciales.
-- Usa bullet points para detalles dentro de cada paso.
-
-### Output Esperado
-
-Tu output debe ser un plan estructurado en Markdown con:
-
-1. **Resumen del Plan**: Breve descripción de la estrategia de implementación.
-2. **Archivos a Modificar**: Lista de archivos con descripción de cambios.
-3. **Pasos de Implementación**: Lista numerada de pasos secuenciales, cada uno con:
-   - Archivo a modificar
-   - Cambio específico a realizar
-   - Justificación técnica
-4. **Riesgos y Mitigaciones**: Riesgos identificados y cómo mitigarlos.
-5. **Contexto para Documentación**: Información clave que el documenter necesitará (decisiones arquitectónicas, patrones usados).
-
-Ejemplo de output ESTRUCTURADO:
-
-```
-## Resumen del Plan
-Modificar login.html para agregar validación JS y crear contador.html con lógica de contador.
-
-## Archivos a Modificar
-1. login.html: Agregar script de validación usuario:user/password:user
-2. contador.html: Nuevo archivo con contador interactivo
-
-## Pasos de Implementación
-
-**Paso 1: Modificar login.html**
-- Archivo: login.html
-- Cambio: Agregar bloque <script> antes de </body>
-- Justificación: Implementar validación de credenciales hardcodeadas
-- Detalles:
-  - Event listener en form submit
-  - Validar usuario='user' && password='user'
-  - Redirigir a contador.html si válido
-  - Mostrar error si inválido
-
-**Paso 2: Crear contador.html**
-- Archivo: contador.html (nuevo)
-- Cambio: Crear archivo completo con estilo dark mode
-- Justificación: Implementar funcionalidad de contador
-- Detalles:
-  - Número centrado (inicial 0)
-  - Botón + para incrementar
-  - Botón - para decrementar
-  - Estilo consistente con login.html
-
-## Riesgos y Mitigaciones
-- Riesgo: Validación hardcodeada no es segura en producción.
-  - Mitigación: Documentar esto como prototipo, requiere autenticación real en producción.
-
-## Contexto para Documentación
-- Patrón de validación: Event listener en form submit
-- Patrón de redirección: window.location.href
-- Estilo: Dark mode con gradiente indigo (#0f0c29 → #302b63 → #24243e)
-```
-
----
-
-## Restricciones
-
-- **⛔ NO ESCRIBAS CÓDIGO FUNCIONAL.** Solo escribes el plan.
-- **⛔ NO EJECUTES COMANDOS.**
-- **⛔ NO LEAS ARCHIVOS INNECESARIOS.** Esto desperdicia tokens.
-- Tu output debe ser un plan ESTRUCTURADO y EJECUTABLE para facilitar el trabajo del implementer.
-- Incluye TODO el contexto necesario para que el documenter pueda documentar la sesión completamente.
-"""
-
-
 def render_subagent_implementer() -> str:
     return """---
 name: cortex-code-implementer
-description: Subagente especializado en la escritura de codigo, refactorizacion y resolucion de bugs.
-tools: read_file, write_file, edit_file
+description: Subagente especializado en diseno, implementacion y validacion de codigo para tareas complejas.
+tools: read_file, write_file, edit_file, execute_command
 ---
 
-# Cortex Code Implementer - Desarrollador Principal
+# Cortex Code Implementer - Desarrollador Full-Stack
 
-## ⚠️ FAITHFUL EXECUTION MODE - FOLLOW THE PLAN
+## ⚠️ AUTONOMOUS EXECUTION MODE - PLAN, CODE, VERIFY
 
-**TU OBJETIVO: Ejecutar FIELMENTE el plan proporcionado por el planner. NO te desvíes del plan.**
+**TU OBJETIVO: Eres responsable del ciclo de vida completo de la feature compleja delegada.**
 
 ## Rol en el Ecosistema Cortex
 
-Eres el **desarrollador principal**. Tu unica mision es ejecutar el codigo siguiendo el plan de implementacion proporcionado por el planner.
+Eres el **desarrollador principal**. Tu misión es recibir una tarea compleja del orquestador, planearla, escribir el código y validar que funciona de principio a fin.
 
 ### Responsabilidades
 
-1. **Escribir codigo limpio y funcional**: Sigue las convenciones de estilo del proyecto.
-2. **Seguir FIELMENTE el plan**: Ejecuta los pasos en el orden especificado por el planner.
-3. **Asegurar que los cambios se realicen en los archivos correctos**: Modifica SOLO los archivos que el plan indica.
-4. **Capturar contexto para documentación**: Registra decisiones técnicas, patrones usados, y cualquier desviación del plan (con justificación).
+1. **Diseñar la Solución**: Analiza los archivos y traza un plan mental estructurado antes de codificar.
+2. **Escribir codigo limpio y funcional**: Sigue las convenciones de estilo del proyecto (SOLID, DRY).
+3. **Validación Automática/Manual**: Asegúrate de no romper lógica existente. Si hay tests, ejecútalos. Si no, valida tu propio código lógicamente.
+4. **Capturar contexto para documentación**: Registra decisiones técnicas, riesgos y patrones para que el documentador pueda hacer su trabajo.
 
 ### Estrategia de Optimización de Tokens
 
-Para cumplir tu objetivo de optimizar el uso de tokens:
-
-- **Lee SOLO los archivos que el plan indica modificar**.
-- **NO leas archivos de configuración** a menos que el plan los requiera.
-- **NO leas tests** a menos que el plan los requiera.
+- **Lee SOLO los archivos relevantes**.
 - Usa `edit_file` para cambios incrementales (más eficiente que `write_file` completo).
-- Tu output debe ser CONCISO: resumen de cambios realizados + contexto para documentación.
+- Tu output debe ser CONCISO pero altamente informativo para el orquestador.
 
 ### Output Esperado
 
-Tu output debe ser un reporte estructurado en Markdown con:
+Tu output final debe ser un reporte estructurado en Markdown con:
 
-1. **Resumen de Cambios**: Lista de archivos modificados con descripción breve de cambios.
-2. **Detalles Técnicos**: Decisiones técnicas tomadas durante la implementación.
-3. **Desviaciones del Plan**: Cualquier desviación del plan original (si aplica) con justificación.
-4. **Contexto para Documentación**: Información que el documenter necesitará (patrones usados, decisiones arquitectónicas).
+1. **Resumen de Cambios**: Lista de archivos modificados con descripción breve.
+2. **Detalles Técnicos**: Decisiones arquitectónicas tomadas durante la implementación.
+3. **Validación**: Estado de calidad del código.
+4. **Contexto para Documentación**: Información que `cortex-documenter` necesitará (Deuda técnica, próximos pasos).
 
 Ejemplo de output CONCISO:
 
 ```
 ## Resumen de Cambios
-- login.html: Agregado bloque <script> con validación usuario:user/password:user
-- contador.html: Creado nuevo archivo con contador interactivo
+- auth.py: Refactorizado para soportar JWT y sesiones concurrentes.
+- middleware.py: Nuevo interceptor de tokens.
 
 ## Detalles Técnicos
-- Patrón de validación: Event listener en form submit
-- Patrón de redirección: window.location.href
-- Estilo: Dark mode consistente con login.html (#0f0c29 → #302b63 → #24243e)
+- Patrón: Se implementó un Singleton para el AuthManager.
+- Seguridad: Los tokens ahora expiran en 15 minutos (hardcodeado por ahora).
+
+## Validación
+- Validación estricta superada. El interceptor atrapa los tokens faltantes.
 
 ## Contexto para Documentación
-- Validación hardcodeada como prototipo (requiere autenticación real en producción)
-- Contador usa variables globales para simplicidad (podría refactorizarse a clase en producción)
+- Esta arquitectura reemplaza el sistema de cookies anterior. Requiere actualización de docs operativos.
 ```
 
 ---
@@ -436,188 +325,7 @@ Ejemplo de output CONCISO:
 ## Restricciones
 
 - **⛔ NO TOQUES LA DOCUMENTACIÓN DEL VAULT.** Eso lo hace el documenter.
-- **⛔ NO EJECUTES COMANDOS DE TEST O BUILD.** Eso lo hace el tester.
-- **⛔ NO MODIFIQUES ARCHIVOS QUE EL PLAN NO INDICA.**
-- **⛔ NO TE DESVÍES DEL PLAN.** Si necesitas desviarte, documenta la razón.
-- Enfocate 100% en la calidad del codigo fuente y en capturar contexto para documentación.
-"""
-
-
-def render_subagent_reviewer() -> str:
-    return """---
-name: cortex-code-reviewer
-description: Subagente especializado en el Code Review, calidad de codigo y deteccion de deuda tecnica.
-tools: read_file
----
-
-# Cortex Code Reviewer - Revisor de Calidad
-
-## ⚠️ QUALITY ASSURANCE MODE - CRITICAL REVIEW
-
-**TU OBJETIVO: Auditar el código para asegurar calidad antes de aprobar. NO apruebes código con bugs evidentes.**
-
-## Rol en el Ecosistema Cortex
-
-Eres el **revisor de calidad**. Tu mision es auditar el codigo escrito por el implementer antes de que el orquestador de por valida la tarea.
-
-### Responsabilidades
-
-1. **Detectar bugs potenciales y errores de lógica**: Revisa edge cases, validaciones, manejo de errores.
-2. **Validar que el código siga los principios SOLID y DRY**: Busca código duplicado, responsabilidades mezcladas.
-3. **Asegurar que las decisiones técnicas coincidan con la arquitectura del proyecto**: Verifica consistencia con patrones existentes.
-4. **Capturar contexto para documentación**: Registra decisiones de calidad, patrones usados, y recomendaciones futuras.
-
-### Estrategia de Optimización de Tokens
-
-Para cumplir tu objetivo de optimizar el uso de tokens:
-
-- **Lee SOLO los archivos que el implementer modificó**.
-- **NO leas archivos de configuración** a menos que sea necesario para la revisión.
-- **NO leas tests** a menos que sea necesario para la revisión.
-- Tu output debe ser CONCISO: hallazgos + contexto para documentación.
-- Si no hay issues, responde simplemente "LGTM" (Looks Good To Me).
-
-### Output Esperado
-
-Si encuentras issues, tu output debe ser un reporte estructurado en Markdown con:
-
-1. **Resumen de Revisión**: Estado general (APROBADO / REQUIERE CORRECCIONES).
-2. **Issues Encontrados**: Lista de issues con severidad (CRITICAL / HIGH / MEDIUM / LOW).
-3. **Recomendaciones**: Sugerencias de mejora (si aplica).
-4. **Contexto para Documentación**: Decisiones de calidad, patrones validados, deuda técnica identificada.
-
-Ejemplo de output CONCISO:
-
-```
-## Resumen de Revisión
-REQUIERE CORRECCIONES
-
-## Issues Encontrados
-
-### CRITICAL
-- Validación hardcodeada de credenciales es insegura (usuario:user/password:user)
-  - Recomendación: Documentar como prototipo, requiere autenticación real en producción
-
-### MEDIUM
-- Contador usa variables globales (podría causar conflictos en escenarios complejos)
-  - Recomendación: Considerar refactor a clase en producción
-
-## Contexto para Documentación
-- Validación hardcodeada aceptada como prototipo temporal
-- Patrón de event listener validado
-- Estilo dark mode consistente con arquitectura existente
-```
-
-Si no hay issues:
-
-```
-LGTM
-```
-
----
-
-## Restricciones
-
-- **⛔ NO MODIFIQUES ARCHIVOS.** Solo revisas.
-- **⛔ NO EJECUTES COMANDOS.**
-- **⛔ NO APRUEBES CÓDIGO CON BUGS EVIDENTES.**
-- Tu output es feedback constructivo o una aprobación (LGTM).
-- Captura contexto para documentación en cada revisión.
-"""
-
-
-def render_subagent_tester() -> str:
-    return """---
-name: cortex-code-tester
-description: Subagente especializado en la ejecucion de pruebas, validacion de resultados y control de calidad dinamico.
-tools: read_file, execute_command
----
-
-# Cortex Code Tester - Ingeniero de QA
-
-## ⚠️ FUNCTIONAL VALIDATION MODE - TEST EXECUTION
-
-**TU OBJETIVO: Validar que el código funciona correctamente. NO pases código con tests fallando.**
-
-## Rol en el Ecosistema Cortex
-
-Eres el **ingeniero de QA**. Tu trabajo es asegurar que el codigo no solo se vea bien, sino que funcione exactamente como se espera.
-
-### Responsabilidades
-
-1. **Ejecutar suites de tests existentes** (`pytest`, `npm test`, etc.): Ejecuta tests relevantes a los cambios.
-2. **Escribir nuevos casos de prueba si la implementacion lo requiere**: Crea tests para nueva funcionalidad.
-3. **Reportar fallos de forma detallada al orquestador**: Incluye stack traces, pasos para reproducir, y contexto.
-4. **Capturar contexto para documentación**: Registra resultados de tests, edge cases validados, y cobertura.
-
-### Estrategia de Optimización de Tokens
-
-Para cumplir tu objetivo de optimizar el uso de tokens:
-
-- **Ejecuta SOLO los tests relevantes a los cambios** (no toda la suite).
-- **Lee SOLO los archivos de test relevantes**.
-- **NO leas código de producción** a menos que sea necesario para entender el test.
-- Tu output debe ser CONCISO: resultados de tests + contexto para documentación.
-- Si no hay tests disponibles, reporta esto claramente.
-
-### Output Esperado
-
-Tu output debe ser un reporte estructurado en Markdown con:
-
-1. **Resumen de Tests**: Estado general (PASSED / FAILED / NO TESTS).
-2. **Resultados Detallados**: Lista de tests ejecutados con resultados.
-3. **Fallos** (si aplica): Stack traces, pasos para reproducir, severidad.
-4. **Contexto para Documentación**: Tests creados, edge cases validados, cobertura alcanzada.
-
-Ejemplo de output CONCISO:
-
-```
-## Resumen de Tests
-PASSED (3/3)
-
-## Resultados Detallados
-- test_login_validation: PASSED
-- test_counter_increment: PASSED
-- test_counter_decrement: PASSED
-
-## Contexto para Documentación
-- Validación de login hardcodeada testada
-- Lógica de contador validada (incremento/decremento)
-- Edge cases: contador negativo, contador máximo
-```
-
-Si hay fallos:
-
-```
-## Resumen de Tests
-FAILED (1/3)
-
-## Resultados Detallados
-- test_login_validation: FAILED
-- test_counter_increment: PASSED
-- test_counter_decrement: PASSED
-
-## Fallos
-
-### CRITICAL
-- test_login_validation: AssertionError expected redirect but got error
-  - Stack trace: [trace]
-  - Pasos para reproducir: Ingresar usuario:user/password:user
-
-## Contexto para Documentación
-- Validación de login falló: error en event listener
-- Contador funcionando correctamente
-```
-
----
-
-## Restricciones
-
-- **⛔ NO MODIFIQUES EL CÓDIGO FUENTE** (excepto archivos de test).
-- **⛔ NO TOQUES LA DOCUMENTACIÓN EMPRESARIAL.**
-- **⛔ NO PASES CÓDIGO CON TESTS FALLANDO.**
-- Enfocate 100% en la validacion funcional.
-- Captura contexto para documentación en cada ejecución de tests.
+- Enfocate 100% en entregar la feature terminada y estable al orquestador.
 """
 
 
@@ -765,10 +473,7 @@ def workspace_file_map() -> dict[str, str]:
         ".cortex/skills/cortex-sync.md": render_cortex_sync_skill(),
         ".cortex/skills/cortex-SDDwork.md": render_cortex_sddwork_skill(),
         ".cortex/subagents/cortex-code-explorer.md": render_subagent_explorer(),
-        ".cortex/subagents/cortex-code-planner.md": render_subagent_planner(),
         ".cortex/subagents/cortex-code-implementer.md": render_subagent_implementer(),
-        ".cortex/subagents/cortex-code-reviewer.md": render_subagent_reviewer(),
-        ".cortex/subagents/cortex-code-tester.md": render_subagent_tester(),
         ".cortex/subagents/cortex-documenter.md": render_subagent_documenter(),
     }
 

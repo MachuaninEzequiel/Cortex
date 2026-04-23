@@ -1,17 +1,17 @@
 import asyncio
 import logging
-import os
 import re
 import shutil
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
+
 import mcp.server.stdio
-from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
 import mcp.types as types
+from mcp.server import NotificationOptions, Server
+from mcp.server.models import InitializationOptions
+
 from cortex.core import AgentMemory
 from cortex.models import EnrichedContext
 
@@ -222,7 +222,8 @@ class CortexMCPServer:
 
         @self.server.call_tool()
         async def handle_call_tool(name: str, arguments: dict | None) -> list[types.TextContent]:
-            if not arguments: arguments = {}
+            if not arguments:
+                arguments = {}
 
             # Capa 1: Logging genérico al inicio de cada llamada
             self._log_tool_call(name, arguments)
@@ -233,14 +234,12 @@ class CortexMCPServer:
                 if name == "cortex_search":
                     query = arguments.get("query", "")
                     limit = arguments.get("limit", 5)
-                    results = self.memory.search(query, top_k=limit)
-                    result_text = str(results.to_prompt())
+                    result_text = self._search_text(query, limit)
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_context":
-                    ctx = self._enrich_context(arguments)
-                    result_text = ctx.to_prompt_format()
+                    result_text = self._context_text(arguments)
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
@@ -409,6 +408,54 @@ class CortexMCPServer:
             enriched.to_prompt_format(),
         ]
         return "\n".join(sections)
+
+    def _search_text(self, query: str, limit: int = 5) -> str:
+        results = self.memory.retrieve(query, top_k=limit)
+        return str(results.to_prompt())
+
+    def _context_text(self, arguments: dict[str, Any]) -> str:
+        return self._enrich_context(arguments).to_prompt_format()
+
+    def _create_spec_text(self, arguments: dict[str, Any]) -> str:
+        called_tools: set[str] = getattr(self, "_called_tools", set())
+        if "cortex_sync_ticket" not in called_tools:
+            return (
+                "âŒ **VIOLACIÃ“N DE GOBERNANZA**: cortex_create_spec fue llamado sin "
+                "ejecutar primero cortex_sync_ticket.\n\n"
+                "Por favor, corrige el flujo:\n"
+                "1. Llama a cortex_sync_ticket con el pedido del usuario\n"
+                "2. Luego llama a cortex_create_spec\n\n"
+                f"Herramientas llamadas en esta sesiÃ³n: {', '.join(sorted(called_tools))}"
+            )
+
+        path = self.memory.create_spec_note(
+            title=arguments.get("title", ""),
+            goal=arguments.get("goal", ""),
+            requirements=arguments.get("requirements", []),
+            files_in_scope=arguments.get("files_in_scope", []),
+            constraints=arguments.get("constraints", []),
+            acceptance_criteria=arguments.get("acceptance_criteria", []),
+            tags=arguments.get("tags", []),
+            sync_vault=not arguments.get("no_sync", False),
+        )
+        return f"Specification saved -> {path}"
+
+    def _save_session_text(self, arguments: dict[str, Any]) -> str:
+        path = self.memory.save_session_note(
+            title=arguments.get("title", ""),
+            spec_summary=arguments.get("spec_summary", ""),
+            changes_made=arguments.get("changes_made", []),
+            files_touched=arguments.get("files_touched", []),
+            key_decisions=arguments.get("key_decisions", []),
+            next_steps=arguments.get("next_steps", []),
+            tags=arguments.get("tags", []),
+            sync_vault=not arguments.get("no_sync", False),
+        )
+        return f"Session note saved -> {path}"
+
+    def _sync_vault_text(self) -> str:
+        count = self.memory.sync_vault()
+        return f"Vault synced - {count} documents indexed."
 
 
     async def run(self):
@@ -587,12 +634,9 @@ class CortexMCPServer:
         results = await asyncio.gather(*coroutines, return_exceptions=True)
 
         lines = ["## Resultados de todos los subagentes", ""]
-        for item, result in zip(tasks, results):
+        for item, result in zip(tasks, results, strict=False):
             agent = item["agent"]
-            if isinstance(result, Exception):
-                outcome = f"Error: {result}"
-            else:
-                outcome = str(result)
+            outcome = f"Error: {result}" if isinstance(result, Exception) else str(result)
             lines.append(f"### Subagente: {agent}")
             lines.append(outcome)
             lines.append("")

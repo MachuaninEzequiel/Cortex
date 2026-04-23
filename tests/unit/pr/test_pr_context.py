@@ -1,11 +1,6 @@
 """Tests for PR context capture and documentation generation."""
 from __future__ import annotations
 
-import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
 # ---------------------------------------------------------------------------
 # PRContext model tests
 # ---------------------------------------------------------------------------
@@ -150,7 +145,7 @@ class TestPRCapture:
         assert "database" in ctx.labels
 
     def test_save_and_load_context(self, tmp_path):
-        from cortex.pr_capture import capture_manual, save_context, capture_from_json
+        from cortex.pr_capture import capture_from_json, capture_manual, save_context
 
         ctx = capture_manual(
             title="Test PR",

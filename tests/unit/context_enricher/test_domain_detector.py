@@ -1,6 +1,7 @@
 """Tests for DomainDetector."""
 
 import pytest
+
 from cortex.context_enricher.domain_detector import DomainDetector, DomainMatch
 
 

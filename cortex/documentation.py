@@ -10,9 +10,9 @@ This module powers the new Release 2 workflow:
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from pathlib import Path
-import re
 
 
 def _slugify(value: str) -> str:

@@ -17,9 +17,12 @@ whether to abort or continue after a failed stage.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from cortex.pipeline.domain.types import StageResult, StageType
+
+if TYPE_CHECKING:
+    from cortex.pipeline.domain.context import PipelineContext
 
 
 @runtime_checkable
@@ -54,7 +57,7 @@ class PipelineStage(Protocol):
         """
         ...
 
-    def execute(self, ctx: "PipelineContext") -> StageResult:  # noqa: F821
+    def execute(self, ctx: PipelineContext) -> StageResult:
         """
         Run the stage logic and return an immutable result.
 

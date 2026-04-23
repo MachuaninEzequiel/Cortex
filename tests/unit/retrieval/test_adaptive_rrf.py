@@ -8,13 +8,13 @@ and backward-compatibility of HybridSearch with adaptive_weights=False.
 from __future__ import annotations
 
 import pytest
+
+from cortex.retrieval.hybrid_search import HybridSearch
 from cortex.retrieval.intent import (
+    IntentResult,
     QueryIntent,
     QueryIntentDetector,
-    IntentResult,
 )
-from cortex.retrieval.hybrid_search import HybridSearch
-
 
 # ------------------------------------------------------------------
 # Intent detection unit tests

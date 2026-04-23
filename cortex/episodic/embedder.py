@@ -172,7 +172,7 @@ class Embedder:
 
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise EnvironmentError("OPENAI_API_KEY environment variable not set.")
+            raise OSError("OPENAI_API_KEY environment variable not set.")
 
         client = OpenAI(api_key=api_key)
         response = client.embeddings.create(input=text, model=self.model_name)

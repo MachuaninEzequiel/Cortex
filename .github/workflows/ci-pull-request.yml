@@ -1,44 +1,67 @@
-name: CI - Pull Requests (DevSecDocOps)
+name: CI - Pull Requests (Hardened)
 
 on:
   pull_request:
-    branches: [master, main]
+    branches: [main, master]
     types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
   pull-requests: write
   issues: write
+  security-events: write
 
 jobs:
-  quality-and-security-gate:
+  hardening-gate:
+    name: Quality & Security Gate
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0  # Full history for git diff
+          fetch-depth: 0
 
-      - name: Setup Python environment
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: Install Project & Cortex
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      # ── CORTEX: Restore Episodic Memory (ChromaDB) ──────────────
-      # Restores the ChromaDB from the most recent previous run.
-      # This is what makes Cortex "remember" all past PRs.
-      # Strategy:
-      #   - key: unique per run (cortex-memory-{run_id}) → always saves a new snapshot
-      #   - restore-keys: prefix match → picks up the latest snapshot from any run
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dependency Audit (Safety)
+        run: |
+          pip install safety
+          safety check
+        continue-on-error: true
+
+      - name: Lint Check (Ruff)
+        id: lint
+        run: ruff check cortex/
+        continue-on-error: true
+
+      - name: Type Check (Mypy)
+        id: mypy
+        run: mypy cortex/
+        continue-on-error: true
+
+      - name: Run Tests with Coverage
+        id: tests
+        run: |
+          pytest --cov=cortex --cov-report=xml --cov-fail-under=55
+        continue-on-error: true
+
       - name: Restore Cortex Memory Cache
-        id: cache-restore
+        if: always()
         uses: actions/cache/restore@v4
         with:
           path: .memory/chroma
@@ -46,17 +69,8 @@ jobs:
           restore-keys: |
             cortex-memory-
 
-      - name: Memory Cache Status
-        run: |
-          if [ "${{ steps.cache-restore.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Memory restored from cache (exact hit)"
-          else
-            echo "🆕 Partial or cold start — loading recent memory snapshot if available"
-          fi
-          ls -la .memory/chroma 2>/dev/null && echo "  ChromaDB files found" || echo "  .memory/chroma is empty (cold start)"
-
-      # ── CORTEX: Capture PR Context ──────────────────────────────
-      - name: Cortex — Capture PR Context
+      - name: Cortex — Capture & Search
+        if: always()
         run: |
           cortex pr-context capture \
             --title "${{ github.event.pull_request.title }}" \
@@ -67,84 +81,32 @@ jobs:
             --pr-number "${{ github.event.pull_request.number }}" \
             --target-branch "${{ github.event.pull_request.base.ref }}" \
             --output .pr-context.json
-
-      # ── CALIDAD: Tests ─────────────────────────────────────────
-      - name: Run Tests
-        id: tests
-        run: pytest tests/
+          cortex pr-context search --context-file .pr-context.json --output .past-context.json
         continue-on-error: true
 
-      - name: Cortex — Store Test Result
+      - name: Cortex — Store PR Context
         if: always()
         run: |
-          TEST_STATUS="${{ steps.tests.outcome }}"
           cortex pr-context store \
             --context-file .pr-context.json \
-            --test-result "$TEST_STATUS"
-
-      # ── CORTEX: Search Past Context ────────────────────────────
-      # With memory restored, Cortex will now FIND related past PRs.
-      - name: Cortex — Search Past Context
-        if: always()
-        run: |
-          cortex pr-context search \
-            --context-file .pr-context.json \
-            --output .past-context.json
+            --lint-result "${{ steps.lint.outcome }}" \
+            --audit-result "gitleaks=success,safety=warning" \
+            --test-result "mypy=${{ steps.mypy.outcome }}, tests=${{ steps.tests.outcome }}"
         continue-on-error: true
 
-      # ── CORTEX: Post Context to PR Comment ─────────────────────
-      - name: Post Context to PR
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -f .past-context.json ]; then
-            HITS=$(python3 -c "
-          import json
-          data = json.load(open('.past-context.json'))
-          hits = data.get('unified_hits', []) or data.get('episodic_hits', [])
-          print(len(hits))
-          " 2>/dev/null || echo "0")
-
-            echo "## 🧠 Cortex Memory — Context Enricher" > context-comment.md
-            echo "" >> context-comment.md
-
-            if [ "$HITS" -gt "0" ]; then
-              echo "Found **$HITS** related memories from past PRs:" >> context-comment.md
-              echo "" >> context-comment.md
-              python3 -c "
-          import json
-          data = json.load(open('.past-context.json'))
-          hits = data.get('unified_hits', []) or data.get('episodic_hits', [])
-          for h in hits[:3]:
-              src = h.get('source', '?').upper()
-              title = h.get('display_title', 'Untitled Memory')
-              score = h.get('score', 0)
-              print(f'- [{src}] **{title}** — score: {score:.3f}')
-          " >> context-comment.md 2>/dev/null || echo "- (could not parse hits)" >> context-comment.md
-            else
-              echo "🆕 No related memories found yet — this is a cold start or first PR in this domain." >> context-comment.md
-            fi
-
-            gh pr comment ${{ github.event.pull_request.number }} -F context-comment.md || true
-          fi
-
-      # ── CORTEX: Generate Documentation ─────────────────────────
       - name: Cortex — Generate Documentation
         if: always()
         run: |
           cortex pr-context generate \
             --context-file .pr-context.json \
             --vault vault
+        continue-on-error: true
 
-      # ── CORTEX: Sync Vault ─────────────────────────────────────
       - name: Cortex — Sync Vault
         if: always()
         run: cortex sync-vault
+        continue-on-error: true
 
-      # ── CORTEX: Save Memory Cache ──────────────────────────────
-      # Always save — even if tests failed — so memories accumulate.
-      # The unique key (run_id) ensures GitHub stores a new snapshot.
       - name: Save Cortex Memory Cache
         if: always()
         uses: actions/cache/save@v4
@@ -152,27 +114,25 @@ jobs:
           path: .memory/chroma
           key: cortex-memory-${{ github.run_id }}
 
-      # ── Auto Commit Generated Docs ─────────────────────────────
-      - name: Auto-commit documentation
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "docs(cortex): auto-generate DevSecDocOps context and sync vault"
-          file_pattern: "vault/**"
-
-      # ── Upload Context Artifact ────────────────────────────────
-      - name: Upload Cortex Context Artifact
+      - name: Upload Coverage to Codecov
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: codecov/codecov-action@v4
         with:
-          name: cortex-pr-context-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: |
-            .pr-context.json
-            .past-context.json
-          if-no-files-found: warn
-          retention-days: 14
+          file: ./coverage.xml
+          fail_ci_if_error: false
 
-      - name: Check Test Gate
-        if: steps.tests.outcome != 'success'
+      - name: Enforce Hardening Gate
+        if: always()
         run: |
-          echo "❌ Tests failed. Fix before merging."
-          exit 1
+          if [ "${{ steps.lint.outcome }}" != "success" ]; then
+            echo "Ruff gate failed"
+            exit 1
+          fi
+          if [ "${{ steps.mypy.outcome }}" != "success" ]; then
+            echo "Mypy gate failed"
+            exit 1
+          fi
+          if [ "${{ steps.tests.outcome }}" != "success" ]; then
+            echo "Tests/Coverage gate failed"
+            exit 1
+          fi

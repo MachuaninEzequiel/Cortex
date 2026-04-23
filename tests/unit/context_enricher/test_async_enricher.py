@@ -11,14 +11,13 @@ Verifies:
 from __future__ import annotations
 
 import asyncio
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from cortex.context_enricher.async_enricher import AsyncContextEnricher
-from cortex.context_enricher.enricher import ContextEnricher
 from cortex.context_enricher.config import ContextEnricherConfig
-from cortex.models import WorkContext, MemoryEntry, EpisodicHit
-
+from cortex.models import EpisodicHit, MemoryEntry, WorkContext
 
 # ------------------------------------------------------------------
 # Fixtures

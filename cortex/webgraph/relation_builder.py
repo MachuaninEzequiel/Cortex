@@ -29,7 +29,7 @@ def _identifier_tokens(text: str) -> set[str]:
 def _cosine_similarity(a: list[float] | None, b: list[float] | None) -> float:
     if not a or not b:
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(y * y for y in b))
     if norm_a == 0.0 or norm_b == 0.0:

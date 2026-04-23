@@ -1,7 +1,6 @@
 """Tests for EpisodicMemoryStore."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def test_add_memory(episodic_store):

@@ -34,7 +34,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from cortex.models import EpisodicHit, RetrievalResult, SemanticDocument, UnifiedHit
-from cortex.retrieval.intent import IntentResult, QueryIntent, QueryIntentDetector
+from cortex.retrieval.intent import IntentResult, QueryIntentDetector
 
 if TYPE_CHECKING:
     from cortex.episodic.memory_store import EpisodicMemoryStore

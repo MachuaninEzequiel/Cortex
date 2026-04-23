@@ -1,10 +1,11 @@
 """Tests for ContextEnricher."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
+
 from cortex.context_enricher.enricher import ContextEnricher, ContextEnricherConfig
-from cortex.models import WorkContext, EnrichedContext, EnrichedItem, UnifiedHit, MemoryEntry
-from datetime import datetime, timezone
+from cortex.models import EnrichedContext, MemoryEntry, WorkContext
 
 
 @pytest.fixture

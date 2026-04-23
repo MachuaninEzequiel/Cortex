@@ -33,14 +33,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import asyncio
-import os
-import shutil
+import json
 import subprocess
 from pathlib import Path
-from typing import Optional
-import json
+
 import typer
-import yaml
 
 from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
@@ -327,17 +324,47 @@ def setup_agent(
     git_depth: int = typer.Option(
         None, "--git-depth", help="Number of git commits to index for context."
     ),
+    ide: str | None = typer.Option(
+        None, "--ide", help="IDE to configure (skip prompt)."
+    ),
 ) -> None:
     """
     Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
     """
-    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
+    import cortex.ide as cortex_ide
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
     if git_depth is None:
         git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
+
+    # IDE selection
+    selected_ide = ide
+    if selected_ide is None:
+        typer.echo("\n🔧 Select IDE to configure:")
+        supported = cortex_ide.get_supported_ides()
+        for i, ide_name in enumerate(supported, 1):
+            typer.echo(f"  {i}. {ide_name}")
+        typer.echo("  0. Skip IDE configuration")
+
+        choice = typer.prompt("\nEnter IDE number or name", default="0")
+
+        if choice == "0":
+            selected_ide = None
+        elif choice.isdigit():
+            idx = int(choice) - 1
+            if 0 <= idx < len(supported):
+                selected_ide = supported[idx]
+        elif choice in supported:
+            selected_ide = choice
+        else:
+            typer.echo("⚠ Invalid selection, skipping IDE configuration.")
+            selected_ide = None
+
     typer.echo("🧠 Cortex — Setting up Agent profile...")
     typer.echo("")
+
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth)
+    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth, ide=selected_ide)
     typer.echo(format_summary(summary))
 
 
@@ -350,7 +377,7 @@ def setup_pipeline(
     """
     Setup only CI/CD / DevOps components (Workflows, Scripts, Config).
     """
-    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
     typer.echo("🧠 Cortex — Setting up Pipeline profile...")
     typer.echo("")
@@ -372,7 +399,7 @@ def setup_full(
     """
     Full project setup (Agent + Pipeline).
     """
-    from cortex.setup.orchestrator import SetupOrchestrator, SetupMode, format_summary
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
     if git_depth is None:
         git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
     typer.echo("🧠 Cortex — Setting up Full project...")
@@ -749,11 +776,11 @@ def search(
     else:
         if result.episodic_hits:
             typer.echo("Episodic Memory:")
-            for hit in result.episodic_hits:
-                e = hit.entry
+            for e_hit in result.episodic_hits:
+                e = e_hit.entry
                 typer.echo(
                     f"  [{e.id}] ({e.memory_type}) {e.content[:80]}...  "
-                    f"score={hit.score:.3f}"
+                    f"score={e_hit.score:.3f}"
                 )
         else:
             typer.echo("Episodic Memory: (no results)")
@@ -785,24 +812,49 @@ def sync_vault() -> None:
 # ---------------------------------------------------------------------------
 
 @app.command()
-def install_ide() -> None:
-    """Install Cortex inside OpenCode / Claude Code locally."""
-    from cortex.ide_installer import install
-    install()
+def install_ide(
+    ide: str | None = typer.Option(None, "--ide", help="IDE to configure (e.g. opencode, cursor, claude-code)."),
+    all_ides: bool = typer.Option(False, "--all", help="Configure all supported IDEs."),
+) -> None:
+    """Install Cortex agent profiles and MCP config in supported IDEs."""
+    from cortex.ide import get_supported_ides, inject, inject_all
+
+    if all_ides or ide is None:
+        inject_all(project_root=Path.cwd())
+        return
+
+    inject(ide, project_root=Path.cwd())
+    typer.echo(f"Supported IDEs: {', '.join(get_supported_ides())}")
 
 @app.command()
-def uninstall_ide() -> None:
-    """Uninstall Cortex from OpenCode / Claude Code locally."""
-    from cortex.ide_installer import uninstall
-    uninstall()
+def uninstall_ide(
+    ide: str | None = typer.Option(None, "--ide", help="IDE to clean (e.g. opencode, cursor, claude-code)."),
+    all_ides: bool = typer.Option(False, "--all", help="Clean all supported IDEs."),
+) -> None:
+    """Remove Cortex agent profiles and MCP config from supported IDEs."""
+    from cortex.ide import uninstall, uninstall_all
+
+    if all_ides or ide is None:
+        uninstall_all()
+        return
+
+    uninstall(ide)
 
 @app.command(name="mcp-server")
 def mcp_server(
+    project_root: str = typer.Option(None, "--project-root", help="Ruta absoluta al directorio del proyecto Cortex (donde está config.yaml)."),
     stdio: bool = typer.Option(True, "--stdio", help="Use stdio transport (required for IDE integration)."),
 ) -> None:
-    """Start the Cortex v2.1 MCP Server (stdio transport)."""
-    import asyncio
+    """Start the Cortex v2.1 MCP Server (stdio transport).
+    
+    Para integración con IDEs (Cursor, VSCode, Claude Desktop), usa --project-root
+    para especificar la ruta del proyecto Cortex cuando el cwd del IDE no coincide
+    con el directorio del proyecto.
+    """
     import sys
+    
+    # Determinar el directorio raíz del proyecto
+    root = Path(project_root) if project_root else Path.cwd()
     
     # Redirección temporal de stdout a stderr para proteger el handshake JSON-RPC
     old_stdout = sys.stdout
@@ -810,7 +862,7 @@ def mcp_server(
     
     try:
         from cortex.mcp.server import CortexMCPServer
-        server = CortexMCPServer(project_root=Path.cwd())
+        server = CortexMCPServer(project_root=root)
     finally:
         sys.stdout = old_stdout
         
@@ -823,25 +875,74 @@ def mcp_serve_legacy() -> None:
 
 @app.command(name="inject")
 def inject(
-    ide: str = typer.Option(None, "--ide", help="IDE to inject (opencode, cursor, claude, claude-desktop, vscode, zed)."),
-    all_ides: bool = typer.Option(False, "--all", help="Inject profiles for all IDEs.")
+    ide: str | None = typer.Option(None, "--ide", help="IDE to inject (canonical names or aliases such as claude-code / claude-desktop)."),
 ) -> None:
     """Inject Cortex agent profiles into the specified IDE.
-    
+
     This injects Cortex agent prompts (cortex-sync, cortex-SDDwork) in the
     native format of each IDE. The profiles instruct the IDE's native agent
     to use Cortex Engine tools for memory/search and IDE-native delegation
     tools for subagent orchestration.
+
+    IMPORTANT: Cortex performs a safe merge of configurations:
+    - JSON files: Deep merge (preserves existing settings)
+    - Markdown files: Writes with autogeneration header (never overwrites manual edits)
+    - Automatic backup created before any modification
     """
-    from cortex.profile_injector import inject
-    
-    if all_ides:
-        inject(ide=None)
-    elif ide:
-        inject(ide=ide)
+    import cortex.ide as cortex_ide
+
+    if ide:
+        # Direct injection for specified IDE
+        cortex_ide.inject(ide, project_root=Path.cwd())
+        typer.echo(f"\n✅ Successfully configured {ide}")
+        typer.echo("Run 'cortex inject' again to configure another IDE.")
     else:
-        typer.echo("Please specify --ide <name> or --all")
-        typer.echo("Supported IDEs: opencode, cursor, claude, claude-desktop, vscode, zed")
+        # Interactive selection
+        supported = cortex_ide.get_supported_ides()
+        typer.echo("\n🔧 Cortex IDE Configuration")
+        typer.echo("=" * 40)
+        typer.echo("Select an IDE to configure:")
+        for i, ide_name in enumerate(supported, 1):
+            typer.echo(f"  {i}. {ide_name}")
+
+        choice = typer.prompt("\nEnter IDE number or name", default="")
+
+        # Parse choice
+        selected_ide = None
+        if choice.isdigit():
+            idx = int(choice) - 1
+            if 0 <= idx < len(supported):
+                selected_ide = supported[idx]
+        elif choice in supported:
+            selected_ide = choice
+
+        if selected_ide:
+            cortex_ide.inject(selected_ide, project_root=Path.cwd())
+            typer.echo(f"\n✅ Successfully configured {selected_ide}")
+            typer.echo("Run 'cortex inject' again to configure another IDE.")
+        else:
+            typer.echo(f"❌ Invalid selection. Supported IDEs: {', '.join(supported)}")
+
+
+@app.command(name="sync-ide")
+def sync_ide(
+    ide: str = typer.Option(..., "--ide", help="IDE to sync (required)."),
+    force: bool = typer.Option(False, "--force", help="Force regeneration even if file exists."),
+) -> None:
+    """Sync IDE configuration with current .cortex/skills/ content.
+
+    This regenerates the IDE configuration files from the current .cortex/skills/
+    and .cortex/subagents/ content. Use this after modifying Cortex skills to
+    update your IDE configuration.
+
+    The generated files include an autogeneration header with the command to
+    regenerate them manually.
+    """
+    import cortex.ide as cortex_ide
+
+    cortex_ide.inject(ide, project_root=Path.cwd())
+    typer.echo(f"\n✅ Successfully synced {ide} configuration")
+    typer.echo("Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
 
 @app.command()
 def stats() -> None:
@@ -890,7 +991,6 @@ def _load_memory() -> AgentMemory:  # noqa: F821
 
 def _get_staged_files() -> list[str]:
     """Get list of staged (and modified) files from git."""
-    import subprocess
 
     files: list[str] = []
     try:

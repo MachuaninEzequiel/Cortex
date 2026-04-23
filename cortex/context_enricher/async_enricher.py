@@ -37,8 +37,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, Any
 
 from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.context_enricher.enricher import ContextEnricher
@@ -164,16 +165,16 @@ class AsyncContextEnricher(ContextEnricher):
             max_workers=min(self._max_workers, len(strategy_tasks))
         ) as pool:
             # Schedule all tasks concurrently and gather results by index
-            coros = [
+            coros: list[Any] = [
                 loop.run_in_executor(pool, task_fn)
                 for task_fn in strategy_callables
             ]
             raw_results = await asyncio.gather(*coros, return_exceptions=True)
 
-        for name, result in zip(strategy_names, raw_results):
+        for name, result in zip(strategy_names, raw_results, strict=False):
             if isinstance(result, Exception):
                 logger.warning("Strategy '%s' failed (non-blocking): %s", name, result)
-            elif result:
+            elif isinstance(result, list):
                 strategy_results[name] = result
                 logger.debug("Strategy '%s' completed: %d hits", name, len(result))
 
@@ -188,7 +189,7 @@ class AsyncContextEnricher(ContextEnricher):
         self,
         work: WorkContext,
         fetch_k: int,
-    ) -> dict[str, object]:
+    ) -> dict[str, Callable[[], Any]]:
         """
         Build a dict of {strategy_name: callable} to execute in parallel.
 
@@ -197,7 +198,7 @@ class AsyncContextEnricher(ContextEnricher):
 
         Only enabled strategies (per config) with valid query inputs are included.
         """
-        tasks: dict[str, object] = {}
+        tasks: dict[str, Callable[[], Any]] = {}
         queries = work.search_queries
 
         if self.config.topic and len(queries) >= 1:
@@ -286,6 +287,7 @@ class AsyncContextEnricher(ContextEnricher):
         directly for clarity and correctness.
         """
         from collections import defaultdict
+
         from cortex.models import EnrichedItem
 
         total_raw_hits = sum(len(v) for v in strategy_results.values())

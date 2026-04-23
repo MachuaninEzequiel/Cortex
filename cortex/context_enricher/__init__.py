@@ -16,9 +16,9 @@ AsyncContextEnricher → Same as above, strategies run in parallel (faster)
 ContextPresenter     → Formats context for CLI, LLM prompt, or JSON
 """
 
+from cortex.context_enricher.async_enricher import AsyncContextEnricher
 from cortex.context_enricher.domain_detector import DomainDetector, DomainMatch
 from cortex.context_enricher.enricher import ContextEnricher, ContextEnricherConfig
-from cortex.context_enricher.async_enricher import AsyncContextEnricher
 from cortex.context_enricher.observer import ContextObserver
 from cortex.context_enricher.presenter import ContextPresenter
 

@@ -32,14 +32,14 @@ Quick start
     print(report.summary())
 """
 
-from cortex.pipeline.domain.types import (
-    StageType,
-    StageStatus,
-    StageResult,
-    PipelineReport,
-)
 from cortex.pipeline.domain.context import PipelineContext
 from cortex.pipeline.domain.protocols import PipelineStage
+from cortex.pipeline.domain.types import (
+    PipelineReport,
+    StageResult,
+    StageStatus,
+    StageType,
+)
 from cortex.pipeline.orchestrator import PipelineOrchestrator
 
 __all__ = [

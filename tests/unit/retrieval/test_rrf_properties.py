@@ -1,10 +1,11 @@
 """
 Property-based testing for RRF fusion algorithm in HybridSearch.
 """
-import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
+
 from cortex.models import EpisodicHit, MemoryEntry, SemanticDocument
-from cortex.retrieval.hybrid_search import HybridSearch, _RRF_K
+from cortex.retrieval.hybrid_search import HybridSearch
 
 # Strategy for generating MemoryEntry
 memory_entry_strategy = st.builds(

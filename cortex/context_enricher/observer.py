@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 from cortex.context_enricher.domain_detector import DomainDetector
 
@@ -245,11 +245,7 @@ class ContextObserver:
         for pattern in _FUNCTION_PATTERNS:
             matches = pattern.findall(content)
             for match in matches:
-                if isinstance(match, tuple):
-                    # Take first non-empty match from regex groups
-                    match = next((m for m in match if m), "")
-                else:
-                    match = match
+                match = next((m for m in match if m), "") if isinstance(match, tuple) else match
                 if match and not any(kw in match.lower() for kw in ["if", "else", "for", "while"]):
                     funcs.add(match)
         return sorted(funcs)
@@ -261,10 +257,7 @@ class ContextObserver:
         for pattern in _CLASS_PATTERNS:
             matches = pattern.findall(content)
             for match in matches:
-                if isinstance(match, tuple):
-                    match = next((m for m in match if m), "")
-                else:
-                    match = match
+                match = next((m for m in match if m), "") if isinstance(match, tuple) else match
                 if match:
                     classes.add(match)
         return sorted(classes)
@@ -317,7 +310,7 @@ class ContextObserver:
     # Internal: build context with domain detection and queries
     # ------------------------------------------------------------------
 
-    def _build_context(self, *, source: str, **kwargs) -> WorkContext:
+    def _build_context(self, *, source: Literal['git_diff', 'pr', 'manual'], **kwargs: Any) -> WorkContext:
         """
         Build a WorkContext with domain detection and search queries.
 

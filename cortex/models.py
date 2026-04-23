@@ -7,10 +7,26 @@ Shared Pydantic models used across the cortex package.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, computed_field
+
+
+class MemoryType(str, Enum):
+    """Categorization for episodic memories."""
+
+    GENERAL = "general"
+    SESSION = "session"
+    HU = "hu"
+    ADR = "adr"
+    INCIDENT = "incident"
+    CHANGELOG = "changelog"
+    SECURITY = "security"
+    PR_SUMMARY = "pr_summary"
+    CI_FAILURE = "ci_failure"
+    CONVERSATION = "conversation"
 
 
 class MemoryEntry(BaseModel):
@@ -114,15 +130,15 @@ class RetrievalResult(BaseModel):
 
         if self.unified_hits:
             # Use the truly fused ranking
-            for hit in self.unified_hits:
-                if hit.source == "episodic" and hit.entry:
-                    e = hit.entry
+            for u_hit in self.unified_hits:
+                if u_hit.source == "episodic" and u_hit.entry:
+                    e = u_hit.entry
                     parts.append(
                         f"- [EPISODIC:{e.memory_type}] {e.content}"
-                        f"  (files: {', '.join(e.files) or 'none'}, score: {hit.score:.4f})"
+                        f"  (files: {', '.join(e.files) or 'none'}, score: {u_hit.score:.4f})"
                     )
-                elif hit.source == "semantic" and hit.doc:
-                    d = hit.doc
+                elif u_hit.source == "semantic" and u_hit.doc:
+                    d = u_hit.doc
                     parts.append(f"- [SEMANTIC] **{d.title}** ({d.path})")
                     excerpt = d.content[:300].replace("\n", " ")
                     parts.append(f"  > {excerpt}…")
@@ -130,11 +146,11 @@ class RetrievalResult(BaseModel):
             # Fallback to separate lists (backward compat)
             if self.episodic_hits:
                 parts.append("### Episodic Memory (past experiences)")
-                for hit in self.episodic_hits:
-                    e = hit.entry
+                for e_hit in self.episodic_hits:
+                    e = e_hit.entry
                     parts.append(
                         f"- [{e.memory_type}] {e.content}"
-                        f"  (files: {', '.join(e.files) or 'none'}, score: {hit.score:.2f})"
+                        f"  (files: {', '.join(e.files) or 'none'}, score: {e_hit.score:.2f})"
                     )
 
             if self.semantic_hits:

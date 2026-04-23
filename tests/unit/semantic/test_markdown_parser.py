@@ -1,7 +1,5 @@
 """Tests for MarkdownParser."""
 
-import pytest
-from pathlib import Path
 
 
 def test_parse_with_frontmatter(tmp_path, markdown_parser):

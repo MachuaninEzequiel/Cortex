@@ -1,7 +1,10 @@
 import os
+
 import pytest
-from cortex.embedders.factory import EmbedderFactory, EmbeddingConfig, UnsupportedBackendError
+
 from cortex.embedders.base import EmbedderProtocol
+from cortex.embedders.factory import EmbedderFactory, EmbeddingConfig, UnsupportedBackendError
+
 
 @pytest.fixture(params=["onnx", "local", "openai"])
 def embedder_backend(request):
@@ -9,11 +12,10 @@ def embedder_backend(request):
     
     if backend == "local":
         pytest.importorskip("sentence_transformers")
-    elif backend == "openai":
+    elif backend == "openai" and not os.getenv("OPENAI_API_KEY"):
         # Mocking OpenAI for contract test to not require real API key
         # or skip if not mocked. We will skip if real key is not set.
-        if not os.getenv("OPENAI_API_KEY"):
-            pytest.skip("OPENAI_API_KEY not set")
+        pytest.skip("OPENAI_API_KEY not set")
             
     return backend
 

@@ -1,7 +1,5 @@
 """Tests for VaultReader."""
 
-import pytest
-from pathlib import Path
 
 
 def test_sync_counts_documents(vault_reader):
