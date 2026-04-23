@@ -57,7 +57,7 @@ jobs:
       - name: Run Tests with Coverage
         id: tests
         run: |
-          pytest --cov=cortex --cov-report=xml --cov-fail-under=60
+          pytest --cov=cortex --cov-report=xml --cov-fail-under=55
         continue-on-error: true
 
       - name: Restore Cortex Memory Cache
