@@ -19,7 +19,7 @@ def create_app(project_root: Path | None = None):
     try:
         from flask_compress import Compress
     except ImportError:  # pragma: no cover - exercised manually
-        Compress = None
+        Compress = None  # type: ignore[misc, assignment]
 
     root = project_root or Path.cwd()
     service = WebGraphService(root)
@@ -46,7 +46,8 @@ def create_app(project_root: Path | None = None):
 
     @app.get("/api/node/<path:node_id>")
     def node_detail(node_id: str):
-        mode = request.args.get("mode", config.default_mode)
+        from typing import cast
+        mode = cast(Any, request.args.get("mode", config.default_mode))
         return jsonify(service.get_node_detail(node_id, mode=mode).model_dump())
 
     @app.get("/api/subgraph")

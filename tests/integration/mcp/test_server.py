@@ -52,7 +52,7 @@ def test_enrich_context_derives_keywords_from_query() -> None:
     context = server._enrich_context({"query": "auth refresh token flow"})
 
     assert context.to_prompt_format() == "context prompt"
-    assert server.memory.last_call == {
+    assert server.memory.last_call == {  # type: ignore[attr-defined]
         "changed_files": [],
         "keywords": ["auth", "refresh", "token", "flow"],
         "pr_title": "auth refresh token flow",
@@ -72,7 +72,7 @@ def test_enrich_context_preserves_explicit_files_and_keywords() -> None:
         }
     )
 
-    assert server.memory.last_call == {
+    assert server.memory.last_call == {  # type: ignore[attr-defined]
         "changed_files": ["cortex/core.py", "tests/test_core.py"],
         "keywords": ["core", "memory"],
         "pr_title": "Core memory improvements",
