@@ -47,7 +47,7 @@ def test_inject_all_collects_results_and_tolerates_failures(monkeypatch, tmp_pat
     ok = FakeAdapter("cursor", ["cursor.json"])
     fail = FakeAdapter("windsurf", fail=True)
 
-    monkeypatch.setattr(ide, "get_all_adapters", lambda: [ok, fail])
+    monkeypatch.setattr(ide, "get_all_adapters", lambda include_experimental=False: [ok, fail])
     monkeypatch.setattr(ide, "build_all_prompts", lambda _: {"cortex-SDDwork": "work"})
 
     results = ide.inject_all(project_root=tmp_path)
@@ -70,7 +70,7 @@ def test_uninstall_all_collects_results(monkeypatch) -> None:
     ok = FakeAdapter("cursor", ["cursor.json"])
     fail = FakeAdapter("windsurf", fail=True)
 
-    monkeypatch.setattr(ide, "get_all_adapters", lambda: [ok, fail])
+    monkeypatch.setattr(ide, "get_all_adapters", lambda include_experimental=False: [ok, fail])
 
     results = ide.uninstall_all()
 

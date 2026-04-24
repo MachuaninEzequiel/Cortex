@@ -814,12 +814,13 @@ def sync_vault() -> None:
 @app.command()
 def install_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to configure (e.g. opencode, cursor, claude-code)."),
-    all_ides: bool = typer.Option(False, "--all", help="Configure all supported IDEs."),
+    all_ides: bool = typer.Option(False, "--all", help="Configure all IDE adapters (deprecated/experimental)."),
 ) -> None:
     """Install Cortex agent profiles and MCP config in supported IDEs."""
     from cortex.ide import get_supported_ides, inject, inject_all
 
     if all_ides or ide is None:
+        typer.echo("Warning: --all uses deprecated/experimental bulk installation. Prefer --ide <name>.")
         inject_all(project_root=Path.cwd())
         return
 
@@ -829,12 +830,13 @@ def install_ide(
 @app.command()
 def uninstall_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to clean (e.g. opencode, cursor, claude-code)."),
-    all_ides: bool = typer.Option(False, "--all", help="Clean all supported IDEs."),
+    all_ides: bool = typer.Option(False, "--all", help="Clean all IDE adapters (deprecated/experimental)."),
 ) -> None:
     """Remove Cortex agent profiles and MCP config from supported IDEs."""
     from cortex.ide import uninstall, uninstall_all
 
     if all_ides or ide is None:
+        typer.echo("Warning: --all uses deprecated/experimental bulk removal. Prefer --ide <name>.")
         uninstall_all()
         return
 
