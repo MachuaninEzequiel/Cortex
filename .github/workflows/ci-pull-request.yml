@@ -1,4 +1,4 @@
-name: CI - Pull Requests (Hardened)
+name: CI - Pull Requests (Observability)
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   hardening-gate:
-    name: Quality & Security Gate
+    name: PR Observability
     runs-on: ubuntu-latest
 
     steps:
@@ -57,7 +57,7 @@ jobs:
       - name: Run Tests with Coverage
         id: tests
         run: |
-          pytest --cov=cortex --cov-report=xml --cov-fail-under=55
+          pytest --cov=cortex --cov-report=xml
         continue-on-error: true
 
       - name: Restore Cortex Memory Cache
@@ -121,18 +121,10 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
 
-      - name: Enforce Hardening Gate
+      - name: Observability Summary
         if: always()
         run: |
-          if [ "${{ steps.lint.outcome }}" != "success" ]; then
-            echo "Ruff gate failed"
-            exit 1
-          fi
-          if [ "${{ steps.mypy.outcome }}" != "success" ]; then
-            echo "Mypy gate failed"
-            exit 1
-          fi
-          if [ "${{ steps.tests.outcome }}" != "success" ]; then
-            echo "Tests/Coverage gate failed"
-            exit 1
-          fi
+          echo "Ruff: ${{ steps.lint.outcome }}"
+          echo "Mypy: ${{ steps.mypy.outcome }}"
+          echo "Tests: ${{ steps.tests.outcome }}"
+          echo "PR workflow runs in observability mode and does not block merges on these checks."

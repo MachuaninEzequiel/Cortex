@@ -50,15 +50,19 @@ def inject(ide_name: str, project_root: Path | None = None) -> list[str]:
 
 
 def inject_all(project_root: Path | None = None) -> dict[str, list[str]]:
-    """Inject Cortex profiles into all supported IDEs."""
+    """Inject Cortex profiles into all IDE adapters.
+
+    Deprecated/experimental: prefer explicit per-IDE installation.
+    """
     if project_root is None:
         project_root = _find_project_root()
 
     prompts = build_all_prompts(project_root)
     results: dict[str, list[str]] = {}
 
-    print("[Cortex IDE] Injecting profiles for all supported IDEs...")
-    for adapter in get_all_adapters():
+    print("[Cortex IDE] inject_all() is deprecated/experimental. Prefer per-IDE installation.")
+    print("[Cortex IDE] Injecting profiles for all registered IDE adapters...")
+    for adapter in get_all_adapters(include_experimental=True):
         try:
             files = adapter.inject_all(project_root, prompts)
             results[adapter.name] = files
@@ -88,11 +92,12 @@ def uninstall(ide_name: str) -> list[str]:
 
 
 def uninstall_all() -> dict[str, list[str]]:
-    """Remove Cortex profiles and MCP config from every supported IDE."""
+    """Remove Cortex profiles and MCP config from every registered IDE adapter."""
     results: dict[str, list[str]] = {}
 
-    print("[Cortex IDE] Removing Cortex from all supported IDEs...")
-    for adapter in get_all_adapters():
+    print("[Cortex IDE] uninstall_all() is deprecated/experimental. Prefer per-IDE removal.")
+    print("[Cortex IDE] Removing Cortex from all registered IDE adapters...")
+    for adapter in get_all_adapters(include_experimental=True):
         try:
             files = adapter.uninstall()
             results[adapter.name] = files

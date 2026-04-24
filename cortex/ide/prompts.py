@@ -13,6 +13,27 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def split_markdown_frontmatter(content: str) -> tuple[str | None, str]:
+    """Split optional YAML frontmatter from markdown content."""
+    lines = content.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None, content.strip()
+
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            frontmatter = "\n".join(lines[1:index]).strip()
+            body = "\n".join(lines[index + 1 :]).strip()
+            return frontmatter, body
+
+    return None, content.strip()
+
+
+def strip_markdown_frontmatter(content: str) -> str:
+    """Return markdown content without the leading YAML frontmatter."""
+    _, body = split_markdown_frontmatter(content)
+    return body
+
+
 def get_skill_prompt(project_root: Path, skill_name: str) -> str:
     """Read a skill prompt from .cortex/skills/.
 

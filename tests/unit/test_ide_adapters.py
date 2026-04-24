@@ -13,8 +13,9 @@ def test_supported_ides_registry() -> None:
     assert "cursor" in ides
     assert "vscode" in ides
     assert "windsurf" in ides
-    assert "antigravity" in ides
-    assert "hermes" in ides
+    assert "antigravity" not in ides
+    assert "hermes" not in ides
+    assert "zed" not in ides
 
 
 def test_opencode_adapter_inject_profiles(monkeypatch, tmp_path: Path) -> None:
@@ -78,6 +79,89 @@ def test_cursor_adapter_inject_mcp(monkeypatch, tmp_path: Path) -> None:
     assert "mcp-server" in data["mcpServers"]["cortex"]["args"]
     assert "--project-root" in data["mcpServers"]["cortex"]["args"]
     assert data["mcpServers"]["cortex"]["env"]["PYTHONWARNINGS"] == "ignore"
+
+
+def test_vscode_adapter_writes_workspace_agents_and_mcp(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    (project_root / ".cortex" / "subagents").mkdir(parents=True)
+    (project_root / ".cortex" / "subagents" / "cortex-code-explorer.md").write_text(
+        "---\nname: cortex-code-explorer\ndescription: explorer\n---\n\nExplorer body",
+        encoding="utf-8",
+    )
+    (project_root / ".cortex" / "subagents" / "cortex-code-implementer.md").write_text(
+        "---\nname: cortex-code-implementer\ndescription: implementer\n---\n\nImplementer body",
+        encoding="utf-8",
+    )
+    (project_root / ".cortex" / "subagents" / "cortex-documenter.md").write_text(
+        "---\nname: cortex-documenter\ndescription: documenter\n---\n\nDocumenter body",
+        encoding="utf-8",
+    )
+
+    adapter = get_adapter("vscode")
+    prompts = {
+        "cortex-sync": "---\nname: cortex-sync\n---\n\nSync body",
+        "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\nWork body",
+    }
+
+    files = adapter.inject_profiles(project_root, prompts)
+    files.extend(adapter.inject_mcp(project_root))
+
+    sync_path = project_root / ".github" / "agents" / "cortex-sync.agent.md"
+    work_path = project_root / ".github" / "agents" / "cortex-SDDwork.agent.md"
+    mcp_path = project_root / ".vscode" / "mcp.json"
+
+    assert sync_path.exists()
+    assert work_path.exists()
+    assert mcp_path.exists()
+    assert str(sync_path) in files
+    assert "handoffs:" in sync_path.read_text(encoding="utf-8")
+    assert "agents:" in work_path.read_text(encoding="utf-8")
+    assert "cortex" in json.loads(mcp_path.read_text(encoding="utf-8"))["servers"]
+
+
+def test_claude_code_adapter_writes_project_assets(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    (project_root / ".cortex" / "subagents").mkdir(parents=True)
+    for name in ("cortex-code-explorer", "cortex-code-implementer", "cortex-documenter"):
+        (project_root / ".cortex" / "subagents" / f"{name}.md").write_text(
+            f"---\nname: {name}\ndescription: {name}\n---\n\n{name} body",
+            encoding="utf-8",
+        )
+
+    adapter = get_adapter("claude_code")
+    prompts = {
+        "cortex-sync": "---\nname: cortex-sync\n---\n\nSync body",
+        "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\nWork body",
+    }
+
+    files = adapter.inject_profiles(project_root, prompts)
+    files.extend(adapter.inject_mcp(project_root))
+
+    assert (project_root / "CLAUDE.md").exists()
+    assert (project_root / ".claude" / "skills" / "cortex-sync" / "SKILL.md").exists()
+    assert (project_root / ".claude" / "skills" / "cortex-sddwork" / "SKILL.md").exists()
+    assert (project_root / ".claude" / "agents" / "cortex-code-explorer.md").exists()
+    assert (project_root / ".mcp.json").exists()
+    assert (project_root / ".claude" / "settings.json").exists()
+    assert str(project_root / ".mcp.json") in files
+
+
+def test_windsurf_adapter_writes_agents_md(monkeypatch, tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    monkeypatch.setattr("cortex.ide.adapters.windsurf.Path.home", staticmethod(lambda: tmp_path))
+
+    adapter = get_adapter("windsurf")
+    prompts = {"cortex-sync": "sync", "cortex-SDDwork": "work"}
+    files = adapter.inject_profiles(project_root, prompts)
+    files.extend(adapter.inject_mcp(project_root))
+
+    agents_path = project_root / "AGENTS.md"
+    mcp_path = tmp_path / ".codeium" / "windsurf" / "mcp_config.json"
+
+    assert agents_path.exists()
+    assert mcp_path.exists()
+    assert str(agents_path) in files
+    assert "cortex_save_session" in agents_path.read_text(encoding="utf-8")
 
 
 def test_registry_accepts_common_aliases() -> None:

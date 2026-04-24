@@ -22,6 +22,8 @@ _ALIASES = {
     "vs-code": "vscode",
 }
 
+_EXPERIMENTAL_IDES = {"antigravity", "hermes", "zed"}
+
 
 def _build_registry() -> dict[str, type[IDEAdapter]]:
     """Import and register all known adapters."""
@@ -74,12 +76,18 @@ def get_adapter(ide_name: str) -> IDEAdapter:
     return registry[normalized]()
 
 
-def get_all_adapters() -> list[IDEAdapter]:
-    """Return instances of all registered adapters."""
+def get_all_adapters(*, include_experimental: bool = False) -> list[IDEAdapter]:
+    """Return instances of registered adapters."""
     registry = get_registry()
-    return [cls() for cls in registry.values()]
+    names = sorted(registry.keys())
+    if not include_experimental:
+        names = [name for name in names if name not in _EXPERIMENTAL_IDES]
+    return [registry[name]() for name in names]
 
 
-def get_supported_ides() -> list[str]:
-    """Return sorted list of supported IDE names."""
-    return sorted(get_registry().keys())
+def get_supported_ides(*, include_experimental: bool = False) -> list[str]:
+    """Return sorted list of IDE names intended for user-facing selection."""
+    names = sorted(get_registry().keys())
+    if not include_experimental:
+        names = [name for name in names if name not in _EXPERIMENTAL_IDES]
+    return names

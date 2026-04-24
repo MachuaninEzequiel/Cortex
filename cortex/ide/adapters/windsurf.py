@@ -9,7 +9,6 @@ from cortex.ide.base import (
     IDEAdapter,
     _backup_file,
     _deep_merge_dict,
-    _generate_autogen_header,
 )
 
 
@@ -28,21 +27,33 @@ class WindsurfAdapter(IDEAdapter):
         }
 
     def inject_profiles(self, project_root: Path, prompts: dict[str, str]) -> list[str]:
-        rules_path = project_root / ".windsurfrules"
-
-        header = _generate_autogen_header(
-            sources=[".cortex/skills/cortex-sync.md", ".cortex/skills/cortex-SDDwork.md"],
-            ide_name="windsurf"
+        agents_path = project_root / "AGENTS.md"
+        agents_path.parent.mkdir(parents=True, exist_ok=True)
+        _backup_file(agents_path)
+        agents_path.write_text(
+            "\n".join(
+                [
+                    "# Cortex Workflow",
+                    "",
+                    "Follow this Cortex workflow for every task in this repository:",
+                    "",
+                    "1. Start with pre-flight analysis. Call `cortex_sync_ticket` with the user's request before creating any spec with `cortex_create_spec`.",
+                    "2. Inspect only the relevant files, then persist the implementation spec.",
+                    "3. Implement directly for simple changes. For complex changes, do deeper analysis first and then implement with minimal, focused edits.",
+                    "4. Finish every completed implementation by calling `cortex_save_session` with the changed files, technical decisions, validation results, and next steps.",
+                    "",
+                    "Additional Cortex rules:",
+                    "",
+                    "- Never call `cortex_create_spec` before `cortex_sync_ticket`.",
+                    "- Do not over-engineer simple tasks.",
+                    "- Keep the final session summary concise but complete enough for future retrieval.",
+                    "- If a Cortex MCP tool fails, stop and report the blocker instead of inventing context.",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
         )
-
-        combined_prompt = f"{header}\n\n# Cortex Agent Profiles\n\n"
-        for skill_name in ["cortex-sync", "cortex-SDDwork"]:
-            if skill_name in prompts:
-                combined_prompt += f"## {skill_name}\n{prompts[skill_name]}\n\n"
-
-        _backup_file(rules_path)
-        rules_path.write_text(combined_prompt, encoding="utf-8")
-        return [str(rules_path)]
+        return [str(agents_path)]
 
     def inject_mcp(self, project_root: Path) -> list[str]:
         paths = self.get_config_paths()
@@ -58,14 +69,12 @@ class WindsurfAdapter(IDEAdapter):
 
         data.setdefault("mcpServers", {})
 
-        mcp_cmd = self._get_mcp_command(project_root)
         cortex_config = {
-            "command": mcp_cmd["command"],
-            "args": mcp_cmd["args"],
-            "env": mcp_cmd["env"],
+            "command": "cortex",
+            "args": ["mcp-server", "--stdio", "--project-root", str(project_root)],
+            "env": {"PYTHONWARNINGS": "ignore"},
         }
 
-        # Deep merge to preserve other MCP servers
         data["mcpServers"] = _deep_merge_dict(data["mcpServers"], {"cortex": cortex_config})
 
         mcp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
