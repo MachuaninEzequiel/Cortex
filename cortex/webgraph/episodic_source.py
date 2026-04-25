@@ -7,6 +7,7 @@ import yaml
 
 from cortex.episodic.embedder import Embedder
 from cortex.episodic.memory_store import EpisodicMemoryStore
+from cortex.runtime_context import resolve_episodic_persist_dir
 from cortex.webgraph.contracts import EpisodicRecord
 
 
@@ -46,8 +47,7 @@ class EpisodicSource:
         self.project_root = project_root or Path.cwd()
         self._runtime_config = _read_project_config(self.project_root)
         episodic_cfg = self._runtime_config.get("episodic", {})
-        persist_dir = episodic_cfg.get("persist_dir", ".memory/chroma")
-        self.persist_dir = (self.project_root / persist_dir).resolve()
+        self.persist_dir = resolve_episodic_persist_dir(self.project_root, episodic_cfg)
         self.store = store or EpisodicMemoryStore(
             persist_dir=str(self.persist_dir),
             collection_name=episodic_cfg.get("collection_name", "cortex_episodic"),

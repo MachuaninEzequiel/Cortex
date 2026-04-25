@@ -36,6 +36,8 @@ episodic:
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
   embedding_backend: onnx  # onnx | local | openai
+  namespace_mode: project  # project | branch | custom
+  namespace_value: ""
 
 semantic:
   vault_path: vault
