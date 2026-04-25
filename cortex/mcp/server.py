@@ -214,6 +214,30 @@ class CortexMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="cortex_import_hu",
+                    description="Importar una historia o work item externo en modo read-only.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "external_id": {"type": "string", "description": "Clave del item externo, por ejemplo PROJ-123."},
+                            "provider": {"type": "string", "default": "jira"},
+                            "no_remember": {"type": "boolean", "default": False},
+                        },
+                        "required": ["external_id"]
+                    }
+                ),
+                types.Tool(
+                    name="cortex_get_hu",
+                    description="Obtener la nota local ya importada de una HU o work item.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "item_id": {"type": "string", "description": "ID local o externo, por ejemplo PROJ-123."},
+                        },
+                        "required": ["item_id"]
+                    }
+                ),
+                types.Tool(
                     name="cortex_sync_vault",
                     description="Sincronizar el vault y re-indexar documentos semanticamente.",
                     inputSchema={"type": "object", "properties": {}}
@@ -293,6 +317,16 @@ class CortexMCPServer:
                         sync_vault=not arguments.get("no_sync", False)
                     )
                     result_text = f"Session note saved -> {path}"
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_import_hu":
+                    result_text = self._import_hu_text(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_get_hu":
+                    result_text = self._get_hu_text(arguments)
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
@@ -452,6 +486,18 @@ class CortexMCPServer:
             sync_vault=not arguments.get("no_sync", False),
         )
         return f"Session note saved -> {path}"
+
+    def _import_hu_text(self, arguments: dict[str, Any]) -> str:
+        path = self.memory.import_work_item(
+            arguments.get("external_id", ""),
+            provider=arguments.get("provider", "jira"),
+            remember=not arguments.get("no_remember", False),
+        )
+        return f"Tracked item imported -> {path}"
+
+    def _get_hu_text(self, arguments: dict[str, Any]) -> str:
+        path = self.memory.get_work_item_note(arguments.get("item_id", ""))
+        return f"Tracked item note -> {path}"
 
     def _sync_vault_text(self) -> str:
         count = self.memory.sync_vault()

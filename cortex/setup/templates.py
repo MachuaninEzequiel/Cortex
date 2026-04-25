@@ -48,6 +48,13 @@ retrieval:
 llm:
   provider: {provider}
   model: "{model}"
+
+integrations:
+  jira:
+    enabled: false
+    base_url: ""
+    email_env: JIRA_EMAIL
+    token_env: JIRA_API_TOKEN
 """
 
 

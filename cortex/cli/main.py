@@ -16,6 +16,7 @@ agent-guidelines  Display agent behavior guidelines for session-end documentatio
 install-skills    Install Obsidian skills into the project's .cortex/skills/ directory.
 remember          Store a new episodic memory from the command line.
 search            Query both memory layers and print results.
+hu                Import and inspect tracked work item notes.
 sync-vault        Re-index the markdown vault.
 stats             Print memory store statistics.
 forget            Delete an episodic memory by ID.
@@ -77,6 +78,8 @@ _DEFAULT_CONFIG = {
 
 pr_context_app = typer.Typer(help="PR documentation pipeline (DevSecDocOps).")
 app.add_typer(pr_context_app, name="pr-context")
+hu_app = typer.Typer(help="Tracked work item management (read-only external import).")
+app.add_typer(hu_app, name="hu")
 
 
 @pr_context_app.command("capture")
@@ -945,6 +948,44 @@ def sync_ide(
     cortex_ide.inject(ide, project_root=Path.cwd())
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
     typer.echo("Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
+
+@hu_app.command("import")
+def hu_import(
+    external_id: str = typer.Argument(..., help="External item key, for example PROJ-123."),
+    provider: str = typer.Option("jira", "--provider", help="External provider name."),
+    no_remember: bool = typer.Option(False, "--no-remember", help="Skip episodic summary storage."),
+) -> None:
+    """Import one external tracked item into ``vault/hu/``."""
+    mem = _load_memory()
+    path = mem.import_work_item(external_id, provider=provider, remember=not no_remember)
+    typer.echo(f"Tracked item imported -> {path}")
+
+
+@hu_app.command("list")
+def hu_list() -> None:
+    """List tracked item notes already stored in ``vault/hu/``."""
+    mem = _load_memory()
+    notes = mem.list_work_item_notes()
+    if not notes:
+        typer.echo("No tracked items imported yet.")
+        return
+    for note in notes:
+        typer.echo(str(note))
+
+
+@hu_app.command("show")
+def hu_show(
+    item_id: str = typer.Argument(..., help="Tracked item ID, for example PROJ-123."),
+) -> None:
+    """Show the local vault note path for one tracked item."""
+    mem = _load_memory()
+    try:
+        note = mem.get_work_item_note(item_id)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(str(note))
+
 
 @app.command()
 def stats() -> None:

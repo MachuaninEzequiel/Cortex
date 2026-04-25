@@ -196,13 +196,18 @@ class PRContext(BaseModel):
         """Extract HU (user story) references from PR body."""
         import re
         patterns = [
+            r"\b([A-Z][A-Z0-9]+-\d+)\b",
             r"HU[-_]?(\d+)",
             r"(?:user[\s-]?story|us)[-\s](\d+)",
             r"#(\d+)",
         ]
         refs: list[str] = []
         for pattern in patterns:
-            refs.extend(f"HU-{m}" for m in re.findall(pattern, self.body, re.IGNORECASE))
+            matches = re.findall(pattern, self.body, re.IGNORECASE)
+            if pattern.startswith(r"\b([A-Z]"):
+                refs.extend(str(match).upper() for match in matches)
+            else:
+                refs.extend(f"HU-{m}" for m in matches)
         return list(set(refs))
 
     def has_db_changes(self) -> bool:

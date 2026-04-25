@@ -49,6 +49,8 @@ from cortex.semantic.vault_reader import VaultReader
 from cortex.services.pr_service import PRService
 from cortex.services.session_service import SessionService
 from cortex.services.spec_service import SpecService
+from cortex.workitems.providers.jira import JiraProvider
+from cortex.workitems.service import WorkItemService
 
 # ------------------------------------------------------------------
 # Config models — validated with Pydantic
@@ -76,11 +78,23 @@ class LLMConfig(BaseModel):
     model: str = ""
 
 
+class JiraIntegrationConfig(BaseModel):
+    enabled: bool = False
+    base_url: str = ""
+    email_env: str = "JIRA_EMAIL"
+    token_env: str = "JIRA_API_TOKEN"
+
+
+class IntegrationsConfig(BaseModel):
+    jira: JiraIntegrationConfig = Field(default_factory=JiraIntegrationConfig)
+
+
 class CortexConfig(BaseModel):
     episodic: EpisodicConfig = Field(default_factory=EpisodicConfig)
     semantic: SemanticConfig = Field(default_factory=SemanticConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
 
 
 # ------------------------------------------------------------------
@@ -154,6 +168,7 @@ class AgentMemory:
             vault_path=self.config.semantic.vault_path,
             episodic=self.episodic,
         )
+        self._workitem_service: WorkItemService | None = None
 
     # ------------------------------------------------------------------
     # Core memory API
@@ -409,6 +424,28 @@ class AgentMemory:
         """
         return self.retrieve(query, top_k=top_k)
 
+    def import_work_item(
+        self,
+        external_id: str,
+        *,
+        provider: str = "jira",
+        remember: bool = True,
+    ) -> Path:
+        """Import one tracked item from an optional external provider."""
+        return self._get_workitem_service().import_item(
+            external_id,
+            provider=provider,
+            remember=remember,
+        )
+
+    def get_work_item_note(self, item_id: str) -> Path:
+        """Return the local vault note path for one imported tracked item."""
+        return self._get_workitem_service().get_item_note(item_id)
+
+    def list_work_item_notes(self) -> list[Path]:
+        """List tracked item notes already imported into ``vault/hu/``."""
+        return self._get_workitem_service().list_item_notes()
+
     # ------------------------------------------------------------------
     # Context Enricher — Proactive context injection
     # ------------------------------------------------------------------
@@ -472,6 +509,19 @@ class AgentMemory:
             return ContextEnricherConfig(**raw)
         except Exception:
             return ContextEnricherConfig()
+
+    def _get_workitem_service(self) -> WorkItemService:
+        if self._workitem_service is None:
+            providers = {}
+            if self.config.integrations.jira.enabled:
+                providers["jira"] = JiraProvider.from_config(self._raw_config)
+            self._workitem_service = WorkItemService(
+                vault_path=self.config.semantic.vault_path,
+                semantic=self.semantic,
+                episodic=self.episodic,
+                providers=providers,
+            )
+        return self._workitem_service
 
     @staticmethod
     def _load_config(path: Path) -> dict:
