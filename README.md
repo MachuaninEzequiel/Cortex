@@ -152,6 +152,7 @@ Todas las funciones están gobernadas por el envoltorio CLI de Typer:
 | `cortex save-session`   | **Post-Work**               | Persiste cambios, decisiones y TODOs en el Vault (obligatorio).                    |
 | `cortex search`         | **Retrieve**                | Búsqueda híbrida RRF en ambas capas de memoria.                                    |
 | `cortex context`        | **Enrich**                  | Inyecta contexto temprano basado en archivos modificados.                          |
+| `cortex hu`             | **Work Items**              | Importa HU/work items externos (read-only) y los persiste en `vault/hu/`.          |
 | `cortex remember`       | **Store**                   | Almacena memorias episódicas manualmente (con `--summarize` para LLM compression). |
 | `cortex forget`         | **Delete**                  | Elimina memorias por ID con confirmación.                                          |
 | `cortex stats`          | **Monitor**                 | Muestra estadísticas del vault y memoria episódica.                                |
@@ -312,7 +313,7 @@ Edita tu archivo de configuración (ubicación varía según OS):
 
 #### VSCode (Cline / Roo)
 
-Crea o edita `.vscode/mcp_settings.json` en tu proyecto:
+Crea o edita `.vscode/mcp.json` en tu proyecto:
 
 ```json
 {
@@ -343,9 +344,54 @@ Una vez conectado, tendrás acceso a estas herramientas:
 - **`cortex_sync_ticket`**: Inyectar contexto histórico para preparar specs (paso obligatorio de cortex-sync)
 - **`cortex_create_spec`**: Crear especificaciones técnicas
 - **`cortex_save_session`**: Persistir sesiones de trabajo
+- **`cortex_import_hu`**: Importar una HU/work item externo en modo read-only (ej: `PROJ-123`)
+- **`cortex_get_hu`**: Obtener la nota local ya importada de una HU/work item
 - **`cortex_sync_vault`**: Sincronizar y re-indexar el vault
 
 ---
+
+## Integracion Jira (read-only)
+
+Cortex puede absorber informacion desde Jira (solo lectura) y persistirla como notas en `vault/hu/` para que quede disponible como memoria semantica y contexto de sesion.
+
+### Activacion (opcional)
+
+En `config.yaml` agrega (o edita) esta seccion:
+
+```yaml
+integrations:
+  jira:
+    enabled: false
+    base_url: "https://TU-DOMINIO.atlassian.net"
+    email_env: JIRA_EMAIL
+    token_env: JIRA_API_TOKEN
+```
+
+Luego define credenciales via variables de entorno:
+
+```bash
+export JIRA_EMAIL="tu@email.com"
+export JIRA_API_TOKEN="tu_api_token"
+```
+
+PowerShell:
+
+```powershell
+$env:JIRA_EMAIL="tu@email.com"
+$env:JIRA_API_TOKEN="tu_api_token"
+```
+
+### Uso (CLI)
+
+```bash
+cortex hu import PROJ-123
+cortex hu list
+cortex hu show PROJ-123
+```
+
+Notas:
+- Si Jira no esta habilitado/configurado, Cortex funciona igual.
+- No hay ida y vuelta: no se comentan tickets, no se cambian estados, no se escribe nada en Jira.
 
 ## Instalación
 
@@ -483,6 +529,14 @@ context_enricher:
 llm:
   provider: none # none | openai | anthropic | ollama
   model: "" # ej: "gpt-4o-mini"
+
+# Integrations (optional)
+integrations:
+  jira:
+    enabled: false
+    base_url: ""
+    email_env: JIRA_EMAIL
+    token_env: JIRA_API_TOKEN
 ```
 
 ---

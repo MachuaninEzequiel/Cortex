@@ -14,6 +14,8 @@ import re
 from datetime import date
 from pathlib import Path
 
+from cortex.workitems.models import TrackedItem
+
 
 def _slugify(value: str) -> str:
     """Convert free text into a filesystem-safe slug."""
@@ -39,6 +41,28 @@ def _frontmatter(*, title: str, today: date, tags: list[str], status: str) -> st
         f"status: {status}\n"
         "---\n\n"
     )
+
+
+def _frontmatter_with_fields(
+    *,
+    title: str,
+    today: date,
+    tags: list[str],
+    status: str,
+    extra_fields: list[tuple[str, str]] | None = None,
+) -> str:
+    tag_text = ", ".join(dict.fromkeys(tags))
+    lines = [
+        "---",
+        f'title: "{title}"',
+        f"date: {today.isoformat()}",
+        f"tags: [{tag_text}]",
+        f"status: {status}",
+    ]
+    for key, value in extra_fields or []:
+        lines.append(f"{key}: {value}")
+    lines.extend(["---", ""])
+    return "\n".join(lines) + "\n"
 
 
 def write_session_note(
@@ -128,6 +152,62 @@ def write_spec_note(
     content += _render_list(list(constraints or [])) + "\n\n"
     content += "## Acceptance Criteria\n"
     content += _render_list(list(acceptance_criteria or [])) + "\n"
+
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def write_tracked_item_note(
+    vault_path: str | Path,
+    *,
+    item: TrackedItem,
+    note_date: date | None = None,
+) -> Path:
+    """Write a tracked item note to ``vault/hu/`` and return the file path."""
+    today = note_date or date.today()
+    vault = Path(vault_path)
+    target_dir = vault / "hu"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    title = f"{item.id}: {item.title}"
+    final_tags = ["hu", item.source.value, item.kind.value] + list(item.labels)
+    filename = f"{_slugify(item.id)}.md"
+    path = target_dir / filename
+
+    extra_fields = [
+        ("external_id", f'"{item.external_id}"'),
+        ("source", item.source.value),
+        ("kind", item.kind.value),
+        ("synced", item.sync_timestamp.date().isoformat()),
+    ]
+    if item.assignee:
+        extra_fields.append(("assignee", f'"{item.assignee}"'))
+    if item.external_url:
+        extra_fields.append(("external_url", f'"{item.external_url}"'))
+
+    content = _frontmatter_with_fields(
+        title=title,
+        today=today,
+        tags=final_tags,
+        status=item.status or "imported",
+        extra_fields=extra_fields,
+    )
+    content += f"# {title}\n\n"
+    content += "## Description\n"
+    content += (item.description.strip() or "No description was provided.") + "\n\n"
+    content += "## Acceptance Criteria\n"
+    content += _render_list(item.acceptance_criteria) + "\n\n"
+    content += "## Metadata\n"
+    metadata_lines = [
+        f"- Source: {item.source.value}",
+        f"- Kind: {item.kind.value}",
+        f"- Status: {item.status or 'unknown'}",
+    ]
+    if item.assignee:
+        metadata_lines.append(f"- Assignee: {item.assignee}")
+    if item.external_url:
+        metadata_lines.append(f"- External: {item.external_url}")
+    content += "\n".join(metadata_lines) + "\n"
 
     path.write_text(content, encoding="utf-8")
     return path

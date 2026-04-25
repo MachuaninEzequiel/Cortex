@@ -33,6 +33,12 @@ class FakeMemory:
     def create_spec_note(self, **kwargs: object) -> str:
         return "vault/specs/test.md"
 
+    def import_work_item(self, external_id: str, **kwargs: object) -> str:
+        return f"vault/hu/{external_id.lower()}.md"
+
+    def get_work_item_note(self, item_id: str) -> str:
+        return f"vault/hu/{item_id.lower()}.md"
+
     def sync_vault(self) -> int:
         return 3
 
@@ -96,3 +102,21 @@ def test_cortex_sync_vault_tool() -> None:
     server.memory = FakeMemory()  # type: ignore[assignment]
 
     assert server._sync_vault_text() == "Vault synced - 3 documents indexed."
+
+
+def test_cortex_import_hu_tool() -> None:
+    server = CortexMCPServer.__new__(CortexMCPServer)
+    server.memory = FakeMemory()  # type: ignore[assignment]
+
+    result = server._import_hu_text({"external_id": "PROJ-123"})
+
+    assert result == "Tracked item imported -> vault/hu/proj-123.md"
+
+
+def test_cortex_get_hu_tool() -> None:
+    server = CortexMCPServer.__new__(CortexMCPServer)
+    server.memory = FakeMemory()  # type: ignore[assignment]
+
+    result = server._get_hu_text({"item_id": "PROJ-123"})
+
+    assert result == "Tracked item note -> vault/hu/proj-123.md"
