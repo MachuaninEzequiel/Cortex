@@ -79,6 +79,13 @@ class WebGraphService:
         neighbors = [nodes_by_id[neighbor_id] for neighbor_id in sorted(neighbor_ids) if neighbor_id in nodes_by_id]
         return WebGraphNodeDetail(node=node, relations=relations, neighbors=neighbors)
 
+    def resolve_node_path(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> Path | None:
+        detail = self.get_node_detail(node_id, mode=mode)
+        rel_path = detail.node.rel_path
+        if not rel_path:
+            return None
+        return (self.semantic_source.vault_path / rel_path).resolve()
+
     def get_subgraph(
         self,
         node_id: str,

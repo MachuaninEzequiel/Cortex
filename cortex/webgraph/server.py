@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from cortex.webgraph.config import WebGraphConfig
+from cortex.webgraph.federation import FederatedWebGraphService
 from cortex.webgraph.openers import open_path, resolve_safe_vault_path
 from cortex.webgraph.service import WebGraphService
 
 
-def create_app(project_root: Path | None = None):
+def create_app(project_root: Path | None = None, *, workspace_file: Path | None = None):
     try:
         from flask import Flask, jsonify, render_template, request
     except ImportError as exc:  # pragma: no cover - exercised manually
@@ -22,8 +23,13 @@ def create_app(project_root: Path | None = None):
         Compress = None  # type: ignore[misc, assignment]
 
     root = project_root or Path.cwd()
-    service = WebGraphService(root)
-    config = WebGraphConfig.load(root)
+    service: WebGraphService | FederatedWebGraphService
+    if workspace_file is not None:
+        service = FederatedWebGraphService(workspace_file)
+        config = WebGraphConfig()
+    else:
+        service = WebGraphService(root)
+        config = WebGraphConfig.load(root)
 
     app = Flask(__name__, template_folder="templates", static_folder="static")
     if Compress is not None:
@@ -68,10 +74,16 @@ def create_app(project_root: Path | None = None):
         if not node_id:
             return jsonify({"error": "Missing node_id"}), 400
         detail = service.get_node_detail(node_id, mode="hybrid")
-        rel_path = detail.node.rel_path
-        if not rel_path:
+        resolved_path = service.resolve_node_path(node_id, mode="hybrid")
+        if resolved_path is None:
             return jsonify({"error": "Selected node has no local document"}), 400
-        path = resolve_safe_vault_path(service.semantic_source.vault_path, rel_path)
+        if workspace_file is None:
+            rel_path = detail.node.rel_path
+            if not rel_path:
+                return jsonify({"error": "Selected node has no local document"}), 400
+            path = resolve_safe_vault_path(service.semantic_source.vault_path, rel_path)
+        else:
+            path = resolved_path
         open_path(path)
         return jsonify({"status": "ok", "path": str(path)})
 
@@ -84,12 +96,13 @@ def run_server(
     host: str | None = None,
     port: int | None = None,
     open_browser: bool | None = None,
+    workspace_file: Path | None = None,
 ) -> None:
     import webbrowser
 
     root = project_root or Path.cwd()
     config = WebGraphConfig.load(root)
-    app = create_app(root)
+    app = create_app(root, workspace_file=workspace_file)
     final_host = host or config.server_host
     final_port = port or config.server_port
     should_open = config.auto_open_browser if open_browser is None else open_browser

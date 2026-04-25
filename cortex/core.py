@@ -45,6 +45,7 @@ from cortex.models import (
     RetrievalResult,
 )
 from cortex.retrieval.hybrid_search import HybridSearch
+from cortex.runtime_context import detect_git_branch, resolve_episodic_persist_dir, slugify
 from cortex.semantic.vault_reader import VaultReader
 from cortex.services.pr_service import PRService
 from cortex.services.session_service import SessionService
@@ -61,6 +62,8 @@ class EpisodicConfig(BaseModel):
     collection_name: str = "cortex_episodic"
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_backend: Literal["onnx", "local", "openai"] = "onnx"
+    namespace_mode: Literal["project", "branch", "custom"] = "project"
+    namespace_value: str = ""
 
 
 class SemanticConfig(BaseModel):
@@ -128,10 +131,17 @@ class AgentMemory:
         self._config_path = Path(config_path)
         self._raw_config = self._load_config(self._config_path)
         self.config = self._validate_config(self._raw_config)
+        self.project_root = self._config_path.resolve().parent
+        self.project_id = slugify(self.project_root.name, fallback="project")
+        self.git_branch = detect_git_branch(self.project_root)
+        self._runtime_episodic_dir = resolve_episodic_persist_dir(
+            self.project_root,
+            self._raw_config.get("episodic", {}),
+        )
 
         # --- Infrastructure layer (wired here, injected into services) ---
         self.episodic = EpisodicMemoryStore(
-            persist_dir=self.config.episodic.persist_dir,
+            persist_dir=str(self._runtime_episodic_dir),
             embedding_model=self.config.episodic.embedding_model,
             embedding_backend=self.config.episodic.embedding_backend,
             collection_name=self.config.episodic.collection_name,
@@ -202,6 +212,10 @@ class AgentMemory:
             memory_type=memory_type,
             tags=tags or [],
             files=files or [],
+            extra_metadata={
+                "project_id": self.project_id,
+                "branch": self.git_branch,
+            },
         )
 
     def store_memory(
@@ -237,7 +251,25 @@ class AgentMemory:
         Returns:
             RetrievalResult with ranked, deduplicated hits.
         """
-        return self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
+        result = self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
+
+        if self.config.episodic.namespace_mode == "branch":
+            current_branch = self.git_branch
+            result.episodic_hits = [
+                hit
+                for hit in result.episodic_hits
+                if hit.entry.metadata.get("branch") == current_branch
+            ]
+            result.unified_hits = [
+                hit
+                for hit in result.unified_hits
+                if not (
+                    hit.source == "episodic"
+                    and hit.metadata.get("branch") != current_branch
+                )
+            ]
+
+        return result
 
     def forget(self, memory_id: str) -> bool:
         """Delete a specific episodic memory by ID."""
