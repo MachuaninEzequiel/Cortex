@@ -152,6 +152,8 @@ Todas las funciones están gobernadas por el envoltorio CLI de Typer:
 | `cortex save-session`   | **Post-Work**               | Persiste cambios, decisiones y TODOs en el Vault (obligatorio).                    |
 | `cortex search`         | **Retrieve**                | Búsqueda híbrida RRF en ambas capas de memoria.                                    |
 | `cortex context`        | **Enrich**                  | Inyecta contexto temprano basado en archivos modificados.                          |
+| `cortex doctor`         | **Operate**                 | Valida entorno Cortex, vault, Git y gobernanza operativa del repo.                 |
+| `cortex validate-docs`  | **Governance**              | Valida frontmatter y estructura Markdown del `vault/` para PRs y CI.               |
 | `cortex hu`             | **Work Items**              | Importa HU/work items externos (read-only) y los persiste en `vault/hu/`.          |
 | `cortex remember`       | **Store**                   | Almacena memorias episódicas manualmente (con `--summarize` para LLM compression). |
 | `cortex forget`         | **Delete**                  | Elimina memorias por ID con confirmación.                                          |
@@ -390,6 +392,7 @@ cortex hu show PROJ-123
 ```
 
 Notas:
+
 - Si Jira no esta habilitado/configurado, Cortex funciona igual.
 - No hay ida y vuelta: no se comentan tickets, no se cambian estados, no se escribe nada en Jira.
 
@@ -480,7 +483,7 @@ Cortex/
 ├── docs/                      # Documentación extendida
 ├── examples/                  # Ejemplos de uso
 ├── scripts/                   # Utilidades DevOps
-├── vault/                     # Vault por defecto (gitignored)
+├── vault/                     # Conocimiento durable Cortex (ver política Git/Vault)
 ├── .cortex/                   # Configuración local Cortex
 ├── config.yaml                # Configuración principal
 ├── pyproject.toml             # Metadata y dependencias
@@ -501,6 +504,8 @@ episodic:
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
   embedding_backend: onnx # onnx | local | openai
+  namespace_mode: project # project | branch | custom
+  namespace_value: ""
 
 # Memoria Semántica (vault markdown)
 semantic:
@@ -538,6 +543,14 @@ integrations:
     email_env: JIRA_EMAIL
     token_env: JIRA_API_TOKEN
 ```
+
+### Poli­tica Git / Vault recomendada
+
+- Versionar `vault/specs/`, `vault/decisions/`, `vault/runbooks/`, `vault/hu/` y `vault/incidents/`.
+- Ignorar `.memory/` y cualquier persistencia de Chroma.
+- Ignorar `vault/sessions/` por defecto, salvo que el equipo decida auditar sesiones en Git.
+- Validar el estado operativo con `cortex doctor`.
+- Validar docs en CI con `cortex verify-docs` y `cortex validate-docs`.
 
 ---
 

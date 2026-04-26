@@ -47,9 +47,11 @@ class PRService:
         self,
         vault_path: str | Path,
         episodic: EpisodicMemoryStore,
+        context_metadata: dict[str, str] | None = None,
     ) -> None:
         self._vault_path = Path(vault_path)
         self._episodic = episodic
+        self._context_metadata = dict(context_metadata or {})
 
     def store_pr_context(
         self,
@@ -98,6 +100,7 @@ class PRService:
             memory_type="pr",
             tags=["pr", ctx.author] + ctx.labels,
             files=ctx.files_changed[:20],
+            extra_metadata=dict(self._context_metadata),
         )
 
     def generate_pr_docs(

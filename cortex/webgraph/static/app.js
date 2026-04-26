@@ -1,4 +1,7 @@
 const modeSelect = document.getElementById("mode");
+const projectFilter = document.getElementById("project-filter");
+const typeFilter = document.getElementById("type-filter");
+const timeFilter = document.getElementById("time-filter");
 const depthSelect = document.getElementById("depth");
 const searchInput = document.getElementById("search");
 const searchButton = document.getElementById("search-button");
@@ -13,6 +16,7 @@ const detailMeta = document.getElementById("detail-meta");
 const relationList = document.getElementById("relation-list");
 const neighborList = document.getElementById("neighbor-list");
 
+const statusScope = document.getElementById("status-scope");
 const statusMode = document.getElementById("status-mode");
 const statusNodes = document.getElementById("status-nodes");
 const statusEdges = document.getElementById("status-edges");
@@ -21,8 +25,9 @@ const statusFingerprint = document.getElementById("status-fingerprint");
 const networkContainer = document.getElementById("network");
 
 let network = null;
-let currentSnapshot = null;
 let rootSnapshot = null;
+let currentBaseSnapshot = null;
+let currentSnapshot = null;
 let selectedNode = null;
 
 const nodePalette = {
@@ -66,7 +71,12 @@ function makeMetaPill(label, value) {
   return pill;
 }
 
-function updateStatus(snapshot) {
+function updateStatus(snapshot, baseSnapshot) {
+  statusScope.textContent = baseSnapshot && snapshot.fingerprint === baseSnapshot.fingerprint &&
+    snapshot.stats.node_count === baseSnapshot.stats.node_count &&
+    snapshot.stats.edge_count === baseSnapshot.stats.edge_count
+    ? "full"
+    : "filtered";
   statusMode.textContent = snapshot.mode;
   statusNodes.textContent = snapshot.stats.node_count;
   statusEdges.textContent = snapshot.stats.edge_count;
@@ -84,7 +94,7 @@ function renderRelations(relations) {
     const evidence = relation.evidence?.length ? relation.evidence.join(", ") : "No evidence";
     item.innerHTML = `
       <span class="relation-type">${relation.edge_type}</span>
-      <div>${relation.source} → ${relation.target}</div>
+      <div>${relation.source} -> ${relation.target}</div>
       <div class="neighbor-meta">${evidence}</div>
     `;
     relationList.appendChild(item);
@@ -120,6 +130,10 @@ function renderDetail(detail) {
   detailMeta.appendChild(makeMetaPill("Source", detail.node.source));
   detailMeta.appendChild(makeMetaPill("Degree", String(detail.node.degree ?? 0)));
 
+  const projectId = detail.node.metadata?.project_id;
+  if (projectId) {
+    detailMeta.appendChild(makeMetaPill("Project", projectId));
+  }
   if (detail.node.rel_path) {
     detailMeta.appendChild(makeMetaPill("Path", detail.node.rel_path));
   }
@@ -191,9 +205,11 @@ function networkOptions(snapshot) {
 function normalizeNodes(nodes) {
   return nodes.map((node) => {
     const palette = nodePalette[node.node_type] || { color: "#3c6382", shape: "dot" };
+    const projectId = node.metadata?.project_id ? `Project: ${node.metadata.project_id}` : "";
     const title = [
       `<strong>${labelForNode(node)}</strong>`,
       `${formatSource(node)}`,
+      projectId,
       node.summary || "",
     ]
       .filter(Boolean)
@@ -258,25 +274,135 @@ function buildNetwork(snapshot) {
   });
 }
 
+function syncFilterOptions(select, values, labelFactory) {
+  const previous = select.value;
+  const existing = Array.from(select.options)
+    .slice(1)
+    .map((option) => option.value);
+
+  if (JSON.stringify(existing) === JSON.stringify(values)) {
+    if (values.includes(previous) || previous === "all") {
+      select.value = previous;
+    }
+    return;
+  }
+
+  while (select.options.length > 1) {
+    select.remove(1);
+  }
+
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = labelFactory(value);
+    select.appendChild(option);
+  });
+
+  select.value = values.includes(previous) ? previous : "all";
+}
+
+function populateFilterOptions(snapshot) {
+  const projects = Array.from(
+    new Set(
+      snapshot.nodes
+        .map((node) => node.metadata?.project_id)
+        .filter(Boolean)
+    )
+  ).sort();
+  const nodeTypes = Array.from(new Set(snapshot.nodes.map((node) => node.node_type))).sort();
+
+  syncFilterOptions(projectFilter, projects, (value) => value);
+  syncFilterOptions(typeFilter, nodeTypes, (value) => value.replaceAll("_", " "));
+}
+
+function timeWindowToMs(value) {
+  if (value === "7d") {
+    return 7 * 24 * 60 * 60 * 1000;
+  }
+  if (value === "30d") {
+    return 30 * 24 * 60 * 60 * 1000;
+  }
+  if (value === "90d") {
+    return 90 * 24 * 60 * 60 * 1000;
+  }
+  return null;
+}
+
+function nodeMatchesFilters(node) {
+  if (projectFilter.value !== "all" && node.metadata?.project_id !== projectFilter.value) {
+    return false;
+  }
+  if (typeFilter.value !== "all" && node.node_type !== typeFilter.value) {
+    return false;
+  }
+
+  const timeWindowMs = timeWindowToMs(timeFilter.value);
+  if (timeWindowMs !== null && node.timestamp) {
+    const age = Date.now() - new Date(node.timestamp).getTime();
+    if (Number.isFinite(age) && age > timeWindowMs) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function filteredSnapshot(snapshot) {
+  const visibleNodes = snapshot.nodes.filter((node) => nodeMatchesFilters(node));
+  const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleEdges = snapshot.edges.filter(
+    (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+  );
+
+  return {
+    ...snapshot,
+    nodes: visibleNodes,
+    edges: visibleEdges,
+    stats: {
+      ...snapshot.stats,
+      node_count: visibleNodes.length,
+      edge_count: visibleEdges.length,
+    },
+  };
+}
+
+function refreshView({ preserveSelection = true } = {}) {
+  if (!currentBaseSnapshot) {
+    return;
+  }
+
+  currentSnapshot = filteredSnapshot(currentBaseSnapshot);
+  buildNetwork(currentSnapshot);
+  updateStatus(currentSnapshot, currentBaseSnapshot);
+  resetButton.disabled = currentBaseSnapshot === rootSnapshot;
+
+  if (preserveSelection && selectedNode) {
+    const exists = currentSnapshot.nodes.some((node) => node.id === selectedNode.id);
+    if (exists) {
+      focusNode(selectedNode.id);
+      return;
+    }
+  }
+  resetDetail();
+}
+
 async function loadSnapshot(mode = modeSelect.value) {
   const response = await fetch(`/api/snapshot?mode=${encodeURIComponent(mode)}`, {
-    headers: { "X-Cortex-WebGraph": "1" }
+    headers: { "X-Cortex-WebGraph": "1" },
   });
   if (!response.ok) {
     throw new Error(`Snapshot request failed with ${response.status}`);
   }
   const snapshot = await response.json();
-  currentSnapshot = snapshot;
   rootSnapshot = snapshot;
-  buildNetwork(snapshot);
-  updateStatus(snapshot);
-  resetDetail();
-  resetButton.disabled = true;
+  currentBaseSnapshot = snapshot;
+  populateFilterOptions(snapshot);
+  refreshView({ preserveSelection: false });
 }
 
 async function selectNode(nodeId) {
   const response = await fetch(`/api/node/${encodeURIComponent(nodeId)}?mode=${encodeURIComponent(modeSelect.value)}`, {
-    headers: { "X-Cortex-WebGraph": "1" }
+    headers: { "X-Cortex-WebGraph": "1" },
   });
   if (!response.ok) {
     throw new Error(`Node detail request failed with ${response.status}`);
@@ -303,9 +429,9 @@ async function openNode(nodeId = selectedNode?.id) {
   }
   const response = await fetch("/api/open", {
     method: "POST",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
-      "X-Cortex-WebGraph": "1"
+      "X-Cortex-WebGraph": "1",
     },
     body: JSON.stringify({ node_id: nodeId }),
   });
@@ -327,16 +453,13 @@ async function loadSubgraph(nodeId = selectedNode?.id) {
     mode: modeSelect.value,
   });
   const response = await fetch(`/api/subgraph?${params.toString()}`, {
-    headers: { "X-Cortex-WebGraph": "1" }
+    headers: { "X-Cortex-WebGraph": "1" },
   });
   if (!response.ok) {
     throw new Error(`Subgraph request failed with ${response.status}`);
   }
-  const snapshot = await response.json();
-  currentSnapshot = snapshot;
-  buildNetwork(snapshot);
-  updateStatus(snapshot);
-  resetButton.disabled = false;
+  currentBaseSnapshot = await response.json();
+  refreshView();
   await selectNode(nodeId);
 }
 
@@ -361,6 +484,10 @@ modeSelect.addEventListener("change", () => {
   loadSnapshot(modeSelect.value).catch((error) => toast(`Failed to switch mode: ${error.message}`));
 });
 
+[projectFilter, typeFilter, timeFilter].forEach((element) => {
+  element.addEventListener("change", () => refreshView());
+});
+
 searchButton.addEventListener("click", findNode);
 searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -380,18 +507,8 @@ resetButton.addEventListener("click", () => {
   if (!rootSnapshot) {
     return;
   }
-  currentSnapshot = rootSnapshot;
-  buildNetwork(rootSnapshot);
-  updateStatus(rootSnapshot);
-  resetButton.disabled = true;
-  if (selectedNode) {
-    const exists = rootSnapshot.nodes.some((node) => node.id === selectedNode.id);
-    if (exists) {
-      focusNode(selectedNode.id);
-      return;
-    }
-  }
-  resetDetail();
+  currentBaseSnapshot = rootSnapshot;
+  refreshView();
 });
 
 loadSnapshot().catch((error) => {

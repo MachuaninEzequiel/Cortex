@@ -5,7 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from cortex.runtime_context import slugify
 from cortex.webgraph.config import WebGraphConfig
+from cortex.webgraph.federation import WorkspaceProject, default_workspace_file, write_workspace_file
 
 
 def get_missing_webgraph_dependencies() -> list[str]:
@@ -52,3 +54,14 @@ def install_webgraph(project_root: Path, interactive: bool = True) -> bool:
     config = WebGraphConfig.load(project_root)
     config.save(project_root)
     return True
+
+
+def attach_project_root(workspace_root: Path, project_root: Path, *, project_id: str | None = None) -> Path:
+    resolved_project_root = project_root.expanduser().resolve()
+    resolved_workspace_root = workspace_root.resolve()
+    workspace_file = default_workspace_file(resolved_workspace_root)
+    project = WorkspaceProject(
+        project_id=project_id or slugify(resolved_project_root.name, fallback="project"),
+        root=resolved_project_root,
+    )
+    return write_workspace_file(workspace_file, [project])

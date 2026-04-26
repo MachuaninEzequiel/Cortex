@@ -58,3 +58,25 @@ def test_federated_snapshot_builds(tmp_path: Path) -> None:
     assert all("::" in node.id for node in snapshot.nodes)
     assert all(node.metadata.get("project_id") in {"app-a", "app-b"} for node in snapshot.nodes)
 
+
+def test_workspace_projects_support_explicit_vault_and_memory_paths(tmp_path: Path) -> None:
+    project = tmp_path / "app-a"
+    _init_project(project)
+    custom_vault = project / "knowledge"
+    custom_memory = project / "runtime-memory"
+    custom_vault.mkdir()
+    custom_memory.mkdir()
+
+    workspace = tmp_path / "workspace.yaml"
+    workspace.write_text(
+        "projects:\n"
+        f"  - id: app-a\n    root: {project.as_posix()}\n"
+        "    vault: knowledge\n"
+        "    memory: runtime-memory\n",
+        encoding="utf-8",
+    )
+
+    [loaded] = load_workspace_projects(workspace)
+
+    assert loaded.vault_path == custom_vault.resolve()
+    assert loaded.memory_path == custom_memory.resolve()

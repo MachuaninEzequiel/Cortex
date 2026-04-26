@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from pathlib import Path
 
+from cortex.runtime_context import slugify
 from cortex.webgraph.cache import WebGraphCache
 from cortex.webgraph.config import WebGraphConfig
 from cortex.webgraph.contracts import WebGraphMode, WebGraphNodeDetail, WebGraphSnapshot
@@ -19,13 +20,15 @@ class WebGraphService:
         project_root: Path | None = None,
         *,
         config: WebGraphConfig | None = None,
+        vault_path: Path | None = None,
+        persist_dir: Path | None = None,
         semantic_source: SemanticSource | None = None,
         episodic_source: EpisodicSource | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
         self.config = config or WebGraphConfig.load(self.project_root)
-        self.semantic_source = semantic_source or SemanticSource(self.project_root)
-        self.episodic_source = episodic_source or EpisodicSource(self.project_root)
+        self.semantic_source = semantic_source or SemanticSource(self.project_root, vault_path=vault_path)
+        self.episodic_source = episodic_source or EpisodicSource(self.project_root, persist_dir=persist_dir)
         self.cache = WebGraphCache(self.project_root)
         self.graph_builder = GraphBuilder(self.config)
 
@@ -50,6 +53,17 @@ class WebGraphService:
             mode=mode,
             semantic_records=semantic_records,
             episodic_records=episodic_records,
+        )
+        project_id = slugify(self.project_root.name, fallback="project")
+        snapshot = snapshot.model_copy(
+            update={
+                "nodes": [
+                    node.model_copy(
+                        update={"metadata": {"project_id": project_id, **dict(node.metadata)}}
+                    )
+                    for node in snapshot.nodes
+                ]
+            }
         )
         self.cache.store_snapshot(mode, snapshot)
         return snapshot
@@ -130,4 +144,3 @@ class WebGraphService:
                 ),
             }
         )
-

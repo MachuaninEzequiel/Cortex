@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from cortex.setup.orchestrator import SetupMode, SetupOrchestrator
 from cortex.webgraph.setup import (
+    attach_project_root,
     get_missing_webgraph_dependencies,
     install_missing_webgraph_dependencies,
     install_webgraph,
@@ -66,3 +67,15 @@ def test_install_webgraph_returns_false_if_auto_install_fails(tmp_path: Path) ->
 
     assert ok is False
     assert not (tmp_path / ".cortex" / "webgraph").exists()
+
+
+def test_attach_project_root_creates_default_workspace_file(tmp_path: Path) -> None:
+    project_root = tmp_path / "external-project"
+    project_root.mkdir()
+
+    workspace_file = attach_project_root(tmp_path, project_root)
+
+    assert workspace_file.exists()
+    content = workspace_file.read_text(encoding="utf-8")
+    assert "external-project" in content
+    assert project_root.as_posix() in content

@@ -21,6 +21,39 @@ from cortex.webgraph.service import WebGraphService
 class WorkspaceProject:
     project_id: str
     root: Path
+    vault_path: Path | None = None
+    memory_path: Path | None = None
+
+
+def default_workspace_file(project_root: Path | None = None) -> Path:
+    root = project_root or Path.cwd()
+    return root / ".cortex" / "webgraph" / "workspace.yaml"
+
+
+def resolve_workspace_file(workspace_file: str | None, project_root: Path | None = None) -> Path | None:
+    if workspace_file:
+        return Path(workspace_file).expanduser().resolve()
+    default_path = default_workspace_file(project_root)
+    if default_path.exists():
+        return default_path.resolve()
+    return None
+
+
+def write_workspace_file(workspace_file: Path, projects: list[WorkspaceProject]) -> Path:
+    payload = {
+        "projects": [
+            {
+                "id": project.project_id,
+                "root": project.root.as_posix(),
+                **({"vault": project.vault_path.as_posix()} if project.vault_path else {}),
+                **({"memory": project.memory_path.as_posix()} if project.memory_path else {}),
+            }
+            for project in projects
+        ]
+    }
+    workspace_file.parent.mkdir(parents=True, exist_ok=True)
+    workspace_file.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    return workspace_file
 
 
 def load_workspace_projects(workspace_file: Path) -> list[WorkspaceProject]:
@@ -38,8 +71,28 @@ def load_workspace_projects(workspace_file: Path) -> list[WorkspaceProject]:
         if not project_id or not root_raw:
             continue
         root = Path(root_raw).expanduser().resolve()
-        loaded.append(WorkspaceProject(project_id=project_id, root=root))
+        vault_raw = str(item.get("vault", "")).strip()
+        memory_raw = str(item.get("memory", "")).strip()
+        vault_path = _resolve_optional_project_path(root, vault_raw)
+        memory_path = _resolve_optional_project_path(root, memory_raw)
+        loaded.append(
+            WorkspaceProject(
+                project_id=project_id,
+                root=root,
+                vault_path=vault_path,
+                memory_path=memory_path,
+            )
+        )
     return loaded
+
+
+def _resolve_optional_project_path(project_root: Path, value: str) -> Path | None:
+    if not value:
+        return None
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = project_root / path
+    return path.resolve()
 
 
 class FederatedWebGraphService:
@@ -49,7 +102,11 @@ class FederatedWebGraphService:
         self.workspace_file = workspace_file.resolve()
         self.projects = load_workspace_projects(self.workspace_file)
         self._services: dict[str, WebGraphService] = {
-            project.project_id: WebGraphService(project.root)
+            project.project_id: WebGraphService(
+                project.root,
+                vault_path=project.vault_path,
+                persist_dir=project.memory_path,
+            )
             for project in self.projects
         }
 
@@ -194,4 +251,3 @@ class FederatedWebGraphService:
             return "", value
         project_id, raw_id = value.split("::", 1)
         return project_id, raw_id
-
