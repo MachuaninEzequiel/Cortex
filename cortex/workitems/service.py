@@ -29,11 +29,13 @@ class WorkItemService:
         semantic: VaultReader,
         episodic: EpisodicMemoryStore,
         providers: dict[str, WorkItemProvider] | None = None,
+        context_metadata: dict[str, str] | None = None,
     ) -> None:
         self._vault_path = Path(vault_path)
         self._semantic = semantic
         self._episodic = episodic
         self._providers = providers or {}
+        self._context_metadata = dict(context_metadata or {})
 
     def import_item(
         self,
@@ -98,6 +100,7 @@ class WorkItemService:
             memory_type="hu",
             tags=["hu", item.source.value, item.kind.value],
             files=[rel_path],
+            extra_metadata=dict(self._context_metadata),
         )
 
     @staticmethod

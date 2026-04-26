@@ -41,6 +41,7 @@ class SemanticSource:
         self,
         project_root: Path | None = None,
         *,
+        vault_path: Path | None = None,
         reader: VaultReader | None = None,
         embedder: Any | None = None,
     ) -> None:
@@ -48,8 +49,12 @@ class SemanticSource:
         self._runtime_config = _read_project_config(self.project_root)
         episodic_cfg = self._runtime_config.get("episodic", {})
         semantic_cfg = self._runtime_config.get("semantic", {})
-        vault_path = semantic_cfg.get("vault_path", "vault")
-        self.vault_path = (self.project_root / vault_path).resolve()
+        configured_vault_path = semantic_cfg.get("vault_path", "vault")
+        self.vault_path = (
+            vault_path.resolve()
+            if vault_path is not None
+            else (self.project_root / configured_vault_path).resolve()
+        )
         self.reader = reader or VaultReader(
             vault_path=str(self.vault_path),
             embedding_model=episodic_cfg.get("embedding_model", "all-MiniLM-L6-v2"),
@@ -82,4 +87,3 @@ class SemanticSource:
                 )
             )
         return records
-

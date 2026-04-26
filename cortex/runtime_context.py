@@ -11,22 +11,35 @@ def slugify(value: str, *, fallback: str = "default") -> str:
     return normalized or fallback
 
 
-def detect_git_branch(project_root: Path) -> str:
+def _run_git_command(project_root: Path, *args: str) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            ["git", *args],
             cwd=project_root,
             capture_output=True,
             text=True,
             timeout=5,
             check=False,
         )
-        branch = result.stdout.strip()
-        if result.returncode == 0 and branch:
-            return branch
     except (OSError, subprocess.TimeoutExpired):
-        pass
-    return "no-git-branch"
+        return None
+
+    output = result.stdout.strip()
+    if result.returncode != 0 or not output:
+        return None
+    return output
+
+
+def detect_git_branch(project_root: Path) -> str:
+    branch = _run_git_command(project_root, "rev-parse", "--abbrev-ref", "HEAD")
+    return branch or "no-git-branch"
+
+
+def detect_git_repo_path(project_root: Path) -> Path:
+    repo_root = _run_git_command(project_root, "rev-parse", "--show-toplevel")
+    if repo_root:
+        return Path(repo_root).resolve()
+    return project_root.resolve()
 
 
 def resolve_episodic_persist_dir(project_root: Path, episodic_cfg: dict[str, Any]) -> Path:
@@ -43,4 +56,3 @@ def resolve_episodic_persist_dir(project_root: Path, episodic_cfg: dict[str, Any
             namespace_value = "default"
         return resolved / "custom" / slugify(namespace_value)
     return resolved
-

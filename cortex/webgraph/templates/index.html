@@ -27,6 +27,30 @@
                     </div>
 
                     <div class="toolbar-group">
+                        <label for="project-filter">Project</label>
+                        <select id="project-filter">
+                            <option value="all">All projects</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="type-filter">Node Type</label>
+                        <select id="type-filter">
+                            <option value="all">All node types</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="time-filter">Time Window</label>
+                        <select id="time-filter">
+                            <option value="all">All time</option>
+                            <option value="7d">Last 7 days</option>
+                            <option value="30d">Last 30 days</option>
+                            <option value="90d">Last 90 days</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
                         <label for="search">Search</label>
                         <div class="search-row">
                             <input id="search" type="search" placeholder="Find a node by label">
@@ -49,6 +73,7 @@
                 </div>
 
                 <div class="statusbar">
+                    <div class="status-item"><span class="status-label">Scope</span><span id="status-scope">full</span></div>
                     <div class="status-item"><span class="status-label">Mode</span><span id="status-mode">-</span></div>
                     <div class="status-item"><span class="status-label">Nodes</span><span id="status-nodes">0</span></div>
                     <div class="status-item"><span class="status-label">Edges</span><span id="status-edges">0</span></div>

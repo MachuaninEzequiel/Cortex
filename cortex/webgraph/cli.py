@@ -26,10 +26,13 @@ def _require_config(project_root: Path) -> Path:
     return config_path
 
 
-def _resolve_workspace(workspace_file: str | None) -> Path | None:
-    if not workspace_file:
+def _resolve_workspace(workspace_file: str | None, project_root: str | None = None) -> Path | None:
+    from cortex.webgraph.federation import resolve_workspace_file
+
+    default_root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    path = resolve_workspace_file(workspace_file, default_root)
+    if path is None:
         return None
-    path = Path(workspace_file).expanduser().resolve()
     if not path.exists():
         typer.secho(f"Workspace file not found: {path}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
@@ -49,10 +52,11 @@ def export_snapshot(
     workspace_file: str | None = typer.Option(
         None,
         "--workspace-file",
-        help="Path to a federation workspace YAML file (multi-project mode).",
+        "--workspace",
+        help="Path to a federation workspace YAML file (multi-project mode). Defaults to .cortex/webgraph/workspace.yaml when present.",
     ),
 ) -> None:
-    workspace = _resolve_workspace(workspace_file)
+    workspace = _resolve_workspace(workspace_file, project_root)
     if workspace is not None:
         from cortex.webgraph.federation import FederatedWebGraphService
 
@@ -82,7 +86,8 @@ def serve(
     workspace_file: str | None = typer.Option(
         None,
         "--workspace-file",
-        help="Path to a federation workspace YAML file (multi-project mode).",
+        "--workspace",
+        help="Path to a federation workspace YAML file (multi-project mode). Defaults to .cortex/webgraph/workspace.yaml when present.",
     ),
 ) -> None:
     try:
@@ -91,7 +96,7 @@ def serve(
         typer.secho(str(exc), fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
 
-    workspace = _resolve_workspace(workspace_file)
+    workspace = _resolve_workspace(workspace_file, project_root)
     root = _resolve_project_root(project_root)
     if workspace is None:
         _require_config(root)

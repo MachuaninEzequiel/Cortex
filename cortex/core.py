@@ -35,6 +35,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, Field
 
+from cortex.enterprise.config import describe_enterprise_topology, load_enterprise_config
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.episodic.summarizer import Summarizer
 from cortex.models import (
@@ -45,7 +46,12 @@ from cortex.models import (
     RetrievalResult,
 )
 from cortex.retrieval.hybrid_search import HybridSearch
-from cortex.runtime_context import detect_git_branch, resolve_episodic_persist_dir, slugify
+from cortex.runtime_context import (
+    detect_git_branch,
+    detect_git_repo_path,
+    resolve_episodic_persist_dir,
+    slugify,
+)
 from cortex.semantic.vault_reader import VaultReader
 from cortex.services.pr_service import PRService
 from cortex.services.session_service import SessionService
@@ -134,10 +140,28 @@ class AgentMemory:
         self.project_root = self._config_path.resolve().parent
         self.project_id = slugify(self.project_root.name, fallback="project")
         self.git_branch = detect_git_branch(self.project_root)
+        self.git_repo = str(detect_git_repo_path(self.project_root))
+        self.enterprise_config = load_enterprise_config(self.project_root, required=False)
+        self.enterprise_topology = describe_enterprise_topology(
+            self.enterprise_config,
+            self.project_root,
+        )
         self._runtime_episodic_dir = resolve_episodic_persist_dir(
             self.project_root,
             self._raw_config.get("episodic", {}),
         )
+        self._runtime_metadata = {
+            "project_id": self.project_id,
+            "branch": self.git_branch,
+            "repo": self.git_repo,
+        }
+        if self.enterprise_config is not None:
+            self._runtime_metadata.update(
+                {
+                    "organization": self.enterprise_config.organization.slug,
+                    "org_profile": self.enterprise_config.organization.profile,
+                }
+            )
 
         # --- Infrastructure layer (wired here, injected into services) ---
         self.episodic = EpisodicMemoryStore(
@@ -168,15 +192,18 @@ class AgentMemory:
             vault_path=self.config.semantic.vault_path,
             semantic=self.semantic,
             episodic=self.episodic,
+            context_metadata=self._runtime_metadata,
         )
         self._session_service = SessionService(
             vault_path=self.config.semantic.vault_path,
             semantic=self.semantic,
             episodic=self.episodic,
+            context_metadata=self._runtime_metadata,
         )
         self._pr_service = PRService(
             vault_path=self.config.semantic.vault_path,
             episodic=self.episodic,
+            context_metadata=self._runtime_metadata,
         )
         self._workitem_service: WorkItemService | None = None
 
@@ -192,6 +219,7 @@ class AgentMemory:
         tags: list[str] | None = None,
         files: list[str] | None = None,
         summarize: bool = False,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> MemoryEntry:
         """
         Store a new episodic memory.
@@ -202,20 +230,20 @@ class AgentMemory:
             tags:        Optional list of tags for filtering.
             files:       Source files involved in the operation.
             summarize:   If True, compress content with LLM before storing.
+            extra_metadata: Optional metadata merged with the runtime project context.
 
         Returns:
             The stored MemoryEntry with its generated ID.
         """
         text = self.summarizer.compress(content) if summarize else content
+        metadata = dict(self._runtime_metadata)
+        metadata.update(extra_metadata or {})
         return self.episodic.add(
             content=text,
             memory_type=memory_type,
             tags=tags or [],
             files=files or [],
-            extra_metadata={
-                "project_id": self.project_id,
-                "branch": self.git_branch,
-            },
+            extra_metadata=metadata,
         )
 
     def store_memory(
@@ -225,10 +253,17 @@ class AgentMemory:
         memory_type: str = "general",
         tags: list[str] | None = None,
         files: list[str] | None = None,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> MemoryEntry:
         """Backward compatibility alias for remember()."""
         # Note: memory_id is ignored in the new implementation as IDs are auto-generated
-        return self.remember(content, memory_type=memory_type, tags=tags, files=files)
+        return self.remember(
+            content,
+            memory_type=memory_type,
+            tags=tags,
+            files=files,
+            extra_metadata=extra_metadata,
+        )
 
     def retrieve(
         self,
@@ -236,6 +271,7 @@ class AgentMemory:
         *,
         top_k: int | None = None,
         use_embeddings: bool = True,
+        cross_branch: bool = False,
     ) -> RetrievalResult:
         """
         Query both memory layers and return ranked, fused results.
@@ -247,13 +283,14 @@ class AgentMemory:
             query:          Natural-language query string.
             top_k:          Max results (overrides config).
             use_embeddings: If False, skips vector search (bypasses ONNX load).
+            cross_branch:   If True, allow episodic hits from other branches.
 
         Returns:
             RetrievalResult with ranked, deduplicated hits.
         """
         result = self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
 
-        if self.config.episodic.namespace_mode == "branch":
+        if self.config.episodic.namespace_mode == "branch" and not cross_branch:
             current_branch = self.git_branch
             result.episodic_hits = [
                 hit
@@ -282,6 +319,7 @@ class AgentMemory:
             "semantic_docs": self.semantic.count(),
             "vault_path": str(self.semantic.vault_path),
             "persist_dir": str(self.episodic.persist_dir),
+            "enterprise_topology": self.enterprise_topology,
         }
 
     # ------------------------------------------------------------------
@@ -552,6 +590,7 @@ class AgentMemory:
                 semantic=self.semantic,
                 episodic=self.episodic,
                 providers=providers,
+                context_metadata=self._runtime_metadata,
             )
         return self._workitem_service
 

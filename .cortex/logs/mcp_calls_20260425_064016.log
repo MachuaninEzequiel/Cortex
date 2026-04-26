@@ -1,4 +1,4 @@
-2026-04-25 06:40:17,004 - cortex.episodic.memory_store - INFO - EpisodicMemoryStore initialized — collection 'cortex_episodic' has 0 entries
+2026-04-25 06:40:17,004 - cortex.episodic.memory_store - INFO - EpisodicMemoryStore initialized â€” collection 'cortex_episodic' has 0 entries
 2026-04-25 06:40:17,004 - cortex.mcp.server - INFO - Cortex MCP Server inicializado. Log file: d:\DevSecDocOps\DevSecDocOps-3erCortex\cortex-repo\cortex\.cortex\logs\mcp_calls_20260425_064016.log
 2026-04-25 06:40:17,018 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
 2026-04-25 06:46:00,088 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest
@@ -61,3 +61,4 @@
 2026-04-25 17:41:33,514 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest
 2026-04-25 17:46:45,098 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest
 2026-04-25 17:51:56,511 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest
+2026-04-25 17:56:56,771 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest

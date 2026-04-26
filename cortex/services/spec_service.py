@@ -51,10 +51,12 @@ class SpecService:
         vault_path: str | Path,
         semantic: VaultReader,
         episodic: EpisodicMemoryStore,
+        context_metadata: dict[str, str] | None = None,
     ) -> None:
         self._vault_path = Path(vault_path)
         self._semantic = semantic
         self._episodic = episodic
+        self._context_metadata = dict(context_metadata or {})
 
     def create(
         self,
@@ -142,4 +144,5 @@ class SpecService:
             memory_type="spec",
             tags=["spec"] + list(tags),
             files=files_in_scope,
+            extra_metadata=dict(self._context_metadata),
         )

@@ -16,6 +16,7 @@ env/
 # Cortex data (local only)
 .memory/
 *.chroma/
+vault/sessions/
 
 # Config with secrets
 .env

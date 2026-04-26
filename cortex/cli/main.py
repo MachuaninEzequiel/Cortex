@@ -11,7 +11,10 @@ context           Get enriched context for current work.
 save-session      Persist a structured session note into the Cortex vault.
 create-spec       Persist an implementation specification into the Cortex vault.
 verify-docs       Check if PR includes agent-generated documentation.
+validate-docs     Validate markdown docs stored in the vault.
 index-docs        Index vault docs as semantic memory.
+doctor            Validate Cortex runtime, vault and Git governance state.
+org-config        Display the resolved enterprise organization config.
 agent-guidelines  Display agent behavior guidelines for session-end documentation.
 install-skills    Install Obsidian skills into the project's .cortex/skills/ directory.
 remember          Store a new episodic memory from the command line.
@@ -36,9 +39,11 @@ warnings.filterwarnings("ignore")
 import asyncio
 import json
 import subprocess
+from enum import Enum
 from pathlib import Path
 
 import typer
+import yaml
 
 from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
@@ -70,6 +75,12 @@ _DEFAULT_CONFIG = {
         "model": "",
     },
 }
+
+
+class DoctorScope(str, Enum):
+    PROJECT = "project"
+    ENTERPRISE = "enterprise"
+    ALL = "all"
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +428,11 @@ def setup_webgraph(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be done without making changes."
     ),
+    attach_project_root: str | None = typer.Option(
+        None,
+        "--attach-project-root",
+        help="Optional project root to register in .cortex/webgraph/workspace.yaml.",
+    ),
 ) -> None:
     """
     Setup only the hybrid memory visualization module.
@@ -428,7 +444,7 @@ def setup_webgraph(
     typer.echo("")
 
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.WEBGRAPH)
+    summary = orchestrator.run(mode=SetupMode.WEBGRAPH, attach_project_root=attach_project_root)
     typer.echo(format_summary(summary))
 
 
@@ -440,6 +456,101 @@ def setup_webgraph(
 def init() -> None:
     """Bootstrap cortex: Alias for `cortex setup agent`."""
     setup_agent(dry_run=False)
+
+
+@app.command()
+def doctor(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where config.yaml lives).",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Fail on warnings as well as hard errors.",
+    ),
+    scope: DoctorScope = typer.Option(
+        DoctorScope.PROJECT,
+        "--scope",
+        help="Validation scope: project, enterprise, or all.",
+    ),
+) -> None:
+    """Validate Cortex runtime prerequisites and governance state."""
+    from cortex.doctor import run_doctor
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    report = run_doctor(root, scope=scope.value)
+
+    for check in report.checks:
+        if check.ok:
+            typer.secho(f"[OK] {check.name}: {check.detail}", fg=typer.colors.GREEN)
+            continue
+
+        if check.severity == "fail":
+            typer.secho(f"[FAIL] {check.name}: {check.detail}", fg=typer.colors.RED, err=True)
+        elif check.severity == "warn":
+            typer.secho(f"[WARN] {check.name}: {check.detail}", fg=typer.colors.YELLOW)
+        else:
+            typer.secho(f"[INFO] {check.name}: {check.detail}", fg=typer.colors.BLUE)
+
+    if report.has_failures:
+        raise typer.Exit(code=1)
+    if strict and report.has_warnings:
+        raise typer.Exit(code=1)
+
+
+@app.command(name="org-config")
+def org_config(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where .cortex/org.yaml lives).",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the resolved enterprise config as JSON.",
+    ),
+    required: bool = typer.Option(
+        False,
+        "--required",
+        help="Fail if the enterprise config is missing.",
+    ),
+) -> None:
+    """Display the resolved enterprise organization config."""
+    from cortex.enterprise.config import (
+        describe_enterprise_topology,
+        discover_enterprise_config_path,
+        load_enterprise_config,
+    )
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    discovered = discover_enterprise_config_path(root)
+    expected = root / ".cortex" / "org.yaml"
+    if discovered is None:
+        message = f"Enterprise config not found under {expected}"
+        if required:
+            typer.echo(message, err=True)
+            raise typer.Exit(code=1)
+        typer.echo(message)
+        return
+
+    try:
+        config = load_enterprise_config(root, required=True, path=discovered)
+    except Exception as exc:
+        typer.echo(f"Failed to load enterprise config: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        typer.echo(config.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"Enterprise config: {discovered}")
+    typer.echo(f"Organization: {config.organization.name} ({config.organization.profile})")
+    typer.echo(f"Topology: {describe_enterprise_topology(config, root)}")
+    typer.echo("")
+    typer.echo(yaml.safe_dump(config.model_dump(mode='json'), sort_keys=False, allow_unicode=False))
 
 
 # ---------------------------------------------------------------------------
@@ -613,6 +724,76 @@ def verify_docs(
 
 
 # ---------------------------------------------------------------------------
+# validate-docs
+# ---------------------------------------------------------------------------
+
+@app.command(name="validate-docs")
+def validate_docs(
+    vault: str = typer.Option("vault", help="Path to the vault directory."),
+    files: str = typer.Option(
+        None,
+        "--files",
+        help="Comma-separated list of markdown files to validate (relative to repo root or vault).",
+    ),
+    output: str = typer.Option(
+        ".doc-validation.json",
+        help="Output JSON validation report.",
+    ),
+    strict_warnings: bool = typer.Option(
+        False,
+        "--strict-warnings",
+        help="Treat validation warnings as blocking.",
+    ),
+) -> None:
+    """Validate Cortex markdown docs stored in the vault."""
+    from cortex.doc_validator import DocValidator
+
+    vault_path = Path(vault)
+    if not vault_path.exists():
+        typer.echo(f"Vault directory not found: {vault}", err=True)
+        Path(output).write_text('{"is_valid": false, "errors": ["vault not found"]}', encoding="utf-8")
+        raise typer.Exit(1)
+
+    validator = DocValidator(vault_path=vault_path)
+
+    selected_files: list[Path]
+    if files:
+        selected_files = []
+        for raw in [item.strip() for item in files.split(",") if item.strip()]:
+            candidate = Path(raw)
+            if not candidate.is_absolute():
+                root_candidate = (Path.cwd() / candidate).resolve()
+                vault_candidate = (vault_path / candidate).resolve()
+                candidate = root_candidate if root_candidate.exists() else vault_candidate
+            selected_files.append(candidate)
+    else:
+        selected_files = sorted(vault_path.rglob("*.md"))
+
+    results = validator.validate_batch(selected_files)
+    payload = {
+        "is_valid": all(result.is_valid for result in results),
+        "files": [result.to_dict() for result in results],
+        "error_count": sum(len(result.errors) for result in results),
+        "warning_count": sum(len(result.warnings) for result in results),
+    }
+    Path(output).write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+
+    if payload["error_count"]:
+        typer.echo(f"Documentation validation failed with {payload['error_count']} error(s).", err=True)
+        raise typer.Exit(1)
+    if strict_warnings and payload["warning_count"]:
+        typer.echo(
+            f"Documentation validation raised {payload['warning_count']} warning(s) in strict mode.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    typer.echo(
+        f"Documentation validation passed ({len(selected_files)} file(s), {payload['warning_count']} warning(s))."
+    )
+
+
+# ---------------------------------------------------------------------------
 # index-docs
 # ---------------------------------------------------------------------------
 
@@ -718,6 +899,9 @@ def remember(
     memory_type: str = typer.Option("general", "--type", "-t", help="Memory category."),
     tags: list[str] = typer.Option([], "--tag", help="Tags (repeatable)."),
     files: list[str] = typer.Option([], "--file", help="Related files (repeatable)."),
+    branch: str | None = typer.Option(None, "--branch", help="Explicit branch metadata override."),
+    repo: str | None = typer.Option(None, "--repo", help="Explicit repo metadata override."),
+    commit: str | None = typer.Option(None, "--commit", help="Attach one commit SHA as metadata."),
     summarize: bool = typer.Option(
         False,
         "--summarize",
@@ -742,6 +926,15 @@ def remember(
         tags=tags,
         files=files,
         summarize=summarize,
+        extra_metadata={
+            key: value
+            for key, value in {
+                "branch": branch,
+                "repo": repo,
+                "commit": commit,
+            }.items()
+            if value
+        },
     )
     typer.echo(f"Memory stored -> {entry.id}")
     typer.echo(f"   type: {entry.memory_type}")
@@ -757,10 +950,15 @@ def search(
     query: str = typer.Argument(..., help="Natural-language search query."),
     top_k: int = typer.Option(5, "--top-k", "-k", help="Max results per source."),
     json_output: bool = typer.Option(False, "--json", help="Output raw JSON."),
+    cross_branch: bool = typer.Option(
+        False,
+        "--cross-branch",
+        help="Allow episodic results from other branches when branch namespacing is enabled.",
+    ),
 ) -> None:
     """Query both memory layers and print results."""
     mem = _load_memory()
-    result = mem.retrieve(query, top_k=top_k)
+    result = mem.retrieve(query, top_k=top_k, cross_branch=cross_branch)
 
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
