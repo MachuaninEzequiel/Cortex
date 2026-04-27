@@ -101,7 +101,7 @@ jobs:
         if: always()
         id: verify_docs
         run: |
-          HAS_DOCS=$(cortex verify-docs --vault vault --output .doc-status.json)
+          HAS_DOCS=$(cortex verify-docs --vault vault --output .doc-status.json --quiet)
           echo "has_agent_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
         continue-on-error: true
 
