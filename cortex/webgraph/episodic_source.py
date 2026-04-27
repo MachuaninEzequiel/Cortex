@@ -41,13 +41,18 @@ class EpisodicSource:
         self,
         project_root: Path | None = None,
         *,
+        persist_dir: Path | None = None,
         store: EpisodicMemoryStore | None = None,
         embedder: Any | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
         self._runtime_config = _read_project_config(self.project_root)
         episodic_cfg = self._runtime_config.get("episodic", {})
-        self.persist_dir = resolve_episodic_persist_dir(self.project_root, episodic_cfg)
+        self.persist_dir = (
+            persist_dir.resolve()
+            if persist_dir is not None
+            else resolve_episodic_persist_dir(self.project_root, episodic_cfg)
+        )
         self.store = store or EpisodicMemoryStore(
             persist_dir=str(self.persist_dir),
             collection_name=episodic_cfg.get("collection_name", "cortex_episodic"),
@@ -78,4 +83,3 @@ class EpisodicSource:
                 )
             )
         return records
-

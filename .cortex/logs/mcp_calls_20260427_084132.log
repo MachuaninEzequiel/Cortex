@@ -1,0 +1,4 @@
+2026-04-27 08:41:32,853 - cortex.episodic.memory_store - INFO - EpisodicMemoryStore initialized — collection 'cortex_episodic' has 1 entries
+2026-04-27 08:41:32,853 - cortex.mcp.server - INFO - Cortex MCP Server inicializado. Log file: d:\DevSecDocOps\DevSecDocOps-3erCortex\cortex-repo\cortex\.cortex\logs\mcp_calls_20260427_084132.log
+2026-04-27 08:41:32,873 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2026-04-27 08:47:32,260 - mcp.server.lowlevel.server - INFO - Processing request of type PingRequest

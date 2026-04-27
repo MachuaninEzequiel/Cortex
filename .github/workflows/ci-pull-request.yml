@@ -33,6 +33,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Cortex - Doctor
+        run: cortex doctor
+
       - name: Secret Scanning (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -94,13 +97,33 @@ jobs:
             --test-result "mypy=${{ steps.mypy.outcome }}, tests=${{ steps.tests.outcome }}"
         continue-on-error: true
 
-      - name: Cortex — Generate Documentation
+      - name: Cortex - Verify Docs
         if: always()
+        id: verify_docs
+        run: |
+          HAS_DOCS=$(cortex verify-docs --vault vault --output .doc-status.json)
+          echo "has_agent_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Cortex — Generate Documentation
+        if: always() && steps.verify_docs.outputs.has_agent_docs != 'true'
         run: |
           cortex pr-context generate \
             --context-file .pr-context.json \
             --vault vault
         continue-on-error: true
+
+      - name: Cortex - Index Existing Docs
+        if: always() && steps.verify_docs.outputs.has_agent_docs == 'true'
+        run: cortex index-docs --vault vault
+        continue-on-error: true
+
+      - name: Cortex - Validate Docs
+        if: always()
+        run: |
+          cortex validate-docs \
+            --vault vault \
+            --output .doc-validation.json
 
       - name: Cortex — Sync Vault
         if: always()

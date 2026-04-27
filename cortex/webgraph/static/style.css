@@ -58,6 +58,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 132px;
 }
 
 .toolbar-actions {
@@ -69,6 +70,7 @@ body {
 .search-row {
     display: flex;
     gap: 8px;
+    min-width: 280px;
 }
 
 label {
@@ -277,6 +279,10 @@ button:disabled {
 
     .toolbar-actions {
         margin-left: 0;
+    }
+
+    .search-row {
+        min-width: 0;
     }
 
     .network-canvas {

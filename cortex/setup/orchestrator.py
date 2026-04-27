@@ -21,6 +21,10 @@ from cortex.setup.templates import (
     render_ci_pull_request,
     render_config_yaml,
     render_decisions_md,
+    render_enterprise_vault_readme,
+    render_enterprise_runbook_md,
+    render_org_yaml,
+    render_git_vault_policy_md,
     render_runbooks_md,
 )
 
@@ -42,10 +46,17 @@ class SetupOrchestrator:
         self.skipped: list[str] = []
         self.warnings: list[str] = []
 
-    def run(self, mode: SetupMode = SetupMode.FULL, git_depth: int = 50, ide: str | None = None) -> dict:
+    def run(
+        self,
+        mode: SetupMode = SetupMode.FULL,
+        git_depth: int = 50,
+        ide: str | None = None,
+        attach_project_root: str | None = None,
+    ) -> dict:
         """Execute the setup pipeline based on mode. Returns a summary dict."""
         self.git_depth = git_depth
         self.ide = ide
+        self.attach_project_root = attach_project_root
         self.ctx = self.detector.detect()
         if mode == SetupMode.AGENT:
             self._run_agent_flow()
@@ -61,7 +72,9 @@ class SetupOrchestrator:
         """Setup only local agent/cognitive components."""
         self._create_directories(only_agent=True)
         self._create_config()
+        self._create_enterprise_org_config()
         self._create_vault_docs()
+        self._create_enterprise_vault()
         self._create_agent_guidelines()
         self._install_skills()
         self._init_memory()
@@ -72,6 +85,8 @@ class SetupOrchestrator:
         """Setup only CI/CD / DevOps components."""
         self._check_vault_pipeline_interactive()
         self._create_config()
+        self._create_enterprise_org_config()
+        self._create_enterprise_vault()
         self._create_workflows()
         self._create_devsecdocops_script()
 
@@ -79,7 +94,9 @@ class SetupOrchestrator:
         """Run everything."""
         self._create_directories()
         self._create_config()
+        self._create_enterprise_org_config()
         self._create_vault_docs()
+        self._create_enterprise_vault()
         self._create_workflows()
         self._create_devsecdocops_script()
         self._create_agent_guidelines()
@@ -129,6 +146,8 @@ class SetupOrchestrator:
             ("architecture.md", render_architecture_md),
             ("decisions.md", render_decisions_md),
             ("runbooks.md", render_runbooks_md),
+            ("runbooks/enterprise-runbook.md", render_enterprise_runbook_md),
+            ("runbooks/git-vault-policy.md", render_git_vault_policy_md),
         ]:
             path = vault / filename
             if path.exists():
@@ -136,6 +155,43 @@ class SetupOrchestrator:
             else:
                 path.write_text(renderer(self.ctx), encoding="utf-8")
                 self.created.append(f"vault/{filename}")
+
+    def _create_enterprise_org_config(self) -> None:
+        if not self.ctx:
+            return
+        path = self.root / ".cortex" / "org.yaml"
+        if path.exists():
+            self.skipped.append(".cortex/org.yaml (already exists)")
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(render_org_yaml(self.ctx), encoding="utf-8")
+        self.created.append(".cortex/org.yaml")
+
+    def _create_enterprise_vault(self) -> None:
+        if not self.ctx:
+            return
+        enterprise_root = self.root / "vault-enterprise"
+        created_any = False
+        for dirname in ("runbooks", "decisions", "incidents", "hu"):
+            target = enterprise_root / dirname
+            if target.exists():
+                self.skipped.append(f"vault-enterprise/{dirname}/ (already exists)")
+            else:
+                target.mkdir(parents=True, exist_ok=True)
+                self.created.append(f"vault-enterprise/{dirname}/")
+                created_any = True
+
+        readme_path = enterprise_root / "README.md"
+        if readme_path.exists():
+            self.skipped.append("vault-enterprise/README.md (already exists)")
+        else:
+            enterprise_root.mkdir(parents=True, exist_ok=True)
+            readme_path.write_text(render_enterprise_vault_readme(self.ctx), encoding="utf-8")
+            self.created.append("vault-enterprise/README.md")
+            created_any = True
+
+        if not created_any and not enterprise_root.exists():
+            enterprise_root.mkdir(parents=True, exist_ok=True)
 
     def _create_workflows(self) -> None:
         if not self.ctx:
@@ -217,12 +273,16 @@ class SetupOrchestrator:
     def _install_webgraph(self) -> None:
         try:
             from cortex.webgraph.setup import (
+                attach_project_root,
                 get_missing_webgraph_dependencies,
                 install_webgraph,
             )
 
             if install_webgraph(self.root, interactive=False):
                 self.created.append(".cortex/webgraph/ (configured)")
+                if self.attach_project_root:
+                    workspace_file = attach_project_root(self.root, Path(self.attach_project_root))
+                    self.created.append(str(workspace_file.relative_to(self.root)))
             else:
                 missing = get_missing_webgraph_dependencies()
                 if missing:

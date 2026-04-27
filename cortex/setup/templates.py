@@ -12,6 +12,8 @@ Generates project-aware defaults for:
 
 from __future__ import annotations
 
+from cortex.enterprise.config import build_enterprise_org_config, render_enterprise_config_yaml
+from cortex.git_policy import recommended_gitignore_snippet
 from cortex.setup.detector import ProjectContext
 
 # ---------------------------------------------------------------------------
@@ -60,6 +62,45 @@ integrations:
 """
 
 
+def render_org_yaml(ctx: ProjectContext, profile: str = "small-company") -> str:
+    """Render .cortex/org.yaml with a baseline enterprise topology."""
+    config = build_enterprise_org_config(
+        project_name=ctx.stack.project_name or ctx.root.name,
+        profile=profile,  # type: ignore[arg-type]
+        github_actions_enabled=ctx.ci.has_github_actions,
+        branch_isolation_enabled=False,
+    )
+    return render_enterprise_config_yaml(config)
+
+
+def render_enterprise_vault_readme(ctx: ProjectContext) -> str:
+    """Render a small enterprise vault landing page."""
+    project_name = ctx.stack.project_name or ctx.root.name
+    return f"""\
+---
+title: Enterprise Memory Vault
+tags: [cortex, enterprise-memory, governance]
+created: 2026-04-26
+---
+
+# Enterprise Memory Vault
+
+This vault stores durable organization-level knowledge for `{project_name}`.
+
+## Intended content
+
+- Architecture decisions shared across projects
+- Stable runbooks and operating procedures
+- Business and delivery patterns worth reusing
+- Incidents and lessons with organization-wide impact
+
+## Notes
+
+- Project-local working memory still belongs in each repository's `vault/` and `.memory/`.
+- Promotion into this vault should be deliberate and reviewable.
+"""
+
+
 # ---------------------------------------------------------------------------
 # GitHub Actions workflow templates
 # ---------------------------------------------------------------------------
@@ -98,6 +139,9 @@ jobs:
 
       - name: Install Cortex memory
         run: pip install cortex-memory
+
+      - name: Cortex - Doctor
+        run: cortex doctor
 
       # ── CORTEX: Load Agent Guidelines ──────────────────────────────
       - name: Cortex — Agent Guidelines
@@ -210,6 +254,13 @@ jobs:
             --output .past-context.json
         continue-on-error: true
 
+      - name: Cortex - Validate Docs
+        if: always()
+        run: |
+          cortex validate-docs \\
+            --vault vault \\
+            --output .doc-validation.json
+
       # ── CORTEX: Enrich Context (Proactive) ─────────────────────
       - name: Cortex — Enrich Context
         if: always()
@@ -266,6 +317,7 @@ jobs:
           path: |
             .pr-context.json
             .past-context.json
+            .doc-validation.json
           retention-days: 7
 
       # ── Enforce Gates ──────────────────────────────────────────
@@ -324,6 +376,9 @@ jobs:
       - name: Install Cortex memory
         run: pip install cortex-memory
 
+      - name: Cortex - Doctor
+        run: cortex doctor
+
       - name: Run Linting
         run: {lint_cmd}
         id: lint
@@ -351,6 +406,10 @@ jobs:
             --tag tests \\
             --tag ${{{{ steps.tests.outcome }}}} \\
             --branch ${{{{ github.ref_name }}}}
+
+      - name: Cortex - Validate Docs
+        if: always()
+        run: cortex validate-docs --vault vault --output .doc-validation.json
 
       - name: Check Lint
         if: steps.lint.outcome != 'success'
@@ -550,6 +609,8 @@ The pipeline is integrated with Cortex memory:
 - Every PR auto-generates documentation in `vault/`
 - CI results stored as episodic memories (searchable)
 - Hybrid RRF search finds similar past PRs
+- `cortex doctor` validates the local operating state
+- `cortex validate-docs` checks vault markdown integrity before merge
 
 ### Pipeline Status
 
@@ -581,10 +642,114 @@ Check GitHub Actions: [Actions Tab](../../actions)
 - Secret rotation procedures
 - Incident response checklist
 
+## Governance Quick Checks
+
+```bash
+cortex doctor
+cortex webgraph doctor --project-root .
+cortex validate-docs --vault vault
+```
+
 ## Adding a New Runbook
 
 Add new procedures to this file or create separate files in `vault/runbooks/`.
 Link them here using [[wiki-links]].
+"""
+
+
+def render_enterprise_runbook_md(ctx: ProjectContext) -> str:
+    return f"""\
+---
+title: Cortex Enterprise Runbook
+tags: [runbook, governance, onboarding]
+created: 2026-04-26
+---
+
+# Cortex Enterprise Runbook
+
+> Shared operating model for small-to-medium engineering teams using Cortex.
+
+## Role Onboarding
+
+### DevOps
+
+- Run `cortex setup pipeline` in the governed repository.
+- Validate baseline health with `cortex doctor`.
+- Wire CI to run `cortex verify-docs` and `cortex validate-docs`.
+- Keep `.memory/` local-only and never publish Chroma state.
+
+### Developers
+
+- Start with `cortex-sync` before implementation work.
+- Persist specs in `vault/specs/` and session outcomes in `vault/sessions/`.
+- Use `cortex search` and `cortex context` before repeating old work.
+- Use branch namespaces when the repository has long-lived parallel work.
+
+### Analysts
+
+- Use `cortex webgraph serve --project-root <repo>` for one project.
+- Use `cortex webgraph serve --workspace-file .cortex/webgraph/workspace.yaml` for multi-project analysis.
+- Filter WebGraph by project, node type and recent activity to reduce noise.
+
+### Staff / Tech Leads
+
+- Review `vault/decisions/` for architectural drift.
+- Keep `vault/runbooks/` current when delivery or operations change.
+- Decide explicitly whether session notes are Git-tracked in your team policy.
+
+## Daily Checks
+
+```bash
+cortex doctor
+cortex validate-docs --vault vault
+```
+
+## Release and Incident Readiness
+
+- Confirm `vault/specs/`, `vault/decisions/`, `vault/runbooks/` and `vault/hu/` are current.
+- Confirm local-only state remains outside Git (`.memory/`, transient session churn if your policy ignores it).
+- Re-run `cortex doctor --strict` before publishing tooling changes.
+
+## Project Notes
+
+- Project: {ctx.stack.project_name}
+- Language: {ctx.stack.language}
+- Package manager: {ctx.stack.package_manager}
+"""
+
+
+def render_git_vault_policy_md(ctx: ProjectContext) -> str:
+    del ctx
+    return f"""\
+---
+title: Cortex Git and Vault Policy
+tags: [runbook, governance, git]
+created: 2026-04-26
+---
+
+# Cortex Git and Vault Policy
+
+## Recommended Tracking Matrix
+
+- Track `vault/specs/`
+- Track `vault/decisions/`
+- Track `vault/runbooks/`
+- Track `vault/hu/`
+- Track `vault/incidents/`
+- Ignore `vault/sessions/` by default unless your team explicitly audits session history in Git
+- Ignore `.memory/` and any Chroma persistence artifacts
+
+## Recommended `.gitignore` Snippet
+
+```gitignore
+{recommended_gitignore_snippet()}
+```
+
+## Policy Notes
+
+- `vault/sessions/` is operational history, so it can create high churn. Teams may choose to track it, but the default recommendation is to keep it local.
+- `vault/specs/`, `vault/decisions/` and `vault/runbooks/` are durable knowledge and should usually be reviewed like code.
+- Imported work items in `vault/hu/` are useful shared context and should normally be versioned.
 """
 
 
