@@ -686,6 +686,9 @@ def verify_docs(
     output: str = typer.Option(
         ".doc-status.json", help="Output JSON status file."
     ),
+    quiet: bool = typer.Option(
+        False, "--quiet", "-q", help="Only output the boolean result (true/false)."
+    ),
 ) -> None:
     """
     Verify whether the PR includes agent-generated documentation.
@@ -697,7 +700,8 @@ def verify_docs(
 
     vault_path = Path(vault)
     if not vault_path.exists():
-        typer.echo(f"⚠ Vault directory not found: {vault}", err=True)
+        if not quiet:
+            typer.echo(f"⚠ Vault directory not found: {vault}", err=True)
         Path(output).write_text('{"has_agent_docs": false, "errors": ["vault not found"]}', encoding="utf-8")
         typer.echo("false")
         raise typer.Exit(1)
@@ -714,12 +718,14 @@ def verify_docs(
     Path(output).write_text(result.to_json(), encoding="utf-8")
 
     if result.has_agent_docs:
-        typer.echo(f"✅ Agent documentation found ({result.total_vault_files} files)")
-        typer.echo(f"   New: {', '.join(result.new_files) or 'none'}")
-        typer.echo(f"   Modified: {', '.join(result.modified_files) or 'none'}")
+        if not quiet:
+            typer.echo(f"✅ Agent documentation found ({result.total_vault_files} files)")
+            typer.echo(f"   New: {', '.join(result.new_files) or 'none'}")
+            typer.echo(f"   Modified: {', '.join(result.modified_files) or 'none'}")
         typer.echo("true")
     else:
-        typer.echo("⚠ No agent documentation found — fallback mode")
+        if not quiet:
+            typer.echo("⚠ No agent documentation found — fallback mode")
         typer.echo("false")
 
 
