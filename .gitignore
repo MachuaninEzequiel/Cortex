@@ -17,6 +17,8 @@ env/
 .memory/
 *.chroma/
 vault/sessions/
+.cortex/logs/
+.cortex/*.log
 
 # Config with secrets
 .env
