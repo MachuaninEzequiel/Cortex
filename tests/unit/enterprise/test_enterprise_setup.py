@@ -37,3 +37,12 @@ def test_setup_pipeline_creates_enterprise_governance_workflow(monkeypatch, tmp_
     assert "CI - Enterprise Governance" in text
     assert "cortex promote-knowledge" in text
     assert "cortex sync-enterprise-vault" in text
+
+
+def test_setup_enterprise_dry_run_does_not_write_files(tmp_path: Path) -> None:
+    orchestrator = SetupOrchestrator(root=tmp_path)
+    summary = orchestrator.run(mode=SetupMode.ENTERPRISE, dry_run=True)
+
+    assert any(item.endswith("(dry-run)") for item in summary["created"])
+    assert not (tmp_path / ".cortex" / "org.yaml").exists()
+    assert not (tmp_path / ".github" / "workflows").exists()
