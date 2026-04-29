@@ -4,9 +4,10 @@ from collections import deque
 from pathlib import Path
 
 from cortex.runtime_context import slugify
+from cortex.enterprise.config import discover_enterprise_config_path, load_enterprise_config
 from cortex.webgraph.cache import WebGraphCache
 from cortex.webgraph.config import WebGraphConfig
-from cortex.webgraph.contracts import WebGraphMode, WebGraphNodeDetail, WebGraphSnapshot
+from cortex.webgraph.contracts import WebGraphEdge, WebGraphMode, WebGraphNode, WebGraphNodeDetail, WebGraphSnapshot
 from cortex.webgraph.episodic_source import EpisodicSource
 from cortex.webgraph.graph_builder import GraphBuilder
 from cortex.webgraph.semantic_source import SemanticSource
@@ -32,7 +33,13 @@ class WebGraphService:
         self.cache = WebGraphCache(self.project_root)
         self.graph_builder = GraphBuilder(self.config)
 
-    def build_snapshot(self, mode: WebGraphMode = "hybrid", *, use_cache: bool = True) -> WebGraphSnapshot:
+    def build_snapshot(
+        self,
+        mode: WebGraphMode = "hybrid",
+        *,
+        use_cache: bool = True,
+        scope: str | None = None,
+    ) -> WebGraphSnapshot:
         fingerprint = self.cache.compute_fingerprint(
             vault_path=self.semantic_source.vault_path,
             episodic_path=self.episodic_source.persist_dir,
@@ -59,12 +66,15 @@ class WebGraphService:
             update={
                 "nodes": [
                     node.model_copy(
-                        update={"metadata": {"project_id": project_id, **dict(node.metadata)}}
+                        update={"metadata": {"project_id": project_id, "scope": "local", **dict(node.metadata)}}
                     )
                     for node in snapshot.nodes
                 ]
             }
         )
+
+        snapshot = _append_enterprise_nodes(snapshot, self.project_root, project_id=project_id)
+        snapshot = _filter_snapshot_by_scope(snapshot, scope)
         self.cache.store_snapshot(mode, snapshot)
         return snapshot
 
@@ -144,3 +154,108 @@ class WebGraphService:
                 ),
             }
         )
+
+
+def _append_enterprise_nodes(snapshot: WebGraphSnapshot, project_root: Path, *, project_id: str) -> WebGraphSnapshot:
+    org_path = discover_enterprise_config_path(project_root)
+    if org_path is None:
+        return snapshot
+    try:
+        cfg = load_enterprise_config(project_root, required=True, path=org_path)
+    except Exception:
+        return snapshot
+    if cfg is None:
+        return snapshot
+
+    org_node_id = "enterprise:org"
+    proj_node_id = "enterprise:project"
+    vault_node_id = "enterprise:vault"
+
+    enterprise_nodes: list[WebGraphNode] = [
+        WebGraphNode(
+            id=org_node_id,
+            node_type="enterprise_org",
+            source="semantic",
+            label=cfg.organization.name,
+            summary=f"profile={cfg.organization.profile}, slug={cfg.organization.slug}",
+            metadata={"project_id": project_id, "scope": "enterprise"},
+        ),
+        WebGraphNode(
+            id=proj_node_id,
+            node_type="enterprise_project",
+            source="semantic",
+            label=project_root.name,
+            summary=str(project_root),
+            metadata={"project_id": project_id, "scope": "enterprise"},
+        ),
+    ]
+
+    enterprise_edges: list[WebGraphEdge] = [
+        WebGraphEdge(
+            id="enterprise:org->project",
+            source=org_node_id,
+            target=proj_node_id,
+            edge_type="enterprise_owns_project",
+            weight=1.0,
+        ),
+    ]
+
+    vault_path = cfg.resolve_enterprise_vault_path(project_root)
+    if vault_path is not None:
+        enterprise_nodes.append(
+            WebGraphNode(
+                id=vault_node_id,
+                node_type="enterprise_vault",
+                source="semantic",
+                label=vault_path.name,
+                summary=str(vault_path),
+                rel_path=None,
+                metadata={"project_id": project_id, "scope": "enterprise"},
+            )
+        )
+        enterprise_edges.append(
+            WebGraphEdge(
+                id="enterprise:org->vault",
+                source=org_node_id,
+                target=vault_node_id,
+                edge_type="enterprise_vault",
+                weight=1.0,
+            )
+        )
+
+    # Avoid duplicates if called multiple times.
+    existing_ids = {n.id for n in snapshot.nodes}
+    nodes = snapshot.nodes + [n for n in enterprise_nodes if n.id not in existing_ids]
+
+    existing_edge_ids = {e.id for e in snapshot.edges}
+    edges = snapshot.edges + [e for e in enterprise_edges if e.id not in existing_edge_ids]
+
+    return snapshot.model_copy(
+        update={
+            "nodes": nodes,
+            "edges": edges,
+            "stats": snapshot.stats.model_copy(update={"node_count": len(nodes), "edge_count": len(edges)}),
+        }
+    )
+
+
+def _filter_snapshot_by_scope(snapshot: WebGraphSnapshot, scope: str | None) -> WebGraphSnapshot:
+    if scope is None or scope == "all":
+        return snapshot
+    if scope not in {"local", "enterprise"}:
+        return snapshot
+
+    allowed_ids = {
+        n.id
+        for n in snapshot.nodes
+        if str(n.metadata.get("scope", "local")).strip().lower() == scope
+    }
+    nodes = [n for n in snapshot.nodes if n.id in allowed_ids]
+    edges = [e for e in snapshot.edges if e.source in allowed_ids and e.target in allowed_ids]
+    return snapshot.model_copy(
+        update={
+            "nodes": nodes,
+            "edges": edges,
+            "stats": snapshot.stats.model_copy(update={"node_count": len(nodes), "edge_count": len(edges)}),
+        }
+    )

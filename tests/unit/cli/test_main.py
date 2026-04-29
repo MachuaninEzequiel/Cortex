@@ -260,3 +260,21 @@ def test_setup_enterprise_with_preset_invokes_enterprise_mode(monkeypatch) -> No
     assert result.exit_code == 0
     assert str(called.get("mode")) == "SetupMode.ENTERPRISE"
     assert called.get("enterprise_profile") == "small-company"
+
+
+def test_memory_report_json_outputs_payload(tmp_path: Path) -> None:
+    (tmp_path / ".memory" / "chroma").mkdir(parents=True)
+    (tmp_path / "vault").mkdir()
+    (tmp_path / "config.yaml").write_text(
+        "episodic:\n"
+        "  persist_dir: .memory/chroma\n"
+        "  collection_name: cortex_episodic\n"
+        "  embedding_model: all-MiniLM-L6-v2\n"
+        "  embedding_backend: onnx\n"
+        "semantic:\n"
+        "  vault_path: vault\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["memory-report", "--project-root", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    assert '"project_root"' in result.output
