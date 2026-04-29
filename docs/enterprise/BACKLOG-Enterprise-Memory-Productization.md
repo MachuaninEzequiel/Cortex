@@ -281,17 +281,17 @@ Medio.
 
 ### Definition of Done del epic
 
-- [ ] Existe un pipeline oficial de promocion.
-- [ ] Los documentos promovibles se identifican formalmente.
-- [ ] El estado de promocion queda trazado.
-- [ ] La promocion puede ser manual, asistida o CI-driven.
+- [x] Existe un pipeline oficial de promocion.
+- [x] Los documentos promovibles se identifican formalmente.
+- [x] El estado de promocion queda trazado.
+- [x] La promocion puede ser manual, asistida o CI-driven.
 
 ### Archivos / modulos objetivo
 
-- [ ] Crear `cortex/enterprise/knowledge_promotion.py`
-- [ ] Crear `cortex/enterprise/promotion_models.py`
-- [ ] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
-- [ ] Extender [cortex/doc_validator.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/doc_validator.py)
+- [x] Crear `cortex/enterprise/knowledge_promotion.py`
+- [x] Crear `cortex/enterprise/promotion_models.py`
+- [x] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
+- [x] Extender [cortex/doc_validator.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/doc_validator.py) (reusado como gate, sin cambios requeridos)
 - [ ] Extender [cortex/doc_verifier.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/doc_verifier.py)
 
 ### Historias tecnicas
@@ -300,50 +300,50 @@ Medio.
 
 Prioridad: `P1`
 
-- [ ] Definir estados `draft`, `candidate`, `reviewed`, `promoted`, `rejected`
-- [ ] Definir metadata de origen y trazabilidad
-- [ ] Definir estrategia de promotion record
+- [x] Definir estados `draft`, `candidate`, `reviewed`, `promoted`, `rejected`
+- [x] Definir metadata de origen y trazabilidad
+- [x] Definir estrategia de promotion record
 
 #### E3-S2 - Definir reglas de promovibilidad
 
 Prioridad: `P1`
 
-- [ ] Definir tipos de docs promovibles
-- [ ] Definir docs excluidos por defecto
-- [ ] Definir reglas declarativas por org
-- [ ] Definir si `vault/sessions/` entra o no al pipeline
+- [x] Definir tipos de docs promovibles
+- [x] Definir docs excluidos por defecto
+- [x] Definir reglas declarativas por org
+- [x] Definir si `vault/sessions/` entra o no al pipeline
 
 #### E3-S3 - Implementar comandos de promocion
 
 Prioridad: `P1`
 
-- [ ] Agregar `cortex promote-knowledge`
-- [ ] Agregar `cortex review-knowledge`
-- [ ] Agregar `cortex sync-enterprise-vault`
-- [ ] Agregar `--dry-run`
+- [x] Agregar `cortex promote-knowledge`
+- [x] Agregar `cortex review-knowledge`
+- [x] Agregar `cortex sync-enterprise-vault`
+- [x] Agregar `--dry-run`
 
 #### E3-S4 - Implementar copiado, transformacion o referencia
 
 Prioridad: `P1`
 
-- [ ] Definir si se promociona por copia, mirror o referencia
-- [ ] Crear estrategia inicial recomendada
-- [ ] Asegurar metadata de origen y fecha de promocion
+- [x] Definir si se promociona por copia, mirror o referencia
+- [x] Crear estrategia inicial recomendada
+- [x] Asegurar metadata de origen y fecha de promocion
 
 #### E3-S5 - Integrar con validacion documental
 
 Prioridad: `P1`
 
-- [ ] Validar docs antes de promocion
-- [ ] Rechazar o advertir por errores de estructura
-- [ ] Generar reporte de promotion candidates
+- [x] Validar docs antes de promocion
+- [x] Rechazar o advertir por errores de estructura
+- [x] Generar reporte de promotion candidates (via `promote-knowledge --dry-run/--json`)
 
 ### Validacion del epic
 
-- [ ] Tests de promotion rules
-- [ ] Tests de promotion dry-run
-- [ ] Tests de trazabilidad
-- [ ] Tests de promocion repetida / idempotencia
+- [x] Tests de promotion rules
+- [x] Tests de promotion dry-run
+- [x] Tests de trazabilidad
+- [x] Tests de promocion repetida / idempotencia
 
 ---
 
@@ -663,8 +663,8 @@ Evitar que la iniciativa avance sin base verificable.
 - [x] Crear carpeta o modulo de tests enterprise
 - [x] Agregar fixtures de topologias organizacionales
 - [x] Agregar tests de schema y config
-- [ ] Agregar tests de retrieval multi-nivel
-- [ ] Agregar tests de promotion pipeline
+- [x] Agregar tests de retrieval multi-nivel
+- [x] Agregar tests de promotion pipeline
 - [ ] Agregar tests de setup enterprise
 - [ ] Agregar tests de templates y workflows
 - [x] Agregar tests de doctor enterprise
