@@ -1,0 +1,104 @@
+# Cortex Agent Chain — Pipeline secuencial SDDwork (Release 2)
+# Usado por la extensión agent-chain de Pi
+# Cada step toma el output del anterior como $INPUT
+
+chains:
+  # Pipeline SDDwork completo (Release 2)
+  sddwork:
+    description: "Ciclo completo de desarrollo gobernado por Cortex Release 2"
+    steps:
+      - agent: cortex-sync
+        prompt: |
+          Analiza la siguiente tarea y genera un SPEC completo:
+          TAREA: $INPUT
+
+          ⚠️ MANDATORY: Ejecuta cortex_sync_ticket PRIMERO antes de cortex_create_spec.
+          Finaliza con: SPEC LISTO en vault/specs/<fecha>-<nombre>.md
+
+      - agent: cortex-SDDwork
+        prompt: |
+          Implementa según el siguiente SPEC usando Intelligent Routing:
+          $INPUT
+
+          Evalúa complejidad y elige:
+          - 🟢 FAST TRACK (1-2 archivos): Implementa directamente
+          - 🔴 DEEP TRACK (complejo): Delega a cortex-code-explorer → cortex-code-implementer
+
+          Finaliza delegando a cortex-security-auditor.
+
+      - agent: cortex-security-auditor
+        prompt: |
+          Realiza una auditoría de seguridad del código implementado:
+          $INPUT
+
+          Busca vulnerabilidades, secretos y cumplimiento de estándares.
+          Veredicto: APROBADO o BLOQUEADO.
+          Finaliza delegando a cortex-test-verifier.
+
+      - agent: cortex-test-verifier
+        prompt: |
+          Verifica la calidad y cobertura de los cambios:
+          $INPUT
+
+          Ejecuta tests y valida cobertura >85%.
+          Veredicto: APROBADO o BLOQUEADO.
+          Finaliza delegando a cortex-documenter.
+
+      - agent: cortex-documenter
+        prompt: |
+          Persiste el conocimiento de esta sesión:
+          $INPUT
+
+          Ejecuta cortex_save_session y crea las notas de vault.
+          Usa propiedades Obsidian, backlinks y tags.
+          Finaliza con: TAREA COMPLETADA ✅
+
+  # Pipeline de hotfix (Fast Track directo)
+  hotfix:
+    description: "Fix rápido con Fast Track directo"
+    steps:
+      - agent: cortex-SDDwork
+        prompt: |
+          Implementa el siguiente hotfix en modo FAST TRACK:
+          $INPUT
+
+          No uses Deep Track. Implementa directamente.
+          Valida lógicamente que funcione.
+          Finaliza delegando a cortex-documenter.
+
+      - agent: cortex-documenter
+        prompt: |
+          Documenta el hotfix:
+          $INPUT
+          Ejecuta cortex_save-session --tag "hotfix".
+
+  # Pipeline de refactor (Deep Track)
+  refactor:
+    description: "Refactoring con análisis de contexto histórico"
+    steps:
+      - agent: cortex-sync
+        prompt: |
+          Analiza el código a refactorizar y recupera contexto histórico:
+          $INPUT
+          ⚠️ MANDATORY: Ejecuta cortex_sync_ticket PRIMERO.
+          Identifica qué decisiones motivaron el diseño actual.
+
+      - agent: cortex-code-explorer
+        prompt: |
+          Analiza la arquitectura actual:
+          $INPUT
+          Mapea dependencias y patrones existentes.
+          Output CONCISO: archivos relevantes + arquitectura esencial.
+
+      - agent: cortex-code-implementer
+        prompt: |
+          Ejecuta el refactor según:
+          $INPUT
+          Mantén o mejora la cobertura de tests.
+          Output CONCISO: resumen de cambios + decisiones técnicas.
+
+      - agent: cortex-documenter
+        prompt: |
+          Documenta las decisiones del refactor:
+          $INPUT
+          Crea una nota de arquitectura en vault/decisions/ o vault/architecture/.

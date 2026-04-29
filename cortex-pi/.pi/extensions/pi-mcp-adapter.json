@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cortex-mcp": {
+      "command": "python",
+      "args": ["-m", "cortex.mcp.server"],
+      "cwd": ".",
+      "env": {
+        "CORTEX_CONFIG_PATH": "config.yaml"
+      }
+    }
+  }
+}

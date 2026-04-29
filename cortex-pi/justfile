@@ -1,0 +1,130 @@
+# Cortex Pi — Justfile (Release 2)
+# Todos los recipes cargan automáticamente el .env si existe
+
+set dotenv-load
+
+# ─── Default: muestra ayuda ──────────────────────────────────────────────────
+default:
+    @echo "CORTEX PI RELEASE 2 — Recipes disponibles:"
+    @echo ""
+    @echo "  Modos base:"
+    @echo "    just pi               — Pi sin extensiones (modo raw)"
+    @echo "    just cortex           — Cortex completo (dashboard + memory + specs)"
+    @echo "    just cortex-lite      — Solo dashboard (sin memory widget)"
+    @echo ""
+    @echo "  Modos especializados (Release 2):"
+    @echo "    just sdd              — Pipeline SDDwork completo (Intelligent Routing)"
+    @echo "    just hotfix           — Modo hotfix rápido (Fast Track)"
+    @echo "    just audit            — Modo auditoría de calidad"
+    @echo "    just research         — Modo investigación/arquitectura"
+    @echo ""
+    @echo "  Herramientas:"
+    @echo "    just quality          — Ejecuta full quality check (ruff+mypy+pytest)"
+    @echo "    just vault-stats      — Estadísticas del vault y memoria"
+    @echo "    just vault-search Q   — Búsqueda rápida en vault"
+    @echo "    just create-spec T    — Crea spec para tarea T"
+    @echo "    just save-session     — Persiste sesión actual"
+    @echo ""
+
+# ─── Pi base ─────────────────────────────────────────────────────────────────
+pi:
+    pi
+
+# ─── Cortex completo (modo principal) ────────────────────────────────────────
+cortex:
+    pi \
+      -e extensions/cortex-dashboard.ts \
+      -e extensions/cortex-memory-widget.ts \
+      -e extensions/cortex-spec-tracker.ts \
+      -e extensions/cortex-subagent-widget.ts
+
+# ─── Cortex lite (solo dashboard, más rápido) ────────────────────────────────
+cortex-lite:
+    pi -e extensions/cortex-dashboard.ts
+
+# ─── Pipeline SDDwork completo (Release 2) ───────────────────────────────────
+# Carga el sistema completo listo para ejecutar Intelligent Routing
+sdd:
+    pi \
+      -e extensions/cortex-dashboard.ts \
+      -e extensions/cortex-memory-widget.ts \
+      -e extensions/cortex-spec-tracker.ts \
+      -e extensions/cortex-subagent-widget.ts \
+      --system .pi/agents/cortex-sync.md
+
+# ─── Modo hotfix (Fast Track directo, Release 2) ────────────────────────────
+hotfix:
+    pi \
+      -e extensions/cortex-dashboard.ts \
+      --system .pi/agents/cortex-SDDwork.md
+
+# ─── Modo auditoría (Release 2) ──────────────────────────────────────────────
+audit:
+    pi \
+      -e extensions/cortex-dashboard.ts \
+      -e extensions/cortex-spec-tracker.ts \
+      --system .pi/agents/cortex-sync.md
+
+# ─── Modo investigación/arquitectura (Release 2) ─────────────────────────────
+research:
+    pi \
+      -e extensions/cortex-memory-widget.ts \
+      -e extensions/cortex-dashboard.ts \
+      --system .pi/agents/cortex-sync.md
+
+# ─── Modo documenter (solo persistencia) ─────────────────────────────────────
+document:
+    pi \
+      -e extensions/cortex-dashboard.ts \
+      --system .pi/agents/cortex-documenter.md
+
+# ─── Quality checks ──────────────────────────────────────────────────────────
+quality:
+    @echo "🔍 Ruff check..."
+    ruff check cortex/
+    @echo "🎨 Ruff format check..."
+    ruff format cortex/ --check
+    @echo "🔬 Mypy type check..."
+    mypy cortex/ --ignore-missing-imports
+    @echo "🧪 Pytest con cobertura..."
+    pytest --cov=cortex --cov-report=term-missing --cov-fail-under=85 -q
+    @echo "✅ Quality checks passed!"
+
+# ─── Fix automático ──────────────────────────────────────────────────────────
+fix:
+    ruff check cortex/ --fix
+    ruff format cortex/
+    @echo "✅ Auto-fix aplicado"
+
+# ─── Vault y memoria ─────────────────────────────────────────────────────────
+vault-stats:
+    cortex stats
+
+vault-search Q:
+    cortex search "{{Q}}"
+
+create-spec T:
+    cortex create-spec "{{T}}"
+
+save-session:
+    cortex save-session
+
+context:
+    cortex context
+
+# ─── Abrir múltiples ventanas del equipo (Release 2) ─────────────────────────
+# Requiere: tmux o iTerm con soporte de ventanas múltiples
+team-windows:
+    @echo "Abriendo 3 terminales para el equipo SDDwork (Release 2)..."
+    tmux new-session -d -s cortex-sync "just sdd" \; \
+         new-window -t cortex: "just audit" \; \
+         new-window -t cortex: "just document" \; \
+         select-window -t cortex:0 \; \
+         attach-session -t cortex
+
+# ─── Abrir todo en ventanas separadas ────────────────────────────────────────
+all:
+    @echo "Abriendo todas las configuraciones de Cortex Pi Release 2..."
+    open -a Terminal "just cortex" || xterm -e "just cortex" &
+    open -a Terminal "just audit" || xterm -e "just audit" &
+    open -a Terminal "just research" || xterm -e "just research" &

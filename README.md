@@ -44,7 +44,7 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 
 ---
 
-## El Modelo de Ejecución Tripartito (SDDwork)
+## El Modelo de Ejecución Tripartito 
 
 La Pre-Release 2.0 introduce un sistema de orquestación donde la responsabilidad se divide en tres roles especializados para maximizar la precisión:
 
@@ -214,6 +214,10 @@ Antes de configurar MCP en cualquier IDE, asegúrate de:
    ```
 
 ### Configuración por IDE
+
+#### Pi Coding Agent (RECOMENDADO)
+
+Pi es el CLI y entorno de ejecución recomendado por Cortex debido a su filosofía Open Source y su extrema capacidad de configuración, lo que permite una ejecución óptima y ligera. Cortex proporciona un setup de inyección al detalle en `cortex-pi/` para convertir a Pi en un nodo de gobernanza total, aunque mantenemos soporte completo para otras IDEs mediante el protocolo MCP.
 
 #### Cursor
 

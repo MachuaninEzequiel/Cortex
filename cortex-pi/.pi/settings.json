@@ -1,0 +1,32 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "theme": "cortex-dark",
+  "defaultExtensions": ["extensions/cortex-dashboard.ts"],
+  "skills": [
+    ".pi/skills/cortex-vault.md",
+    ".pi/skills/cortex-python.md",
+    ".pi/skills/cortex-testing.md",
+    ".pi/skills/obsidian-index.md"
+  ],
+  "agents": [
+    ".pi/agents/cortex-sync.md",
+    ".pi/agents/cortex-SDDwork.md",
+    ".pi/agents/cortex-code-explorer.md",
+    ".pi/agents/cortex-code-implementer.md",
+    ".pi/agents/cortex-security-auditor.md",
+    ".pi/agents/cortex-test-verifier.md",
+    ".pi/agents/cortex-documenter.md"
+  ],
+  "defaultAgent": "cortex-sync",
+  "compaction": {
+    "strategy": "summarize",
+    "triggerAt": 0.8,
+    "preserveSystemPrompt": true
+  },
+  "tools": {
+    "bash": true,
+    "read": true,
+    "write": true,
+    "edit": true
+  }
+}

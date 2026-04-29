@@ -1,0 +1,81 @@
+# Cortex Damage Control Rules
+# Reglas de seguridad para prevenir operaciones destructivas en Cortex
+
+# ─── Comandos bash peligrosos ─────────────────────────────────────────────────
+bashToolPatterns:
+  # CRÍTICOS — Bloqueo total
+  - pattern: "rm\\s+-rf?\\s+(vault|.cortex|.memory|.pi)"
+    reason: "Eliminación de vault o memoria de Cortex — operación irreversible"
+    block: true
+
+  - pattern: "rm\\s+-rf?\\s+/"
+    reason: "rm -rf en raíz del sistema"
+    block: true
+
+  - pattern: "DROP\\s+(TABLE|DATABASE|COLLECTION)"
+    reason: "Operación destructiva de base de datos"
+    block: true
+
+  - pattern: "git\\s+push\\s+.*--force(?!-with-lease)"
+    reason: "git push --force puede destruir historia del repositorio"
+    block: true
+
+  - pattern: "eval\\s*\\(|exec\\s*\\("
+    reason: "eval/exec en código Python está prohibido en Cortex"
+    block: true
+
+  # ADVERTENCIA — Pedir confirmación
+  - pattern: "git\\s+reset\\s+--hard"
+    reason: "git reset --hard descarta cambios no commiteados"
+    ask: true
+
+  - pattern: "chromadb.*delete_collection"
+    reason: "Eliminación de colección ChromaDB — pérdida de memoria episódica"
+    ask: true
+
+  - pattern: "cortex\\s+forget\\s+--all"
+    reason: "Elimina TODAS las memorias episódicas"
+    ask: true
+
+  - pattern: "pip\\s+uninstall\\s+cortex"
+    reason: "Desinstalar el paquete principal de Cortex"
+    ask: true
+
+  - pattern: "truncate\\s+--size\\s+0"
+    reason: "Truncar archivos a tamaño 0"
+    ask: true
+
+  - pattern: "os\\.system\\s*\\("
+    reason: "os.system() está prohibido — usar subprocess.run() en su lugar"
+    ask: true
+
+# ─── Rutas de acceso cero (ni leer ni escribir) ───────────────────────────────
+zeroAccessPaths:
+  - "**/.env"
+  - "**/.env.*"
+  - "~/.ssh/**"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/id_rsa*"
+  - "**/id_ed25519*"
+  - "**/.netrc"
+
+# ─── Rutas de solo lectura (no modificar) ─────────────────────────────────────
+readOnlyPaths:
+  - ".git/**"
+  - "package-lock.json"
+  - "bun.lock"
+  - "/etc/**"
+  - "/usr/local/lib/**"
+
+# ─── Rutas protegidas (no eliminar, solo modificar) ───────────────────────────
+noDeletePaths:
+  - "vault/**"
+  - ".cortex/specs/**"
+  - "CHANGELOG.md"
+  - "README.md"
+  - "pyproject.toml"
+  - "config.yaml"
+  - ".cortex/skills/**"
+  - ".pi/agents/**"
+  - "AGENTS.md"

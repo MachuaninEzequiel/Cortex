@@ -1,0 +1,37 @@
+# Cortex Agent Team Definitions
+# Release 2 - Basado en la filosofía de Cortex SDDwork
+# Cada team key mapea a una lista de agent personas en .pi/agents/
+
+cortex-sddwork:
+  # Pipeline completo de desarrollo gobernado por Cortex Release 2
+  # cortex-sync: Pre-flight y análisis (spec creation)
+  # cortex-SDDwork: Orquestador con Intelligent Routing (Fast/Deep Track)
+  # cortex-code-explorer: Subagente de análisis (solo Deep Track)
+  # cortex-code-implementer: Subagente de implementación (solo Deep Track)
+  # cortex-documenter: Documentación obligatoria
+  - cortex-sync
+  - cortex-SDDwork
+  - cortex-code-explorer
+  - cortex-code-implementer
+  - cortex-security-auditor
+  - cortex-test-verifier
+  - cortex-documenter
+
+cortex-hotfix:
+  # Para fixes urgentes: Fast Track directo a implementación
+  - cortex-SDDwork
+  - cortex-security-auditor
+  - cortex-test-verifier
+  - cortex-documenter
+
+cortex-research:
+  # Para investigación arquitectónica y decisiones técnicas
+  - cortex-sync
+  - cortex-documenter
+
+cortex-audit:
+  # Para auditoría de calidad y deuda técnica
+  - cortex-sync
+  - cortex-code-explorer
+  - cortex-security-auditor
+  - cortex-documenter
