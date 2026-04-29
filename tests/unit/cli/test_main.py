@@ -5,6 +5,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from cortex.cli.main import app
+from cortex.models import RetrievalResult, UnifiedHit
 
 runner = CliRunner()
 
@@ -149,3 +150,88 @@ def test_org_config_command_prints_resolved_topology(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Example Org" in result.output
     assert "Topology:" in result.output
+
+
+def test_search_scope_is_forwarded_to_retrieve(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope, project_id=None):  # noqa: ANN001
+            assert query == "hello"
+            assert top_k == 3
+            assert cross_branch is False
+            assert scope == "enterprise"
+            assert project_id is None
+            return RetrievalResult(query="hello")
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello", "--top-k", "3", "--scope", "enterprise"])
+    assert result.exit_code == 0
+
+
+def test_search_rejects_invalid_scope(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope):  # noqa: ANN001
+            return RetrievalResult(query=query)
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello", "--scope", "bad-scope"])
+    assert result.exit_code == 1
+    assert "Invalid --scope value" in result.output
+
+
+def test_search_show_scores_prints_scope_details(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope, project_id=None):  # noqa: ANN001
+            return RetrievalResult(
+                query=query,
+                unified_hits=[
+                    UnifiedHit(
+                        source="semantic",
+                        score=0.42,
+                        metadata={"scope": "enterprise", "project_id": "acme-org"},
+                    )
+                ],
+                source_breakdown={"enterprise": 1},
+            )
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello", "--show-scores", "--scope", "all"])
+    assert result.exit_code == 0
+    assert "scope=enterprise" in result.output
+    assert "Source breakdown" in result.output
+
+
+def test_search_json_includes_source_breakdown(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope, project_id=None):  # noqa: ANN001
+            return RetrievalResult(
+                query=query,
+                source_breakdown={"local": 1, "enterprise": 2},
+            )
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello", "--json", "--scope", "all"])
+    assert result.exit_code == 0
+    assert '"source_breakdown"' in result.output
+
+
+def test_search_without_scope_passes_none(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope, project_id=None):  # noqa: ANN001
+            assert scope is None
+            assert project_id is None
+            return RetrievalResult(query=query)
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello"])
+    assert result.exit_code == 0
+
+
+def test_search_passes_project_id_filter(monkeypatch) -> None:
+    class DummyMemory:
+        def retrieve(self, query, top_k, cross_branch, scope, project_id):  # noqa: ANN001
+            assert project_id == "acme-project"
+            return RetrievalResult(query=query)
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    result = runner.invoke(app, ["search", "hello", "--project-id", "acme-project"])
+    assert result.exit_code == 0

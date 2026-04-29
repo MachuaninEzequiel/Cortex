@@ -961,10 +961,38 @@ def search(
         "--cross-branch",
         help="Allow episodic results from other branches when branch namespacing is enabled.",
     ),
+    scope: str | None = typer.Option(
+        None,
+        "--scope",
+        help="Retrieval scope override: local, enterprise, all. If omitted, uses org default.",
+    ),
+    show_scores: bool = typer.Option(
+        False,
+        "--show-scores",
+        help="Show per-hit metadata and source details.",
+    ),
+    project_id: str | None = typer.Option(
+        None,
+        "--project-id",
+        help="Optional source project identifier filter.",
+    ),
 ) -> None:
     """Query both memory layers and print results."""
     mem = _load_memory()
-    result = mem.retrieve(query, top_k=top_k, cross_branch=cross_branch)
+    if scope is not None and scope not in {"local", "enterprise", "all"}:
+        typer.echo("Invalid --scope value. Use one of: local, enterprise, all.", err=True)
+        raise typer.Exit(1)
+    try:
+        result = mem.retrieve(
+            query,
+            top_k=top_k,
+            cross_branch=cross_branch,
+            scope=scope,
+            project_id=project_id,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
 
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
@@ -976,10 +1004,16 @@ def search(
         typer.echo("Unified Results (RRF-fused across both sources):")
         for hit in result.unified_hits:
             source_tag = "EPISODIC" if hit.source == "episodic" else "SEMANTIC"
-            typer.echo(
-                f"  [{source_tag}] {hit.display_title}  "
-                f"({hit.display_path})  score={hit.score:.4f}"
-            )
+            details = f"  [{source_tag}] {hit.display_title}  ({hit.display_path})  score={hit.score:.4f}"
+            if show_scores:
+                details += (
+                    f"  scope={hit.metadata.get('scope', 'local')}"
+                    f" project_id={hit.metadata.get('project_id', '')}"
+                )
+            typer.echo(details)
+        if show_scores and result.source_breakdown:
+            typer.echo("")
+            typer.echo(f"Source breakdown: {json.dumps(result.source_breakdown, ensure_ascii=True)}")
     else:
         if result.episodic_hits:
             typer.echo("Episodic Memory:")

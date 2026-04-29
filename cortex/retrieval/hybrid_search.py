@@ -227,6 +227,13 @@ class HybridSearch:
                     source="episodic",
                     score=score,
                     entry=hit.entry,
+                    metadata={
+                        "scope": hit.origin_scope,
+                        "project_id": hit.origin_project_id,
+                        "origin_vault": hit.origin_vault,
+                        "origin_persist_dir": hit.origin_persist_dir,
+                        **(hit.entry.metadata if isinstance(hit.entry.metadata, dict) else {}),
+                    },
                 ))
             elif key in semantic_map:
                 doc = semantic_map[key]
@@ -234,6 +241,12 @@ class HybridSearch:
                     source="semantic",
                     score=score,
                     doc=doc,
+                    metadata={
+                        "scope": doc.origin_scope,
+                        "project_id": doc.origin_project_id,
+                        "origin_vault": doc.origin_vault,
+                        "origin_persist_dir": doc.origin_persist_dir,
+                    },
                 ))
 
         return unified

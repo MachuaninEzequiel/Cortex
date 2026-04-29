@@ -36,6 +36,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from cortex.enterprise.config import describe_enterprise_topology, load_enterprise_config
+from cortex.enterprise.retrieval_service import EnterpriseRetrievalService, RetrievalSourceConfig
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.episodic.summarizer import Summarizer
 from cortex.models import (
@@ -272,6 +273,8 @@ class AgentMemory:
         top_k: int | None = None,
         use_embeddings: bool = True,
         cross_branch: bool = False,
+        scope: Literal["local", "enterprise", "all"] | None = None,
+        project_id: str | None = None,
     ) -> RetrievalResult:
         """
         Query both memory layers and return ranked, fused results.
@@ -288,7 +291,42 @@ class AgentMemory:
         Returns:
             RetrievalResult with ranked, deduplicated hits.
         """
-        result = self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
+        selected_scope = scope
+        if selected_scope is None and self.enterprise_config is not None:
+            selected_scope = self.enterprise_config.memory.retrieval_default_scope
+        if selected_scope is None:
+            selected_scope = "local"
+
+        if selected_scope == "local":
+            result = self.retriever.search(query, top_k=top_k, use_embeddings=use_embeddings)
+        else:
+            if self.enterprise_config is None:
+                raise ValueError(
+                    "Enterprise retrieval scope requires .cortex/org.yaml. "
+                    "Run `cortex org-config --required` to validate setup."
+                )
+            resolved_top_k = top_k or self.config.retrieval.top_k
+            service = EnterpriseRetrievalService(
+                enterprise_config=self.enterprise_config,
+                local_project_id=self.project_id,
+                project_root=self.project_root,
+                local_vault_path=self.config.semantic.vault_path,
+                local_episodic_dir=str(self._runtime_episodic_dir),
+                local_collection_name=self.config.episodic.collection_name,
+                embedding_model=self.config.episodic.embedding_model,
+                embedding_backend=self.config.episodic.embedding_backend,
+                source_config=RetrievalSourceConfig(
+                    local_weight=self.enterprise_config.memory.retrieval_local_weight,
+                    enterprise_weight=self.enterprise_config.memory.retrieval_enterprise_weight,
+                ),
+            )
+            result = service.search(
+                query=query,
+                scope=selected_scope,
+                top_k=resolved_top_k,
+                use_embeddings=use_embeddings,
+                project_id=project_id,
+            )
 
         if self.config.episodic.namespace_mode == "branch" and not cross_branch:
             current_branch = self.git_branch

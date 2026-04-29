@@ -191,20 +191,20 @@ Medio/alto.
 
 ### Definition of Done del epic
 
-- [ ] Se puede consultar solo memoria local.
-- [ ] Se puede consultar solo memoria enterprise.
-- [ ] Se puede consultar ambas fuentes en una sola operacion.
-- [ ] Los resultados identifican su origen.
-- [ ] El ranking es configurable y comprensible.
+- [x] Se puede consultar solo memoria local.
+- [x] Se puede consultar solo memoria enterprise.
+- [x] Se puede consultar ambas fuentes en una sola operacion.
+- [x] Los resultados identifican su origen.
+- [x] El ranking es configurable y comprensible.
 
 ### Archivos / modulos objetivo
 
-- [ ] Extender [cortex/core.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/core.py)
-- [ ] Extender [cortex/retrieval/hybrid_search.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/retrieval/hybrid_search.py)
-- [ ] Extender [cortex/semantic/vault_reader.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/semantic/vault_reader.py)
-- [ ] Evaluar extension de [cortex/episodic/memory_store.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/episodic/memory_store.py)
-- [ ] Crear `cortex/enterprise/retrieval_service.py`
-- [ ] Crear `cortex/enterprise/sources.py`
+- [x] Extender [cortex/core.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/core.py)
+- [x] Extender [cortex/retrieval/hybrid_search.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/retrieval/hybrid_search.py)
+- [x] Extender [cortex/semantic/vault_reader.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/semantic/vault_reader.py)
+- [x] Evaluar extension de [cortex/episodic/memory_store.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/episodic/memory_store.py)
+- [x] Crear `cortex/enterprise/retrieval_service.py`
+- [x] Crear `cortex/enterprise/sources.py`
 
 ### Historias tecnicas
 
@@ -212,51 +212,51 @@ Medio/alto.
 
 Prioridad: `P0`
 
-- [ ] Definir scopes `local`, `enterprise`, `all`
-- [ ] Definir como se configuran por CLI y por runtime
-- [ ] Definir metadata de origen que debe retornar cada hit
+- [x] Definir scopes `local`, `enterprise`, `all`
+- [x] Definir como se configuran por CLI y por runtime
+- [x] Definir metadata de origen que debe retornar cada hit
 
 #### E2-S2 - Implementar multi-vault semantic retrieval
 
 Prioridad: `P0`
 
-- [ ] Permitir multiples `vault_path` en lectura
-- [ ] Agregar fusion de resultados semanticos por fuente
-- [ ] Etiquetar hits con `scope`, `project_id` y `origin_vault`
+- [x] Permitir multiples `vault_path` en lectura
+- [x] Agregar fusion de resultados semanticos por fuente
+- [x] Etiquetar hits con `scope`, `project_id` y `origin_vault`
 
 #### E2-S3 - Implementar multi-source episodic retrieval
 
 Prioridad: `P0`
 
-- [ ] Resolver estrategia para uno o varios `persist_dir`
-- [ ] Permitir consultar memoria episodica local y enterprise
-- [ ] Mantener compatibilidad con `namespace_mode`
-- [ ] Exponer filtros por proyecto, rama y repo
+- [x] Resolver estrategia para uno o varios `persist_dir`
+- [x] Permitir consultar memoria episodica local y enterprise
+- [x] Mantener compatibilidad con `namespace_mode`
+- [x] Exponer filtros por proyecto, rama y repo
 
 #### E2-S4 - Fusion unificada multi-nivel
 
 Prioridad: `P0`
 
-- [ ] Diseñar estrategia RRF para mas de dos fuentes
-- [ ] Definir pesos por source y por scope
-- [ ] Agregar observabilidad de pesos efectivos
-- [ ] Evitar sobre-penalizacion o duplicacion de hits
+- [x] Diseñar estrategia RRF para mas de dos fuentes
+- [x] Definir pesos por source y por scope
+- [x] Agregar observabilidad de pesos efectivos
+- [x] Evitar sobre-penalizacion o duplicacion de hits
 
 #### E2-S5 - CLI ejecutable para retrieval enterprise
 
 Prioridad: `P0`
 
-- [ ] Agregar `--scope` a `cortex search`
-- [ ] Agregar salida JSON enriquecida con origen
-- [ ] Agregar opcion para mostrar score por fuente
+- [x] Agregar `--scope` a `cortex search`
+- [x] Agregar salida JSON enriquecida con origen
+- [x] Agregar opcion para mostrar score por fuente
 
 ### Validacion del epic
 
-- [ ] Tests de retrieval solo local
-- [ ] Tests de retrieval solo enterprise
-- [ ] Tests de retrieval local + enterprise
-- [ ] Tests con conflictos o duplicados entre fuentes
-- [ ] Tests de backward compatibility
+- [x] Tests de retrieval solo local
+- [x] Tests de retrieval solo enterprise
+- [x] Tests de retrieval local + enterprise
+- [x] Tests con conflictos o duplicados entre fuentes
+- [x] Tests de backward compatibility
 
 ---
 
