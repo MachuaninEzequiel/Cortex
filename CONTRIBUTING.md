@@ -2,7 +2,7 @@
 
 # Contribuir a Cortex
 
-¡Gracias por tu interés! Somos un proyecto open-source enfocado en **DevSecDocOps Governance para AI Agents**. Esta guía cubre todo lo que necesitás saber para contribuir efectivamente.
+¡Gracias por tu interés! Somos un proyecto open-source enfocado en **DevSecDocOps Governance para AI Agents** con soporte **Enterprise Memory Productization**. Esta guía cubre todo lo que necesitás saber para contribuir efectivamente.
 
 </div>
 
@@ -41,32 +41,33 @@ git remote add upstream https://github.com/MachuaninEzequiel/Cortex.git
 
 # 2. Crear entorno virtual e instalar en modo desarrollo
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
+
 pip install -e ".[dev]"
 
 # 3. Instalar pre-commit hooks (obligatorio)
 pre-commit install
-```
 
-Para verificar que todo está bien:
-
-```bash
+# 4. Verificar que todo funciona
 ruff check .
 pytest
 mypy cortex/
+
+# 5. (Opcional) Setup enterprise para contribuir a módulos enterprise
+cortex setup enterprise --preset small-company --non-interactive
 ```
 
-Si los tres pasan sin errores, estás listo.
+Si los tres checks pasan sin errores, estás listo.
 
 ---
 
 ## Arquitectura del Proyecto
 
-Cortex sigue una arquitectura modular en capas:
+Cortex sigue una arquitectura modular en capas con una capa enterprise superpuesta:
 
 ```text
 ┌─────────────────────────────────────┐
-│         CLI Layer (Typer)           │  ← Interfaz usuario
+│         CLI Layer (Typer)           │  ← 30+ comandos, subcomandos
 ├─────────────────────────────────────┤
 │   Facade Orchestrator & Services    │  ← core.py (Facade) + services/
 ├──────────────┬──────────────────────┤
@@ -74,26 +75,39 @@ Cortex sigue una arquitectura modular en capas:
 │  (ChromaDB)  │  (Markdown Vault)    │
 ├──────────────┴──────────────────────┤
 │  Retrieval Engine (Adaptive RRF)    │  ← Fusión inteligente de resultados
+├─────────────────────────────────────┤
+│  Enterprise Memory Layer            │  ← org.yaml, promotion, reporting
+│  (Multi-level retrieval + CI Gov)   │
 ├──────────────┬──────────────────────┤
 │ Embedder     │  Async Context       │  ← Carga perezosa + Concurrencia
 │ Factory      │  Enricher            │
 ├──────────────┴──────────────────────┤
-│          MCP Server Layer           │  ← Integración IDE (Delegación paralela)
+│      MCP Server + WebGraph          │  ← IDE Bridge + Knowledge Graphs
 └─────────────────────────────────────┘
 ```
 
 **Módulos clave y su responsabilidad:**
 
-| Módulo                         | Responsabilidad                                                              |
-| ------------------------------ | ---------------------------------------------------------------------------- |
-| `core.py`                      | Fachada principal (`AgentMemory`). Solo delega a la capa de servicios.       |
-| `services/`                    | Lógica de negocio (ej. `pr_service.py`, `spec_service.py`).                  |
-| `pipeline/`                    | Abstracciones formales para CI/CD y DevSecDocOps.                            |
-| `episodic/memory_store.py`     | Interfaz con ChromaDB. Almacena eventos: CI logs, PR summaries.              |
-| `semantic/vault_reader.py`     | Lee archivos Markdown del Vault (Obsidian-compatible).                       |
-| `retrieval/hybrid_search.py`   | Búsqueda adaptativa RRF con pesos dinámicos.                                 |
-| `embedders/factory.py`         | Instanciación perezosa de backends (ONNX, OpenAI, Local).                    |
-| `enricher/context_enricher.py` | Resolución asíncrona concurrente de contexto proactivo.                      |
+| Módulo | Responsabilidad |
+| --- | --- |
+| `core.py` | Fachada principal (`AgentMemory`). Solo delega a servicios. |
+| `services/` | Lógica de negocio (spec, session, pr). |
+| `enterprise/config.py` | Carga y validación de `.cortex/org.yaml`. |
+| `enterprise/models.py` | Modelos Pydantic de topología enterprise. |
+| `enterprise/retrieval_service.py` | Retrieval multi-nivel (local + enterprise). |
+| `enterprise/knowledge_promotion.py` | Pipeline de promoción auditable. |
+| `enterprise/reporting.py` | Observabilidad y reporting enterprise. |
+| `pipeline/` | Abstracciones formales para CI/CD y DevSecDocOps. |
+| `episodic/memory_store.py` | Interfaz con ChromaDB para eventos. |
+| `semantic/vault_reader.py` | Lee archivos Markdown del Vault. |
+| `retrieval/hybrid_search.py` | Búsqueda adaptativa RRF con pesos dinámicos. |
+| `retrieval/intent.py` | Detección de intención de búsqueda. |
+| `embedders/factory.py` | Instanciación perezosa de backends. |
+| `context_enricher/` | Resolución asíncrona concurrente de contexto. |
+| `setup/orchestrator.py` | Orquestador de setup (Agent/Pipeline/Full/Enterprise/WebGraph). |
+| `setup/enterprise_wizard.py` | Wizard interactivo para setup enterprise. |
+| `webgraph/service.py` | Grafos de conocimiento + nodos enterprise. |
+| `webgraph/federation.py` | Federación multi-proyecto con filtro por scope. |
 
 ---
 
@@ -112,13 +126,19 @@ Usamos **Ruff** para linting/formateo y **Mypy** para type checking. Los pre-com
 
 **Convenciones de nomenclatura:**
 
-| Elemento            | Convención                       | Ejemplo                             |
-| ------------------- | -------------------------------- | ----------------------------------- |
-| Funciones/variables | `snake_case`                     | `retrieve_memory()`                 |
-| Clases              | `PascalCase`                     | `AgentMemory`                       |
-| Constantes          | `UPPER_SNAKE`                    | `DEFAULT_TOP_K`                     |
-| Archivos            | `snake_case`                     | `hybrid_search.py`                  |
-| Tests               | `test_<modulo>_<comportamiento>` | `test_retrieval_fuses_both_sources` |
+| Elemento | Convención | Ejemplo |
+| --- | --- | --- |
+| Funciones/variables | `snake_case` | `retrieve_memory()` |
+| Clases | `PascalCase` | `AgentMemory` |
+| Constantes | `UPPER_SNAKE` | `DEFAULT_TOP_K` |
+| Archivos | `snake_case` | `hybrid_search.py` |
+| Tests | `test_<modulo>_<comportamiento>` | `test_retrieval_fuses_both_sources` |
+
+**Reglas Enterprise adicionales:**
+
+- Los modelos enterprise van en `cortex/enterprise/models.py` o `promotion_models.py`.
+- Toda configuración enterprise se lee via `cortex/enterprise/config.py`, no directamente.
+- Los presets se definen en `cortex/setup/enterprise_presets.py`.
 
 ---
 
@@ -138,6 +158,8 @@ feat(retrieval): add BM25 fallback when vector search returns empty
 fix(episodic): restore timestamp in memory retrieval
 docs(readme): update CLI reference with new commands
 test(enricher): add coverage for graph expansion strategy
+feat(enterprise): add regulated-organization preset
+fix(promotion): handle duplicate fingerprints in review
 ```
 
 Un commit = un cambio lógico. PRs pequeños y enfocados siempre ganan.
@@ -153,6 +175,7 @@ pytest                                          # Suite completa
 pytest --cov=cortex --cov-report=term-missing  # Con coverage
 pytest tests/unit/retrieval/ -v                # Un módulo específico
 pytest -k "rrf"                                # Por nombre de test
+pytest -k "enterprise"                         # Tests enterprise
 ```
 
 Nuestra suite está dividida en `tests/unit/`, `tests/integration/` y `tests/e2e/`. Usamos *Hypothesis* para property-based testing en algoritmos complejos.
@@ -176,30 +199,32 @@ Buscá el label `good-first-issue` en los issues: pequeños bug fixes, mejoras e
 
 | Área | Feature | Complejidad |
 | --- | --- | --- |
-| **Enterprise Core** | Implementación de `Promotion Pipeline` (Local → Corporate) | Alta |
-| **Retrieval** | Motor de búsqueda multi-nivel (Cross-Vault RRF) | Media-Alta |
-| **Gobernanza** | Perfiles de enforcement CI (Advisory vs Enforced) | Media |
-| **Setup** | Wizard interactivo para `cortex setup enterprise` | Media |
-| **Observabilidad** | Reportes de salud de memoria corporativa y gaps de conocimiento | Media-Baja |
-| **Integraciones** | Plugins para federación de memorias en entornos multi-repo | Alta |
+| **Enterprise** | Mejoras en presets por industria (healthcare, fintech) | Media |
+| **Retrieval** | Optimización de pesos RRF multi-nivel | Media-Alta |
+| **WebGraph** | Enriquecimiento de nodos enterprise en visualización | Media |
+| **Observabilidad** | Dashboard HTML/UI para `memory-report` | Media-Alta |
+| **Integraciones** | Plugins para Azure DevOps, Linear, GitHub Issues | Media |
+| **Migration** | Herramientas de migración desde setups legacy | Baja-Media |
 
-### Roadmap: Enterprise Memory Productization
+### Estado del Roadmap: Enterprise Memory Productization
 
 ```text
-Onda 1: Fundación (Actual)
-- P0: Modelo organizacional enterprise (.cortex/org.yaml)
-- P0: Retrieval multi-nivel base (Local + Corporate)
+✅ Onda 1: Fundación (Completada)
+  - E1: Modelo organizacional enterprise (.cortex/org.yaml)
+  - E2: Retrieval multi-nivel base (Local + Corporate)
 
-Onda 2: Operabilidad (Next)
-- P1: Promotion pipeline de conocimiento (Manual/CI-driven)
-- P1: Gobernanza y CI enterprise (Políticas automáticas)
+✅ Onda 2: Operabilidad (Completada)
+  - E3: Promotion pipeline de conocimiento (Manual/CI-driven)
+  - E4: Gobernanza y CI enterprise (Políticas automáticas)
 
-Onda 3: Productización
-- P1: Setup enterprise interactivo (Wizard guiado)
-- P2: Observabilidad y Reporting de salud de memoria
+✅ Onda 3: Productización (Completada)
+  - E5: Setup enterprise interactivo (Wizard guiado)
+  - E6: Observabilidad y Reporting de salud de memoria
 
-Onda 4: Hardening
-- P2: Presets para industrias reguladas, auditoría y seguridad final
+✅ Onda 4: Hardening (Completada)
+  - E7: Presets, documentación, hardening y adopción
+
+🔮 Siguiente: Integraciones avanzadas, dashboards visuales, plugins de terceros
 ```
 
 ---
@@ -214,8 +239,6 @@ Onda 4: Hardening
 
 ---
 
----
-
 <div align="center">
 
 Al contribuir, acordás que tus aportes serán licenciados bajo la **MIT License** de este repositorio.
@@ -225,7 +248,3 @@ _Contribuir a open-source es un acto de generosidad. Valoramos calidad sobre can
 **Gracias por ser parte de Cortex.**
 
 </div>
-
----
-
----
