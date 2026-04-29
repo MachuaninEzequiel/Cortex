@@ -36,6 +36,8 @@ class MemoryConfig(BaseModel):
     project_memory_mode: ProjectMemoryMode = "isolated"
     branch_isolation_enabled: bool = False
     retrieval_default_scope: RetrievalScope = "local"
+    retrieval_local_weight: float = Field(default=1.0, gt=0)
+    retrieval_enterprise_weight: float = Field(default=1.0, gt=0)
 
     @model_validator(mode="after")
     def _validate_paths(self) -> "MemoryConfig":

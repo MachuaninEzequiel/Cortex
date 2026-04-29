@@ -20,6 +20,8 @@ def test_build_enterprise_org_config_small_company_defaults() -> None:
     assert config.memory.enterprise_semantic_enabled is True
     assert config.memory.enterprise_episodic_enabled is False
     assert config.memory.project_memory_mode == "isolated"
+    assert config.memory.retrieval_local_weight == 1.0
+    assert config.memory.retrieval_enterprise_weight == 1.0
     assert config.governance.ci_profile == "advisory"
 
 

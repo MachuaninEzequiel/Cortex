@@ -84,6 +84,8 @@ def build_enterprise_org_config(
                     "project_memory_mode": "isolated",
                     "branch_isolation_enabled": branch_isolation_enabled,
                     "retrieval_default_scope": "local",
+                    "retrieval_local_weight": 1.0,
+                    "retrieval_enterprise_weight": 1.0,
                 },
                 "promotion": {
                     "enabled": True,
@@ -110,6 +112,8 @@ def build_enterprise_org_config(
                     "project_memory_mode": "isolated",
                     "branch_isolation_enabled": branch_isolation_enabled,
                     "retrieval_default_scope": "all",
+                    "retrieval_local_weight": 1.0,
+                    "retrieval_enterprise_weight": 1.2,
                 },
                 "promotion": {
                     "enabled": True,
@@ -136,6 +140,8 @@ def build_enterprise_org_config(
                     "project_memory_mode": "isolated",
                     "branch_isolation_enabled": True,
                     "retrieval_default_scope": "all",
+                    "retrieval_local_weight": 1.0,
+                    "retrieval_enterprise_weight": 1.3,
                 },
                 "promotion": {
                     "enabled": True,
@@ -162,6 +168,8 @@ def build_enterprise_org_config(
                     "project_memory_mode": "isolated",
                     "branch_isolation_enabled": branch_isolation_enabled,
                     "retrieval_default_scope": "local",
+                    "retrieval_local_weight": 1.0,
+                    "retrieval_enterprise_weight": 1.0,
                 },
                 "promotion": {
                     "enabled": True,

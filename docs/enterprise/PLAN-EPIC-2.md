@@ -70,14 +70,14 @@ Permitir que Cortex consulte de forma nativa:
 
 ### 3.2 Definition of Done de la EPIC 2
 
-- [ ] Se puede consultar solo memoria local (`--scope local`)
-- [ ] Se puede consultar solo memoria enterprise (`--scope enterprise`)
-- [ ] Se puede consultar ambas fuentes en una sola operación (`--scope all`)
-- [ ] Los resultados identifican su origen (`scope`, `project_id`, `origin_vault`)
-- [ ] El ranking es configurable y comprensible (pesos por fuente)
-- [ ] Backward compatibility: si no hay enterprise config, comportamiento local funciona igual
-- [ ] Tests cubren todos los modos de retrieval
-- [ ] CLI expone `--scope` en `cortex search`
+- [x] Se puede consultar solo memoria local (`--scope local`)
+- [x] Se puede consultar solo memoria enterprise (`--scope enterprise`)
+- [x] Se puede consultar ambas fuentes en una sola operación (`--scope all`)
+- [x] Los resultados identifican su origen (`scope`, `project_id`, `origin_vault`)
+- [x] El ranking es configurable y comprensible (pesos por fuente)
+- [x] Backward compatibility: si no hay enterprise config, comportamiento local funciona igual
+- [x] Tests cubren todos los modos de retrieval
+- [x] CLI expone `--scope` en `cortex search`
 
 ---
 
@@ -445,17 +445,17 @@ Para múltiples fuentes:
 ## 11. Checklist de Validación Final
 
 Antes de considerar EPIC 2 completada:
-- [ ] Todos los tests unitarios pasan
-- [ ] Todos los tests de integración pasan
-- [ ] Todos los tests end-to-end pasan
-- [ ] Backward compatibility verificada (proyectos sin `org.yaml`)
-- [ ] CLI funciona en los 3 scopes
-- [ ] Metadata de origen visible en cada hit
-- [ ] RRF funciona con pesos configurables
-- [ ] Documentación de uso actualizada
-- [ ] Performance aceptable (no degradación significativa vs local)
-- [ ] Código revisado y limpio
-- [ ] No warnings en `cortex doctor --scope enterprise`
+- [x] Todos los tests unitarios pasan
+- [x] Todos los tests de integración pasan
+- [x] Todos los tests end-to-end pasan
+- [x] Backward compatibility verificada (proyectos sin `org.yaml`)
+- [x] CLI funciona en los 3 scopes
+- [x] Metadata de origen visible en cada hit
+- [x] RRF funciona con pesos configurables
+- [x] Documentación de uso actualizada
+- [x] Performance aceptable (no degradación significativa vs local)
+- [x] Código revisado y limpio
+- [x] No warnings en `cortex doctor --scope enterprise`
 
 ---
 

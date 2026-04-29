@@ -53,6 +53,10 @@ class SemanticDocument(BaseModel):
     links: list[str] = Field(default_factory=list)   # [[wiki-links]]
     tags: list[str] = Field(default_factory=list)    # #tags
     score: float = 0.0
+    origin_scope: Literal["local", "enterprise"] = "local"
+    origin_project_id: str = ""
+    origin_vault: str = ""
+    origin_persist_dir: str = ""
 
 
 class EpisodicHit(BaseModel):
@@ -60,6 +64,10 @@ class EpisodicHit(BaseModel):
 
     entry: MemoryEntry
     score: float
+    origin_scope: Literal["local", "enterprise"] = "local"
+    origin_project_id: str = ""
+    origin_vault: str = ""
+    origin_persist_dir: str = ""
 
 
 class UnifiedHit(BaseModel):
@@ -76,6 +84,7 @@ class UnifiedHit(BaseModel):
     entry: MemoryEntry | None = None
     # Semantic fields (set when source == "semantic")
     doc: SemanticDocument | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @computed_field
     @property
@@ -116,6 +125,7 @@ class RetrievalResult(BaseModel):
     episodic_hits: list[EpisodicHit] = Field(default_factory=list)
     semantic_hits: list[SemanticDocument] = Field(default_factory=list)
     unified_hits: list[UnifiedHit] = Field(default_factory=list)
+    source_breakdown: dict[str, int] = Field(default_factory=dict)
     # Adaptive RRF intent metadata (set when adaptive_weights=True)
     intent: object | None = Field(default=None, exclude=True)
 
