@@ -1519,6 +1519,77 @@ def stats() -> None:
     typer.echo(json.dumps(s, indent=2))
 
 
+@app.command(name="memory-report")
+def memory_report(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where config.yaml lives).",
+    ),
+    scope: str = typer.Option(
+        "all",
+        "--scope",
+        help="Reporting scope: local, enterprise, or all.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print the report as JSON.",
+    ),
+) -> None:
+    """Report enterprise memory health and promotion visibility."""
+    from cortex.enterprise.reporting import EnterpriseReportingService
+
+    if scope not in {"local", "enterprise", "all"}:
+        typer.echo("Invalid --scope value. Use one of: local, enterprise, all.", err=True)
+        raise typer.Exit(1)
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    service = EnterpriseReportingService.from_project_root(root)
+    report = service.build_memory_report(scope=scope)  # type: ignore[arg-type]
+
+    if json_output:
+        typer.echo(report.model_dump_json(indent=2))
+        return
+
+    typer.echo("")
+    typer.echo("Cortex Enterprise Memory Report")
+    typer.echo("-----------------------------")
+    typer.echo(f"Project root: {report.project_root}")
+    typer.echo(f"Enterprise enabled: {report.enterprise_enabled}")
+    typer.echo(f"Scope: {scope}")
+    typer.echo("")
+
+    for src in report.sources:
+        typer.echo(f"[{src.scope}] vault={src.vault_path or '(disabled)'}")
+        typer.echo(f"  markdown_files: {src.markdown_files}")
+        typer.echo(f"  validation_errors: {src.validation_errors}")
+        typer.echo(f"  validation_warnings: {src.validation_warnings}")
+        for note in src.notes:
+            typer.echo(f"  note: {note}")
+        typer.echo("")
+
+    promo = report.promotion
+    typer.echo("Promotion")
+    typer.echo("---------")
+    typer.echo(f"enabled: {promo.enabled}")
+    if promo.enabled:
+        typer.echo(f"require_review: {promo.require_review}")
+        typer.echo(f"records_path: {promo.records_path}")
+        typer.echo(f"candidates_discovered: {promo.candidates_discovered}")
+        typer.echo(f"candidates_ready_to_promote: {promo.candidates_ready_to_promote}")
+        if promo.latest_events:
+            typer.echo("latest_events:")
+            for ev in promo.latest_events:
+                actor = f" actor={ev.actor}" if ev.actor else ""
+                at = f" at={ev.updated_at}" if ev.updated_at else ""
+                typer.echo(f"  - {ev.origin_id} status={ev.status}{actor}{at}")
+    if promo.warnings:
+        typer.echo("warnings:")
+        for w in promo.warnings:
+            typer.echo(f"  - {w}")
+
+
 # ---------------------------------------------------------------------------
 # forget
 # ---------------------------------------------------------------------------

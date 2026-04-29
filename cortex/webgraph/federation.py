@@ -110,14 +110,20 @@ class FederatedWebGraphService:
             for project in self.projects
         }
 
-    def build_snapshot(self, mode: WebGraphMode = "hybrid", *, use_cache: bool = True) -> WebGraphSnapshot:
+    def build_snapshot(
+        self,
+        mode: WebGraphMode = "hybrid",
+        *,
+        use_cache: bool = True,
+        scope: str | None = None,
+    ) -> WebGraphSnapshot:
         del use_cache
         nodes: list[WebGraphNode] = []
         edges: list[WebGraphEdge] = []
         fingerprints: list[str] = []
 
         for project_id, service in self._services.items():
-            snapshot = service.build_snapshot(mode=mode, use_cache=True)
+            snapshot = service.build_snapshot(mode=mode, use_cache=True, scope=scope)
             fingerprints.append(f"{project_id}:{snapshot.fingerprint}")
 
             for node in snapshot.nodes:
