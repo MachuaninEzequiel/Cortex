@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cortex-memory"
-version = "0.1.0"
+version = "3.0.0"
 description = "Hybrid cognitive memory system for AI agents — episodic + semantic."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 keywords = ["ai", "agents", "memory", "rag", "llm", "embeddings", "obsidian"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
@@ -32,6 +32,7 @@ dependencies = [
     "mcp>=1.2.0",
     # NOTE: sentence-transformers (PyTorch ~2.5 GB) is NOT a default dep.
     # It is available as an optional backup: pip install cortex-memory[local]
+    "setuptools",
 ]
 
 [project.optional-dependencies]
@@ -69,9 +70,9 @@ cortex = "cortex.cli.main:app"
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/cortex"
-Repository = "https://github.com/yourusername/cortex"
-Issues = "https://github.com/yourusername/cortex/issues"
+Homepage = "https://github.com/MachuaninEzequiel/Cortex"
+Repository = "https://github.com/MachuaninEzequiel/Cortex"
+Issues = "https://github.com/MachuaninEzequiel/Cortex/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

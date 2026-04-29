@@ -45,12 +45,12 @@ Construir una version enterprise de Cortex que permita:
 
 ## 2. Criterios globales de exito
 
-- [ ] Cortex soporta topologia enterprise declarativa mediante configuracion formal.
-- [ ] Cortex puede consultar memoria local y memoria corporativa en una misma experiencia de retrieval.
-- [ ] Existe un pipeline oficial de promocion de conocimiento entre niveles de memoria.
+- [x] Cortex soporta topologia enterprise declarativa mediante configuracion formal.
+- [x] Cortex puede consultar memoria local y memoria corporativa en una misma experiencia de retrieval.
+- [x] Existe un pipeline oficial de promocion de conocimiento entre niveles de memoria.
 - [x] Existe un `cortex setup enterprise` usable para clientes reales.
-- [ ] La gobernanza enterprise puede ejecutarse desde CI.
-- [ ] Existe una capa minima de observabilidad de memoria y salud operativa.
+- [x] La gobernanza enterprise puede ejecutarse desde CI.
+- [x] Existe una capa minima de observabilidad de memoria y salud operativa.
 
 ---
 
@@ -368,18 +368,18 @@ Bajo/medio.
 
 ### Definition of Done del epic
 
-- [ ] CI puede validar memoria enterprise.
-- [ ] CI puede correr checks de promotion.
-- [ ] Existen modos observability, advisory y enforced.
-- [ ] `doctor` reporta salud enterprise.
+- [x] CI puede validar memoria enterprise.
+- [x] CI puede correr checks de promotion.
+- [x] Existen modos observability, advisory y enforced.
+- [x] `doctor` reporta salud enterprise.
 
 ### Archivos / modulos objetivo
 
-- [ ] Extender [cortex/doctor.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/doctor.py)
-- [ ] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
-- [ ] Extender [cortex/setup/templates.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/templates.py)
-- [ ] Agregar templates workflow enterprise
-- [ ] Ajustar `.github/workflows/` generados
+- [x] Extender [cortex/doctor.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/doctor.py)
+- [x] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
+- [x] Extender [cortex/setup/templates.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/templates.py)
+- [x] Agregar templates workflow enterprise
+- [x] Ajustar `.github/workflows/` generados
 
 ### Historias tecnicas
 
@@ -387,43 +387,43 @@ Bajo/medio.
 
 Prioridad: `P1`
 
-- [ ] Definir `observability`
-- [ ] Definir `advisory`
-- [ ] Definir `enforced`
-- [ ] Conectar perfiles con `org.yaml`
+- [x] Definir `observability`
+- [x] Definir `advisory`
+- [x] Definir `enforced`
+- [x] Conectar perfiles con `org.yaml`
 
 #### E4-S2 - Extender doctor enterprise
 
 Prioridad: `P1`
 
-- [ ] Verificar presencia de vault corporativo
-- [ ] Verificar integridad de promotion policy
-- [ ] Verificar compatibilidad entre repos y topologia
-- [ ] Verificar politicas Git/Vault
+- [x] Verificar presencia de vault corporativo
+- [x] Verificar integridad de promotion policy
+- [x] Verificar compatibilidad entre repos y topologia
+- [x] Verificar politicas Git/Vault
 
 #### E4-S3 - Crear pasos CI para promotion y validacion
 
 Prioridad: `P1`
 
-- [ ] Agregar validacion de promotion candidates
-- [ ] Agregar validacion de docs enterprise
-- [ ] Agregar jobs configurables segun enforcement
-- [ ] Agregar artefactos JSON de reporte
+- [x] Agregar validacion de promotion candidates
+- [x] Agregar validacion de docs enterprise
+- [x] Agregar jobs configurables segun enforcement
+- [x] Agregar artefactos JSON de reporte
 
 #### E4-S4 - Reportes de estado en CI
 
 Prioridad: `P1`
 
-- [ ] Generar resumen de memoria y promotion
-- [ ] Generar reportes consumibles por humanos
-- [ ] Definir salidas para observabilidad
+- [x] Generar resumen de memoria y promotion
+- [x] Generar reportes consumibles por humanos
+- [x] Definir salidas para observabilidad
 
 ### Validacion del epic
 
-- [ ] Workflow example small-company
-- [ ] Workflow example regulated
-- [ ] Tests de doctor enterprise
-- [ ] Tests de render de templates enterprise
+- [x] Workflow example small-company
+- [x] Workflow example regulated
+- [x] Tests de doctor enterprise
+- [x] Tests de render de templates enterprise
 
 ---
 
@@ -540,16 +540,16 @@ Bajo/medio.
 
 ### Definition of Done del epic
 
-- [ ] Existe reporte de salud de memoria.
-- [ ] Existe trazabilidad de promociones.
-- [ ] WebGraph puede enriquecerse con informacion enterprise.
+- [x] Existe reporte de salud de memoria.
+- [x] Existe trazabilidad de promociones.
+- [x] WebGraph puede enriquecerse con informacion enterprise.
 
 ### Archivos / modulos objetivo
 
-- [ ] Crear `cortex/enterprise/reporting.py`
-- [ ] Extender [cortex/webgraph/federation.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/webgraph/federation.py)
-- [ ] Extender [cortex/webgraph/service.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/webgraph/service.py)
-- [ ] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
+- [x] Crear `cortex/enterprise/reporting.py`
+- [x] Extender [cortex/webgraph/federation.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/webgraph/federation.py)
+- [x] Extender [cortex/webgraph/service.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/webgraph/service.py)
+- [x] Extender [cortex/cli/main.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/cli/main.py)
 
 ### Historias tecnicas
 
@@ -557,32 +557,32 @@ Bajo/medio.
 
 Prioridad: `P2`
 
-- [ ] Agregar `cortex memory-report`
-- [ ] Reportar volumen por fuente
-- [ ] Reportar docs promovidos
-- [ ] Reportar gaps de salud
+- [x] Agregar `cortex memory-report`
+- [x] Reportar volumen por fuente
+- [x] Reportar docs promovidos
+- [x] Reportar gaps de salud
 
 #### E6-S2 - Reporte de promotion
 
 Prioridad: `P2`
 
-- [ ] Mostrar candidatos pendientes
-- [ ] Mostrar ultimas promociones
-- [ ] Mostrar rechazos o warnings
+- [x] Mostrar candidatos pendientes
+- [x] Mostrar ultimas promociones
+- [x] Mostrar rechazos o warnings
 
 #### E6-S3 - Enriquecimiento WebGraph
 
 Prioridad: `P2`
 
-- [ ] Agregar notion de nodos enterprise
-- [ ] Permitir filtro por scope
-- [ ] Mostrar relaciones entre proyecto y memoria corporativa
+- [x] Agregar notion de nodos enterprise
+- [x] Permitir filtro por scope
+- [x] Mostrar relaciones entre proyecto y memoria corporativa
 
 ### Validacion del epic
 
-- [ ] Report JSON de memory-report
-- [ ] Report legible para humanos
-- [ ] Visualizacion WebGraph minima funcional
+- [x] Report JSON de memory-report
+- [x] Report legible para humanos
+- [x] Visualizacion WebGraph minima funcional
 
 ---
 
@@ -606,10 +606,10 @@ Bajo/medio.
 
 ### Definition of Done del epic
 
-- [ ] La documentacion enterprise esta completa.
-- [ ] Los presets estan refinados.
-- [ ] La experiencia de adopcion es clara.
-- [ ] Los riesgos operativos principales quedaron cubiertos.
+- [x] La documentacion enterprise esta completa.
+- [x] Los presets estan refinados.
+- [x] La experiencia de adopcion es clara.
+- [x] Los riesgos operativos principales quedaron cubiertos.
 
 ### Historias tecnicas
 
@@ -617,34 +617,34 @@ Bajo/medio.
 
 Prioridad: `P2`
 
-- [ ] Documento de arquitectura final
-- [ ] Documento de setup enterprise
-- [ ] Documento de promotion policy
-- [ ] Documento de gobernanza CI
+- [x] Documento de arquitectura final
+- [x] Documento de setup enterprise
+- [x] Documento de promotion policy
+- [x] Documento de gobernanza CI
 
 #### E7-S2 - Hardening tecnico
 
 Prioridad: `P2`
 
-- [ ] Revisar backward compatibility
-- [ ] Revisar defaults peligrosos
-- [ ] Revisar mensajes de error y UX
-- [ ] Revisar migracion desde setups existentes
+- [x] Revisar backward compatibility
+- [x] Revisar defaults peligrosos
+- [x] Revisar mensajes de error y UX
+- [x] Revisar migracion desde setups existentes
 
 #### E7-S3 - Adopcion por perfiles
 
 Prioridad: `P2`
 
-- [ ] Guia para developers
-- [ ] Guia para tech leads
-- [ ] Guia para arquitectura
-- [ ] Guia para operaciones / platform
+- [x] Guia para developers
+- [x] Guia para tech leads
+- [x] Guia para arquitectura
+- [x] Guia para operaciones / platform
 
 ### Validacion del epic
 
-- [ ] Checklist de lanzamiento interno
-- [ ] Checklist de setup cliente
-- [ ] Checklist de migracion desde modo actual
+- [x] Checklist de lanzamiento interno
+- [x] Checklist de setup cliente
+- [x] Checklist de migracion desde modo actual
 
 ---
 
@@ -668,7 +668,7 @@ Evitar que la iniciativa avance sin base verificable.
 - [x] Agregar tests de setup enterprise
 - [x] Agregar tests de templates y workflows
 - [x] Agregar tests de doctor enterprise
-- [ ] Agregar tests de reporting
+- [x] Agregar tests de reporting
 
 ### Quality gates recomendados
 
@@ -686,13 +686,13 @@ Mantener alineados codigo, producto y operacion.
 
 ### Checklist
 
-- [ ] Actualizar README cuando exista `setup enterprise`
-- [ ] Actualizar docs de runbooks
-- [ ] Crear ejemplo de `org.yaml`
-- [ ] Documentar topologias soportadas
-- [ ] Documentar modelo de promotion
-- [ ] Documentar scopes de retrieval
-- [ ] Documentar politicas Git/Vault enterprise
+- [x] Actualizar README cuando exista `setup enterprise`
+- [x] Actualizar docs de runbooks
+- [x] Crear ejemplo de `org.yaml`
+- [x] Documentar topologias soportadas
+- [x] Documentar modelo de promotion
+- [x] Documentar scopes de retrieval
+- [x] Documentar politicas Git/Vault enterprise
 
 ---
 
@@ -704,11 +704,11 @@ Asegurar que clientes o repos actuales no queden rotos.
 
 ### Checklist
 
-- [ ] Diseñar migracion desde setups actuales sin `org.yaml`
-- [ ] Mantener funcionamiento actual si no se usa modo enterprise
-- [ ] Agregar warnings claros y no breaking
-- [ ] Definir estrategia de versionado / release notes
-- [ ] Crear comando o guia de migracion asistida
+- [x] Diseñar migracion desde setups actuales sin `org.yaml`
+- [x] Mantener funcionamiento actual si no se usa modo enterprise
+- [x] Agregar warnings claros y no breaking
+- [x] Definir estrategia de versionado / release notes
+- [x] Crear comando o guia de migracion asistida
 
 ---
 
@@ -718,8 +718,8 @@ Asegurar que clientes o repos actuales no queden rotos.
 
 Incluye:
 
-- [ ] E1 completo
-- [ ] E2 base operativa
+- [x] E1 completo
+- [x] E2 base operativa
 
 Resultado:
 
@@ -729,8 +729,8 @@ Resultado:
 
 Incluye:
 
-- [ ] E3 completo
-- [ ] E4 base operativa
+- [x] E3 completo
+- [x] E4 base operativa
 
 Resultado:
 
@@ -750,8 +750,8 @@ Resultado:
 
 Incluye:
 
-- [ ] E6 completo
-- [ ] E7 base operativa
+- [x] E6 completo
+- [x] E7 base operativa
 
 Resultado:
 
