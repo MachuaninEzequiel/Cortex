@@ -17,6 +17,7 @@ from cortex.setup.templates import (
     DEVSECDOCSOPS_SCRIPT,
     render_architecture_md,
     render_cd_deploy,
+    render_ci_enterprise_governance,
     render_ci_feature,
     render_ci_pull_request,
     render_config_yaml,
@@ -202,6 +203,7 @@ class SetupOrchestrator:
             ("ci-pull-request.yml", render_ci_pull_request),
             ("ci-feature.yml", render_ci_feature),
             ("cd-deploy.yml", render_cd_deploy),
+            ("ci-enterprise-governance.yml", render_ci_enterprise_governance),
         ]:
             path = wdir / fn
             if path.exists():

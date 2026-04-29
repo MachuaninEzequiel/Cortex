@@ -1,0 +1,130 @@
+name: CI - Enterprise Governance
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  enterprise-governance:
+    name: Enterprise Governance (ci_profile-aware)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Resolve enterprise ci_profile
+        id: ci_profile
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+          path = Path(".cortex/org.yaml")
+          profile = "observability"
+          if path.exists():
+              payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+              profile = ((payload.get("governance") or {}).get("ci_profile") or profile)
+          profile = str(profile).strip().lower()
+          if profile not in {"observability","advisory","enforced"}:
+              profile = "observability"
+          print(f"ci_profile={profile}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"ci_profile={profile}\n")
+          PY
+
+      - name: Cortex - Doctor (enterprise)
+        id: doctor
+        continue-on-error: ${{ steps.ci_profile.outputs.ci_profile == 'observability' }}
+        run: cortex doctor --scope enterprise
+
+      - name: Cortex - Promotion Plan (dry-run)
+        id: promotion_plan
+        continue-on-error: ${{ steps.ci_profile.outputs.ci_profile != 'enforced' }}
+        run: |
+          cortex promote-knowledge --dry-run --json > .promotion-plan.json
+
+      - name: Cortex - Sync Enterprise Vault
+        id: sync_enterprise
+        continue-on-error: ${{ steps.ci_profile.outputs.ci_profile == 'observability' }}
+        run: |
+          cortex sync-enterprise-vault --json --output .enterprise-doc-validation.json > .enterprise-sync.json
+
+      - name: Upload Enterprise Governance Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-enterprise-governance-${{ github.event.pull_request.number || github.run_id }}
+          path: |
+            .promotion-plan.json
+            .enterprise-doc-validation.json
+            .enterprise-sync.json
+          retention-days: 7
+
+      - name: Governance Summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          plan = {}
+          if Path(".promotion-plan.json").exists():
+              plan = json.loads(Path(".promotion-plan.json").read_text(encoding="utf-8"))
+          planned = plan.get("planned") or []
+
+          ent = {}
+          if Path(".enterprise-doc-validation.json").exists():
+              ent = json.loads(Path(".enterprise-doc-validation.json").read_text(encoding="utf-8"))
+          errors = int(ent.get("error_count") or 0)
+          warnings = int(ent.get("warning_count") or 0)
+
+          print("Enterprise Governance Summary")
+          print("---------------------------")
+          print(f"Promotion candidates (ready): {len(planned)}")
+          print(f"Enterprise vault validation: errors={errors} warnings={warnings}")
+          if errors:
+              files = ent.get("files") or []
+              bad = [f for f in files if (f.get('error_count') or 0) > 0]
+              for item in bad[:5]:
+                  print(f" - {item.get('file','(unknown)')}: {item.get('error_count')} error(s)")
+          PY
+
+      - name: Enforce (enforced profile)
+        if: steps.ci_profile.outputs.ci_profile == 'enforced'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          # Promotion enforcement: no planned promotions allowed in enforced mode.
+          plan = json.loads(Path(".promotion-plan.json").read_text(encoding="utf-8")) if Path(".promotion-plan.json").exists() else {}
+          planned = plan.get("planned") or []
+          if planned:
+              raise SystemExit(f"Enforced governance: {len(planned)} promotion candidate(s) ready. Review/promote before merge.")
+
+          # Enterprise vault must be clean (errors == 0). Warnings are allowed here unless strict is added later.
+          ent = json.loads(Path(".enterprise-doc-validation.json").read_text(encoding="utf-8")) if Path(".enterprise-doc-validation.json").exists() else {}
+          errors = int(ent.get("error_count") or 0)
+          if errors:
+              raise SystemExit(f"Enforced governance: enterprise vault has {errors} validation error(s).")
+          PY
+

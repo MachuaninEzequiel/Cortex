@@ -15,6 +15,9 @@ validate-docs     Validate markdown docs stored in the vault.
 index-docs        Index vault docs as semantic memory.
 doctor            Validate Cortex runtime, vault and Git governance state.
 org-config        Display the resolved enterprise organization config.
+promote-knowledge  Promote local knowledge into enterprise vault (requires review by default).
+review-knowledge   Approve/reject promotion candidates (enterprise pipeline).
+sync-enterprise-vault Validate + index the enterprise vault knowledge base.
 agent-guidelines  Display agent behavior guidelines for session-end documentation.
 install-skills    Install Obsidian skills into the project's .cortex/skills/ directory.
 remember          Store a new episodic memory from the command line.
@@ -37,6 +40,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import asyncio
+import getpass
 import json
 import subprocess
 from enum import Enum
@@ -1034,6 +1038,199 @@ def search(
                 typer.echo(f"  {doc.title} ({doc.path})  score={doc.score:.3f}")
         else:
             typer.echo("Semantic Knowledge: (no results)")
+
+
+# ---------------------------------------------------------------------------
+# Enterprise promotion pipeline (EPIC 3)
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="promote-knowledge")
+def promote_knowledge(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where .cortex/org.yaml lives).",
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--apply",
+        help="Dry-run by default. Use --apply to execute promotion.",
+    ),
+    actor: str | None = typer.Option(
+        None,
+        "--actor",
+        help="Actor name for audit records (default: current OS user).",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output raw JSON payload (plan + results).",
+    ),
+) -> None:
+    """Promote reviewed knowledge candidates into the enterprise vault."""
+    from cortex.enterprise.knowledge_promotion import KnowledgePromotionService
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    actor_name = actor or getpass.getuser()
+    service = KnowledgePromotionService.from_project_root(root)
+    plan = service.plan_promotion()
+
+    payload: dict[str, object] = {
+        "project_root": str(root),
+        "enterprise_vault": str(service.paths.enterprise_vault),
+        "dry_run": dry_run,
+        "planned": [c.model_dump(mode="json") for c in plan],
+    }
+
+    if dry_run:
+        if json_output:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+            return
+        if not plan:
+            typer.echo("No reviewed candidates ready for promotion.")
+            return
+        typer.echo(f"Planned promotions: {len(plan)}")
+        for c in plan:
+            typer.echo(f"  - {c.local_rel_path} -> {c.dest_rel_path}  ({c.origin_id})")
+        return
+
+    written = service.apply_promotion(candidates=plan, actor=actor_name)
+    payload["written"] = [r.model_dump(mode="json") for r in written]
+
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    typer.echo(f"Promoted {len(written)} document(s) into {service.paths.enterprise_vault}")
+    for r in written:
+        typer.echo(f"  - {r.local_rel_path} -> {r.dest_rel_path}  ({r.origin_id})")
+
+
+@app.command(name="review-knowledge")
+def review_knowledge(
+    selector: str = typer.Argument(..., help="Candidate selector: origin_id or vault-relative path."),
+    approve: bool = typer.Option(
+        True,
+        "--approve/--reject",
+        help="Approve by default. Use --reject to reject a candidate.",
+    ),
+    actor: str | None = typer.Option(
+        None,
+        "--actor",
+        help="Actor name for audit records (default: current OS user).",
+    ),
+    reason: str | None = typer.Option(
+        None,
+        "--reason",
+        help="Optional rationale for approve/reject.",
+    ),
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where .cortex/org.yaml lives).",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON record."),
+) -> None:
+    """Approve or reject a promotion candidate (review is required by default)."""
+    from cortex.enterprise.knowledge_promotion import KnowledgePromotionService
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    actor_name = actor or getpass.getuser()
+    service = KnowledgePromotionService.from_project_root(root)
+    try:
+        record = service.review(selector=selector, approve=approve, actor=actor_name, reason=reason)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        typer.echo(record.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"Recorded review: {record.origin_id}")
+    typer.echo(f"  status: {record.status}")
+    if record.decision:
+        typer.echo(f"  decision: {record.decision.decision} by {record.decision.actor}")
+
+
+@app.command(name="sync-enterprise-vault")
+def sync_enterprise_vault(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the target project root (where .cortex/org.yaml lives).",
+    ),
+    output: str = typer.Option(
+        ".enterprise-doc-validation.json",
+        help="Output JSON validation report for the enterprise vault.",
+    ),
+    strict_warnings: bool = typer.Option(
+        False,
+        "--strict-warnings",
+        help="Treat validation warnings as blocking.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output raw JSON payload (validation + index summary).",
+    ),
+) -> None:
+    """Validate and index the enterprise vault knowledge base."""
+    from cortex.doc_validator import DocValidator
+    from cortex.enterprise.knowledge_promotion import KnowledgePromotionService
+    from cortex.semantic.vault_reader import VaultReader
+
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    service = KnowledgePromotionService.from_project_root(root)
+    enterprise_vault = service.paths.enterprise_vault
+    if not enterprise_vault.exists():
+        typer.echo(f"Enterprise vault directory not found: {enterprise_vault}", err=True)
+        raise typer.Exit(1)
+
+    validator = DocValidator(vault_path=enterprise_vault)
+    md_files = sorted(enterprise_vault.rglob("*.md"))
+    results = validator.validate_batch(md_files)
+    payload = {
+        "enterprise_vault": str(enterprise_vault),
+        "is_valid": all(r.is_valid for r in results),
+        "files": [r.to_dict() for r in results],
+        "error_count": sum(len(r.errors) for r in results),
+        "warning_count": sum(len(r.warnings) for r in results),
+    }
+    Path(output).write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+
+    if payload["error_count"]:
+        if json_output:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+        typer.echo(f"Enterprise vault validation failed with {payload['error_count']} error(s).", err=True)
+        raise typer.Exit(1)
+    if strict_warnings and payload["warning_count"]:
+        if json_output:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+        typer.echo(
+            f"Enterprise vault validation raised {payload['warning_count']} warning(s) in strict mode.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    mem = _load_memory()
+    reader = VaultReader(
+        vault_path=str(enterprise_vault),
+        embedding_model=mem.config.episodic.embedding_model,
+        embedding_backend=mem.config.episodic.embedding_backend,
+    )
+    indexed = reader.sync()
+    payload["indexed_docs"] = indexed
+
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    typer.echo(
+        f"Enterprise vault synced ({indexed} docs indexed, {payload['warning_count']} warning(s)). "
+        f"Validation report: {output}"
+    )
 
 
 # ---------------------------------------------------------------------------
