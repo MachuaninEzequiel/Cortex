@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import typer
 
+from cortex.enterprise.config import render_enterprise_config_yaml
+from cortex.enterprise.models import EnterpriseOrgConfig
 from cortex.setup.cortex_workspace import ensure_cortex_workspace
 from cortex.setup.detector import ProjectContext, ProjectDetector
+from cortex.setup.enterprise_presets import resolve_enterprise_setup
 from cortex.setup.templates import (
     DEVSECDOCSOPS_SCRIPT,
     render_architecture_md,
@@ -35,6 +39,7 @@ class SetupMode(str, Enum):
     PIPELINE = "pipeline"
     FULL = "full"
     WEBGRAPH = "webgraph"
+    ENTERPRISE = "enterprise"
 
 class SetupOrchestrator:
     """Runs the setup pipeline based on mode and reports results."""
@@ -53,11 +58,15 @@ class SetupOrchestrator:
         git_depth: int = 50,
         ide: str | None = None,
         attach_project_root: str | None = None,
+        dry_run: bool = False,
+        enterprise_profile: str = "small-company",
+        enterprise_overrides: dict[str, Any] | None = None,
     ) -> dict:
         """Execute the setup pipeline based on mode. Returns a summary dict."""
         self.git_depth = git_depth
         self.ide = ide
         self.attach_project_root = attach_project_root
+        self.dry_run = dry_run
         self.ctx = self.detector.detect()
         if mode == SetupMode.AGENT:
             self._run_agent_flow()
@@ -65,9 +74,26 @@ class SetupOrchestrator:
             self._run_pipeline_flow()
         elif mode == SetupMode.WEBGRAPH:
             self._run_webgraph_flow()
+        elif mode == SetupMode.ENTERPRISE:
+            self._run_enterprise_flow(profile=enterprise_profile, overrides=enterprise_overrides or {})
         else:
             self._run_full_flow()
         return self._summary()
+
+    def _run_enterprise_flow(self, profile: str, overrides: dict[str, Any]) -> None:
+        """Run guided enterprise setup (interactive or non-interactive)."""
+        if self.dry_run:
+            self._simulate_enterprise_flow()
+            return
+
+        self._create_directories()
+        self._create_config()
+        self._create_enterprise_org_config(profile=profile, overrides=overrides)
+        self._create_vault_docs()
+        self._create_enterprise_vault()
+        self._create_workflows()
+        self._create_devsecdocops_script()
+        self._create_enterprise_workspace()
 
     def _run_agent_flow(self) -> None:
         """Setup only local agent/cognitive components."""
@@ -157,7 +183,11 @@ class SetupOrchestrator:
                 path.write_text(renderer(self.ctx), encoding="utf-8")
                 self.created.append(f"vault/{filename}")
 
-    def _create_enterprise_org_config(self) -> None:
+    def _create_enterprise_org_config(
+        self,
+        profile: str = "small-company",
+        overrides: dict[str, Any] | None = None,
+    ) -> None:
         if not self.ctx:
             return
         path = self.root / ".cortex" / "org.yaml"
@@ -165,8 +195,63 @@ class SetupOrchestrator:
             self.skipped.append(".cortex/org.yaml (already exists)")
             return
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(render_org_yaml(self.ctx), encoding="utf-8")
+        resolved = resolve_enterprise_setup(
+            project_name=self.ctx.stack.project_name or self.root.name,
+            profile=profile,
+            overrides=overrides or {},
+            github_actions_enabled=self.ctx.ci.has_github_actions,
+        )
+        config = EnterpriseOrgConfig.model_validate(resolved.overrides)
+        path.write_text(render_enterprise_config_yaml(config), encoding="utf-8")
         self.created.append(".cortex/org.yaml")
+
+    def _create_enterprise_workspace(self) -> None:
+        path = self.root / ".cortex" / "workspace.yaml"
+        if path.exists():
+            self.skipped.append(".cortex/workspace.yaml (already exists)")
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "version: 1\n"
+            "projects:\n"
+            "  - id: primary\n"
+            "    path: .\n"
+            "    role: owner\n",
+            encoding="utf-8",
+        )
+        self.created.append(".cortex/workspace.yaml")
+
+    def _simulate_enterprise_flow(self) -> None:
+        simulated = [
+            ".memory/",
+            "vault/",
+            "vault/sessions/",
+            "vault/decisions/",
+            "vault/runbooks/",
+            "vault/incidents/",
+            "vault/hu/",
+            "vault/specs/",
+            "config.yaml",
+            ".cortex/org.yaml",
+            "vault/architecture.md",
+            "vault/decisions.md",
+            "vault/runbooks.md",
+            "vault/runbooks/enterprise-runbook.md",
+            "vault/runbooks/git-vault-policy.md",
+            "vault-enterprise/runbooks/",
+            "vault-enterprise/decisions/",
+            "vault-enterprise/incidents/",
+            "vault-enterprise/hu/",
+            "vault-enterprise/README.md",
+            ".github/workflows/ci-pull-request.yml",
+            ".github/workflows/ci-feature.yml",
+            ".github/workflows/cd-deploy.yml",
+            ".github/workflows/ci-enterprise-governance.yml",
+            "scripts/devsecdocops.sh",
+            ".cortex/workspace.yaml",
+        ]
+        for item in simulated:
+            self.created.append(f"{item} (dry-run)")
 
     def _create_enterprise_vault(self) -> None:
         if not self.ctx:
@@ -325,6 +410,7 @@ class SetupOrchestrator:
             "created": self.created,
             "skipped": self.skipped,
             "warnings": self.warnings,
+            "dry_run": getattr(self, "dry_run", False),
         }
 
 def format_summary(summary: dict) -> str:

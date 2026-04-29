@@ -48,7 +48,7 @@ Construir una version enterprise de Cortex que permita:
 - [ ] Cortex soporta topologia enterprise declarativa mediante configuracion formal.
 - [ ] Cortex puede consultar memoria local y memoria corporativa en una misma experiencia de retrieval.
 - [ ] Existe un pipeline oficial de promocion de conocimiento entre niveles de memoria.
-- [ ] Existe un `cortex setup enterprise` usable para clientes reales.
+- [x] Existe un `cortex setup enterprise` usable para clientes reales.
 - [ ] La gobernanza enterprise puede ejecutarse desde CI.
 - [ ] Existe una capa minima de observabilidad de memoria y salud operativa.
 
@@ -448,17 +448,17 @@ Medio.
 
 ### Definition of Done del epic
 
-- [ ] Existe `cortex setup enterprise`.
-- [ ] Existe modo guiado interactivo.
-- [ ] Existe modo no interactivo con presets.
-- [ ] El setup genera estructura completa y coherente.
+- [x] Existe `cortex setup enterprise`.
+- [x] Existe modo guiado interactivo.
+- [x] Existe modo no interactivo con presets.
+- [x] El setup genera estructura completa y coherente.
 
 ### Archivos / modulos objetivo
 
-- [ ] Extender [cortex/setup/orchestrator.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/orchestrator.py)
-- [ ] Extender [cortex/setup/templates.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/templates.py)
-- [ ] Crear `cortex/setup/enterprise_wizard.py`
-- [ ] Crear `cortex/setup/enterprise_presets.py`
+- [x] Extender [cortex/setup/orchestrator.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/orchestrator.py)
+- [x] Extender [cortex/setup/templates.py](/D:/DevSecDocOps/DevSecDocOps-3erCortex/cortex-repo/cortex/cortex/setup/templates.py)
+- [x] Crear `cortex/setup/enterprise_wizard.py`
+- [x] Crear `cortex/setup/enterprise_presets.py`
 
 ### Historias tecnicas
 
@@ -466,55 +466,55 @@ Medio.
 
 Prioridad: `P1`
 
-- [ ] Crear nuevo modo en orchestrator
-- [ ] Definir pipeline de generacion asociado
-- [ ] Definir summary final de setup
+- [x] Crear nuevo modo en orchestrator
+- [x] Definir pipeline de generacion asociado
+- [x] Definir summary final de setup
 
 #### E5-S2 - Implementar wizard interactivo
 
 Prioridad: `P1`
 
-- [ ] Preguntar perfil organizacional
-- [ ] Preguntar topologia de memoria
-- [ ] Preguntar gobernanza de promotion
-- [ ] Preguntar politicas Git/Vault
-- [ ] Preguntar integraciones CI / IDE / WebGraph
-- [ ] Mostrar resumen antes de aplicar
+- [x] Preguntar perfil organizacional
+- [x] Preguntar topologia de memoria
+- [x] Preguntar gobernanza de promotion
+- [x] Preguntar politicas Git/Vault
+- [x] Preguntar integraciones CI / IDE / WebGraph
+- [x] Mostrar resumen antes de aplicar
 
 #### E5-S3 - Implementar modo no interactivo
 
 Prioridad: `P1`
 
-- [ ] Soportar `--preset`
-- [ ] Soportar `--org-config`
-- [ ] Soportar `--dry-run`
-- [ ] Soportar salida resumen JSON
+- [x] Soportar `--preset`
+- [x] Soportar `--org-config`
+- [x] Soportar `--dry-run`
+- [x] Soportar salida resumen JSON
 
 #### E5-S4 - Generar estructura enterprise completa
 
 Prioridad: `P1`
 
-- [ ] Generar `.cortex/org.yaml`
-- [ ] Generar vault corporativo si aplica
-- [ ] Generar vault local y runbooks
-- [ ] Generar workflows enterprise
-- [ ] Generar workspace federado inicial
-- [ ] Generar politicas Git/Vault
+- [x] Generar `.cortex/org.yaml`
+- [x] Generar vault corporativo si aplica
+- [x] Generar vault local y runbooks
+- [x] Generar workflows enterprise
+- [x] Generar workspace federado inicial
+- [x] Generar politicas Git/Vault
 
 #### E5-S5 - Presets iniciales
 
 Prioridad: `P1`
 
-- [ ] Preset `small-company`
-- [ ] Preset `multi-project-team`
-- [ ] Preset `regulated-organization`
+- [x] Preset `small-company`
+- [x] Preset `multi-project-team`
+- [x] Preset `regulated-organization`
 
 ### Validacion del epic
 
-- [ ] Smoke test setup enterprise interactivo
-- [ ] Smoke test preset small-company
-- [ ] Smoke test preset multi-project-team
-- [ ] Smoke test preset regulated-organization
+- [x] Smoke test setup enterprise interactivo
+- [x] Smoke test preset small-company
+- [x] Smoke test preset multi-project-team
+- [x] Smoke test preset regulated-organization
 
 ---
 
@@ -665,8 +665,8 @@ Evitar que la iniciativa avance sin base verificable.
 - [x] Agregar tests de schema y config
 - [x] Agregar tests de retrieval multi-nivel
 - [x] Agregar tests de promotion pipeline
-- [ ] Agregar tests de setup enterprise
-- [ ] Agregar tests de templates y workflows
+- [x] Agregar tests de setup enterprise
+- [x] Agregar tests de templates y workflows
 - [x] Agregar tests de doctor enterprise
 - [ ] Agregar tests de reporting
 
@@ -740,7 +740,7 @@ Resultado:
 
 Incluye:
 
-- [ ] E5 completo
+- [x] E5 completo
 
 Resultado:
 

@@ -452,6 +452,95 @@ def setup_webgraph(
     typer.echo(format_summary(summary))
 
 
+@setup_app.command(name="enterprise")
+def setup_enterprise(
+    preset: str | None = typer.Option(
+        None,
+        "--preset",
+        help="Enterprise preset (small-company, multi-project-team, regulated-organization).",
+    ),
+    org_config: str | None = typer.Option(
+        None,
+        "--org-config",
+        help="Path to YAML overrides merged on top of the selected preset.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be done without creating files.",
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Require preset/config input and skip wizard prompts.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print setup summary as JSON.",
+    ),
+) -> None:
+    """Setup enterprise topology with wizard or declarative preset/config."""
+    from cortex.enterprise.config import list_enterprise_presets
+    from cortex.setup.enterprise_presets import (
+        load_org_config_overrides,
+        resolve_enterprise_setup,
+        validate_enterprise_preset,
+    )
+    from cortex.setup.enterprise_wizard import run_enterprise_wizard
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    selected_preset = preset
+    overrides: dict = {}
+    if org_config:
+        overrides = load_org_config_overrides(Path(org_config).expanduser().resolve())
+
+    if not selected_preset and not org_config:
+        if non_interactive:
+            typer.echo(
+                "Non-interactive mode requires --preset or --org-config.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        selected_preset, wizard_overrides = run_enterprise_wizard()
+        overrides = {**overrides, **wizard_overrides}
+    elif not selected_preset:
+        selected_preset = "small-company"
+
+    if selected_preset:
+        selected_preset = validate_enterprise_preset(selected_preset)
+    else:
+        selected_preset = "small-company"
+
+    if selected_preset == "custom" and not org_config:
+        typer.echo("Preset 'custom' requires --org-config.", err=True)
+        raise typer.Exit(code=1)
+
+    resolved = resolve_enterprise_setup(
+        project_name=Path.cwd().name,
+        profile=selected_preset,
+        overrides=overrides,
+        github_actions_enabled=True,
+    )
+
+    typer.echo("🧠 Cortex — Setting up Enterprise profile...")
+    typer.echo(f"Preset: {resolved.profile}")
+    typer.echo(f"Supported presets: {', '.join(list_enterprise_presets())}")
+    typer.echo("")
+
+    orchestrator = SetupOrchestrator()
+    summary = orchestrator.run(
+        mode=SetupMode.ENTERPRISE,
+        dry_run=dry_run,
+        enterprise_profile=resolved.profile,
+        enterprise_overrides=resolved.overrides,
+    )
+    if json_output:
+        typer.echo(json.dumps(summary, indent=2, default=str))
+        return
+    typer.echo(format_summary(summary))
+
+
 # ---------------------------------------------------------------------------
 # init (Alias for setup agent)
 # ---------------------------------------------------------------------------

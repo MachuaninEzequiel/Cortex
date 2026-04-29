@@ -235,3 +235,28 @@ def test_search_passes_project_id_filter(monkeypatch) -> None:
     monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
     result = runner.invoke(app, ["search", "hello", "--project-id", "acme-project"])
     assert result.exit_code == 0
+
+
+def test_setup_enterprise_non_interactive_requires_input() -> None:
+    result = runner.invoke(app, ["setup", "enterprise", "--non-interactive"])
+    assert result.exit_code == 1
+    assert "requires --preset or --org-config" in result.output
+
+
+def test_setup_enterprise_with_preset_invokes_enterprise_mode(monkeypatch) -> None:
+    called: dict[str, object] = {}
+
+    class DummyOrchestrator:
+        def run(self, **kwargs):  # noqa: ANN003
+            called.update(kwargs)
+            return {"created": [], "skipped": [], "warnings": []}
+
+    monkeypatch.setattr("cortex.setup.orchestrator.SetupOrchestrator", DummyOrchestrator)
+    result = runner.invoke(
+        app,
+        ["setup", "enterprise", "--preset", "small-company", "--non-interactive", "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert str(called.get("mode")) == "SetupMode.ENTERPRISE"
+    assert called.get("enterprise_profile") == "small-company"
