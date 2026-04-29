@@ -15,6 +15,7 @@ from cortex.runtime_context import (
     resolve_episodic_persist_dir,
 )
 from cortex.webgraph.setup import get_missing_webgraph_dependencies
+from cortex.enterprise.models import EnterpriseOrgConfig
 
 DoctorSeverity = Literal["fail", "warn", "info"]
 DoctorScope = Literal["project", "enterprise", "all"]
@@ -225,6 +226,9 @@ def _validate_enterprise(
                 str(enterprise_vault),
             )
         )
+        if enterprise_vault.exists():
+            checks.extend(_validate_enterprise_vault(enterprise_vault))
+            checks.extend(_validate_enterprise_promotion(config, enterprise_vault))
 
     enterprise_memory = config.resolve_enterprise_memory_path(project_root)
     if enterprise_memory is not None:
@@ -267,6 +271,76 @@ def _validate_enterprise(
                 f"default_scope={config.memory.retrieval_default_scope}, "
                 f"enterprise_semantic_enabled={config.memory.enterprise_semantic_enabled}"
             ),
+        )
+    )
+
+    return checks
+
+
+def _validate_enterprise_vault(enterprise_vault: Path) -> list[DoctorCheck]:
+    md_files = sorted(enterprise_vault.rglob("*.md"))
+    if not md_files:
+        return [
+            DoctorCheck(
+                "enterprise_vault_markdown",
+                False,
+                "warn",
+                "No markdown files found under vault-enterprise/",
+            )
+        ]
+
+    validator = DocValidator(vault_path=enterprise_vault)
+    results = validator.validate_batch(md_files)
+    error_count = sum(len(result.errors) for result in results)
+    warning_count = sum(len(result.warnings) for result in results)
+    return [
+        DoctorCheck(
+            "enterprise_vault_validation_errors",
+            error_count == 0,
+            "fail",
+            f"{error_count} error(s) across {len(md_files)} markdown file(s)",
+        ),
+        DoctorCheck(
+            "enterprise_vault_validation_warnings",
+            warning_count == 0,
+            "warn",
+            f"{warning_count} warning(s) across {len(md_files)} markdown file(s)",
+        ),
+    ]
+
+
+def _validate_enterprise_promotion(config: EnterpriseOrgConfig, enterprise_vault: Path) -> list[DoctorCheck]:
+    checks: list[DoctorCheck] = []
+    if not getattr(config, "promotion", None) or not config.promotion.enabled:
+        return checks
+
+    allowed = list(getattr(config.promotion, "allowed_doc_types", []) or [])
+    checks.append(
+        DoctorCheck(
+            "enterprise_promotion_allowed_doc_types",
+            len(allowed) > 0,
+            "fail",
+            "promotion.allowed_doc_types must be non-empty when promotion is enabled",
+        )
+    )
+
+    promo_dir = enterprise_vault / ".cortex" / "promotion"
+    try:
+        promo_dir.mkdir(parents=True, exist_ok=True)
+        ok = True
+        detail = str(promo_dir)
+    except Exception as exc:
+        ok = False
+        detail = f"{promo_dir} ({exc})"
+    checks.append(DoctorCheck("enterprise_promotion_dir", ok, "fail", detail))
+
+    records = promo_dir / "records.jsonl"
+    checks.append(
+        DoctorCheck(
+            "enterprise_promotion_records_presence",
+            records.exists(),
+            "warn",
+            str(records),
         )
     )
 
