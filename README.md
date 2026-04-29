@@ -73,7 +73,7 @@ Coordina la implementación técnica mediante subagentes especializados:
 Especificación → CodeSubAgent → SecuritySubAgent → TestSubAgent → [Loop hasta aprobar]
 ```
 
-### 3. `Sug-agent cortex-documenter` (El Guardián)
+### 3. `Subagent cortex-documenter` (El Guardián)
 
 Es el paso final **obligatorio**. Ninguna tarea se considera terminada si este agente no ha persistido el conocimiento en el Vault. Es un subagente llamado por el orquestador de forma obligatoria al final de la realización completa de un SPEC, posee reglas definidas y SKILLS optimizadas para la generación de documentación técnica de alta fidelidad, con los estándares estrictos de Obsidian.
 
@@ -139,7 +139,7 @@ Sistema de inyección contextual inteligente que analiza archivos modificados y 
 
 ---
 
-## CLI Reference (v2.0)
+## CLI Reference 
 
 Todas las funciones están gobernadas por el envoltorio CLI de Typer:
 
@@ -298,6 +298,7 @@ Usuario → cortex-sync → cortex-SDDwork-cursor → cortex-documenter
 Edita tu archivo de configuración (ubicación varía según OS):
 
 **macOS/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
@@ -465,33 +466,29 @@ pip install cortex-memory[all]
 
 ```
 Cortex/
-├── cortex/                    # Paquete principal
-│   ├── cli/                   # Interfaz de línea de comandos (Typer)
-│   ├── core.py                # Fachada Principal (AgentMemory)
-│   ├── pipeline/              # Workflows CI/CD y DevSecDocOps 🆕
-│   ├── services/              # Capa de servicios inyectados 🆕
-│   ├── models.py              # Modelos Pydantic (config, datos)
-│   ├── episodic/              # Memoria episódica (ChromaDB + ONNX)
+├── cortex/                    # Núcleo del Sistema (AgentMemory)
+│   ├── cli/                   # Interfaz Typer (Comandos v2.0+)
+│   ├── core.py                # Fachada Principal (Inyección de Servicios)
+│   ├── enterprise/            # Capa de Gobernanza Corporativa (org.yaml) 🆕
+│   ├── pipeline/              # Abstracciones DevSecDocOps (CI/CD Gates)
+│   ├── services/              # Lógica de negocio y servicios inyectados
+│   ├── episodic/              # Memoria episódica (ChromaDB + RRF)
 │   ├── semantic/              # Memoria semántica (Vault Markdown)
-│   ├── retrieval/             # Motor de búsqueda híbrida (Adaptive RRF) 🆕
-│   ├── embedders/             # Backends de embeddings (Factory) 🆕
-│   ├── enricher/              # Context Enricher proactivo (Async) 🆕
-│   ├── hooks/                 # Decorators para agents
-│   ├── mcp/                   # Integración Universal IDE 🆕
-│   │   └── server.py          # Servidor MCP con task delegation
-│   └── webgraph/              # Visualización de grafos (Seguridad Local) 🆕
-├── tests/                     # Suite de tests (pytest 100% coverage)
-│   ├── unit/                  # Tests unitarios y matemáticos (Hypothesis) 🆕
-│   ├── integration/           # Tests de integración MCP y CLI 🆕
-│   └── e2e/                   # Pruebas end-to-end 🆕
-├── docs/                      # Documentación extendida
-├── examples/                  # Ejemplos de uso
-├── scripts/                   # Utilidades DevOps
-├── vault/                     # Conocimiento durable Cortex (ver política Git/Vault)
-├── .cortex/                   # Configuración local Cortex
-├── config.yaml                # Configuración principal
-├── pyproject.toml             # Metadata y dependencias
-├── CLAUDE.md                  # Instrucciones para Claude/Cursor
+│   ├── retrieval/             # Motor de búsqueda híbrida adaptativo
+│   ├── context_enricher/      # Enriquecimiento proactivo de contexto
+│   ├── mcp/                   # Servidor Model Context Protocol (IDE Bridge)
+│   ├── setup/                 # Orquestador de instalación (Agent/Pipeline/Full)
+│   └── webgraph/              # Visualización de grafos de conocimiento
+├── cortex-pi/                 # Entorno CLI optimizado para Pi Agents 🆕
+├── tests/                     # Suite de pruebas (Unit, Integration, E2E)
+│   ├── unit/                  # Pruebas unitarias y matemáticas (Hypothesis)
+│   ├── integration/           # Pruebas de integración MCP/CLI
+│   └── e2e/                   # Pruebas de flujo completo
+├── docs/                      # Documentación técnica y estratégica (Enterprise)
+├── scripts/                   # Utilidades de mantenimiento y DevOps
+├── vault/                     # Knowledge base (Obsidian compatible)
+├── .cortex/                   # Configuración de habilidades y local-memory
+├── pyproject.toml             # Configuración de empaquetado y dependencias
 └── README.md                  # Este archivo
 ```
 
@@ -579,6 +576,27 @@ mypy cortex/          # Type checking
 ---
 
 ## Changelog Reciente
+
+### v2.5.0 (Enterprise & Pi Edition) — Gobernanza Corporativa y CLI Premium
+
+**🔴 Enterprise Foundation:**
+
+- ✅ **Modelo Organizacional**: Introducción de `.cortex/org.yaml` para gobernanza multi-proyecto.
+- ✅ **Multi-level Retrieval**: Búsqueda simultánea en memoria local y corporativa con trazabilidad de origen.
+- ✅ **Enterprise Doctor**: Diagnóstico avanzado de topologías de memoria y salud de gobernanza.
+
+**🟡 Cortex-Pi CLI:**
+
+- ✅ **Nueva Identidad Visual**: Implementación de TrueColor ASCII branding y UI optimizada para terminales modernos.
+- ✅ **Release 2.5 Protocol**: Integración nativa de subagentes de seguridad y testing en el flujo de Pi.
+- ✅ **Pi Extensions**: Sistema de extensiones para personalizar el comportamiento del agente Pi.
+
+**🟢 Infraestructura & CI:**
+
+- ✅ **CI Stabilization**: Refactorización de pipelines de GitHub Actions para mayor robustez.
+- ✅ **Documentation Reorg**: Centralización de guías estratégicas en `docs/enterprise/`.
+
+---
 
 ### v2.4.0 (Architectural Overhaul) — Estabilización y Calidad Total
 

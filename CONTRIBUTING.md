@@ -56,7 +56,7 @@ pytest
 mypy cortex/
 ```
 
-Si los tres pasan sin errores, estás listo. 🎉
+Si los tres pasan sin errores, estás listo.
 
 ---
 
@@ -172,22 +172,34 @@ Nuestra suite está dividida en `tests/unit/`, `tests/integration/` y `tests/e2e
 
 Buscá el label `good-first-issue` en los issues: pequeños bug fixes, mejoras en docs, tests adicionales, o mejoras en mensajes de error.
 
-### Help Wanted _(contributors experimentados)_
+### Help Wanted (Contributors Experimentados)
 
-| Área               | Feature                                              | Complejidad |
-| ------------------ | ---------------------------------------------------- | ----------- |
-| **Almacenamiento** | Backend Qdrant como alternativa a ChromaDB           | Media-Alta  |
-| **Búsqueda**       | Hybrid Search mejorado (BM25 + Dense vectorial real) | Media       |
-| **Visualización**  | WebGraph interactivo de conexiones entre memorias    | Alta        |
-| **Ecosistema**     | Plugins nativos para CrewAI, LangChain, AutoGen      | Media       |
-| **Performance**    | Suite oficial de benchmarks vs competidores          | Media-Baja  |
+| Área | Feature | Complejidad |
+| --- | --- | --- |
+| **Enterprise Core** | Implementación de `Promotion Pipeline` (Local → Corporate) | Alta |
+| **Retrieval** | Motor de búsqueda multi-nivel (Cross-Vault RRF) | Media-Alta |
+| **Gobernanza** | Perfiles de enforcement CI (Advisory vs Enforced) | Media |
+| **Setup** | Wizard interactivo para `cortex setup enterprise` | Media |
+| **Observabilidad** | Reportes de salud de memoria corporativa y gaps de conocimiento | Media-Baja |
+| **Integraciones** | Plugins para federación de memorias en entornos multi-repo | Alta |
 
-### Roadmap
+### Roadmap: Enterprise Memory Productization
 
-```
-Q2 2026: Stabilization — 90%+ coverage, Docker image, MkDocs site
-Q3 2026: Ecosystem     — Qdrant, CrewAI/LangChain plugins, VS Code extension
-Q4 2026: Enterprise    — Cortex Cloud beta, RBAC, audit logs, SSO/SAML
+```text
+Onda 1: Fundación (Actual)
+- P0: Modelo organizacional enterprise (.cortex/org.yaml)
+- P0: Retrieval multi-nivel base (Local + Corporate)
+
+Onda 2: Operabilidad (Next)
+- P1: Promotion pipeline de conocimiento (Manual/CI-driven)
+- P1: Gobernanza y CI enterprise (Políticas automáticas)
+
+Onda 3: Productización
+- P1: Setup enterprise interactivo (Wizard guiado)
+- P2: Observabilidad y Reporting de salud de memoria
+
+Onda 4: Hardening
+- P2: Presets para industrias reguladas, auditoría y seguridad final
 ```
 
 ---
