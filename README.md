@@ -246,56 +246,50 @@ Antes de empezar, asegurate de tener instalado:
 
 ---
 
-### Paso 1: Clonar el repositorio de Cortex
+### Paso 1: Obtener el código fuente de Cortex
 
-Elegí una carpeta donde querés tener Cortex instalado. Puede ser cualquier lugar de tu disco. Por ejemplo, en tu carpeta de usuario:
+Primero, descargá el código de Cortex en algún lugar de tu equipo. Esto solo se hace una vez.
 
 ```bash
-# Ir a donde querés guardar Cortex (ejemplo: tu carpeta personal)
+# Elegí dónde guardar el código base (ejemplo: tu carpeta personal)
 cd ~
 
 # Clonar el repositorio
-git clone https://github.com/MachuaninEzequiel/Cortex.git
-
-# Entrar a la carpeta del proyecto
-cd Cortex
+git clone https://github.com/MachuaninEzequiel/Cortex.git C:\Cortex
 ```
-
-Ahora tenés todo el código de Cortex en `~/Cortex/`.
 
 ---
 
-### Paso 2: Crear un entorno virtual de Python
+### Paso 2: Preparar TU proyecto
 
-Un entorno virtual mantiene las dependencias de Cortex aisladas del resto de tu sistema. **Esto se hace una sola vez.**
+Cortex está diseñado para instalarse como una herramienta dentro del entorno virtual de **tu propio proyecto**. 
 
 ```bash
+# 1. Navegá a la carpeta de TU proyecto (donde vas a desarrollar)
+cd D:\MiProyecto
+
+# 2. Creá un entorno virtual específico para tu proyecto
 python -m venv .venv
 ```
-
-Esto crea una carpeta `.venv/` dentro de `~/Cortex/`. No la borres ni la modifiques manualmente.
 
 ---
 
 ### Paso 3: Activar el entorno virtual
 
-**Cada vez** que abras una terminal nueva para usar Cortex, tenés que activar el entorno. El comando depende de tu sistema operativo:
+**Cada vez** que abras una terminal nueva para trabajar en tu proyecto, tenés que activar su entorno:
 
 **Windows (PowerShell):**
 ```powershell
-cd ~/Cortex
 .venv\Scripts\Activate.ps1
 ```
 
 **Windows (CMD):**
 ```cmd
-cd %USERPROFILE%\Cortex
 .venv\Scripts\activate.bat
 ```
 
 **Linux / macOS:**
 ```bash
-cd ~/Cortex
 source .venv/bin/activate
 ```
 
@@ -303,38 +297,25 @@ source .venv/bin/activate
 
 ---
 
-### Paso 4: Instalar Cortex
+### Paso 4: Instalar Cortex en tu proyecto
 
-Con el entorno activado, instalá Cortex en modo desarrollo:
+Con el entorno de tu proyecto activado, instalá Cortex apuntando a la carpeta donde lo clonaste (Paso 1):
 
 ```bash
-pip install -e .
+pip install -e C:\Cortex
 ```
 
-Esto instala el comando `cortex` en tu terminal. A partir de ahora, mientras el entorno esté activado, podés usar `cortex` desde **cualquier carpeta** de tu sistema.
+*(Si usás dependencias extra, podés usar `pip install -e "C:\Cortex[all]"`).*
 
-> **¿Querés funcionalidades extra?** Podés instalar dependencias opcionales:
-> ```bash
-> pip install -e ".[openai]"      # Soporte para OpenAI GPT-4
-> pip install -e ".[anthropic]"   # Soporte para Claude
-> pip install -e ".[ollama]"      # Soporte para LLMs locales
-> pip install -e ".[webgraph]"    # Visualización de grafos de conocimiento
-> pip install -e ".[all]"         # Todo junto (incluye dev tools)
-> ```
+A partir de ahora, el comando `cortex` está disponible exclusivamente cuando tenés este `.venv` activado, manteniendo tu sistema limpio.
 
 ---
 
-### Paso 5: Usar Cortex en tu proyecto
+### Paso 5: Inicializar Cortex
 
-Ahora viene la parte importante: **Cortex se usa desde la carpeta del proyecto donde estás desarrollando**, no desde la carpeta de Cortex. El flujo es:
+Ahora que la herramienta está instalada en el entorno, inicializá la memoria en tu proyecto:
 
 ```bash
-# 1. Asegurate de que el entorno está activado (ver Paso 3)
-
-# 2. Navegá a tu proyecto (el que quieras gobernar con Cortex)
-cd D:\MiProyecto
-
-# 3. Inicializá Cortex en tu proyecto
 cortex setup agent
 ```
 

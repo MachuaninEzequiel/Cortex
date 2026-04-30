@@ -488,21 +488,22 @@ def run_cold_start(
     if vault.exists():
         results["layer1_preseed"] = layer1_preseed_vault(vault, memory_store)
     
-    # Capa 2: Git History (Resiliente)
-    try:
-        is_git = subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            cwd=project, capture_output=True, text=True
-        ).returncode == 0
-        
-        if is_git:
-            results["layer2_git_history"] = layer2_git_history(project, memory_store, max_commits=git_depth)
-            if not results["layer2_git_history"]:
-                 results["warnings"].append("Git repo detectado pero no se pudieron extraer commits.")
-        else:
-            results["warnings"].append("No se detecto repositorio Git. Saltando Capa 2.")
-    except Exception:
-        results["warnings"].append("Error al intentar acceder a Git. Saltando Capa 2.")
+    # Capa 2: Git History (Resiliente — solo si el usuario pidió > 0 commits)
+    if git_depth > 0:
+        try:
+            is_git = subprocess.run(
+                ["git", "rev-parse", "--is-inside-work-tree"],
+                cwd=project, capture_output=True, text=True
+            ).returncode == 0
+            
+            if is_git:
+                results["layer2_git_history"] = layer2_git_history(project, memory_store, max_commits=git_depth)
+                if not results["layer2_git_history"]:
+                     results["warnings"].append("Git repo detectado pero no se pudieron extraer commits.")
+            else:
+                results["warnings"].append("No se detecto repositorio Git. Saltando Capa 2.")
+        except Exception:
+            results["warnings"].append("Error al intentar acceder a Git. Saltando Capa 2.")
     
     # Capa 3: README (Siempre se intenta)
     results["layer3_readme"] = layer3_readme_fallback(project, memory_store)

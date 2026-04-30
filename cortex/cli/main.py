@@ -957,6 +957,58 @@ def agent_guidelines() -> None:
 
     typer.echo(content)
 
+# ---------------------------------------------------------------------------
+# tutor
+# ---------------------------------------------------------------------------
+
+@app.command()
+def tutor(
+    topic: str | None = typer.Argument(
+        None,
+        help="Tópico directo (ej: 'pipeline', 'vault', 'commands'). Sin argumento abre el menú.",
+    ),
+) -> None:
+    """Guía interactiva offline de Cortex. Zero tokens.
+
+    Abre un menú navegable con tópicos sobre cómo usar Cortex,
+    su pipeline, vault, enterprise y más. Todo se muestra en la
+    terminal sin consumir tokens de ningún modelo de IA.
+
+    Uso directo:  cortex tutor pipeline
+    Menú:         cortex tutor
+    """
+    from cortex.tutor.engine import TutorEngine
+
+    engine = TutorEngine.default()
+
+    if topic:
+        if not engine.show_topic_by_slug(topic):
+            slugs = [t.slug for t in engine.topics]
+            typer.echo(f"Tópico '{topic}' no encontrado. Disponibles: {', '.join(slugs)}", err=True)
+            raise typer.Exit(1)
+    else:
+        engine.run()
+
+
+# ---------------------------------------------------------------------------
+# hint
+# ---------------------------------------------------------------------------
+
+@app.command()
+def hint() -> None:
+    """Tip contextual: qué hacer ahora con Cortex. Zero tokens.
+
+    Analiza el estado actual de tu proyecto (¿tiene config.yaml?,
+    ¿tiene vault?, ¿tiene specs?) y sugiere el siguiente paso
+    lógico con el comando concreto a ejecutar.
+    """
+    from cortex.tutor.hint import HintEngine, ProjectState
+
+    state = ProjectState.detect(Path.cwd())
+    engine = HintEngine()
+    tip = engine.get_hint(state)
+    tip.render()
+
 
 # ---------------------------------------------------------------------------
 # install-skills
