@@ -36,6 +36,7 @@ def _build_registry() -> dict[str, type[IDEAdapter]]:
     from cortex.ide.adapters.vscode import VSCodeAdapter
     from cortex.ide.adapters.windsurf import WindsurfAdapter
     from cortex.ide.adapters.zed import ZedAdapter
+    from cortex.ide.adapters.pi import PiAdapter
 
     registry: dict[str, type[IDEAdapter]] = {}
     for adapter_cls in (
@@ -48,6 +49,7 @@ def _build_registry() -> dict[str, type[IDEAdapter]]:
         WindsurfAdapter,
         AntigravityAdapter,
         HermesAdapter,
+        PiAdapter,
     ):
         instance = adapter_cls()
         registry[instance.name] = adapter_cls
