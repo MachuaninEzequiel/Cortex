@@ -92,11 +92,10 @@ class CursorAdapter(IDEAdapter):
 
         # Cursor-specific MCP config with --project-root
         cortex_config = {
-            "command": "python",
+            "command": "cortex",
             "args": [
-                "-m",
-                "cortex.cli.main",
                 "mcp-server",
+                "--stdio",
                 "--project-root",
                 str(project_root)
             ],
