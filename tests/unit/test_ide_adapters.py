@@ -60,6 +60,69 @@ def test_opencode_adapter_inject_profiles(monkeypatch, tmp_path: Path) -> None:
     assert "Orchestrator prompt" in work_content
 
 
+def test_opencode_adapter_inject_mcp_uses_opencode_local_command_shape(
+    monkeypatch, tmp_path: Path
+) -> None:
+    project_root = tmp_path / "project"
+
+    monkeypatch.setattr("cortex.ide.adapters.opencode.Path.home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr("cortex.ide.base.Path.home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr("cortex.ide.adapters.opencode._is_wsl", lambda: False)
+
+    adapter = get_adapter("opencode")
+    files = adapter.inject_mcp(project_root)
+
+    config_path = tmp_path / ".config" / "opencode" / "opencode.json"
+    assert config_path.exists()
+    assert str(config_path) in files
+
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    cortex_config = data["mcp"]["cortex"]
+
+    assert cortex_config["type"] == "local"
+    assert cortex_config["command"] == [
+        "cortex",
+        "mcp-server",
+        "--stdio",
+        "--project-root",
+        str(project_root),
+    ]
+    assert cortex_config["enabled"] is True
+    assert cortex_config["environment"]["PYTHONWARNINGS"] == "ignore"
+    assert "args" not in cortex_config
+    assert "env" not in cortex_config
+
+
+def test_opencode_adapter_inject_mcp_wsl_wrapper_uses_cortex_binary(
+    monkeypatch, tmp_path: Path
+) -> None:
+    project_root = tmp_path / "project"
+
+    monkeypatch.setattr("cortex.ide.adapters.opencode.Path.home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr("cortex.ide.base.Path.home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr("cortex.ide.adapters.opencode._is_wsl", lambda: True)
+    monkeypatch.setattr("cortex.ide.base._is_wsl", lambda: True)
+    monkeypatch.setattr("cortex.ide.base.shutil.which", lambda name: "/home/test/.local/bin/cortex")
+
+    adapter = get_adapter("opencode")
+    adapter.inject_mcp(project_root)
+
+    config_path = tmp_path / ".config" / "opencode" / "opencode.json"
+    wrapper_path = tmp_path / ".cortex" / "bin" / "cortex-mcp-wrapper"
+
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    cortex_config = data["mcp"]["cortex"]
+    wrapper_content = wrapper_path.read_text(encoding="utf-8")
+
+    assert cortex_config["command"] == [str(wrapper_path)]
+    assert cortex_config["enabled"] is True
+    assert wrapper_path.exists()
+    assert 'exec "/home/test/.local/bin/cortex" mcp-server --stdio --project-root' in wrapper_content
+    assert str(project_root) in wrapper_content
+    assert "python3 -m cortex.cli.main" not in wrapper_content
+    assert "PYTHONPATH" not in wrapper_content
+
+
 def test_cursor_adapter_inject_mcp(monkeypatch, tmp_path: Path) -> None:
     project_root = tmp_path / "project"
     
@@ -75,8 +138,9 @@ def test_cursor_adapter_inject_mcp(monkeypatch, tmp_path: Path) -> None:
     data = json.loads(mcp_path.read_text(encoding="utf-8"))
     
     assert "cortex" in data["mcpServers"]
-    assert data["mcpServers"]["cortex"]["command"] == "python"
+    assert data["mcpServers"]["cortex"]["command"] == "cortex"
     assert "mcp-server" in data["mcpServers"]["cortex"]["args"]
+    assert "--stdio" in data["mcpServers"]["cortex"]["args"]
     assert "--project-root" in data["mcpServers"]["cortex"]["args"]
     assert data["mcpServers"]["cortex"]["env"]["PYTHONWARNINGS"] == "ignore"
 

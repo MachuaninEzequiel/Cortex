@@ -121,6 +121,7 @@ def _create_shielded_wrapper(project_root: Path) -> Path:
 
     wrapper_path = cortex_bin_dir / "cortex-mcp-wrapper"
     log_file = cortex_log_dir / "mcp-shield.log"
+    cortex_executable = shutil.which("cortex") or "cortex"
 
     wrapper_content = f"""#!/bin/bash
 # Cortex Shielded Wrapper v3.0
@@ -131,11 +132,8 @@ exec 2>> "{log_file}"
 export PYTHONUNBUFFERED=1
 export PYTHONIOENCODING=utf-8
 export PYTHONWARNINGS=ignore
-export PYTHONPATH="{project_root}"
 
-set -m
-
-exec /usr/bin/python3 -m cortex.cli.main mcp-server --stdio
+exec "{cortex_executable}" mcp-server --stdio --project-root "{project_root}"
 """
     wrapper_path.write_text(wrapper_content, encoding="utf-8")
     wrapper_path.chmod(0o755)

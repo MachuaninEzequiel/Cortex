@@ -10,6 +10,7 @@ from cortex.ide.base import (
     _backup_file,
     _deep_merge_dict,
     _generate_autogen_header,
+    _is_wsl,
 )
 
 
@@ -114,6 +115,7 @@ class OpenCodeAdapter(IDEAdapter):
     def inject_mcp(self, project_root: Path) -> list[str]:
         paths = self.get_config_paths()
         config_file = paths["main"]
+        config_file.parent.mkdir(parents=True, exist_ok=True)
 
         _backup_file(config_file)
 
@@ -123,11 +125,23 @@ class OpenCodeAdapter(IDEAdapter):
                 data = json.loads(config_file.read_text(encoding="utf-8"))
 
         data.setdefault("mcp", {})
-        cortex_config = {
-            "type": "local",
-            **self._get_mcp_command(project_root),
-            "enabled": True,
-        }
+        if self.needs_wsl_shielding() and _is_wsl():
+            mcp_command = self._get_mcp_command(project_root)
+            command = [mcp_command["command"], *mcp_command.get("args", [])]
+            environment = mcp_command.get("env", {})
+        else:
+            command = [
+                "cortex",
+                "mcp-server",
+                "--stdio",
+                "--project-root",
+                str(project_root),
+            ]
+            environment = {"PYTHONWARNINGS": "ignore"}
+
+        cortex_config = {"type": "local", "command": command, "enabled": True}
+        if environment:
+            cortex_config["environment"] = environment
 
         # Deep merge to preserve other MCP servers
         data["mcp"] = _deep_merge_dict(data["mcp"], {"cortex": cortex_config})
