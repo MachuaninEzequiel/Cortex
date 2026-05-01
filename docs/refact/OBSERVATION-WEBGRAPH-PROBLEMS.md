@@ -1,0 +1,30 @@
+# Cortex Webgraph Evaluation Findings
+- [x] Open http://127.0.0.1:8765/
+- [x] Observe initial layout and visual style
+    - Labels are small and overlap significantly.
+    - Edge labels (shared_tag, wikilink) are dense and hard to read.
+    - Multiple shapes (circles, triangles, diamonds, hexagons, stars) and colors are used, but their meaning is not immediately obvious.
+    - Some nodes have very long names that overlap with other nodes.
+- [x] Interact with the graph (zoom, drag nodes, click)
+    - Zooming helps slightly but doesn't solve the overlap issue.
+    - Dragging works (force-directed layout), which allows for manual decluttering.
+    - Clicking a node opens a detailed selection panel (very informative).
+    - Selecting a node also highlights its relations in a dedicated panel.
+- [x] Identify specific issues with names, shapes, and connections
+    - **Labels**: Always visible, leading to a "cloud of text" that obscures the graph.
+    - **Edge Labels**: Extremely redundant. Seeing "shared_tag" on 20+ edges makes the text unreadable.
+    - **Shapes**: No legend for shapes/colors. Users have to guess or check the filter dropdown.
+    - **Density**: The central part of the graph is too crowded.
+- [x] Note usability problems and potential improvements
+    - **Usability Issues**: 
+        - Visual noise from redundant edge labels.
+        - Lack of clear visual hierarchy (everything has a label).
+        - No legend for shapes/colors.
+        - Overlapping text makes it hard to identify nodes without clicking.
+    - **Potential Improvements**:
+        - **Collision Detection**: Prevent labels from overlapping.
+        - **Dynamic Labels**: Only show labels for nodes above a certain size/importance or on hover.
+        - **Edge Label Toggling**: Hide "shared_tag" or other dense relationship types by default.
+        - **Legend**: Add a visual key for node shapes and colors.
+        - **Clustering**: Group nodes by project or type to reduce edge crossings.
+        - **Path Highlighting**: Highlight all edges connected to a selected node while dimming others.
