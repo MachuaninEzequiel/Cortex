@@ -1,3 +1,8 @@
+---
+name: cortex-vault
+description: "Interaccion con la memoria hibrida de Cortex (episodica y semantica). Cargalo cuando necesites buscar contexto con cortex search, guardar decisiones, o consultar el vault antes de implementar."
+---
+
 # Skill: Cortex Vault — Interacción con la Memoria
 
 ## Descripción
