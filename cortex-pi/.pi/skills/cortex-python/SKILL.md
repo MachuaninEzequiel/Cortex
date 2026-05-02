@@ -1,3 +1,8 @@
+---
+name: cortex-python
+description: "Convenciones, patrones y stack tecnico del proyecto Cortex. Cargalo cuando trabajes con codigo Python del proyecto: type hints, Pydantic v2, Typer CLI, ChromaDB, ONNX, Ruff, Mypy o cualquier patron de imports/estructura de modulos."
+---
+
 # Skill: Cortex Python — Convenciones y Patrones del Proyecto
 
 ## Stack

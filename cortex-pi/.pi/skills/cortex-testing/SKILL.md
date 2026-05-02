@@ -1,3 +1,8 @@
+---
+name: cortex-testing
+description: "Patrones de testing del proyecto Cortex. Cargalo cuando escribas, ejecutes o corrijas tests: fixtures de pytest, mocks de ChromaDB/ONNX, cobertura por modulo, y convenciones de assert."
+---
+
 # Skill: Cortex Testing — Patrones de Testing del Proyecto
 
 ## Objetivo de Cobertura
