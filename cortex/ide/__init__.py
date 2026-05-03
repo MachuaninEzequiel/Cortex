@@ -23,6 +23,7 @@ from pathlib import Path
 
 from cortex.ide.prompts import build_all_prompts, build_cursor_prompts
 from cortex.ide.registry import get_adapter, get_all_adapters, get_supported_ides
+from cortex.workspace.layout import WorkspaceLayout
 
 __all__ = ["inject", "inject_all", "uninstall", "uninstall_all", "get_supported_ides"]
 
@@ -114,12 +115,14 @@ def uninstall_all() -> dict[str, list[str]]:
 
 
 def _find_project_root() -> Path:
-    """Find the Cortex project root by looking for .cortex directory."""
-    current = Path.cwd()
-    for parent in [current] + list(current.parents):
-        if (parent / ".cortex").exists():
-            return parent
-    raise FileNotFoundError(
-        "Could not find .cortex directory. Are you in a Cortex project? "
-        "Run `cortex setup agent` first."
-    )
+    """Find the Cortex project root using WorkspaceLayout discovery.
+
+    Raises FileNotFoundError if no valid Cortex project is found.
+    """
+    layout = WorkspaceLayout.discover(Path.cwd())
+    if not layout.config_path.exists() and not layout.workspace_yaml_path.exists():
+        raise FileNotFoundError(
+            "Could not find a Cortex project. Are you in a Cortex project? "
+            "Run `cortex setup agent` first."
+        )
+    return layout.repo_root

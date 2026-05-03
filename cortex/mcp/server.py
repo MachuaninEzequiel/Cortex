@@ -14,6 +14,7 @@ from mcp.server.models import InitializationOptions
 
 from cortex.core import AgentMemory
 from cortex.models import EnrichedContext
+from cortex.workspace.layout import WorkspaceLayout
 
 # Configure logging for MCP tool call tracking
 logger = logging.getLogger(__name__)
@@ -29,13 +30,14 @@ class CortexMCPServer:
     """
     def __init__(self, project_root: Path):
         self.project_root = project_root
+        self._layout = WorkspaceLayout.discover(project_root)
         
         # Capa 1: Sistema de tracking de herramientas llamadas para logging y validación
         self._tool_call_history: list[dict[str, Any]] = []
         self._called_tools: set[str] = set()
         
         # Configurar logging para archivo
-        log_dir = project_root / ".cortex" / "logs"
+        log_dir = self._layout.logs_dir
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / f"mcp_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         
@@ -48,8 +50,8 @@ class CortexMCPServer:
             ]
         )
         
-        # Buscar config.yaml en el root del proyecto
-        config_path = project_root / "config.yaml"
+        # Buscar config usando WorkspaceLayout
+        config_path = self._layout.config_path
         if not config_path.exists():
             config_path = Path("config.yaml")
         
@@ -602,7 +604,7 @@ class CortexMCPServer:
 
         # Locate the subagent definition file
         subagent_file = (
-            self.project_root / ".cortex" / "subagents" / f"{agent_name}.md"
+            self._layout.subagents_dir / f"{agent_name}.md"
         )
 
         # Check for the opencode runtime

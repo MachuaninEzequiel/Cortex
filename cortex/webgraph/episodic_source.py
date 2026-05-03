@@ -9,10 +9,12 @@ from cortex.episodic.embedder import Embedder
 from cortex.episodic.memory_store import EpisodicMemoryStore
 from cortex.runtime_context import resolve_episodic_persist_dir
 from cortex.webgraph.contracts import EpisodicRecord
+from cortex.workspace.layout import WorkspaceLayout
 
 
-def _read_project_config(project_root: Path) -> dict[str, Any]:
-    config_path = project_root / "config.yaml"
+def _read_project_config(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> dict[str, Any]:
+    layout = workspace_layout or WorkspaceLayout.discover(project_root)
+    config_path = layout.config_path
     if not config_path.exists():
         return {}
     return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
@@ -44,14 +46,16 @@ class EpisodicSource:
         persist_dir: Path | None = None,
         store: EpisodicMemoryStore | None = None,
         embedder: Any | None = None,
+        workspace_layout: WorkspaceLayout | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
-        self._runtime_config = _read_project_config(self.project_root)
+        self._layout = workspace_layout or WorkspaceLayout.discover(self.project_root)
+        self._runtime_config = _read_project_config(self.project_root, workspace_layout=self._layout)
         episodic_cfg = self._runtime_config.get("episodic", {})
         self.persist_dir = (
             persist_dir.resolve()
             if persist_dir is not None
-            else resolve_episodic_persist_dir(self.project_root, episodic_cfg)
+            else resolve_episodic_persist_dir(self._layout.workspace_root, episodic_cfg)
         )
         self.store = store or EpisodicMemoryStore(
             persist_dir=str(self.persist_dir),

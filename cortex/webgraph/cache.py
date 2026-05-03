@@ -6,14 +6,16 @@ from pathlib import Path
 from typing import Any
 
 from cortex.webgraph.contracts import WebGraphSnapshot
+from cortex.workspace.layout import WorkspaceLayout
 
 
 class WebGraphCache:
     """Persistent snapshot cache for the hybrid webgraph."""
 
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> None:
         self.project_root = project_root
-        self.cache_dir = project_root / ".cortex" / "webgraph" / "cache"
+        self._layout = workspace_layout or WorkspaceLayout.discover(project_root)
+        self.cache_dir = self._layout.webgraph_cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def snapshot_path(self, mode: str) -> Path:

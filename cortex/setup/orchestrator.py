@@ -381,8 +381,10 @@ class SetupOrchestrator:
             if config_path.exists():
                 mem = AgentMemory(config_path=str(config_path))
                 from cortex.setup.cold_start import run_cold_start
+                from cortex.workspace.layout import WorkspaceLayout
+                layout = WorkspaceLayout.discover(self.root)
                 # Pasamos el git_depth aquí
-                cs_res = run_cold_start(self.root, mem.episodic, self.root / "vault", git_depth=self.git_depth)
+                cs_res = run_cold_start(self.root, mem.episodic, vault_path=str(layout.vault_path), git_depth=self.git_depth, workspace_layout=layout)
                 
                 # Capturamos warnings de Git/README para el resumen final
                 if cs_res.get("warnings"):

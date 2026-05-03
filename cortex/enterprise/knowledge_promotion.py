@@ -20,6 +20,7 @@ from cortex.enterprise.promotion_models import (
     PromotionRecordEvent,
 )
 from cortex.runtime_context import slugify
+from cortex.workspace.layout import WorkspaceLayout
 
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -139,18 +140,30 @@ class KnowledgePromotionService:
         self.validator = DocValidator(vault_path=paths.local_vault)
 
     @staticmethod
-    def from_project_root(project_root: Path) -> "KnowledgePromotionService":
-        config = load_enterprise_config(project_root, required=True)
+    def from_project_root(
+        project_root: Path,
+        *,
+        workspace_layout: WorkspaceLayout | None = None,
+    ) -> "KnowledgePromotionService":
+        """Create a KnowledgePromotionService from a project root.
+
+        If a WorkspaceLayout is provided, use it to resolve paths.
+        Otherwise, discover the layout from the project root (legacy compat).
+        """
+        layout = workspace_layout or WorkspaceLayout.discover(project_root)
+        config = load_enterprise_config(project_root, required=True, workspace_layout=layout)
         if config is None:
             raise FileNotFoundError("Enterprise config (.cortex/org.yaml) is required for promotion.")
-        enterprise_vault = config.resolve_enterprise_vault_path(project_root)
+        enterprise_vault = config.resolve_enterprise_vault_path(
+            project_root, workspace_root=layout.workspace_root,
+        )
         if enterprise_vault is None:
             raise ValueError("Enterprise vault is disabled (memory.enterprise_semantic_enabled=false).")
-        local_vault = (project_root / "vault").resolve()
+        local_vault = layout.vault_path
         org_slug = config.organization.slug or slugify(config.organization.name, fallback="organization")
-        records_path = (enterprise_vault / ".cortex" / "promotion" / "records.jsonl").resolve()
+        records_path = layout.promotion_records_path
         paths = PromotionPaths(
-            project_root=project_root.resolve(),
+            project_root=layout.repo_root,
             local_vault=local_vault,
             enterprise_vault=enterprise_vault.resolve(),
             records_path=records_path,

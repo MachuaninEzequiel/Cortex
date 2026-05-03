@@ -138,17 +138,48 @@ class AgentMemory:
         self._config_path = Path(config_path)
         self._raw_config = self._load_config(self._config_path)
         self.config = self._validate_config(self._raw_config)
-        self.project_root = self._config_path.resolve().parent
-        self.project_id = slugify(self.project_root.name, fallback="project")
-        self.git_branch = detect_git_branch(self.project_root)
-        self.git_repo = str(detect_git_repo_path(self.project_root))
-        self.enterprise_config = load_enterprise_config(self.project_root, required=False)
+
+        # ── Workspace layout discovery ──────────────────────────────────
+        # If config_path was explicitly provided and resolves to a file,
+        # use its parent as the starting point for discovery.  Otherwise
+        # fall back to cwd().
+        from cortex.workspace import WorkspaceLayout
+
+        if self._config_path.is_file():
+            _discover_start = self._config_path.resolve().parent
+        else:
+            from pathlib import Path as _P
+            _discover_start = _P.cwd()
+
+        self._layout = WorkspaceLayout.discover(_discover_start)
+
+        # workspace_root is the directory against which all relative
+        # paths in config.yaml and org.yaml should resolve.
+        # In new layout it is repo_root/.cortex.
+        # In legacy layout it is repo_root (same as project_root).
+        self.workspace_root = self._layout.workspace_root
+        self.repo_root = self._layout.repo_root
+
+        # project_root is kept for backward compatibility.
+        # In legacy layout it equals workspace_root (= repo_root).
+        # In new layout it equals workspace_root (= repo_root/.cortex).
+        # Consumers that need the actual Git repo root should use
+        # self.repo_root instead.
+        self.project_root = self._layout.workspace_root
+
+        self.project_id = slugify(self.repo_root.name, fallback="project")
+        self.git_branch = detect_git_branch(self.repo_root)
+        self.git_repo = str(detect_git_repo_path(self.repo_root))
+        self.enterprise_config = load_enterprise_config(
+            self.repo_root, required=False, workspace_layout=self._layout,
+        )
         self.enterprise_topology = describe_enterprise_topology(
             self.enterprise_config,
-            self.project_root,
+            self.repo_root,
+            workspace_layout=self._layout,
         )
         self._runtime_episodic_dir = resolve_episodic_persist_dir(
-            self.project_root,
+            self.workspace_root,
             self._raw_config.get("episodic", {}),
         )
         self._runtime_metadata = {
@@ -164,6 +195,13 @@ class AgentMemory:
                 }
             )
 
+        # --- Resolve config values against workspace_root ─────────────
+        # Relative paths in config.yaml (e.g. "vault", "memory") must
+        # resolve against workspace_root, not against cwd.
+        self._vault_path_resolved = self._layout.resolve_workspace_relative(
+            self.config.semantic.vault_path
+        )
+
         # --- Infrastructure layer (wired here, injected into services) ---
         self.episodic = EpisodicMemoryStore(
             persist_dir=str(self._runtime_episodic_dir),
@@ -176,7 +214,7 @@ class AgentMemory:
             model=self.config.llm.model,
         )
         self.semantic = VaultReader(
-            vault_path=self.config.semantic.vault_path,
+            vault_path=str(self._vault_path_resolved),
             embedding_model=self.config.episodic.embedding_model,
             embedding_backend=self.config.episodic.embedding_backend,
         )
@@ -190,19 +228,19 @@ class AgentMemory:
 
         # --- Domain services (injected with infrastructure dependencies) ---
         self._spec_service = SpecService(
-            vault_path=self.config.semantic.vault_path,
+            vault_path=str(self._vault_path_resolved),
             semantic=self.semantic,
             episodic=self.episodic,
             context_metadata=self._runtime_metadata,
         )
         self._session_service = SessionService(
-            vault_path=self.config.semantic.vault_path,
+            vault_path=str(self._vault_path_resolved),
             semantic=self.semantic,
             episodic=self.episodic,
             context_metadata=self._runtime_metadata,
         )
         self._pr_service = PRService(
-            vault_path=self.config.semantic.vault_path,
+            vault_path=str(self._vault_path_resolved),
             episodic=self.episodic,
             context_metadata=self._runtime_metadata,
         )
@@ -309,12 +347,13 @@ class AgentMemory:
             service = EnterpriseRetrievalService(
                 enterprise_config=self.enterprise_config,
                 local_project_id=self.project_id,
-                project_root=self.project_root,
-                local_vault_path=self.config.semantic.vault_path,
+                project_root=self.workspace_root,
+                local_vault_path=str(self._vault_path_resolved),
                 local_episodic_dir=str(self._runtime_episodic_dir),
                 local_collection_name=self.config.episodic.collection_name,
                 embedding_model=self.config.episodic.embedding_model,
                 embedding_backend=self.config.episodic.embedding_backend,
+                workspace_root=self._layout.workspace_root,
                 source_config=RetrievalSourceConfig(
                     local_weight=self.enterprise_config.memory.retrieval_local_weight,
                     enterprise_weight=self.enterprise_config.memory.retrieval_enterprise_weight,
@@ -355,7 +394,7 @@ class AgentMemory:
         return {
             "episodic_count": self.episodic.count(),
             "semantic_docs": self.semantic.count(),
-            "vault_path": str(self.semantic.vault_path),
+            "vault_path": str(self._vault_path_resolved),
             "persist_dir": str(self.episodic.persist_dir),
             "enterprise_topology": self.enterprise_topology,
         }
@@ -555,6 +594,21 @@ class AgentMemory:
         return self._get_workitem_service().list_item_notes()
 
     # ------------------------------------------------------------------
+    # NOTE: project_root backward compatibility
+    # ------------------------------------------------------------------
+    # self.project_root is set to workspace_root for backward compatibility.
+    # In legacy layout, workspace_root == repo_root, so behavior is identical.
+    # In new layout, workspace_root = repo_root / ".cortex".
+    #
+    # Consumers that need the Git root should use self.repo_root.
+    # Consumers that resolve relative paths should use self.workspace_root.
+    # Consumers that use self.project_root get workspace_root, which
+    # works correctly in both layouts for resolving config-relative paths.
+    #
+    # A formal DeprecationWarning will be added in EPIC 7 when the
+    # new layout becomes the default.
+
+    # ------------------------------------------------------------------
     # Context Enricher — Proactive context injection
     # ------------------------------------------------------------------
 
@@ -624,7 +678,7 @@ class AgentMemory:
             if self.config.integrations.jira.enabled:
                 providers["jira"] = JiraProvider.from_config(self._raw_config)
             self._workitem_service = WorkItemService(
-                vault_path=self.config.semantic.vault_path,
+                vault_path=str(self._vault_path_resolved),
                 semantic=self.semantic,
                 episodic=self.episodic,
                 providers=providers,

@@ -7,6 +7,7 @@ from cortex.webgraph.config import WebGraphConfig
 from cortex.webgraph.federation import FederatedWebGraphService
 from cortex.webgraph.openers import open_path, resolve_safe_vault_path
 from cortex.webgraph.service import WebGraphService
+from cortex.workspace.layout import WorkspaceLayout
 
 
 def create_app(project_root: Path | None = None, *, workspace_file: Path | None = None):
@@ -23,13 +24,14 @@ def create_app(project_root: Path | None = None, *, workspace_file: Path | None 
         Compress = None  # type: ignore[misc, assignment]
 
     root = project_root or Path.cwd()
+    layout = WorkspaceLayout.discover(root)
     service: WebGraphService | FederatedWebGraphService
     if workspace_file is not None:
         service = FederatedWebGraphService(workspace_file)
         config = WebGraphConfig()
     else:
-        service = WebGraphService(root)
-        config = WebGraphConfig.load(root)
+        service = WebGraphService(root, workspace_layout=layout)
+        config = WebGraphConfig.load(root, workspace_layout=layout)
 
     app = Flask(__name__, template_folder="templates", static_folder="static")
     if Compress is not None:
@@ -101,7 +103,8 @@ def run_server(
     import webbrowser
 
     root = project_root or Path.cwd()
-    config = WebGraphConfig.load(root)
+    layout = WorkspaceLayout.discover(root)
+    config = WebGraphConfig.load(root, workspace_layout=layout)
     app = create_app(root, workspace_file=workspace_file)
     final_host = host or config.server_host
     final_port = port or config.server_port

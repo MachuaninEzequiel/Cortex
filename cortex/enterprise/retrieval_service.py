@@ -29,10 +29,12 @@ class EnterpriseRetrievalService:
         embedding_model: str,
         embedding_backend: str,
         source_config: RetrievalSourceConfig | None = None,
+        workspace_root: Path | None = None,
     ) -> None:
         self.enterprise_config = enterprise_config
         self.local_project_id = local_project_id
         self.project_root = project_root.resolve()
+        self._workspace_root = workspace_root.resolve() if workspace_root else self.project_root
         self.local_vault_path = local_vault_path
         self.local_episodic_dir = local_episodic_dir
         self.local_collection_name = local_collection_name
@@ -90,7 +92,9 @@ class EnterpriseRetrievalService:
                 VaultSource(path=self.local_vault_path, scope="local", project_id=self.local_project_id)
             )
         if scope in ("enterprise", "all") and self.enterprise_config.memory.enterprise_semantic_enabled:
-            enterprise_vault = self.enterprise_config.resolve_enterprise_vault_path(self.project_root)
+            enterprise_vault = self.enterprise_config.resolve_enterprise_vault_path(
+                self.project_root, workspace_root=self._workspace_root,
+            )
             if enterprise_vault is None:
                 return sources
             sources.append(
@@ -114,7 +118,9 @@ class EnterpriseRetrievalService:
                 )
             )
         if scope in ("enterprise", "all") and self.enterprise_config.memory.enterprise_episodic_enabled:
-            enterprise_memory = self.enterprise_config.resolve_enterprise_memory_path(self.project_root)
+            enterprise_memory = self.enterprise_config.resolve_enterprise_memory_path(
+                self.project_root, workspace_root=self._workspace_root,
+            )
             if enterprise_memory is None:
                 return sources
             sources.append(
