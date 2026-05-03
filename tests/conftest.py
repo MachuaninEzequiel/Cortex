@@ -153,3 +153,61 @@ def hybrid_search_mocks():
     )
 
     return hybrid, mock_episodic, mock_semantic
+
+
+# ---------------------------------------------------------------------------
+# WorkspaceLayout fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def new_workspace(tmp_path):
+    """Create a minimal new-layout project on disk.
+
+    Layout: .cortex/ contains config.yaml, vault/, workspace.yaml,
+    memory/, etc.  Git root marker is created at repo root.
+    """
+    import yaml
+    from cortex.workspace.layout import WorkspaceLayout
+
+    repo = tmp_path / "project"
+    repo.mkdir()
+    cortex = repo / ".cortex"
+    cortex.mkdir()
+    (cortex / "config.yaml").write_text("episodic:\n  persist_dir: memory\n", encoding="utf-8")
+    (cortex / "vault").mkdir()
+    (cortex / "memory").mkdir()
+    (cortex / "workspace.yaml").write_text(
+        yaml.safe_dump({"layout_version": 2, "projects": [{"id": "primary", "path": ".", "role": "owner"}]}),
+        encoding="utf-8",
+    )
+    (cortex / "AGENT.md").write_text("# Cortex Agent", encoding="utf-8")
+    (cortex / "skills").mkdir()
+    (cortex / "subagents").mkdir()
+    (cortex / "org.yaml").write_text("organization:\n  name: test\n", encoding="utf-8")
+    (repo / ".git").mkdir()
+    layout = WorkspaceLayout.discover(repo)
+    return {"repo": repo, "cortex": cortex, "layout": layout}
+
+
+@pytest.fixture
+def legacy_workspace(tmp_path):
+    """Create a minimal legacy-layout project on disk.
+
+    Layout: config.yaml and vault/ at repo root, .cortex/ holds
+    skills/ subagents/ org.yaml etc.
+    """
+    from cortex.workspace.layout import WorkspaceLayout
+
+    repo = tmp_path / "project"
+    repo.mkdir()
+    (repo / "config.yaml").write_text("episodic:\n  persist_dir: .memory/chroma\n", encoding="utf-8")
+    (repo / "vault").mkdir()
+    (repo / ".memory").mkdir()
+    (repo / ".cortex").mkdir()
+    (repo / ".cortex" / "AGENT.md").write_text("# Cortex Agent", encoding="utf-8")
+    (repo / ".cortex" / "skills").mkdir()
+    (repo / ".cortex" / "subagents").mkdir()
+    (repo / ".cortex" / "org.yaml").write_text("organization:\n  name: test\n", encoding="utf-8")
+    (repo / ".git").mkdir()
+    layout = WorkspaceLayout.discover(repo)
+    return {"repo": repo, "layout": layout}

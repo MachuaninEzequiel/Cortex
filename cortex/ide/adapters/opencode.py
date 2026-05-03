@@ -12,6 +12,7 @@ from cortex.ide.base import (
     _generate_autogen_header,
     _is_wsl,
 )
+from cortex.workspace.layout import WorkspaceLayout
 
 
 class OpenCodeAdapter(IDEAdapter):
@@ -56,8 +57,9 @@ class OpenCodeAdapter(IDEAdapter):
             skill_file.write_text(f"{header}\n\n{content}", encoding="utf-8")
             files_written.append(str(skill_file))
 
-        # Copy subagents with header
-        cortex_subagents_dir = project_root / ".cortex" / "subagents"
+        # Copy subagents with header — resolve via WorkspaceLayout
+        layout = WorkspaceLayout.discover(project_root)
+        cortex_subagents_dir = layout.subagents_dir
         if cortex_subagents_dir.exists():
             for subagent_file in cortex_subagents_dir.glob("*.md"):
                 dest = subagents_dir / subagent_file.name

@@ -114,7 +114,7 @@ def build_enterprise_org_config(
                 "memory": {
                     "mode": "layered",
                     "enterprise_vault_path": "vault-enterprise",
-                    "enterprise_memory_path": ".memory/enterprise/chroma",
+                    "enterprise_memory_path": "memory/enterprise/chroma",
                     "enterprise_semantic_enabled": True,
                     "enterprise_episodic_enabled": False,
                     "project_memory_mode": "isolated",
@@ -142,7 +142,7 @@ def build_enterprise_org_config(
                 "memory": {
                     "mode": "layered",
                     "enterprise_vault_path": "vault-enterprise",
-                    "enterprise_memory_path": ".memory/enterprise/chroma",
+                    "enterprise_memory_path": "memory/enterprise/chroma",
                     "enterprise_semantic_enabled": True,
                     "enterprise_episodic_enabled": False,
                     "project_memory_mode": "isolated",
@@ -170,7 +170,7 @@ def build_enterprise_org_config(
                 "memory": {
                     "mode": "layered",
                     "enterprise_vault_path": "vault-enterprise",
-                    "enterprise_memory_path": ".memory/enterprise/chroma",
+                    "enterprise_memory_path": "memory/enterprise/chroma",
                     "enterprise_semantic_enabled": True,
                     "enterprise_episodic_enabled": False,
                     "project_memory_mode": "isolated",
@@ -198,7 +198,7 @@ def build_enterprise_org_config(
                 "memory": {
                     "mode": "layered",
                     "enterprise_vault_path": "vault-enterprise",
-                    "enterprise_memory_path": ".memory/enterprise/chroma",
+                    "enterprise_memory_path": "memory/enterprise/chroma",
                     "enterprise_semantic_enabled": True,
                     "enterprise_episodic_enabled": False,
                     "project_memory_mode": "isolated",

@@ -43,7 +43,7 @@ def detect_git_repo_path(project_root: Path) -> Path:
 
 
 def resolve_episodic_persist_dir(project_root: Path, episodic_cfg: dict[str, Any]) -> Path:
-    base_dir = episodic_cfg.get("persist_dir", ".memory/chroma")
+    base_dir = episodic_cfg.get("persist_dir", "memory")
     mode = str(episodic_cfg.get("namespace_mode", "project")).strip().lower()
     namespace_value = str(episodic_cfg.get("namespace_value", "")).strip()
 

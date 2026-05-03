@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from cortex.setup.orchestrator import SetupMode, SetupOrchestrator
+from cortex.workspace.layout import WorkspaceLayout
 
 
 def test_setup_agent_creates_enterprise_org_config_and_vault(monkeypatch, tmp_path: Path) -> None:
@@ -13,10 +14,15 @@ def test_setup_agent_creates_enterprise_org_config_and_vault(monkeypatch, tmp_pa
     orchestrator = SetupOrchestrator(root=tmp_path)
     summary = orchestrator.run(mode=SetupMode.AGENT)
 
-    assert ".cortex/org.yaml" in summary["created"]
-    assert (tmp_path / ".cortex" / "org.yaml").exists()
-    assert (tmp_path / "vault-enterprise" / "README.md").exists()
-    assert (tmp_path / "vault-enterprise" / "runbooks").exists()
+    # In new layout, org.yaml is inside .cortex/ (workspace_root)
+    layout = WorkspaceLayout.discover(tmp_path)
+    created_joined = " ".join(summary["created"])
+    assert "org.yaml" in created_joined
+    assert layout.org_config_path.exists()
+    # enterprise vault is inside .cortex/ in new layout
+    assert layout.enterprise_vault_path.exists()
+    assert (layout.enterprise_vault_path / "README.md").exists()
+    assert (layout.enterprise_vault_path / "runbooks").exists()
 
 
 def test_setup_pipeline_creates_enterprise_governance_workflow(monkeypatch, tmp_path: Path) -> None:
@@ -29,6 +35,7 @@ def test_setup_pipeline_creates_enterprise_governance_workflow(monkeypatch, tmp_
     orchestrator = SetupOrchestrator(root=tmp_path)
     summary = orchestrator.run(mode=SetupMode.PIPELINE)
 
+    # Workflows are always at .github/workflows (GitHub requirement)
     expected = ".github/workflows/ci-enterprise-governance.yml"
     assert expected in summary["created"] or (tmp_path / expected).exists()
     wf = tmp_path / ".github" / "workflows" / "ci-enterprise-governance.yml"
@@ -44,5 +51,7 @@ def test_setup_enterprise_dry_run_does_not_write_files(tmp_path: Path) -> None:
     summary = orchestrator.run(mode=SetupMode.ENTERPRISE, dry_run=True)
 
     assert any(item.endswith("(dry-run)") for item in summary["created"])
-    assert not (tmp_path / ".cortex" / "org.yaml").exists()
+    # In dry run, no files should be written
+    layout = WorkspaceLayout.discover(tmp_path)
+    assert not layout.org_config_path.exists()
     assert not (tmp_path / ".github" / "workflows").exists()

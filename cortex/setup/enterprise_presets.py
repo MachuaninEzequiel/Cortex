@@ -39,6 +39,20 @@ def resolve_enterprise_setup(
     overrides: dict[str, Any] | None = None,
     github_actions_enabled: bool = True,
 ) -> EnterpriseSetupInput:
+    """Resolve the enterprise setup, adjusting relative paths for
+    new-layout workspaces.
+
+    In new layout (layout_version >= 2), relative paths like
+    ``vault-enterprise`` and ``memory`` are interpreted relative to
+    ``workspace_root`` (which is ``repo_root/.cortex``).  The default
+    string values in the org config are intentionally kept as simple
+    relative names (e.g. ``vault-enterprise``) so that
+    ``EnterpriseOrgConfig.resolve_*_path()`` can resolve them
+    correctly against the right base.
+
+    In legacy layout, the paths remain as before
+    (``vault-enterprise``, ``memory/enterprise/chroma``).
+    """
     normalized_profile = validate_enterprise_preset(profile)
     base_config = build_enterprise_org_config(
         project_name=project_name,

@@ -3,6 +3,9 @@ cortex.tutor.hint
 -----------------
 Contextual hint engine that inspects the current project state
 and suggests the most relevant next action. Zero tokens consumed.
+
+EPIC 6: Uses WorkspaceLayout for path detection so both new
+and legacy layouts work correctly.
 """
 
 from __future__ import annotations
@@ -12,6 +15,8 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
+
+from cortex.workspace.layout import WorkspaceLayout
 
 
 # ---------------------------------------------------------------------------
@@ -59,26 +64,31 @@ class ProjectState:
 
     @classmethod
     def detect(cls, project_root: Path) -> "ProjectState":
-        """Inspect the filesystem at project_root and build state."""
-        state = cls()
+        """Inspect the filesystem at project_root and build state.
 
-        state.has_config = (project_root / "config.yaml").exists()
-        state.has_vault = (project_root / "vault").is_dir()
-        state.has_cortex_dir = (project_root / ".cortex").is_dir()
-        state.has_org_yaml = (project_root / ".cortex" / "org.yaml").exists()
-        state.has_memory = (project_root / ".memory").is_dir()
-        state.has_enterprise_vault = (project_root / "vault-enterprise").is_dir()
-        state.has_github_workflows = (project_root / ".github" / "workflows").is_dir()
+        Uses WorkspaceLayout to resolve paths so both new and legacy
+        layouts are detected correctly.
+        """
+        state = cls()
+        layout = WorkspaceLayout.discover(project_root)
+
+        state.has_config = layout.config_path.exists()
+        state.has_vault = layout.vault_path.is_dir()
+        state.has_cortex_dir = layout.workspace_root.exists()
+        state.has_org_yaml = layout.org_config_path.exists()
+        state.has_memory = layout.episodic_memory_path.is_dir()
+        state.has_enterprise_vault = layout.enterprise_vault_path.is_dir()
+        state.has_github_workflows = layout.workflows_dir.is_dir()
 
         # Count specs
-        specs_dir = project_root / "vault" / "specs"
+        specs_dir = layout.vault_path / "specs"
         if specs_dir.is_dir():
             spec_files = list(specs_dir.glob("*.md"))
             state.spec_count = len(spec_files)
             state.has_specs = state.spec_count > 0
 
         # Count sessions
-        sessions_dir = project_root / "vault" / "sessions"
+        sessions_dir = layout.vault_path / "sessions"
         if sessions_dir.is_dir():
             session_files = list(sessions_dir.glob("*.md"))
             state.session_count = len(session_files)
@@ -86,7 +96,7 @@ class ProjectState:
 
         # Count total vault docs
         if state.has_vault:
-            state.vault_doc_count = len(list((project_root / "vault").rglob("*.md")))
+            state.vault_doc_count = len(list(layout.vault_path.rglob("*.md")))
 
         # Detect MCP config (any of the common locations)
         mcp_locations = [

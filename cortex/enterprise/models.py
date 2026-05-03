@@ -30,7 +30,7 @@ class OrganizationConfig(BaseModel):
 class MemoryConfig(BaseModel):
     mode: str = "layered"
     enterprise_vault_path: str = "vault-enterprise"
-    enterprise_memory_path: str = ".memory/enterprise/chroma"
+    enterprise_memory_path: str = "memory/enterprise/chroma"
     enterprise_semantic_enabled: bool = True
     enterprise_episodic_enabled: bool = False
     project_memory_mode: ProjectMemoryMode = "isolated"

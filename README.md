@@ -319,11 +319,14 @@ cd D:\MiProyecto
 cortex setup agent
 ```
 
-Esto crea en tu proyecto:
-- `config.yaml` — Configuración de Cortex
-- `vault/` — Tu base de conocimiento (archivos Markdown)
+Esto crea en tu proyecto el layout `.cortex/` (Cortex Workspace v2):
+- `.cortex/config.yaml` — Configuración de Cortex
+- `.cortex/vault/` — Tu base de conocimiento (archivos Markdown)
+- `.cortex/memory/` — Base de datos de memoria episódica (ChromaDB)
 - `.cortex/skills/` — Habilidades de escritura de documentación
-- `.memory/` — Base de datos de memoria episódica (ChromaDB)
+- `.cortex/workspace.yaml` — Declaración de layout (v2)
+- `.cortex/org.yaml` — Topología enterprise
+- `.github/workflows/` — CI/CD pipelines
 
 **A partir de acá, todos los comandos se corren desde la carpeta de tu proyecto:**
 
@@ -439,7 +442,15 @@ Cortex/
 ├── docs/enterprise/           # Documentación Enterprise (Plans, Avances, Backlog)
 ├── .github/workflows/         # CI/CD Pipelines (PR, Enterprise, Security, Release)
 ├── vault/                     # Knowledge base (Obsidian compatible)
-├── .cortex/                   # Skills, org.yaml, local-memory
+├── .cortex/                   # Cortex Workspace (config, vault, memory, skills, agents)
+│   ├── config.yaml            # Configuración principal
+│   ├── workspace.yaml         # Layout versión y proyectos
+│   ├── vault/                 # Vault del workspace (mutuamente accesible)
+│   ├── memory/                # Memoria episódica ChromaDB
+│   ├── skills/                # Agent skills
+│   ├── subagents/             # Subagentes de documentación
+│   ├── org.yaml               # Topología enterprise
+│   └── scripts/               # Scripts DevSecDocOps
 └── pyproject.toml             # Configuración de empaquetado
 ```
 

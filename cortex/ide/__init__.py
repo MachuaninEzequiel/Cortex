@@ -33,13 +33,16 @@ def inject(ide_name: str, project_root: Path | None = None) -> list[str]:
     if project_root is None:
         project_root = _find_project_root()
 
+    # Resolve layout once for the entire injection
+    layout = WorkspaceLayout.discover(project_root)
+
     adapter = get_adapter(ide_name)
-    
+
     # Use Cursor-specific prompts for Cursor IDE
     if ide_name == "cursor":
-        prompts = build_cursor_prompts(project_root)
+        prompts = build_cursor_prompts(project_root, workspace_layout=layout)
     else:
-        prompts = build_all_prompts(project_root)
+        prompts = build_all_prompts(project_root, workspace_layout=layout)
 
     print(f"[Cortex IDE] Injecting profiles for {adapter.display_name}...")
     files = adapter.inject_all(project_root, prompts)
@@ -58,7 +61,8 @@ def inject_all(project_root: Path | None = None) -> dict[str, list[str]]:
     if project_root is None:
         project_root = _find_project_root()
 
-    prompts = build_all_prompts(project_root)
+    layout = WorkspaceLayout.discover(project_root)
+    prompts = build_all_prompts(project_root, workspace_layout=layout)
     results: dict[str, list[str]] = {}
 
     print("[Cortex IDE] inject_all() is deprecated/experimental. Prefer per-IDE installation.")
