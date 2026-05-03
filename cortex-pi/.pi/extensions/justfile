@@ -21,42 +21,47 @@ pi:
     pi
 
 # ── Selector de agente (/system) ─────────────────────────────────────────
-# Permite cambiar el system prompt al persona de cualquier agente Cortex
 system-select:
     pi -e {{EXT}}/system-select.ts
 
 # ── Pipeline de agentes (/chain) ─────────────────────────────────────────
-# Ejecuta pipelines secuenciales definidos en agent-chain.yaml
 agent-chain:
     pi -e {{EXT}}/agent-chain.ts
 
 # ── Damage control (seguridad) ───────────────────────────────────────────
-# Intercepta comandos bash peligrosos según damage-control-rules.yaml
 damage-control:
     pi -e {{EXT}}/damage-control.ts
 
+# ── MCP server de Cortex ─────────────────────────────────────────────────
+# Levanta el servidor MCP y expone sus tools como mcp_cortex_mcp_*
+mcp:
+    pi -e {{EXT}}/cortex-mcp.ts
+
 # ── Stack completo Cortex ─────────────────────────────────────────────────
-# Las tres extensiones juntas: selector + pipeline + seguridad
+# Las cuatro extensiones juntas: selector + pipeline + seguridad + MCP
 cortex:
-    pi -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+    pi -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts -e {{EXT}}/cortex-mcp.ts
 
 # ── Stack completo + modelo específico ───────────────────────────────────
-# Útil para usar Gemini Flash en pipelines largos (más barato)
 cortex-fast:
-    pi --model anthropic/claude-sonnet-4-20250514 -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+    pi --model anthropic/claude-sonnet-4-20250514 -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts -e {{EXT}}/cortex-mcp.ts
 
 # ── Solo pipeline + seguridad (sin selector de agente) ───────────────────
 cortex-chain:
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts -e {{EXT}}/cortex-mcp.ts
 
-# ── Solo selector de agente + seguridad ──────────────────────────────────
+# ── Solo selector + MCP ───────────────────────────────────────────────────
 cortex-select:
-    pi -e {{EXT}}/system-select.ts -e {{EXT}}/damage-control.ts
+    pi -e {{EXT}}/system-select.ts -e {{EXT}}/cortex-mcp.ts
 
 # ── Pipeline rápido: lanza directamente el chain sddwork ─────────────────
 sddwork task="":
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts "{{task}}"
+    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts -e {{EXT}}/cortex-mcp.ts "{{task}}"
 
 # ── Pipeline rápido: hotfix ───────────────────────────────────────────────
 hotfix task="":
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts "{{task}}"
+    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts -e {{EXT}}/cortex-mcp.ts "{{task}}"
+
+# ── Solo Cortex tools (sin pipeline ni selector) ─────────────────────────
+tools:
+    pi -e {{EXT}}/cortex-mcp.ts

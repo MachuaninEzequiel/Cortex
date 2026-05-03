@@ -18,6 +18,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { Text } from "@mariozechner/pi-tui";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
@@ -141,6 +142,11 @@ function isDeleteOp(command: string, paths: string[]): boolean {
 // ── Extension ──────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+  pi.registerMessageRenderer("cortex-damage-control", (message, _options, theme) => {
+    const content = typeof message.content === "string" ? message.content : "";
+    return new Text(theme.fg("warning", "🛡 ") + content, 0, 0);
+  });
+
   let rules: DamageControlRules = DEFAULT_RULES;
   let blockedCount = 0;
   let askedCount = 0;
@@ -225,13 +231,16 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("damage-stats", {
     description: "Muestra estadísticas del damage-control en esta sesión",
     handler(_args: string, _ctx: any) {
-      pi.sendMessage(
-        `## 🛡 Cortex Damage Control — Estadísticas\n\n` +
-        `- **Comandos bloqueados:** ${blockedCount}\n` +
-        `- **Confirmaciones pedidas:** ${askedCount}\n` +
-        `- **Patrones activos:** ${rules.bashToolPatterns?.length ?? 0}\n` +
-        `- **Rutas protegidas:** ${(rules.zeroAccessPaths?.length ?? 0) + (rules.readOnlyPaths?.length ?? 0) + (rules.noDeletePaths?.length ?? 0)}`
-      );
+      pi.sendMessage({
+        customType: "cortex-damage-control",
+        content:
+          `Cortex Damage Control — Estadísticas\n\n` +
+          `Comandos bloqueados: ${blockedCount}\n` +
+          `Confirmaciones pedidas: ${askedCount}\n` +
+          `Patrones activos: ${rules.bashToolPatterns?.length ?? 0}\n` +
+          `Rutas protegidas: ${(rules.zeroAccessPaths?.length ?? 0) + (rules.readOnlyPaths?.length ?? 0) + (rules.noDeletePaths?.length ?? 0)}`,
+        display: true,
+      });
     },
   });
 }

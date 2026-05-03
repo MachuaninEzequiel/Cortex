@@ -20,6 +20,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { Text } from "@mariozechner/pi-tui";
 import { readFileSync, existsSync, readdirSync, mkdirSync } from "fs";
 import { join } from "path";
 import { spawn } from "child_process";
@@ -307,6 +308,11 @@ function runAgentStep(
 // ── Extension ──────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+  pi.registerMessageRenderer("cortex-agent-chain", (message, _options, theme) => {
+    const content = typeof message.content === "string" ? message.content : "";
+    return new Text(theme.fg("accent", "⬡ chain: ") + content, 0, 0);
+  });
+
   let chains: ChainDef[] = [];
   let agents: Map<string, AgentDef> = new Map();
   let activeChain: ChainDef | null = null;
@@ -491,7 +497,11 @@ export default function (pi: ExtensionAPI) {
       const input = args.trim();
       if (!input) {
         ctx.ui.notify(`Pipeline "${chain.key}" seleccionado. Escribí tu tarea en el chat y Pi la ejecutará en el pipeline.`, "info");
-        pi.sendMessage(`**Pipeline activo:** \`${chain.key}\`\n\n${chain.description}\n\nPasos: ${chain.steps.map(s => `\`${s.agent}\``).join(" → ")}\n\n*Escribí la tarea y el pipeline se ejecutará automáticamente.*`);
+        pi.sendMessage({
+          customType: "cortex-agent-chain",
+          content: `Pipeline activo: ${chain.key}\n${chain.description}\nPasos: ${chain.steps.map(s => s.agent).join(" → ")}\n\nEscribí tu tarea y se ejecutará el pipeline.`,
+          display: true,
+        });
         // Registra el chain como activo para que el próximo mensaje lo dispare
         activeChain = chain;
         activateChain(chain, ctx);
@@ -514,12 +524,16 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      const lines = chains.map(c => {
+      const content = chains.map(c => {
         const stepNames = c.steps.map(s => s.agent.replace("cortex-", "")).join(" → ");
-        return `**${c.key}** — ${c.description}\n  \`${stepNames}\``;
-      });
+        return `${c.key} — ${c.description}\n  [${stepNames}]`;
+      }).join("\n\n");
 
-      pi.sendMessage(`## Pipelines Cortex\n\n${lines.join("\n\n")}`);
+      pi.sendMessage({
+        customType: "cortex-agent-chain",
+        content: `Pipelines Cortex disponibles:\n\n${content}`,
+        display: true,
+      });
     },
   });
 

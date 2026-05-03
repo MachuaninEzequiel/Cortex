@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "pipx-bin:cortex-memory:cortex",
+      "args": ["mcp-server"],
+      "cwd": "${cwd}",
+      "env": {
+        "CORTEX_CONFIG_PATH": "${cwd}/config.yaml"
+      }
+    }
+  }
+}
