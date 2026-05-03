@@ -11,6 +11,7 @@ from cortex.webgraph.contracts import WebGraphEdge, WebGraphMode, WebGraphNode, 
 from cortex.webgraph.episodic_source import EpisodicSource
 from cortex.webgraph.graph_builder import GraphBuilder
 from cortex.webgraph.semantic_source import SemanticSource
+from cortex.workspace.layout import WorkspaceLayout
 
 
 class WebGraphService:
@@ -25,12 +26,14 @@ class WebGraphService:
         persist_dir: Path | None = None,
         semantic_source: SemanticSource | None = None,
         episodic_source: EpisodicSource | None = None,
+        workspace_layout: WorkspaceLayout | None = None,
     ) -> None:
-        self.project_root = project_root or Path.cwd()
-        self.config = config or WebGraphConfig.load(self.project_root)
+        self.project_root = (project_root or Path.cwd()).resolve()
+        self._layout = workspace_layout or WorkspaceLayout.discover(self.project_root)
+        self.config = config or WebGraphConfig.load(self.project_root, workspace_layout=self._layout)
         self.semantic_source = semantic_source or SemanticSource(self.project_root, vault_path=vault_path)
         self.episodic_source = episodic_source or EpisodicSource(self.project_root, persist_dir=persist_dir)
-        self.cache = WebGraphCache(self.project_root)
+        self.cache = WebGraphCache(self.project_root, workspace_layout=self._layout)
         self.graph_builder = GraphBuilder(self.config)
 
     def build_snapshot(
@@ -73,7 +76,7 @@ class WebGraphService:
             }
         )
 
-        snapshot = _append_enterprise_nodes(snapshot, self.project_root, project_id=project_id)
+        snapshot = _append_enterprise_nodes(snapshot, self.project_root, project_id=project_id, workspace_layout=self._layout)
         snapshot = _filter_snapshot_by_scope(snapshot, scope)
         self.cache.store_snapshot(mode, snapshot)
         return snapshot
@@ -156,12 +159,13 @@ class WebGraphService:
         )
 
 
-def _append_enterprise_nodes(snapshot: WebGraphSnapshot, project_root: Path, *, project_id: str) -> WebGraphSnapshot:
-    org_path = discover_enterprise_config_path(project_root)
+def _append_enterprise_nodes(snapshot: WebGraphSnapshot, project_root: Path, *, project_id: str, workspace_layout: WorkspaceLayout | None = None) -> WebGraphSnapshot:
+    layout = workspace_layout or WorkspaceLayout.discover(project_root)
+    org_path = discover_enterprise_config_path(project_root, workspace_layout=layout)
     if org_path is None:
         return snapshot
     try:
-        cfg = load_enterprise_config(project_root, required=True, path=org_path)
+        cfg = load_enterprise_config(project_root, required=True, path=org_path, workspace_layout=layout)
     except Exception:
         return snapshot
     if cfg is None:
@@ -200,7 +204,7 @@ def _append_enterprise_nodes(snapshot: WebGraphSnapshot, project_root: Path, *, 
         ),
     ]
 
-    vault_path = cfg.resolve_enterprise_vault_path(project_root)
+    vault_path = cfg.resolve_enterprise_vault_path(project_root, workspace_root=layout.workspace_root)
     if vault_path is not None:
         enterprise_nodes.append(
             WebGraphNode(

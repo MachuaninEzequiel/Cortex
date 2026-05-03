@@ -51,6 +51,7 @@ import yaml
 
 from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
+from cortex.workspace.layout import WorkspaceLayout
 
 app = typer.Typer(
     name="cortex",
@@ -1214,7 +1215,8 @@ def promote_knowledge(
 
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
     actor_name = actor or getpass.getuser()
-    service = KnowledgePromotionService.from_project_root(root)
+    layout = WorkspaceLayout.discover(root)
+    service = KnowledgePromotionService.from_project_root(root, workspace_layout=layout)
     plan = service.plan_promotion()
 
     payload: dict[str, object] = {
@@ -1278,7 +1280,8 @@ def review_knowledge(
 
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
     actor_name = actor or getpass.getuser()
-    service = KnowledgePromotionService.from_project_root(root)
+    layout = WorkspaceLayout.discover(root)
+    service = KnowledgePromotionService.from_project_root(root, workspace_layout=layout)
     try:
         record = service.review(selector=selector, approve=approve, actor=actor_name, reason=reason)
     except ValueError as exc:
@@ -1323,7 +1326,8 @@ def sync_enterprise_vault(
     from cortex.semantic.vault_reader import VaultReader
 
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    service = KnowledgePromotionService.from_project_root(root)
+    layout = WorkspaceLayout.discover(root)
+    service = KnowledgePromotionService.from_project_root(root, workspace_layout=layout)
     enterprise_vault = service.paths.enterprise_vault
     if not enterprise_vault.exists():
         typer.echo(f"Enterprise vault directory not found: {enterprise_vault}", err=True)
@@ -1597,7 +1601,8 @@ def memory_report(
         raise typer.Exit(1)
 
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    service = EnterpriseReportingService.from_project_root(root)
+    layout = WorkspaceLayout.discover(root)
+    service = EnterpriseReportingService.from_project_root(root, workspace_layout=layout)
     report = service.build_memory_report(scope=scope)  # type: ignore[arg-type]
 
     if json_output:
@@ -1671,10 +1676,15 @@ def forget(
 
 def _load_memory() -> AgentMemory:  # noqa: F821
     from cortex.core import AgentMemory
+    from cortex.workspace import WorkspaceLayout
 
-    config_path = Path("config.yaml")
+    layout = WorkspaceLayout.discover(Path.cwd())
+    config_path = layout.config_path
     if not config_path.exists():
-        typer.echo("config.yaml not found. Run `cortex init` first.", err=True)
+        typer.echo(
+            f"Config not found at {config_path}. Run `cortex setup agent` first.",
+            err=True,
+        )
         sys.exit(1)
     return AgentMemory(config_path=config_path)
 

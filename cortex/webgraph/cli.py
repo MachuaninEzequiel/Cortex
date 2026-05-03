@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from cortex.webgraph.service import WebGraphService
+from cortex.workspace.layout import WorkspaceLayout
 
 app = typer.Typer(help="Hybrid memory graph commands for Cortex.")
 
@@ -13,11 +14,17 @@ def _resolve_project_root(project_root: str | None) -> Path:
     return Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
 
 
+def _discover_layout(project_root: Path) -> WorkspaceLayout:
+    """Discover WorkspaceLayout from a project root path."""
+    return WorkspaceLayout.discover(project_root)
+
+
 def _require_config(project_root: Path) -> Path:
-    config_path = project_root / "config.yaml"
+    layout = _discover_layout(project_root)
+    config_path = layout.config_path
     if not config_path.exists():
         typer.secho(
-            "config.yaml not found for this project root. "
+            f"Config not found at {config_path}. "
             "Run `cortex setup agent` first or pass a valid --project-root.",
             fg=typer.colors.RED,
             err=True,
@@ -30,7 +37,8 @@ def _resolve_workspace(workspace_file: str | None, project_root: str | None = No
     from cortex.webgraph.federation import resolve_workspace_file
 
     default_root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    path = resolve_workspace_file(workspace_file, default_root)
+    layout = _discover_layout(default_root)
+    path = resolve_workspace_file(workspace_file, default_root, workspace_layout=layout)
     if path is None:
         return None
     if not path.exists():
@@ -64,7 +72,8 @@ def export_snapshot(
     else:
         root = _resolve_project_root(project_root)
         _require_config(root)
-        service = WebGraphService(root)
+        layout = _discover_layout(root)
+        service = WebGraphService(root, workspace_layout=layout)
     path = service.export_snapshot(
         output_path=Path(output) if output else None,
         mode=mode,  # type: ignore[arg-type]
@@ -99,7 +108,10 @@ def serve(
     workspace = _resolve_workspace(workspace_file, project_root)
     root = _resolve_project_root(project_root)
     if workspace is None:
+        layout = _discover_layout(root)
         _require_config(root)
+    else:
+        layout = _discover_layout(root)
 
     try:
         run_server(root, host=host, port=port, open_browser=not no_open, workspace_file=workspace)
@@ -120,9 +132,11 @@ def doctor(
     from cortex.webgraph.setup import get_missing_webgraph_dependencies
 
     root = _resolve_project_root(project_root)
-    config_path = root / "config.yaml"
-    vault_path = root / "vault"
-    memory_path = root / ".memory" / "chroma"
+    from cortex.workspace.layout import WorkspaceLayout
+    layout = WorkspaceLayout.discover(root)
+    config_path = layout.config_path
+    vault_path = layout.vault_path
+    memory_path = layout.episodic_memory_path / "chroma"
 
     checks: list[tuple[str, bool, str]] = [
         ("project_root", root.exists(), str(root)),

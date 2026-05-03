@@ -457,18 +457,32 @@ def run_cold_start(
     memory_store: Any,
     vault_path: str | Path | None = None,
     git_depth: int = 50,
+    *,
+    workspace_layout: Any | None = None,
 ) -> dict:
     """
     Run all Cold Start layers as complementary context sources.
-    
-    Returns:
-        Dict with results from each layer.
+
+    Args:
+        project_root: Root directory of the project (repo root).
+        memory_store: Episodic memory store for pre-seeding.
+        vault_path: Optional explicit path to the vault. If not provided,
+            it is resolved via workspace_layout or defaults to project/vault.
+        git_depth: Maximum number of git commits to mine.
+        workspace_layout: Optional WorkspaceLayout for path resolution.
     """
     import subprocess
     from pathlib import Path
-    
+    from cortex.workspace.layout import WorkspaceLayout
+
     project = Path(project_root)
-    vault = Path(vault_path) if vault_path else project / "vault"
+    if vault_path:
+        vault = Path(vault_path)
+    elif workspace_layout is not None:
+        vault = workspace_layout.vault_path
+    else:
+        layout = WorkspaceLayout.discover(project)
+        vault = layout.vault_path
     
     results: dict = {
         "layer1_preseed": [],

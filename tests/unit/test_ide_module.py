@@ -81,7 +81,9 @@ def test_uninstall_all_collects_results(monkeypatch) -> None:
 def test_find_project_root_walks_upwards(monkeypatch, tmp_path: Path) -> None:
     project_root = tmp_path / "repo"
     nested = project_root / "src" / "pkg"
+    # Create structure that WorkspaceLayout.discover() can find
     (project_root / ".cortex").mkdir(parents=True)
+    (project_root / "config.yaml").write_text("project_id: test\n", encoding="utf-8")
     nested.mkdir(parents=True)
 
     monkeypatch.setattr(ide.Path, "cwd", staticmethod(lambda: nested))
@@ -91,15 +93,8 @@ def test_find_project_root_walks_upwards(monkeypatch, tmp_path: Path) -> None:
 
 def test_find_project_root_raises_without_cortex(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(ide.Path, "cwd", staticmethod(lambda: tmp_path))
-    
-    # Mock exists to never find .cortex
-    original_exists = ide.Path.exists
-    def fake_exists(self):
-        if self.name == ".cortex":
-            return False
-        return original_exists(self)
-    
-    monkeypatch.setattr(ide.Path, "exists", fake_exists)
 
+    # WorkspaceLayout.discover() will try to find config.yaml or .cortex/
+    # and fail, raising FileNotFoundError
     with pytest.raises(FileNotFoundError):
         ide._find_project_root()

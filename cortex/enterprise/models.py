@@ -89,18 +89,45 @@ class EnterpriseOrgConfig(BaseModel):
             )
         return self
 
-    def resolve_enterprise_vault_path(self, project_root: Path) -> Path | None:
+    def resolve_enterprise_vault_path(
+        self,
+        project_root: Path,
+        *,
+        workspace_root: Path | None = None,
+    ) -> Path | None:
+        """Resolve the enterprise vault path.
+
+        In new layout mode, pass workspace_root to resolve paths
+        against the .cortex directory.  In legacy mode, project_root
+        is used directly (and equals workspace_root).
+
+        If workspace_root is provided, relative paths resolve against it.
+        Otherwise, they resolve against project_root (legacy behavior).
+        """
         if not self.memory.enterprise_semantic_enabled:
             return None
         path = Path(self.memory.enterprise_vault_path).expanduser()
         if not path.is_absolute():
-            path = project_root / path
+            base = workspace_root if workspace_root is not None else project_root
+            path = base / path
         return path.resolve()
 
-    def resolve_enterprise_memory_path(self, project_root: Path) -> Path | None:
+    def resolve_enterprise_memory_path(
+        self,
+        project_root: Path,
+        *,
+        workspace_root: Path | None = None,
+    ) -> Path | None:
+        """Resolve the enterprise memory path.
+
+        In new layout mode, pass workspace_root to resolve paths
+        against the .cortex directory.  In legacy mode, project_root
+        is used directly.
+        """
         if not self.memory.enterprise_episodic_enabled:
             return None
         path = Path(self.memory.enterprise_memory_path).expanduser()
         if not path.is_absolute():
-            path = project_root / path
+            base = workspace_root if workspace_root is not None else project_root
+            path = base / path
         return path.resolve()

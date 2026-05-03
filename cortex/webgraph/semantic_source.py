@@ -8,10 +8,12 @@ import yaml
 from cortex.episodic.embedder import Embedder
 from cortex.semantic.vault_reader import VaultReader
 from cortex.webgraph.contracts import SemanticRecord
+from cortex.workspace.layout import WorkspaceLayout
 
 
-def _read_project_config(project_root: Path) -> dict[str, Any]:
-    config_path = project_root / "config.yaml"
+def _read_project_config(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> dict[str, Any]:
+    layout = workspace_layout or WorkspaceLayout.discover(project_root)
+    config_path = layout.config_path
     if not config_path.exists():
         return {}
     return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
@@ -44,16 +46,18 @@ class SemanticSource:
         vault_path: Path | None = None,
         reader: VaultReader | None = None,
         embedder: Any | None = None,
+        workspace_layout: WorkspaceLayout | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
-        self._runtime_config = _read_project_config(self.project_root)
+        self._layout = workspace_layout or WorkspaceLayout.discover(self.project_root)
+        self._runtime_config = _read_project_config(self.project_root, workspace_layout=self._layout)
         episodic_cfg = self._runtime_config.get("episodic", {})
         semantic_cfg = self._runtime_config.get("semantic", {})
         configured_vault_path = semantic_cfg.get("vault_path", "vault")
         self.vault_path = (
             vault_path.resolve()
             if vault_path is not None
-            else (self.project_root / configured_vault_path).resolve()
+            else self._layout.resolve_workspace_relative(configured_vault_path)
         )
         self.reader = reader or VaultReader(
             vault_path=str(self.vault_path),

@@ -15,6 +15,7 @@ from cortex.webgraph.contracts import (
     WebGraphStats,
 )
 from cortex.webgraph.service import WebGraphService
+from cortex.workspace.layout import WorkspaceLayout
 
 
 @dataclass(frozen=True)
@@ -25,15 +26,22 @@ class WorkspaceProject:
     memory_path: Path | None = None
 
 
-def default_workspace_file(project_root: Path | None = None) -> Path:
+def default_workspace_file(project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> Path:
+    """Return the default path for the workspace.yaml file.
+
+    If a WorkspaceLayout is provided, use it.  Otherwise, fall back
+    to the legacy path under project_root / .cortex / webgraph.
+    """
+    if workspace_layout is not None:
+        return workspace_layout.webgraph_workspace_path
     root = project_root or Path.cwd()
     return root / ".cortex" / "webgraph" / "workspace.yaml"
 
 
-def resolve_workspace_file(workspace_file: str | None, project_root: Path | None = None) -> Path | None:
+def resolve_workspace_file(workspace_file: str | None, project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> Path | None:
     if workspace_file:
         return Path(workspace_file).expanduser().resolve()
-    default_path = default_workspace_file(project_root)
+    default_path = default_workspace_file(project_root, workspace_layout=workspace_layout)
     if default_path.exists():
         return default_path.resolve()
     return None

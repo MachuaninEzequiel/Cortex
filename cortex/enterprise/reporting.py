@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from cortex.doctor import DoctorCheck, DoctorReport, run_doctor
 from cortex.enterprise.config import discover_enterprise_config_path, load_enterprise_config
 from cortex.enterprise.knowledge_promotion import KnowledgePromotionService
+from cortex.workspace.layout import WorkspaceLayout
 
 ReportingScope = Literal["local", "enterprise", "all"]
 
@@ -53,12 +54,13 @@ class MemoryReportPayload(BaseModel):
 
 
 class EnterpriseReportingService:
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> None:
         self.project_root = project_root.resolve()
+        self._layout = workspace_layout or WorkspaceLayout.discover(project_root)
 
     @staticmethod
-    def from_project_root(project_root: Path) -> "EnterpriseReportingService":
-        return EnterpriseReportingService(project_root)
+    def from_project_root(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> "EnterpriseReportingService":
+        return EnterpriseReportingService(project_root, workspace_layout=workspace_layout)
 
     def build_memory_report(self, *, scope: ReportingScope = "all") -> MemoryReportPayload:
         # Always compute doctor once; we will slice it into the report.
@@ -86,13 +88,13 @@ class EnterpriseReportingService:
         return payload
 
     def _local_source(self, doctor: DoctorReport) -> MemorySourceReport:
-        vault_path = (self.project_root / "vault").resolve()
+        vault_path = self._layout.vault_path
         md_count = _count_markdown_files(vault_path) if vault_path.exists() else 0
         errors = _extract_check_count(doctor.checks, "vault_validation_errors")
         warnings = _extract_check_count(doctor.checks, "vault_validation_warnings")
         notes: list[str] = []
         if not vault_path.exists():
-            notes.append("vault/ directory missing")
+            notes.append("vault directory missing")
         return MemorySourceReport(
             scope="local",
             vault_path=str(vault_path),
@@ -103,12 +105,14 @@ class EnterpriseReportingService:
         )
 
     def _enterprise_source(self, doctor: DoctorReport) -> MemorySourceReport | None:
-        cfg_path = discover_enterprise_config_path(self.project_root)
+        cfg_path = discover_enterprise_config_path(self.project_root, workspace_layout=self._layout)
         if cfg_path is None:
             return None
-        cfg = load_enterprise_config(self.project_root, required=True, path=cfg_path)
+        cfg = load_enterprise_config(self.project_root, required=True, path=cfg_path, workspace_layout=self._layout)
         assert cfg is not None
-        enterprise_vault = cfg.resolve_enterprise_vault_path(self.project_root)
+        enterprise_vault = cfg.resolve_enterprise_vault_path(
+            self.project_root, workspace_root=self._layout.workspace_root,
+        )
         md_count = _count_markdown_files(enterprise_vault) if enterprise_vault and enterprise_vault.exists() else 0
         errors = _extract_check_count(doctor.checks, "enterprise_vault_validation_errors")
         warnings = _extract_check_count(doctor.checks, "enterprise_vault_validation_warnings")
@@ -127,16 +131,18 @@ class EnterpriseReportingService:
         )
 
     def _promotion_report(self) -> PromotionReport:
-        cfg_path = discover_enterprise_config_path(self.project_root)
+        cfg_path = discover_enterprise_config_path(self.project_root, workspace_layout=self._layout)
         if cfg_path is None:
             return PromotionReport(enabled=False, warnings=["enterprise config missing (.cortex/org.yaml)"])
-        cfg = load_enterprise_config(self.project_root, required=True, path=cfg_path)
+        cfg = load_enterprise_config(self.project_root, required=True, path=cfg_path, workspace_layout=self._layout)
         assert cfg is not None
         if not cfg.promotion.enabled:
             return PromotionReport(enabled=False, require_review=cfg.promotion.require_review)
 
         try:
-            service = KnowledgePromotionService.from_project_root(self.project_root)
+            service = KnowledgePromotionService.from_project_root(
+                self.project_root, workspace_layout=self._layout,
+            )
         except Exception as exc:
             return PromotionReport(
                 enabled=True,

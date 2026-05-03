@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel, Field
 
 from cortex.webgraph.contracts import WebGraphMode
+
+if TYPE_CHECKING:
+    from cortex.workspace.layout import WorkspaceLayout
 
 
 class WebGraphConfig(BaseModel):
@@ -21,20 +25,27 @@ class WebGraphConfig(BaseModel):
     ignored_tags: list[str] = Field(default_factory=lambda: ["release-2", "general"])
 
     @classmethod
-    def default_path(cls, project_root: Path | None = None) -> Path:
+    def default_path(cls, project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> Path:
+        """Return the config path for WebGraph.
+
+        If a WorkspaceLayout is provided, use its webgraph_config_path.
+        Otherwise, fall back to the legacy path under project_root / .cortex.
+        """
+        if workspace_layout is not None:
+            return workspace_layout.webgraph_config_path
         root = project_root or Path.cwd()
         return root / ".cortex" / "webgraph" / "config.yaml"
 
     @classmethod
-    def load(cls, project_root: Path | None = None) -> WebGraphConfig:
-        path = cls.default_path(project_root)
+    def load(cls, project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> WebGraphConfig:
+        path = cls.default_path(project_root, workspace_layout=workspace_layout)
         if not path.exists():
             return cls()
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         return cls.model_validate(data)
 
-    def save(self, project_root: Path | None = None) -> Path:
-        path = self.default_path(project_root)
+    def save(self, project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> Path:
+        path = self.default_path(project_root, workspace_layout=workspace_layout)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(self.model_dump(), sort_keys=False), encoding="utf-8")
         return path

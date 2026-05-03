@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 
 from cortex.enterprise.models import EnterpriseOrgConfig, OrgProfile
 from cortex.runtime_context import slugify
 
+if TYPE_CHECKING:
+    from cortex.workspace.layout import WorkspaceLayout
+
+# NOTE: The actual location of org.yaml depends on the workspace layout.
+# In legacy layout: repo_root / ".cortex" / "org.yaml"
+# In new layout:    workspace_root / "org.yaml"  (which is repo_root / ".cortex" / "org.yaml")
+# Both resolve to the same physical path, so the default constant is still valid.
 DEFAULT_ENTERPRISE_CONFIG_PATH = Path(".cortex") / "org.yaml"
 
 _PRESET_PROFILES: tuple[OrgProfile, ...] = (
@@ -21,7 +29,22 @@ def list_enterprise_presets() -> list[str]:
     return list(_PRESET_PROFILES)
 
 
-def discover_enterprise_config_path(project_root: Path) -> Path | None:
+def discover_enterprise_config_path(
+    project_root: Path,
+    *,
+    workspace_layout: "WorkspaceLayout | None" = None,
+) -> Path | None:
+    """Discover the enterprise config file.
+
+    If a WorkspaceLayout is provided, use it to find org.yaml.
+    Otherwise, fall back to the legacy path.
+    """
+    if workspace_layout is not None:
+        path = workspace_layout.org_config_path
+        if path.exists():
+            return path
+        return None
+
     root = project_root.resolve()
     path = root / DEFAULT_ENTERPRISE_CONFIG_PATH
     if path.exists():
@@ -34,8 +57,20 @@ def load_enterprise_config(
     *,
     required: bool = False,
     path: Path | None = None,
+    workspace_layout: "WorkspaceLayout | None" = None,
 ) -> EnterpriseOrgConfig | None:
-    config_path = path.resolve() if path else root_enterprise_config_path(project_root)
+    """Load enterprise organisational config.
+
+    If a WorkspaceLayout is provided, use it to locate org.yaml.
+    Otherwise, fall back to the legacy path under ``project_root / .cortex/``.
+    """
+    if workspace_layout is not None:
+        config_path = workspace_layout.org_config_path
+    elif path is not None:
+        config_path = path.resolve()
+    else:
+        config_path = root_enterprise_config_path(project_root)
+
     if not config_path.exists():
         if required:
             raise FileNotFoundError(f"Enterprise config not found: {config_path}")
@@ -48,6 +83,7 @@ def load_enterprise_config(
 
 
 def root_enterprise_config_path(project_root: Path) -> Path:
+    """Return the legacy path for org.yaml (repo_root / .cortex / org.yaml)."""
     return (project_root.resolve() / DEFAULT_ENTERPRISE_CONFIG_PATH).resolve()
 
 
@@ -188,8 +224,21 @@ def build_enterprise_org_config(
     return EnterpriseOrgConfig.model_validate(base)
 
 
-def write_enterprise_config(project_root: Path, config: EnterpriseOrgConfig) -> Path:
-    path = root_enterprise_config_path(project_root)
+def write_enterprise_config(
+    project_root: Path,
+    config: EnterpriseOrgConfig,
+    *,
+    workspace_layout: "WorkspaceLayout | None" = None,
+) -> Path:
+    """Write enterprise config to disk.
+
+    If a WorkspaceLayout is provided, write to the layout-aware path.
+    Otherwise, fall back to the legacy path.
+    """
+    if workspace_layout is not None:
+        path = workspace_layout.org_config_path
+    else:
+        path = root_enterprise_config_path(project_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_enterprise_config_yaml(config), encoding="utf-8")
     return path
@@ -206,7 +255,12 @@ def render_enterprise_config_yaml(config: EnterpriseOrgConfig) -> str:
     )
 
 
-def describe_enterprise_topology(config: EnterpriseOrgConfig | None, project_root: Path | None = None) -> str:
+def describe_enterprise_topology(
+    config: EnterpriseOrgConfig | None,
+    project_root: Path | None = None,
+    *,
+    workspace_layout: "WorkspaceLayout | None" = None,
+) -> str:
     if config is None:
         return "project-only (no .cortex/org.yaml)"
 
@@ -219,8 +273,15 @@ def describe_enterprise_topology(config: EnterpriseOrgConfig | None, project_roo
         f"promotion={'on' if config.promotion.enabled else 'off'}",
         f"ci={config.governance.ci_profile}",
     ]
-    if project_root is not None and config.memory.enterprise_semantic_enabled:
-        summary.append(f"enterprise_vault={config.resolve_enterprise_vault_path(project_root)}")
+    # Resolve enterprise_vault_path using workspace_layout or project_root
+    base = None
+    if workspace_layout is not None:
+        base = workspace_layout.workspace_root
+    elif project_root is not None:
+        base = project_root
+
+    if base is not None and config.memory.enterprise_semantic_enabled:
+        summary.append(f"enterprise_vault={config.resolve_enterprise_vault_path(base)}")
     elif config.memory.enterprise_semantic_enabled:
         summary.append(f"enterprise_vault={config.memory.enterprise_vault_path}")
     else:
