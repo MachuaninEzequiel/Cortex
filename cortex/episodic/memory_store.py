@@ -38,7 +38,7 @@ class EpisodicMemoryStore:
 
     def __init__(
         self,
-        persist_dir: str = ".memory/chroma",
+        persist_dir: str = "memory",
         embedding_model: str = "all-MiniLM-L6-v2",
         embedding_backend: str = "onnx",
         collection_name: str = "cortex_episodic",

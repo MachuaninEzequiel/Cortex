@@ -8,6 +8,7 @@ Generate the Cortex workspace structure used by Release 2:
 - .cortex/skills/cortex-SDDwork.md
 - .cortex/subagents/*.md
 - .cortex/AGENT.md
+- .cortex/workspace.yaml   (layout_version: 2)
 """
 
 from __future__ import annotations
@@ -467,9 +468,11 @@ Al terminar, responde EXACTAMENTE:
 
 
 def workspace_file_map() -> dict[str, str]:
+    from cortex.setup.templates import render_workspace_yaml
     return {
         ".cortex/system-prompt.md": render_system_prompt(),
         ".cortex/AGENT.md": render_agent_overview(),
+        ".cortex/workspace.yaml": render_workspace_yaml(),
         ".cortex/skills/cortex-sync.md": render_cortex_sync_skill(),
         ".cortex/skills/cortex-SDDwork.md": render_cortex_sddwork_skill(),
         ".cortex/subagents/cortex-code-explorer.md": render_subagent_explorer(),

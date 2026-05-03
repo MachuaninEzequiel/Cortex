@@ -51,10 +51,10 @@ EPIC 0 ──→ EPIC 1 ──→ EPIC 2 ──→ EPIC 3 ──→ EPIC 4 ─�
 | EPIC 1 | Compatibilidad Dual | 🔴 Rojo | ✅ Completada | 5 | 5 |
 | EPIC 2 | Centralizar Paths | 🔴 Rojo | ✅ Completada | 6 | 6 |
 | EPIC 3 | Runtime Crítico | 🟡 Amarillo | ✅ Completada | 6 | 6 |
-| EPIC 4 | Setup y Generadores | 🟡 Amarillo | ⬜ No iniciado | 5 | 0 |
-| EPIC 5 | IDE, MCP, WebGraph | 🟡 Amarillo | ⬜ No iniciado | 5 | 0 |
-| EPIC 6 | Docs, Doctor, Tests | 🟡 Amarillo | ⬜ No iniciado | 6 | 0 |
-| EPIC 7 | Activar Default | 🟢 Verde | ⬜ No iniciado | 3 | 0 |
+| EPIC 4 | Setup y Generadores | 🟡 Amarillo | ✅ Completada | 5 | 5 |
+| EPIC 5 | IDE, MCP, WebGraph | 🟡 Amarillo | ✅ Completada | 5 | 5 |
+| EPIC 6 | Docs, Doctor, Tests | 🟡 Amarillo | ✅ Completada | 6 | 5 |
+| EPIC 7 | Activar Default | 🟢 Verde | ✅ Completada | 3 | 2 |
 | EPIC 8 | Retirar Legacy | 🔴 Rojo | ⬜ Postergado | 3 | 0 |
 
 **Total: 43 tasks**

@@ -65,7 +65,7 @@ from cortex.workitems.service import WorkItemService
 # ------------------------------------------------------------------
 
 class EpisodicConfig(BaseModel):
-    persist_dir: str = ".memory/chroma"
+    persist_dir: str = "memory"
     collection_name: str = "cortex_episodic"
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_backend: Literal["onnx", "local", "openai"] = "onnx"

@@ -16,6 +16,7 @@ from cortex.runtime_context import (
 )
 from cortex.webgraph.setup import get_missing_webgraph_dependencies
 from cortex.enterprise.models import EnterpriseOrgConfig
+from cortex.workspace.layout import WorkspaceLayout
 
 DoctorSeverity = Literal["fail", "warn", "info"]
 DoctorScope = Literal["project", "enterprise", "all"]
@@ -45,13 +46,23 @@ class DoctorReport:
 
 def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorReport:
     root = project_root.resolve()
+    layout = WorkspaceLayout.discover(root)
+    is_new = layout.is_new_layout
+
     checks: list[DoctorCheck] = [
         DoctorCheck("project_root", root.exists(), "fail", str(root)),
+        DoctorCheck(
+            "layout_mode",
+            True,
+            "info",
+            f"{'new' if is_new else 'legacy'} (workspace_root={layout.workspace_root})",
+        ),
     ]
     if not root.exists():
         return DoctorReport(project_root=root, checks=checks)
 
-    config_path = root / "config.yaml"
+    # ── Config ───────────────────────────────────────────────────────
+    config_path = layout.config_path
     checks.append(DoctorCheck("config_yaml", config_path.exists(), "fail", str(config_path)))
 
     raw_config: dict = {}
@@ -61,15 +72,21 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
             from cortex.core import CortexConfig
 
             CortexConfig.model_validate(raw_config)
-            checks.append(DoctorCheck("config_validation", True, "info", "config.yaml is valid"))
+            checks.append(DoctorCheck("config_validation", True, "info", f"{config_path.name} is valid"))
         except Exception as exc:
             checks.append(DoctorCheck("config_validation", False, "fail", str(exc)))
 
-    vault_path = root / "vault"
+    # ── Vault ─────────────────────────────────────────────────────────
+    vault_path = layout.vault_path
     checks.append(DoctorCheck("vault_dir", vault_path.exists(), "fail", str(vault_path)))
 
+    # ── Episodic memory ──────────────────────────────────────────────
     episodic_cfg = raw_config.get("episodic", {}) if isinstance(raw_config, dict) else {}
-    runtime_persist_dir = resolve_episodic_persist_dir(root, episodic_cfg) if config_path.exists() else root / ".memory" / "chroma"
+    runtime_persist_dir = (
+        resolve_episodic_persist_dir(layout.workspace_root, episodic_cfg)
+        if config_path.exists()
+        else layout.episodic_memory_path / "chroma"
+    )
     import os
     is_ci = os.getenv("GITHUB_ACTIONS") == "true"
     checks.append(
@@ -81,34 +98,54 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
         )
     )
 
-    cortex_workspace = root / ".cortex"
+    # ── Cortex workspace ─────────────────────────────────────────────
     checks.append(
         DoctorCheck(
             "cortex_workspace",
-            cortex_workspace.exists(),
+            layout.workspace_root.exists(),
             "warn",
-            str(cortex_workspace),
+            str(layout.workspace_root),
         )
     )
     checks.append(
         DoctorCheck(
             "agent_guidelines",
-            (cortex_workspace / "AGENT.md").exists(),
+            layout.agent_guidelines_path.exists(),
             "warn",
-            str(cortex_workspace / "AGENT.md"),
+            str(layout.agent_guidelines_path),
         )
     )
 
+    # ── Workspace version ───────────────────────────────────────────
+    ws_yaml = layout.workspace_yaml_path
+    if ws_yaml.exists():
+        try:
+            ws_data = yaml.safe_load(ws_yaml.read_text(encoding="utf-8")) or {}
+            layout_ver = ws_data.get("layout_version", 1)
+            checks.append(
+                DoctorCheck(
+                    "workspace_layout_version",
+                    True,
+                    "info",
+                    f"layout_version={layout_ver}",
+                )
+            )
+        except Exception:
+            checks.append(DoctorCheck("workspace_layout_version", False, "warn", str(ws_yaml)))
+    else:
+        checks.append(
+            DoctorCheck(
+                "workspace_yaml",
+                False,
+                "warn" if is_new else "info",
+                f"Missing: {ws_yaml}",
+            )
+        )
+
+    # ── Git ──────────────────────────────────────────────────────────
     repo_root = detect_git_repo_path(root)
     git_available = repo_root != root or (root / ".git").exists()
-    checks.append(
-        DoctorCheck(
-            "git_repository",
-            git_available,
-            "warn",
-            str(repo_root),
-        )
-    )
+    checks.append(DoctorCheck("git_repository", git_available, "warn", str(repo_root)))
     checks.append(
         DoctorCheck(
             "git_branch",
@@ -118,6 +155,7 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
         )
     )
 
+    # ── Gitignore ────────────────────────────────────────────────────
     for pattern in RECOMMENDED_GITIGNORE_PATTERNS:
         severity: DoctorSeverity = "fail" if pattern.startswith(".memory") or pattern.endswith(".chroma/") else "warn"
         checks.append(
@@ -129,6 +167,7 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
             )
         )
 
+    # ── WebGraph ────────────────────────────────────────────────────
     missing_webgraph = get_missing_webgraph_dependencies()
     checks.append(
         DoctorCheck(
@@ -139,11 +178,13 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
         )
     )
 
+    # ── Vault validation ────────────────────────────────────────────
     if vault_path.exists():
         checks.extend(_validate_vault(vault_path))
 
+    # ── Enterprise ──────────────────────────────────────────────────
     if scope in {"enterprise", "all"}:
-        checks.extend(_validate_enterprise(root, raw_config, required=(scope == "enterprise")))
+        checks.extend(_validate_enterprise(root, raw_config, layout=layout, required=(scope == "enterprise")))
 
     return DoctorReport(project_root=root, checks=checks)
 
@@ -178,10 +219,16 @@ def _validate_enterprise(
     project_root: Path,
     raw_config: dict,
     *,
-    required: bool,
+    layout: WorkspaceLayout | None = None,
+    required: bool = False,
 ) -> list[DoctorCheck]:
     checks: list[DoctorCheck] = []
-    org_path = project_root / ".cortex" / "org.yaml"
+
+    # Prefer layout-aware path
+    if layout is None:
+        layout = WorkspaceLayout.discover(project_root)
+
+    org_path = layout.org_config_path
     checks.append(
         DoctorCheck(
             "enterprise_config",
@@ -194,7 +241,7 @@ def _validate_enterprise(
         return checks
 
     try:
-        config = load_enterprise_config(project_root, required=True, path=org_path)
+        config = load_enterprise_config(project_root, required=True, path=org_path, workspace_layout=layout)
     except Exception as exc:
         checks.append(DoctorCheck("enterprise_config_validation", False, "fail", str(exc)))
         return checks
@@ -212,11 +259,11 @@ def _validate_enterprise(
             "enterprise_topology",
             True,
             "info",
-            describe_enterprise_topology(config, project_root),
+            describe_enterprise_topology(config, project_root, workspace_layout=layout),
         )
     )
 
-    enterprise_vault = config.resolve_enterprise_vault_path(project_root)
+    enterprise_vault = config.resolve_enterprise_vault_path(project_root, workspace_root=layout.workspace_root)
     if enterprise_vault is not None:
         checks.append(
             DoctorCheck(
@@ -230,7 +277,7 @@ def _validate_enterprise(
             checks.extend(_validate_enterprise_vault(enterprise_vault))
             checks.extend(_validate_enterprise_promotion(config, enterprise_vault))
 
-    enterprise_memory = config.resolve_enterprise_memory_path(project_root)
+    enterprise_memory = config.resolve_enterprise_memory_path(project_root, workspace_root=layout.workspace_root)
     if enterprise_memory is not None:
         checks.append(
             DoctorCheck(

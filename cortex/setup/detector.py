@@ -3,6 +3,9 @@ cortex.setup.detector
 ---------------------
 Auto-detects project stack, CI/CD pipelines, and environment configuration.
 Used by ``cortex setup`` to generate project-aware defaults.
+
+EPIC 4: The detector now accepts an optional ``WorkspaceLayout``
+to correctly locate ``.github/workflows/`` regardless of layout mode.
 """
 
 from __future__ import annotations
@@ -12,6 +15,10 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cortex.workspace.layout import WorkspaceLayout
 
 
 @dataclass
@@ -57,6 +64,7 @@ class ProjectContext:
     ci: CIInfo = field(default_factory=CIInfo)
     env: EnvInfo = field(default_factory=EnvInfo)
     root: Path = field(default_factory=Path.cwd)
+    layout: "WorkspaceLayout | None" = None
 
     @property
     def project_type(self) -> str:
@@ -88,11 +96,20 @@ class ProjectDetector:
 
     def detect(self) -> ProjectContext:
         """Run all detectors and return a combined ProjectContext."""
+        from cortex.workspace.layout import WorkspaceLayout
+
+        root = self.root
+        try:
+            layout = WorkspaceLayout.discover(root)
+        except Exception:
+            layout = None
+
         return ProjectContext(
             stack=self._detect_stack(),
             ci=self._detect_ci(),
             env=self._detect_env(),
-            root=self.root,
+            root=root,
+            layout=layout,
         )
 
     # ------------------------------------------------------------------

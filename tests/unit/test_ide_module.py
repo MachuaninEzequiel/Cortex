@@ -34,8 +34,8 @@ def test_inject_uses_adapter_and_prompts(monkeypatch, tmp_path: Path) -> None:
     prompts = {"cortex-sync": "sync"}
 
     monkeypatch.setattr(ide, "get_adapter", lambda _: adapter)
-    monkeypatch.setattr(ide, "build_all_prompts", lambda _: prompts)
-    monkeypatch.setattr(ide, "build_cursor_prompts", lambda _: prompts)
+    monkeypatch.setattr(ide, "build_all_prompts", lambda _pr, **_kw: prompts)
+    monkeypatch.setattr(ide, "build_cursor_prompts", lambda _pr, **_kw: prompts)
 
     files = ide.inject("cursor", project_root=tmp_path)
 
@@ -48,7 +48,7 @@ def test_inject_all_collects_results_and_tolerates_failures(monkeypatch, tmp_pat
     fail = FakeAdapter("windsurf", fail=True)
 
     monkeypatch.setattr(ide, "get_all_adapters", lambda include_experimental=False: [ok, fail])
-    monkeypatch.setattr(ide, "build_all_prompts", lambda _: {"cortex-SDDwork": "work"})
+    monkeypatch.setattr(ide, "build_all_prompts", lambda _pr, **_kw: {"cortex-SDDwork": "work"})
 
     results = ide.inject_all(project_root=tmp_path)
 

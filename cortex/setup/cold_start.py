@@ -459,31 +459,43 @@ def run_cold_start(
     git_depth: int = 50,
     *,
     workspace_layout: Any | None = None,
+    repo_root: str | Path | None = None,
 ) -> dict:
-    """
-    Run all Cold Start layers as complementary context sources.
+    """Run all Cold Start layers as complementary context sources.
 
     Args:
-        project_root: Root directory of the project (repo root).
+        project_root: Root directory of the project (workspace root in new layout).
         memory_store: Episodic memory store for pre-seeding.
         vault_path: Optional explicit path to the vault. If not provided,
             it is resolved via workspace_layout or defaults to project/vault.
         git_depth: Maximum number of git commits to mine.
         workspace_layout: Optional WorkspaceLayout for path resolution.
+        repo_root: Optional explicit git repo root. If not provided,
+            it is resolved via workspace_layout or defaults to project_root.
+            Git operations always use the repo root, while vault/memory
+            paths use workspace_root.
     """
     import subprocess
     from pathlib import Path
     from cortex.workspace.layout import WorkspaceLayout
 
     project = Path(project_root)
+
+    # Resolve workspace layout
+    layout = workspace_layout or WorkspaceLayout.discover(project)
+
+    # vault_path defaults to layout.vault_path
     if vault_path:
         vault = Path(vault_path)
-    elif workspace_layout is not None:
-        vault = workspace_layout.vault_path
     else:
-        layout = WorkspaceLayout.discover(project)
         vault = layout.vault_path
-    
+
+    # git_root defaults to layout.repo_root
+    if repo_root:
+        git_root = Path(repo_root)
+    else:
+        git_root = layout.repo_root
+
     results: dict = {
         "layer1_preseed": [],
         "layer2_git_history": [],
@@ -492,41 +504,41 @@ def run_cold_start(
         "success": False,
         "warnings": []
     }
-    
+
     # Si ya hay memoria, no hacemos nada
     if memory_store.count() > 0:
         results["success"] = True
         return results
-    
+
     # Capa 1: Vault (Siempre se intenta)
     if vault.exists():
         results["layer1_preseed"] = layer1_preseed_vault(vault, memory_store)
-    
+
     # Capa 2: Git History (Resiliente — solo si el usuario pidió > 0 commits)
     if git_depth > 0:
         try:
             is_git = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
-                cwd=project, capture_output=True, text=True
+                cwd=git_root, capture_output=True, text=True
             ).returncode == 0
-            
+
             if is_git:
-                results["layer2_git_history"] = layer2_git_history(project, memory_store, max_commits=git_depth)
+                results["layer2_git_history"] = layer2_git_history(git_root, memory_store, max_commits=git_depth)
                 if not results["layer2_git_history"]:
                      results["warnings"].append("Git repo detectado pero no se pudieron extraer commits.")
             else:
                 results["warnings"].append("No se detecto repositorio Git. Saltando Capa 2.")
         except Exception:
             results["warnings"].append("Error al intentar acceder a Git. Saltando Capa 2.")
-    
-    # Capa 3: README (Siempre se intenta)
-    results["layer3_readme"] = layer3_readme_fallback(project, memory_store)
-    
+
+    # Capa 3: README (Siempre se intenta — uses repo_root for README)
+    results["layer3_readme"] = layer3_readme_fallback(git_root, memory_store)
+
     results["total"] = (
         len(results["layer1_preseed"]) 
         + len(results["layer2_git_history"]) 
         + len(results["layer3_readme"])
     )
     results["success"] = results["total"] > 0
-    
+
     return results

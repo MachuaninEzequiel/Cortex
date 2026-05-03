@@ -2,6 +2,9 @@
 tests.setup.test_orchestrator
 -----------------------------
 Tests for the setup orchestration system.
+
+EPIC 4: Tests are now layout-aware.  For a brand-new project
+the orchestrator writes exclusively inside ``.cortex/`` (new layout).
 """
 
 from __future__ import annotations
@@ -13,6 +16,22 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cortex.setup.orchestrator import SetupOrchestrator, format_summary
+from cortex.workspace.layout import WorkspaceLayout
+
+
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+def _new_layout_root(tmp_path: Path) -> Path:
+    """Return the expected repo root for a brand-new project.
+
+    Since SetupOrchestrator calls ``WorkspaceLayout.discover()``,
+    a brand-new tmp_path (no .cortex/, no config.yaml) will be
+    treated as a new-layout project (bootstrap mode in discover).
+    """
+    return tmp_path
+
 
 # ------------------------------------------------------------------
 # Orchestrator tests (with mocked memory)
@@ -32,27 +51,42 @@ def orchestrator_no_memory(tmp_path: Path):
 class TestSetupOrchestrator:
     def test_creates_directories(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
+        layout = orchestrator_no_memory.layout
 
-        assert (orchestrator_no_memory.root / ".memory").is_dir()
-        assert (orchestrator_no_memory.root / "vault").is_dir()
+        # In new layout, directories live inside .cortex/
+        assert layout.is_new_layout
+        assert layout.episodic_memory_path.is_dir()
+        assert layout.vault_path.is_dir()
+        # Subdirectories inside vault
+        assert (layout.vault_path / "sessions").is_dir()
+        assert (layout.vault_path / "decisions").is_dir()
+        assert (layout.vault_path / "runbooks").is_dir()
+        assert (layout.vault_path / "hu").is_dir()
 
     def test_creates_config_yaml(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        config = orchestrator_no_memory.root / "config.yaml"
+        layout = orchestrator_no_memory.layout
+        config = layout.config_path
         assert config.exists()
+        # Content should use new-layout paths
+        content = config.read_text(encoding="utf-8")
+        assert "persist_dir: memory" in content
+        assert "vault_path: vault" in content
 
     def test_creates_vault_docs(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        assert (orchestrator_no_memory.root / "vault" / "architecture.md").exists()
-        assert (orchestrator_no_memory.root / "vault" / "decisions.md").exists()
-        assert (orchestrator_no_memory.root / "vault" / "runbooks.md").exists()
+        layout = orchestrator_no_memory.layout
+        assert (layout.vault_path / "architecture.md").exists()
+        assert (layout.vault_path / "decisions.md").exists()
+        assert (layout.vault_path / "runbooks.md").exists()
 
     def test_creates_workflows(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        workflows = orchestrator_no_memory.root / ".github" / "workflows"
+        layout = orchestrator_no_memory.layout
+        workflows = layout.workflows_dir
         assert (workflows / "ci-pull-request.yml").exists()
         assert (workflows / "ci-feature.yml").exists()
         assert (workflows / "cd-deploy.yml").exists()
@@ -60,7 +94,8 @@ class TestSetupOrchestrator:
     def test_creates_devsecdocops_script(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        script = orchestrator_no_memory.root / "scripts" / "devsecdocops.sh"
+        layout = orchestrator_no_memory.layout
+        script = layout.scripts_dir / "devsecdocops.sh"
         assert script.exists()
         # Check executable permission (POSIX only)
         import os
@@ -70,11 +105,21 @@ class TestSetupOrchestrator:
     def test_creates_agent_guidelines(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        guidelines = orchestrator_no_memory.root / ".cortex" / "AGENT.md"
+        guidelines = orchestrator_no_memory.layout.agent_guidelines_path
         assert guidelines.exists()
         content = guidelines.read_text(encoding="utf-8")
         assert "Governance Rules" in content or "Cortex" in content
         assert "document" in content.lower()
+
+    def test_creates_workspace_yaml(self, orchestrator_no_memory: SetupOrchestrator) -> None:
+        """EPIC 4: workspace.yaml with layout_version: 2 must be created."""
+        orchestrator_no_memory.run()
+
+        layout = orchestrator_no_memory.layout
+        ws_yaml = layout.workspace_yaml_path
+        assert ws_yaml.exists()
+        content = ws_yaml.read_text(encoding="utf-8")
+        assert "layout_version: 2" in content
 
     def test_creates_release2_cortex_workspace(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
@@ -88,7 +133,7 @@ class TestSetupOrchestrator:
     def test_installs_skills(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         orchestrator_no_memory.run()
 
-        skills_dir = orchestrator_no_memory.root / ".cortex" / "skills"
+        skills_dir = orchestrator_no_memory.layout.skills_dir
         assert (skills_dir / "obsidian-markdown").exists()
         assert (skills_dir / "obsidian-markdown" / "SKILL.md").exists()
         assert (skills_dir / "obsidian-markdown" / "references").exists()
@@ -111,10 +156,17 @@ class TestSetupOrchestrator:
 
     def test_skips_existing_files(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         root = orchestrator_no_memory.root
-        # Create existing files
-        (root / "config.yaml").write_text("existing: true", encoding="utf-8")
-        (root / "vault").mkdir()
-        (root / "vault" / "architecture.md").write_text("existing", encoding="utf-8")
+        # Create layout manually to get paths for pre-creation
+        layout = WorkspaceLayout.discover(root)
+
+        # Pre-create .cortex/config.yaml and vault/architecture.md
+        config_path = layout.config_path
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("existing: true", encoding="utf-8")
+
+        vault_path = layout.vault_path
+        vault_path.mkdir(parents=True, exist_ok=True)
+        (vault_path / "architecture.md").write_text("existing", encoding="utf-8")
 
         summary = orchestrator_no_memory.run()
 
@@ -134,10 +186,13 @@ class TestSetupOrchestrator:
     def test_summary_contains_created_files(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         summary = orchestrator_no_memory.run()
 
-        assert "config.yaml" in summary["created"]
-        assert "vault/architecture.md" in summary["created"]
-        assert "scripts/devsecdocops.sh" in summary["created"]
-        assert ".cortex/skills/cortex-SDDwork.md" in summary["created"]
+        # In new layout, paths contain .cortex/
+        created_str = " ".join(summary["created"])
+        assert "config.yaml" in created_str
+        assert "architecture.md" in created_str
+        assert "devsecdocops.sh" in created_str
+        assert "cortex-SDDwork.md" in created_str
+        assert "workspace.yaml" in created_str
 
     def test_summary_has_project_info(self, orchestrator_no_memory: SetupOrchestrator) -> None:
         summary = orchestrator_no_memory.run()
@@ -145,6 +200,24 @@ class TestSetupOrchestrator:
         assert "project_name" in summary
         assert "language" in summary
         assert "created" in summary
+
+    def test_new_layout_structure(self, orchestrator_no_memory: SetupOrchestrator) -> None:
+        """EPIC 4: Verify new-layout directory structure."""
+        orchestrator_no_memory.run()
+        root = orchestrator_no_memory.root
+
+        # All these should live inside .cortex/ in new layout
+        assert (root / ".cortex" / "config.yaml").exists()
+        assert (root / ".cortex" / "vault").is_dir()
+        assert (root / ".cortex" / "memory").is_dir()
+        assert (root / ".cortex" / "workspace.yaml").exists()
+        assert (root / ".cortex" / "org.yaml").exists()
+
+        # Workflows are ALWAYS at .github/workflows (not inside .cortex/)
+        assert (root / ".github" / "workflows" / "ci-pull-request.yml").exists()
+
+        # Scripts inside .cortex/scripts in new layout
+        assert (root / ".cortex" / "scripts" / "devsecdocops.sh").exists()
 
 
 # ------------------------------------------------------------------
@@ -171,8 +244,10 @@ class TestNodeProjectSetup:
 
         assert summary["language"] == "javascript"
         assert summary["project_name"] == "my-node-app"
-        assert (tmp_path / "config.yaml").exists()
-        assert (tmp_path / "vault" / "architecture.md").exists()
+        # In new layout, config lives inside .cortex/
+        layout = WorkspaceLayout.discover(tmp_path)
+        assert layout.config_path.exists()
+        assert layout.vault_path.is_dir() or layout.vault_path.exists()
 
     def test_config_reflects_node_project(self, tmp_path: Path) -> None:
         pkg = {"name": "test-app"}
@@ -186,9 +261,10 @@ class TestNodeProjectSetup:
             orchestrator = SetupOrchestrator(tmp_path)
             orchestrator.run()
 
-        config = tmp_path / "config.yaml"
+        layout = WorkspaceLayout.discover(tmp_path)
+        config = layout.config_path
         content = config.read_text(encoding="utf-8")
-        # Config should exist and be valid
+        # Config should exist and contain episodic section
         assert "episodic" in content
 
 
@@ -204,14 +280,14 @@ class TestFormatSummary:
             "package_manager": "pip",
             "frameworks": [],
             "ci_detected": "none",
-            "created": ["config.yaml", "vault/architecture.md"],
+            "created": [".cortex/config.yaml", ".cortex/vault/architecture.md"],
             "skipped": [],
             "warnings": [],
         }
         output = format_summary(summary)
 
         assert "config.yaml" in output
-        assert "vault/architecture.md" in output
+        assert "architecture.md" in output
         assert "✅ Created" in output
 
     def test_contains_skipped_files(self) -> None:
@@ -222,7 +298,7 @@ class TestFormatSummary:
             "frameworks": [],
             "ci_detected": "none",
             "created": [],
-            "skipped": ["config.yaml (already exists)"],
+            "skipped": [".cortex/config.yaml (already exists)"],
             "warnings": [],
         }
         output = format_summary(summary)
