@@ -1,25 +1,40 @@
 /**
  * system-select — Cortex Agent Persona Switcher
  *
- * Comando /system: muestra un selector interactivo con todos los agentes
- * definidos en .pi/agents/. Al seleccionar uno, inyecta el system prompt
- * del agente en el siguiente turno via before_agent_start.
+ * Comando /system: selector interactivo de agentes definidos en .pi/agents/
+ * Al seleccionar uno, inyecta su system prompt en cada turno via before_agent_start.
+ * Al seleccionar "(ninguno)", restaura el comportamiento por defecto.
  *
- * API real de Pi v0.70:
+ * API real de Pi v0.70+ (verificada contra docs oficiales):
+ *
+ *   pi.sendMessage({ customType, content, display, details }, options?) → void
+ *     - content: string  ← SIEMPRE string o array de bloques, nunca omitir
+ *     - display: boolean ← true para mostrar en TUI
+ *
+ *   pi.on("before_agent_start", async (event, ctx) => {
+ *     return { systemPrompt: event.systemPrompt + "\n\n..." }
+ *   })
+ *     - event.systemPrompt: string con el prompt acumulado hasta ese handler
+ *     - retornar { systemPrompt } reemplaza (en realidad: encadena) el prompt
+ *
  *   ctx.ui.select(title: string, options: string[]) → Promise<string | undefined>
- *   ctx.ui.confirm(title: string, message: string)  → Promise<boolean>
- *   ctx.ui.notify(message: string, level)           → void
- *   ctx.ui.setStatus(key, text)                     → void
- *   pi.sendMessage(text)                            → void  (inyecta como assistant msg)
- *   pi.sendUserMessage(text)                        → void
+ *   ctx.ui.notify(message: string, level?) → void
+ *   ctx.ui.setStatus(key: string, text: string) → void
+ *   ctx.ui.confirm(title: string, message: string) → Promise<boolean>
+ *
+ *   pi.registerMessageRenderer(customType, renderer) → void
+ *     - Para que sendMessage({ display: true }) se vea bien en TUI
  *
  * Uso: pi -e .pi/extensions/system-select.ts
- * Dentro de Pi: /system
+ * Dentro de Pi: /system   /system-list
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { Text } from "@mariozechner/pi-tui";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface AgentDef {
   name: string;
@@ -28,13 +43,15 @@ interface AgentDef {
   filePath: string;
 }
 
-// ── Parsea frontmatter + body de un .md de agente ─────────────────────────
+// ── Parser de archivos de agente ───────────────────────────────────────────
+
 function parseAgentFile(filePath: string): AgentDef | null {
   try {
     const raw = readFileSync(filePath, "utf-8");
     const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
 
     if (!match) {
+      // Sin frontmatter: usa nombre de archivo como nombre del agente
       const name = filePath.split(/[\\/]/).pop()!.replace(".md", "");
       return { name, description: "(sin descripción)", systemPrompt: raw.trim(), filePath };
     }
@@ -42,7 +59,9 @@ function parseAgentFile(filePath: string): AgentDef | null {
     const fm: Record<string, string> = {};
     for (const line of match[1].split("\n")) {
       const idx = line.indexOf(":");
-      if (idx > 0) fm[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+      if (idx > 0) {
+        fm[line.slice(0, idx).trim()] = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+      }
     }
 
     return {
@@ -56,7 +75,6 @@ function parseAgentFile(filePath: string): AgentDef | null {
   }
 }
 
-// ── Escanea .pi/agents/ ────────────────────────────────────────────────────
 function scanAgents(cwd: string): AgentDef[] {
   const agentsDir = join(cwd, ".pi", "agents");
   if (!existsSync(agentsDir)) return [];
@@ -70,7 +88,7 @@ function scanAgents(cwd: string): AgentDef[] {
     }
   } catch {}
 
-  // Ordenar: orquestador primero
+  // Orquestador primero, luego alfabético
   const priority = ["cortex-sddwork", "cortex-sdwork"];
   return agents.sort((a, b) => {
     const ai = priority.indexOf(a.name.toLowerCase());
@@ -83,32 +101,42 @@ function scanAgents(cwd: string): AgentDef[] {
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
+
 export default function (pi: ExtensionAPI) {
   let activeAgent: AgentDef | null = null;
 
-  // Inyecta el system prompt del agente activo en cada turno
-  pi.on("before_agent_start", async (_event, ctx) => {
+  // ── Renderer para los mensajes de esta extensión ───────────────────────
+  // Sin esto, display:true mostraría el JSON crudo en el TUI
+  pi.registerMessageRenderer("cortex-system-select", (message, _options, theme) => {
+    const content = typeof message.content === "string" ? message.content : "";
+    return new Text(theme.fg("accent", "⬡ ") + content, 0, 0);
+  });
+
+  // ── Inyecta el system prompt del agente activo en cada turno ───────────
+  pi.on("before_agent_start", async (event, _ctx) => {
     if (!activeAgent) return;
-    // Agrega el system prompt del agente como instrucción adicional al inicio
+    // event.systemPrompt ya contiene el prompt encadenado de handlers anteriores
     return {
-      appendSystemPrompt: `\n\n---\n## Agente Activo: ${activeAgent.name}\n\n${activeAgent.systemPrompt}`,
+      systemPrompt:
+        event.systemPrompt +
+        `\n\n---\n## Agente Activo: ${activeAgent.name}\n\n${activeAgent.systemPrompt}`,
     };
   });
 
-  // Notificación al arrancar
+  // ── Notificación al arrancar ───────────────────────────────────────────
   pi.on("session_start", async (_event, ctx) => {
     const agents = scanAgents(ctx.cwd);
     if (agents.length === 0) return;
     ctx.ui.notify(
-      `⬡ Cortex: ${agents.length} agentes disponibles → /system para seleccionar`,
+      `⬡ Cortex: ${agents.length} agentes en .pi/agents/ → /system para activar`,
       "info"
     );
   });
 
-  // ── Comando /system ──────────────────────────────────────────────────────
+  // ── Comando /system ────────────────────────────────────────────────────
   pi.registerCommand("system", {
-    description: "Selecciona un agente Cortex como persona activa",
-    async handler(args: string, ctx: any) {
+    description: "Selecciona un agente Cortex como persona activa del system prompt",
+    async handler(_args: string, ctx: any) {
       const agents = scanAgents(ctx.cwd);
 
       if (agents.length === 0) {
@@ -116,13 +144,19 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      // Opción extra para desactivar el agente actual
-      const noneOption = "(ninguno — sistema por defecto)";
+      const NONE = "(ninguno — system prompt por defecto)";
 
-      // ctx.ui.select recibe título y array de STRINGS simples
+      // ctx.ui.select(title, options[]) → options DEBE ser string[]
       const options: string[] = [
-        noneOption,
-        ...agents.map(a => `${a.name}  —  ${a.description.slice(0, 60)}${a.description.length > 60 ? "…" : ""}`)
+        NONE,
+        ...agents.map(
+          (a) =>
+            `${a.name}  —  ${
+              a.description.length > 65
+                ? a.description.slice(0, 62) + "…"
+                : a.description
+            }`
+        ),
       ];
 
       const selected: string | undefined = await ctx.ui.select(
@@ -130,54 +164,71 @@ export default function (pi: ExtensionAPI) {
         options
       );
 
+      // undefined = usuario canceló con Escape
       if (selected === undefined) {
         ctx.ui.notify("Selección cancelada", "info");
         return;
       }
 
-      if (selected === noneOption) {
+      if (selected === NONE) {
         activeAgent = null;
-        ctx.ui.notify("✓ Sistema por defecto restaurado", "success");
         ctx.ui.setStatus("cortex-agent", "");
+        ctx.ui.notify("✓ System prompt por defecto restaurado", "success");
+        // sendMessage con firma correcta: objeto con customType, content, display
+        pi.sendMessage({
+          customType: "cortex-system-select",
+          content: "⬡ Agente desactivado — usando system prompt por defecto",
+          display: true,
+        });
         return;
       }
 
-      // Encuentra el agente que coincide con la opción seleccionada
+      // Extrae el nombre del agente (antes de "  —  ")
       const agentName = selected.split("  —  ")[0].trim();
-      const agent = agents.find(a => a.name === agentName);
+      const agent = agents.find((a) => a.name === agentName);
+
       if (!agent) {
         ctx.ui.notify("⚠ Agente no encontrado", "warning");
         return;
       }
 
       activeAgent = agent;
-      ctx.ui.notify(`✓ Agente activo: ${agent.name}`, "success");
       ctx.ui.setStatus("cortex-agent", `⬡ ${agent.name}`);
+      ctx.ui.notify(`✓ Agente activo: ${agent.name}`, "success");
 
-      // Muestra descripción en el chat via un mensaje del sistema
-      pi.sendMessage(
-        `**Agente cargado:** \`${agent.name}\`\n\n> ${agent.description}\n\n*El system prompt de este agente se inyectará en el próximo turno.*`
-      );
+      // Muestra la descripción del agente en el chat
+      pi.sendMessage({
+        customType: "cortex-system-select",
+        content: `⬡ Agente cargado: ${agent.name}\n${agent.description}\n\nSu system prompt se inyectará en cada turno.`,
+        display: true,
+      });
     },
   });
 
-  // ── Comando /system-list: muestra todos los agentes disponibles ───────────
+  // ── Comando /system-list ───────────────────────────────────────────────
   pi.registerCommand("system-list", {
-    description: "Lista todos los agentes Cortex disponibles",
-    handler(args: string, ctx: any) {
+    description: "Lista todos los agentes Cortex disponibles en .pi/agents/",
+    handler(_args: string, ctx: any) {
       const agents = scanAgents(ctx.cwd);
+
       if (agents.length === 0) {
         ctx.ui.notify("No hay agentes en .pi/agents/", "warning");
         return;
       }
-      const active = activeAgent?.name ?? "(ninguno)";
-      const lines = agents.map(a => {
-        const marker = a.name === activeAgent?.name ? " ◀ activo" : "";
-        return `- **${a.name}**${marker}\n  ${a.description}`;
+
+      const activeName = activeAgent?.name ?? "(ninguno)";
+      const lines = agents
+        .map((a) => {
+          const marker = a.name === activeAgent?.name ? " ◀ ACTIVO" : "";
+          return `${a.name}${marker}\n  ${a.description}`;
+        })
+        .join("\n\n");
+
+      pi.sendMessage({
+        customType: "cortex-system-select",
+        content: `Agentes disponibles (activo: ${activeName})\n\n${lines}`,
+        display: true,
       });
-      pi.sendMessage(
-        `## Agentes Cortex\n\n**Activo:** \`${active}\`\n\n${lines.join("\n\n")}`
-      );
     },
   });
 }
