@@ -14,6 +14,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from cortex.security.paths import resolve_safe, validate_under_root
 from cortex.workitems.models import TrackedItem
 
 
@@ -82,12 +83,12 @@ def write_session_note(
     """
     today = note_date or date.today()
     vault = Path(vault_path)
-    target_dir = vault / "sessions"
+    target_dir = resolve_safe(vault, "sessions")
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    final_tags = ["session", "release-2"] + list(tags or [])
+    final_tags = ["session"] + list(tags or [])
     filename = f"{today.isoformat()}_{_slugify(title)}.md"
-    path = target_dir / filename
+    path = validate_under_root(target_dir / filename, vault)
 
     content = _frontmatter(
         title=title,
@@ -128,12 +129,12 @@ def write_spec_note(
     """
     today = note_date or date.today()
     vault = Path(vault_path)
-    target_dir = vault / "specs"
+    target_dir = resolve_safe(vault, "specs")
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    final_tags = ["spec", "release-2"] + list(tags or [])
+    final_tags = ["spec"] + list(tags or [])
     filename = f"{today.isoformat()}_{_slugify(title)}.md"
-    path = target_dir / filename
+    path = validate_under_root(target_dir / filename, vault)
 
     content = _frontmatter(
         title=title,
@@ -166,13 +167,13 @@ def write_tracked_item_note(
     """Write a tracked item note to ``vault/hu/`` and return the file path."""
     today = note_date or date.today()
     vault = Path(vault_path)
-    target_dir = vault / "hu"
+    target_dir = resolve_safe(vault, "hu")
     target_dir.mkdir(parents=True, exist_ok=True)
 
     title = f"{item.id}: {item.title}"
     final_tags = ["hu", item.source.value, item.kind.value] + list(item.labels)
     filename = f"{_slugify(item.id)}.md"
-    path = target_dir / filename
+    path = validate_under_root(target_dir / filename, vault)
 
     extra_fields = [
         ("external_id", f'"{item.external_id}"'),

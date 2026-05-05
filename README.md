@@ -5,18 +5,15 @@
     </a>
   <br />
 
-  <h1>CORTEX  — Enterprise Edition</h1>
+  <h1>CORTEX</h1>
 
   <p>
     <strong>Calidad, Seguridad, Documentación y Memoria Corporativa como sistema de gobernanza para Organizaciones y DevAgents</strong>
   </p>
 
   <p>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Release-3.0.0--Enterprise-blueviolet.svg" alt="Release 3.0.0" /></a>
     <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Architecture-Hybrid--Enterprise--Memory-orange.svg" alt="Architecture" /></a>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Coverage->85%25-brightgreen.svg" alt="Coverage" /></a>
     <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python 3.10+" /></a>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/CI%2FCD-DevSecDocOps-red.svg" alt="CI/CD" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
   </p>
 
@@ -28,7 +25,7 @@
 
 En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de la productividad. Los agentes convencionales inician cada tarea en blanco, ignorando las decisiones arquitectónicas pasadas, las vulnerabilidades detectadas y el contexto histórico de tu negocio.
 
-**Cortex redefine la relación humano-agente.** No es solo una base de conocimientos; es un **Sistema de Gobernanza** que obliga a la IA a seguir un ciclo de vida disciplinado de ingeniería de software. Con la v3.0, Cortex escala esta gobernanza al nivel **corporativo**: memoria institucional, promoción auditable de conocimiento, retrieval multi-nivel y observabilidad operativa, todo gobernado por una topología declarativa (`org.yaml`).
+**Cortex redefine la relación humano-agente.** No es solo una base de conocimientos; es un **Sistema de Gobernanza** que obliga a la IA a seguir un ciclo de vida disciplinado de ingeniería de software. Cortex escala esta gobernanza al nivel **corporativo**: memoria institucional, promoción auditable de conocimiento, retrieval multi-nivel y observabilidad operativa, todo gobernado por una topología declarativa (`org.yaml`).
 
 >  Para un documento exhaustivo del estado completo de Cortex Enterprise, consultá el [Manifiesto Cortex Enterprise](docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md).
 
@@ -441,16 +438,16 @@ Cortex/
 ├── tests/                     # Suite (unit/, integration/, e2e/)
 ├── docs/enterprise/           # Documentación Enterprise (Plans, Avances, Backlog)
 ├── .github/workflows/         # CI/CD Pipelines (PR, Enterprise, Security, Release)
-├── vault/                     # Knowledge base (Obsidian compatible)
-├── .cortex/                   # Cortex Workspace (config, vault, memory, skills, agents)
+├── .cortex/                   # Cortex Workspace v2 (new-layout default)
 │   ├── config.yaml            # Configuración principal
 │   ├── workspace.yaml         # Layout versión y proyectos
-│   ├── vault/                 # Vault del workspace (mutuamente accesible)
+│   ├── vault/                 # Knowledge base (Obsidian compatible)
 │   ├── memory/                # Memoria episódica ChromaDB
 │   ├── skills/                # Agent skills
 │   ├── subagents/             # Subagentes de documentación
 │   ├── org.yaml               # Topología enterprise
 │   └── scripts/               # Scripts DevSecDocOps
+├── vault/                     # Knowledge base (legacy layout only)
 └── pyproject.toml             # Configuración de empaquetado
 ```
 

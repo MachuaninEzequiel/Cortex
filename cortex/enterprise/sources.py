@@ -25,21 +25,28 @@ class EpisodicSource:
 class MultiVaultReader:
     def __init__(self, *, sources: list[VaultSource], embedding_model: str, embedding_backend: str) -> None:
         self.sources = sources
-        self._readers: list[tuple[VaultSource, VaultReader]] = [
-            (
-                source,
-                VaultReader(
-                    vault_path=source.path,
-                    embedding_model=embedding_model,
-                    embedding_backend=embedding_backend,
-                ),
-            )
-            for source in sources
-        ]
+        self._embedding_model = embedding_model
+        self._embedding_backend = embedding_backend
+        self._readers: list[tuple[VaultSource, VaultReader]] | None = None
+
+    def _get_readers(self) -> list[tuple[VaultSource, VaultReader]]:
+        if self._readers is None:
+            self._readers = [
+                (
+                    source,
+                    VaultReader(
+                        vault_path=source.path,
+                        embedding_model=self._embedding_model,
+                        embedding_backend=self._embedding_backend,
+                    ),
+                )
+                for source in self.sources
+            ]
+        return self._readers
 
     def search(self, query: str, top_k: int, use_embeddings: bool = True) -> list[SemanticDocument]:
         hits: list[SemanticDocument] = []
-        for source, reader in self._readers:
+        for source, reader in self._get_readers():
             source_hits = reader.search(query, top_k=top_k, use_embeddings=use_embeddings)
             for doc in source_hits:
                 hits.append(
@@ -58,22 +65,29 @@ class MultiVaultReader:
 class MultiEpisodicReader:
     def __init__(self, *, sources: list[EpisodicSource], embedding_model: str, embedding_backend: str) -> None:
         self.sources = sources
-        self._stores: list[tuple[EpisodicSource, EpisodicMemoryStore]] = [
-            (
-                source,
-                EpisodicMemoryStore(
-                    persist_dir=source.persist_dir,
-                    embedding_model=embedding_model,
-                    embedding_backend=embedding_backend,
-                    collection_name=source.collection_name,
-                ),
-            )
-            for source in sources
-        ]
+        self._embedding_model = embedding_model
+        self._embedding_backend = embedding_backend
+        self._stores: list[tuple[EpisodicSource, EpisodicMemoryStore]] | None = None
+
+    def _get_stores(self) -> list[tuple[EpisodicSource, EpisodicMemoryStore]]:
+        if self._stores is None:
+            self._stores = [
+                (
+                    source,
+                    EpisodicMemoryStore(
+                        persist_dir=source.persist_dir,
+                        embedding_model=self._embedding_model,
+                        embedding_backend=self._embedding_backend,
+                        collection_name=source.collection_name,
+                    ),
+                )
+                for source in self.sources
+            ]
+        return self._stores
 
     def search(self, query: str, top_k: int, use_embeddings: bool = True) -> list[EpisodicHit]:
         hits: list[EpisodicHit] = []
-        for source, store in self._stores:
+        for source, store in self._get_stores():
             source_hits = store.search(query, top_k=top_k, use_embeddings=use_embeddings)
             for hit in source_hits:
                 metadata = dict(hit.entry.metadata)

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### 🟣 Versionado y narrativa publica
+- **Normalización de versionado**: Unificada la versión pública en `0.3.0` con estado `Alpha`.
+  - `pyproject.toml`, `cortex/__init__.py` y README ahora muestran la misma versión.
+  - Bajado el `Development Status` a `3 - Alpha` para reflejar el estado real del proyecto.
+  - Eliminados del README los badges estáticos no auditables de cobertura y CI/CD.
+
 ### 🔵 Current Focus
 - **Enterprise Memory Actualization**: Refining the integration between local Python codebase and Obsidian-based documentation pipeline.
 - **MCP Server Optimization**: Streamlining context synchronization for high-latency environments.

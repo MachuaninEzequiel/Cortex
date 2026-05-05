@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from cortex.models import MemoryEntry
+from cortex.security.paths import resolve_safe
 from cortex.workitems.models import TrackedItem
 from cortex.workitems.providers.base import WorkItemProvider
 
@@ -54,7 +55,7 @@ class WorkItemService:
         return path
 
     def get_item_note(self, item_id: str) -> Path:
-        path = self._vault_path / "hu" / f"{self._slug(item_id)}.md"
+        path = resolve_safe(self._vault_path, Path("hu") / f"{self._slug(item_id)}.md")
         if not path.exists():
             raise FileNotFoundError(f"Tracked item not found in vault: {item_id}")
         return path

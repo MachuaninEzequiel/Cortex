@@ -22,7 +22,7 @@ class WebGraphConfig(BaseModel):
     semantic_neighbor_max_nodes: int = Field(default=220, ge=0)
     enable_semantic_neighbors: bool = True
     max_subgraph_depth: int = Field(default=2, ge=1, le=5)
-    ignored_tags: list[str] = Field(default_factory=lambda: ["release-2", "general"])
+    ignored_tags: list[str] = Field(default_factory=lambda: ["general"])
 
     @classmethod
     def default_path(cls, project_root: Path | None = None, *, workspace_layout: WorkspaceLayout | None = None) -> Path:
