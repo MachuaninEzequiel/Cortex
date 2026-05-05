@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Cortex — Enterprise Edition**
+**Cortex Enterprise**
 
 *Calidad, Seguridad, Documentación y Memoria Corporativa como sistema de gobernanza para Organizaciones y DevAgents*
 
@@ -442,10 +442,15 @@ Cortex/
 │   ├── ci-enterprise-governance.yml # Gobernanza enterprise
 │   ├── ci-security.yml            # Auditoría de seguridad
 │   └── ci-release.yml             # Pipeline de releases
-├── vault/                         # Knowledge base (Obsidian compatible)
-├── .cortex/                       # Config de skills y local-memory
+├── .cortex/                       # Cortex Workspace v2 (new-layout default)
+│   ├── config.yaml                # Configuración runtime local
+│   ├── vault/                     # Knowledge base (Obsidian compatible)
+│   ├── memory/                    # Memoria episódica ChromaDB
+│   ├── skills/                    # Agent skills
+│   └── org.yaml                   # Topología enterprise
+├── vault/                         # Knowledge base (legacy layout only)
+├── config.yaml                    # Configuración runtime local (legacy only)
 ├── pyproject.toml                 # Empaquetado y dependencias
-├── config.yaml                    # Configuración runtime local
 └── README.md                      # Documentación principal
 ```
 
@@ -455,16 +460,17 @@ Cortex/
 
 ### config.yaml (Runtime Local)
 
+> Ubicación: `.cortex/config.yaml` en new-layout, o `config.yaml` en legacy.
+
 ```yaml
 episodic:
-  persist_dir: .memory/chroma
+  persist_dir: .memory/chroma       # new-layout: .cortex/memory/chroma
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
-  embedding_backend: onnx         # onnx | local | openai
-  namespace_mode: project          # project | branch | custom
+  embedding_backend: onnx           # onnx | local | openai
 
 semantic:
-  vault_path: vault
+  vault_path: vault                  # relativo a workspace_root
 
 retrieval:
   top_k: 5
@@ -476,6 +482,8 @@ context_enricher:
   domain_confidence: 0.5
   max_items: 8
   max_chars: 2000
+  multi_match_boost: 1.5
+  co_occurrence_boost: 0.3
   strategies:
     topic: true
     files: true
@@ -484,7 +492,7 @@ context_enricher:
     graph_expansion: true
 
 llm:
-  provider: none                   # none | openai | anthropic | ollama
+  provider: none                     # none | openai | anthropic | ollama
   model: ""
 
 pipeline:
@@ -493,23 +501,17 @@ pipeline:
     security:
       enabled: true
       block_on_failure: true
+      audit_level: high              # low | moderate | high | critical
     lint:
       enabled: true
       block_on_failure: true
     test:
       enabled: true
       block_on_failure: true
-      min_coverage: 0
+      min_coverage: 0                # 0 = sin enforcement
     documentation:
       enabled: true
       block_on_failure: false
-
-integrations:
-  jira:
-    enabled: false
-    base_url: ""
-    email_env: JIRA_EMAIL
-    token_env: JIRA_API_TOKEN
 ```
 
 ### .cortex/org.yaml (Enterprise)
@@ -524,7 +526,7 @@ organization:
 memory:
   mode: layered
   enterprise_vault_path: vault-enterprise
-  enterprise_memory_path: .memory/enterprise/chroma
+  enterprise_memory_path: memory/enterprise/chroma
   enterprise_semantic_enabled: true
   enterprise_episodic_enabled: false
   project_memory_mode: isolated

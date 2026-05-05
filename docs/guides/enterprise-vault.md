@@ -13,18 +13,18 @@ Si conocés Git, ya entendés Enterprise Memory. El concepto es el mismo:
 > **`vault/` es tu repo local y `vault-enterprise/` es tu remote origin.**
 > Trabajás en local, promovés (push) lo valioso, y buscás (pull) lo que otros compartieron.
 
-| Concepto Git | Concepto Cortex Enterprise | Paralelo |
-| --- | --- | --- |
-| Repo local (`.git/`) | `vault/` (proyecto) | Donde trabajás y persistís cambios |
-| Repo remoto (origin) | `vault-enterprise/` (organización) | La fuente de verdad compartida |
-| `git commit` | `cortex save-session` / `create-spec` | Persistir trabajo localmente |
-| `git push` | `cortex promote-knowledge` | Subir conocimiento al nivel compartido |
-| `git pull` / `git fetch` | `cortex search --scope all` | Traer conocimiento del nivel corporativo |
-| Pull Request (review) | `cortex review-knowledge` | Revisión humana antes de integrar |
-| Feature branch | Vault de un proyecto individual | Espacio aislado de trabajo |
-| `main` / `master` | `vault-enterprise/` | La fuente canónica de verdad |
-| `.gitignore` | `.memory/` (en .gitignore) | Lo que NO se comparte |
-| `git clone` + rebuild | `cortex sync-vault` | Reconstruir estado local desde la fuente |
+| Concepto Git | Concepto Cortex Enterprise (new-layout) | Concepto Cortex Enterprise (legacy) | Paralelo |
+| --- | --- | --- | --- |
+| Repo local (`.git/`) | `.cortex/vault/` | `vault/` | Donde trabajás y persistís cambios |
+| Repo remoto (origin) | `.cortex/vault-enterprise/` | `vault-enterprise/` | La fuente de verdad compartida |
+| `git commit` | `cortex save-session` / `create-spec` | — | Persistir trabajo localmente |
+| `git push` | `cortex promote-knowledge` | — | Subir conocimiento al nivel compartido |
+| `git pull` / `git fetch` | `cortex search --scope all` | — | Traer conocimiento del nivel corporativo |
+| Pull Request (review) | `cortex review-knowledge` | — | Revisión humana antes de integrar |
+| Feature branch | Vault de un proyecto individual | — | Espacio aislado de trabajo |
+| `main` / `master` | `.cortex/vault-enterprise/` | `vault-enterprise/` | La fuente canónica de verdad |
+| `.gitignore` | `.cortex/memory/` | `.memory/` | Lo que NO se comparte |
+| `git clone` + rebuild | `cortex sync-vault` | — | Reconstruir estado local desde la fuente |
 
 ### Donde la analogía es exacta
 
@@ -143,34 +143,54 @@ Configuración manual completa via `org.yaml`:
 schema_version: 1
 organization:
   name: "Mi Empresa"
-  topology: custom
-  
-vault:
-  enterprise_path: "../vault-enterprise"
-  promotion_policy:
-    auto_promote: false
-    require_review: true
-    min_reviewers: 2
-    
-enforcement:
-  profile: enforced         # observability | advisory | enforced
-  ci_gates:
-    security: true
-    lint: true
-    test: true
-    documentation: true
+  slug: "mi-empresa"
+  profile: custom
+
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: all
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.2
+
+promotion:
+  enabled: true
+  allowed_doc_types:
+    - spec
+    - decision
+    - runbook
+    - hu
+    - incident
+  require_review: true
+  default_targets:
+    - enterprise_vault
+
+governance:
+  git_policy: strict
+  ci_profile: enforced
+  version_sessions_in_git: true
+
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
 ```
 
 ---
 
 ## ¿Qué va a Git/Master?
 
-| Recurso | ¿Va a Git? | Rama recomendada |
-| --- | --- | --- |
-| `vault/` (local) | ✅ Sí | La rama del proyecto |
-| `vault-enterprise/` | ✅ Sí | Repo separado o rama `main` del org repo |
-| `.cortex/org.yaml` | ✅ Sí | La rama del proyecto |
-| `.memory/` | ❌ No | En `.gitignore` |
+| Recurso | New-layout | Legacy | ¿Va a Git? | Rama recomendada |
+| --- | --- | --- | --- | --- |
+| Vault local | `.cortex/vault/` | `vault/` | ✅ Sí | La rama del proyecto |
+| Vault enterprise | `.cortex/vault-enterprise/` | `vault-enterprise/` | ✅ Sí | Repo separado o rama `main` del org repo |
+| Org config | `.cortex/org.yaml` | `.cortex/org.yaml` | ✅ Sí | La rama del proyecto |
+| Memoria episódica | `.cortex/memory/` | `.memory/` | ❌ No | En `.gitignore` |
 
 ### Estrategia para el vault enterprise
 

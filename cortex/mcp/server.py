@@ -14,6 +14,7 @@ from mcp.server.models import InitializationOptions
 
 from cortex.core import AgentMemory
 from cortex.models import EnrichedContext
+from cortex.security.paths import PathSecurityError, resolve_safe
 from cortex.workspace.layout import WorkspaceLayout
 
 # Configure logging for MCP tool call tracking
@@ -385,14 +386,9 @@ class CortexMCPServer:
 
         for raw_path in re.findall(r"\b[\w./\\-]+\.[A-Za-z0-9]+\b", query):
             normalized = raw_path.strip().replace("\\", "/")
-            path = Path(normalized)
-            if path.is_absolute():
-                continue
-
-            candidate = (project_root / path).resolve()
             try:
-                candidate.relative_to(project_root)
-            except ValueError:
+                candidate = resolve_safe(project_root, normalized)
+            except PathSecurityError:
                 continue
 
             if candidate.is_file():
@@ -525,6 +521,12 @@ class CortexMCPServer:
     # Subagent delegation layer (used by cortex-SDDwork flow)
     # ------------------------------------------------------------------
 
+    def _get_layout(self) -> WorkspaceLayout:
+        """Return the workspace layout, discovering it lazily if needed."""
+        if not hasattr(self, "_layout") or self._layout is None:
+            self._layout = WorkspaceLayout.discover(self.project_root)
+        return self._layout
+
     def _store_task_result(
         self,
         agent_name: str,
@@ -604,7 +606,7 @@ class CortexMCPServer:
 
         # Locate the subagent definition file
         subagent_file = (
-            self._layout.subagents_dir / f"{agent_name}.md"
+            self._get_layout().subagents_dir / f"{agent_name}.md"
         )
 
         # Check for the opencode runtime

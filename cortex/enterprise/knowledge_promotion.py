@@ -132,10 +132,11 @@ class PromotionRulesEngine:
 
 
 class KnowledgePromotionService:
-    def __init__(self, paths: PromotionPaths, *, org_slug: str, require_review: bool) -> None:
+    def __init__(self, paths: PromotionPaths, *, org_slug: str, require_review: bool, workspace_layout: WorkspaceLayout | None = None) -> None:
         self.paths = paths
         self.org_slug = org_slug
         self.require_review = require_review
+        self._workspace_layout = workspace_layout
         self.repo = PromotionRepository(paths.records_path)
         self.validator = DocValidator(vault_path=paths.local_vault)
 
@@ -168,7 +169,7 @@ class KnowledgePromotionService:
             enterprise_vault=enterprise_vault.resolve(),
             records_path=records_path,
         )
-        return KnowledgePromotionService(paths, org_slug=org_slug, require_review=config.promotion.require_review)
+        return KnowledgePromotionService(paths, org_slug=org_slug, require_review=config.promotion.require_review, workspace_layout=layout)
 
     def _project_slug(self) -> str:
         return slugify(self.paths.project_root.name, fallback="project")
@@ -185,7 +186,7 @@ class KnowledgePromotionService:
         return f"{family}/{self._project_slug()}/{Path(local_rel_path).name}"
 
     def discover_candidates(self) -> list[PromotionCandidate]:
-        config = load_enterprise_config(self.paths.project_root, required=True)
+        config = load_enterprise_config(self.paths.project_root, required=True, workspace_layout=self._workspace_layout)
         assert config is not None
         rules = PromotionRulesEngine(allowed_doc_types=set(config.promotion.allowed_doc_types))
         latest = self.repo.load_latest_by_origin_id()

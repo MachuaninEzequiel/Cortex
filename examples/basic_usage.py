@@ -12,7 +12,9 @@ Demonstrates the full cortex workflow:
 from cortex import AgentMemory
 
 # ── 1. Initialize ────────────────────────────────────────────
-memory = AgentMemory(config_path="config.yaml")
+# New-layout default: config lives in .cortex/config.yaml
+# Legacy layout: use config_path="config.yaml" instead
+memory = AgentMemory(config_path=".cortex/config.yaml")
 
 # ── 2. Store episodic memories ────────────────────────────────
 memory.remember(

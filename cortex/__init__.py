@@ -47,7 +47,7 @@ from cortex.retrieval.hybrid_search import HybridSearch
 from cortex.semantic.vault_reader import VaultReader
 from cortex.services import PRService, SessionService, SpecService
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __author__ = "cortex contributors"
 
 __all__ = [

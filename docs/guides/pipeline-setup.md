@@ -12,7 +12,7 @@ Cada stage actúa como una **puerta de calidad**: puede bloquear el merge (modo 
 
 ---
 
-## Configuración en `config.yaml`
+## Configuración en `.cortex/config.yaml` (new-layout)
 
 Todas las opciones de pipeline se configuran en el `config.yaml` de tu proyecto:
 
@@ -23,22 +23,22 @@ pipeline:
 
   stages:
     security:
-      enabled: true              # Habilitar/deshabilitar este stage
-      block_on_failure: true     # true = enforced, false = advisory
-      tool: "npm audit"          # Herramienta a ejecutar
+      enabled: true
+      block_on_failure: true         # true = enforced, false = advisory
+      audit_level: high              # low | moderate | high | critical
     lint:
       enabled: true
       block_on_failure: true
-      tool: "ruff check ."       # Reemplazable por eslint, pylint, etc.
     test:
       enabled: true
       block_on_failure: true
-      tool: "pytest"             # Reemplazable por jest, vitest, etc.
+      min_coverage: 0                # 0 = sin enforcement. Ej: 85 para 85%
     documentation:
       enabled: true
-      block_on_failure: false    # Generalmente advisory
-      tool: "cortex verify-docs"
+      block_on_failure: false        # Generalmente advisory
 ```
+
+> **Nota:** En **legacy layout**, el archivo se llama `config.yaml` y vive en la raíz del repo. El schema es idéntico.
 
 ### Campos por stage
 
@@ -46,7 +46,8 @@ pipeline:
 | --- | --- | --- | --- |
 | `enabled` | bool | `true` | Si el stage se ejecuta |
 | `block_on_failure` | bool | `true` | `true` = bloquea merge. `false` = solo advierte |
-| `tool` | string | (varía) | Comando a ejecutar para este stage |
+| `audit_level` | string | `high` | (security only) Umbral de severidad que bloquea |
+| `min_coverage` | int | `0` | (test only) Cobertura mínima exigida (0 = sin enforcement) |
 
 ---
 
@@ -56,7 +57,7 @@ pipeline:
 
 El stage se ejecuta y reporta resultados, pero **no bloquea** el merge aunque falle. Útil para:
 - Equipos en transición que están adoptando nuevas reglas
-- Stages experimentales (ej: un nuevo linter)
+- Stages experimentales
 - Documentation checks que no deberían frenar delivery
 
 ### Modo Enforced (`block_on_failure: true`)

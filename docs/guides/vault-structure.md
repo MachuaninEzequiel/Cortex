@@ -10,14 +10,34 @@ A diferencia de la memoria episódica (`.memory/`, que es una base de datos Chro
 
 ## Estructura de carpetas
 
+En **new-layout** (default desde `cortex setup agent`):
+
+```
+.cortex/
+├── vault/
+│   ├── specs/        # Especificaciones técnicas
+│   ├── sessions/     # Sesiones de trabajo
+│   ├── decisions/    # Decisiones arquitectónicas (ADRs)
+│   ├── runbooks/     # Guías operativas y procedimientos
+│   └── hu/           # Work items importados (Jira, tickets, etc.)
+├── memory/           # Memoria episódica (ChromaDB)
+├── skills/           # Perfiles de agente
+└── workspace.yaml    # Declaración de layout
+```
+
+En **legacy layout** (proyectos con `config.yaml` en raíz):
+
 ```
 vault/
-├── specs/        # Especificaciones técnicas (creadas con cortex create-spec)
-├── sessions/     # Sesiones de trabajo (creadas con cortex save-session)
-├── decisions/    # Decisiones arquitectónicas (ADRs)
-├── runbooks/     # Guías operativas y procedimientos
-└── hu/           # Work items importados (Jira, tickets, etc.)
+├── specs/
+├── sessions/
+├── decisions/
+├── runbooks/
+└── hu/
+.memory/              # Memoria episódica (ChromaDB)
 ```
+
+> El comportamiento funcional es idéntico en ambos layouts; solo cambia la ubicación física de los directorios.
 
 ### `vault/specs/`
 
@@ -29,7 +49,8 @@ Cada archivo es una especificación técnica creada **antes** de empezar a codea
 
 ```bash
 cortex create-spec --title "Auth JWT" --goal "Implementar refresh tokens"
-# Crea: vault/specs/2026-04-30-auth-jwt.md
+# Crea: .cortex/vault/specs/2026-04-30-auth-jwt.md   (new-layout)
+#    o: vault/specs/2026-04-30-auth-jwt.md          (legacy)
 ```
 
 ### `vault/sessions/`
@@ -42,7 +63,8 @@ Cada archivo es una sesión de trabajo guardada **después** de terminar una tar
 
 ```bash
 cortex save-session --title "JWT Auth" --spec-summary "Refresh tokens implementados"
-# Crea: vault/sessions/2026-04-30-jwt-auth.md
+# Crea: .cortex/vault/sessions/2026-04-30-jwt-auth.md   (new-layout)
+#    o: vault/sessions/2026-04-30-jwt-auth.md          (legacy)
 ```
 
 ### `vault/decisions/`
@@ -66,14 +88,14 @@ cortex hu get PROJ-123       # Consultar un work item guardado
 
 ## ¿Qué va a Git?
 
-| Ruta | ¿Va a Git? | Razón |
-| --- | --- | --- |
-| `vault/` | ✅ Sí | Es tu knowledge base, debe estar versionada |
-| `config.yaml` | ✅ Sí | Configuración compartida del proyecto |
-| `.cortex/org.yaml` | ✅ Sí | Topología enterprise (si aplica) |
-| `.cortex/skills/` | ✅ Sí | Perfiles de agente compartidos |
-| `.memory/` | ❌ No | Base de datos local (ChromaDB), en `.gitignore` |
-| `__pycache__/` | ❌ No | Archivos compilados de Python |
+| Ruta (new-layout) | Ruta (legacy) | ¿Va a Git? | Razón |
+| --- | --- | --- | --- |
+| `.cortex/vault/` | `vault/` | ✅ Sí | Es tu knowledge base, debe estar versionada |
+| `.cortex/config.yaml` | `config.yaml` | ✅ Sí | Configuración compartida del proyecto |
+| `.cortex/org.yaml` | `.cortex/org.yaml` | ✅ Sí | Topología enterprise (si aplica) |
+| `.cortex/skills/` | `.cortex/skills/` | ✅ Sí | Perfiles de agente compartidos |
+| `.cortex/memory/` | `.memory/` | ❌ No | Base de datos local (ChromaDB), en `.gitignore` |
+| `__pycache__/` | — | ❌ No | Archivos compilados de Python |
 
 ### Regenerar `.memory/` desde el vault
 

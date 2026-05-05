@@ -209,19 +209,19 @@ Buscá el label `good-first-issue` en los issues: pequeños bug fixes, mejoras e
 ### Estado del Roadmap: Enterprise Memory Productization
 
 ```text
-✅ Onda 1: Fundación (Completada)
+🚧 Onda 1: Fundación (En progreso / estabilización)
   - E1: Modelo organizacional enterprise (.cortex/org.yaml)
   - E2: Retrieval multi-nivel base (Local + Corporate)
 
-✅ Onda 2: Operabilidad (Completada)
+🚧 Onda 2: Operabilidad (En progreso / estabilización)
   - E3: Promotion pipeline de conocimiento (Manual/CI-driven)
   - E4: Gobernanza y CI enterprise (Políticas automáticas)
 
-✅ Onda 3: Productización (Completada)
+🚧 Onda 3: Productización (En progreso / estabilización)
   - E5: Setup enterprise interactivo (Wizard guiado)
   - E6: Observabilidad y Reporting de salud de memoria
 
-✅ Onda 4: Hardening (Completada)
+🚧 Onda 4: Hardening (En progreso / estabilización)
   - E7: Presets, documentación, hardening y adopción
 
 🔮 Siguiente: Integraciones avanzadas, dashboards visuales, plugins de terceros

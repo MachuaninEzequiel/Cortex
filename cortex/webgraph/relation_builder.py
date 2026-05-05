@@ -7,7 +7,7 @@ from collections import defaultdict
 from cortex.webgraph.config import WebGraphConfig
 from cortex.webgraph.contracts import EpisodicRecord, SemanticRecord, WebGraphEdge
 
-_GENERIC_TAGS = {"release-2", "general", "memory", "setup"}
+_GENERIC_TAGS = {"general", "memory", "setup"}
 
 
 def _slug(text: str) -> str:

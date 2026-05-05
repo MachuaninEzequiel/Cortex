@@ -21,6 +21,7 @@ from typing import Any
 
 from cortex.episodic.embedder import Embedder
 from cortex.models import SemanticDocument
+from cortex.security.paths import resolve_safe, validate_under_root
 from cortex.semantic.markdown_parser import MarkdownParser
 
 logger = logging.getLogger(__name__)
@@ -278,7 +279,7 @@ class VaultReader:
         Vectorize and index a single file from the vault.
         Avoids a full vault scan (sync).
         """
-        path = self.vault_path / relative_path
+        path = resolve_safe(self.vault_path, relative_path)
         if not path.exists():
             logger.error("Cannot index non-existent file: %s", path)
             return False
@@ -329,11 +330,14 @@ class VaultReader:
         Returns:
             Path to the newly created file.
         """
-        folder = self.vault_path / subfolder if subfolder else self.vault_path
+        if subfolder:
+            folder = resolve_safe(self.vault_path, subfolder)
+        else:
+            folder = self.vault_path
         folder.mkdir(parents=True, exist_ok=True)
 
         slug = re.sub(r"[^\w\s-]", "", title.lower()).replace(" ", "_")
-        path = folder / f"{slug}.md"
+        path = validate_under_root(folder / f"{slug}.md", self.vault_path)
 
         # Safe YAML frontmatter using yaml.dump
         frontmatter_dict: dict[str, Any] = {"title": title, "tags": tags or []}
@@ -358,7 +362,7 @@ class VaultReader:
 
     def update_note(self, relative_path: str, new_content: str) -> bool:
         """Overwrite the body of an existing note. Returns True on success."""
-        path = self.vault_path / relative_path
+        path = resolve_safe(self.vault_path, relative_path)
         if not path.exists():
             return False
         path.write_text(new_content, encoding="utf-8")

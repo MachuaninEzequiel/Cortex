@@ -39,11 +39,14 @@ pip install -e C:\Cortex
 cortex setup agent
 ```
 
-Esto crea:
-- `config.yaml` — Configuración de Cortex
-- `vault/` — Tu base de conocimiento (archivos Markdown)
+Esto crea el workspace Cortex (layout nuevo por defecto):
+- `.cortex/config.yaml` — Configuración de Cortex
+- `.cortex/vault/` — Tu base de conocimiento (archivos Markdown)
 - `.cortex/skills/` — Perfiles de agente
-- `.memory/` — Base de datos de memoria episódica (ChromaDB)
+- `.cortex/memory/` — Base de datos de memoria episódica (ChromaDB)
+- `.cortex/workspace.yaml` — Declaración de layout
+
+> **Nota sobre layouts:** Si tu proyecto ya tiene `config.yaml` en la raíz (sin `.cortex/workspace.yaml`), Cortex lo trata como **layout legacy**. En legacy, `vault/` y `.memory/` viven en la raíz del repo en lugar de bajo `.cortex/`. Todos los comandos y servicios funcionan igual; solo cambian las rutas físicas.
 
 ---
 
@@ -57,7 +60,7 @@ Antes de codear, documentá qué vas a hacer:
 cortex create-spec --title "Auth JWT" --goal "Implementar refresh tokens"
 ```
 
-Esto crea un archivo en `vault/specs/` con la especificación técnica.
+Esto crea un archivo en `.cortex/vault/specs/` con la especificación técnica (o en `vault/specs/` si usás layout legacy).
 
 ### Paso 2: Trabajar normalmente
 
@@ -71,7 +74,7 @@ Al terminar, guardá lo que hiciste:
 cortex save-session --title "JWT Auth" --spec-summary "Implementé refresh tokens con rotación"
 ```
 
-Esto persiste la sesión en `vault/sessions/` y la indexa en la memoria episódica.
+Esto persiste la sesión en `.cortex/vault/sessions/` y la indexa en la memoria episódica (o en `vault/sessions/` si usás layout legacy).
 
 ### Paso 4: Buscar en el futuro
 
