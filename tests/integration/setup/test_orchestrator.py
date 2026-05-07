@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cortex.setup.orchestrator import SetupOrchestrator, format_summary
+from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 from cortex.workspace.layout import WorkspaceLayout
 
 
@@ -337,3 +337,37 @@ class TestFormatSummary:
 
         assert "Next steps" in output
         assert "VS Code" in output
+
+
+class TestSetupOrchestratorInheritance:
+    """Verify that setup anchors to CWD even when a parent project exists."""
+
+    def test_setup_anchors_to_cwd_when_parent_project_exists(self, tmp_path: Path) -> None:
+        parent = tmp_path / "inmoboliaria"
+        parent.mkdir()
+        # Simulate an existing Cortex project in the parent
+        cortex = parent / ".cortex"
+        cortex.mkdir()
+        (cortex / "config.yaml").write_text("episodic:\n  persist_dir: memory\n", encoding="utf-8")
+        (parent / ".git").mkdir()
+
+        child = parent / "realestate"
+        child.mkdir()
+
+        with patch("cortex.core.AgentMemory") as mock_mem:
+            mock_instance = MagicMock()
+            mock_instance.sync_vault.return_value = 3
+            mock_instance.remember.return_value = MagicMock(id="mem_test")
+            mock_mem.return_value = mock_instance
+
+            orchestrator = SetupOrchestrator(root=child)
+            summary = orchestrator.run(mode=SetupMode.AGENT)
+
+        # Must anchor to child, not parent
+        assert orchestrator.layout.repo_root == child
+        assert orchestrator.layout.is_new_layout
+        assert (child / ".cortex" / "config.yaml").exists()
+        # Parent must NOT receive new files
+        assert not (parent / ".cortex" / "workspace.yaml").exists()
+        created_str = " ".join(summary["created"])
+        assert "config.yaml" in created_str

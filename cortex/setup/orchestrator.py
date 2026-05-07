@@ -84,6 +84,14 @@ class SetupOrchestrator:
         # Resolve workspace layout — for a brand-new project this
         # will be new-layout (``repo_root / .cortex``).
         self.layout = WorkspaceLayout.discover(self.root)
+        # Guard: setup must always anchor to the CWD. If discover()
+        # walked up and found a parent project, force a fresh layout
+        # rooted at self.root to prevent writes outside CWD and
+        # crashes in relative_to().
+        if self.layout.repo_root.resolve() != self.root.resolve():
+            self.layout = WorkspaceLayout.from_repo_root(self.root)
+            if self.ctx:
+                self.ctx.layout = self.layout
         if mode == SetupMode.AGENT:
             self._run_agent_flow()
         elif mode == SetupMode.PIPELINE:
@@ -95,6 +103,10 @@ class SetupOrchestrator:
         else:
             self._run_full_flow()
         return self._summary()
+
+    def _rel_path(self, path: Path) -> str:
+        """Return *path* relative to self.root, or absolute if outside."""
+        return str(path.relative_to(self.root)) if path.is_relative_to(self.root) else str(path)
 
     def _run_enterprise_flow(self, profile: str, overrides: dict[str, Any]) -> None:
         """Run guided enterprise setup (interactive or non-interactive)."""
@@ -170,11 +182,11 @@ class SetupOrchestrator:
         for d in dirs:
             if d.exists():
                 # Show path relative to repo_root for consistency
-                rel = d.relative_to(self.root) if d.is_relative_to(self.root) else d
+                rel = self._rel_path(d)
                 self.skipped.append(f"{rel}/ (already exists)")
             else:
                 d.mkdir(parents=True, exist_ok=True)
-                rel = d.relative_to(self.root) if d.is_relative_to(self.root) else d
+                rel = self._rel_path(d)
                 self.created.append(f"{rel}/")
 
     def _create_config(self) -> None:
@@ -183,11 +195,11 @@ class SetupOrchestrator:
         layout = self.layout
         path = layout.config_path
         if path.exists():
-            self.skipped.append(f"{path.relative_to(self.root)} (already exists)")
+            self.skipped.append(f"{self._rel_path(path)} (already exists)")
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(render_config_yaml(self.ctx, layout=layout), encoding="utf-8")
-        self.created.append(str(path.relative_to(self.root)))
+        self.created.append(self._rel_path(path))
 
     def _create_vault_docs(self) -> None:
         if not self.ctx:
@@ -204,11 +216,11 @@ class SetupOrchestrator:
         ]:
             path = vault / filename
             if path.exists():
-                self.skipped.append(f"{path.relative_to(self.root)} (already exists)")
+                self.skipped.append(f"{self._rel_path(path)} (already exists)")
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(renderer(self.ctx), encoding="utf-8")
-                self.created.append(str(path.relative_to(self.root)))
+                self.created.append(self._rel_path(path))
 
     def _create_enterprise_org_config(
         self,
@@ -220,7 +232,7 @@ class SetupOrchestrator:
         layout = self.layout
         path = layout.org_config_path
         if path.exists():
-            self.skipped.append(f"{path.relative_to(self.root)} (already exists)")
+            self.skipped.append(f"{self._rel_path(path)} (already exists)")
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         resolved = resolve_enterprise_setup(
@@ -231,54 +243,47 @@ class SetupOrchestrator:
         )
         config = EnterpriseOrgConfig.model_validate(resolved.overrides)
         path.write_text(render_enterprise_config_yaml(config), encoding="utf-8")
-        self.created.append(str(path.relative_to(self.root)))
+        self.created.append(self._rel_path(path))
 
     def _create_enterprise_workspace(self) -> None:
         layout = self.layout
         path = layout.workspace_yaml_path
         if path.exists():
-            self.skipped.append(f"{path.relative_to(self.root)} (already exists)")
+            self.skipped.append(f"{self._rel_path(path)} (already exists)")
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(render_workspace_yaml(), encoding="utf-8")
-        self.created.append(str(path.relative_to(self.root)))
+        self.created.append(self._rel_path(path))
 
     def _simulate_enterprise_flow(self) -> None:
         layout = self.layout
-        # Build simulated paths relative to repo_root
-        def _rel(p: Path) -> str:
-            try:
-                return str(p.relative_to(self.root))
-            except ValueError:
-                return str(p)
-
         simulated = [
-            _rel(layout.episodic_memory_path) + "/",
-            _rel(layout.vault_path) + "/",
-            _rel(layout.vault_path / "sessions") + "/",
-            _rel(layout.vault_path / "decisions") + "/",
-            _rel(layout.vault_path / "runbooks") + "/",
-            _rel(layout.vault_path / "incidents") + "/",
-            _rel(layout.vault_path / "hu") + "/",
-            _rel(layout.vault_path / "specs") + "/",
-            _rel(layout.config_path),
-            _rel(layout.org_config_path),
-            _rel(layout.vault_path / "architecture.md"),
-            _rel(layout.vault_path / "decisions.md"),
-            _rel(layout.vault_path / "runbooks.md"),
-            _rel(layout.vault_path / "runbooks" / "enterprise-runbook.md"),
-            _rel(layout.vault_path / "runbooks" / "git-vault-policy.md"),
-            _rel(layout.enterprise_vault_path / "runbooks") + "/",
-            _rel(layout.enterprise_vault_path / "decisions") + "/",
-            _rel(layout.enterprise_vault_path / "incidents") + "/",
-            _rel(layout.enterprise_vault_path / "hu") + "/",
-            _rel(layout.enterprise_vault_path / "README.md"),
+            self._rel_path(layout.episodic_memory_path) + "/",
+            self._rel_path(layout.vault_path) + "/",
+            self._rel_path(layout.vault_path / "sessions") + "/",
+            self._rel_path(layout.vault_path / "decisions") + "/",
+            self._rel_path(layout.vault_path / "runbooks") + "/",
+            self._rel_path(layout.vault_path / "incidents") + "/",
+            self._rel_path(layout.vault_path / "hu") + "/",
+            self._rel_path(layout.vault_path / "specs") + "/",
+            self._rel_path(layout.config_path),
+            self._rel_path(layout.org_config_path),
+            self._rel_path(layout.vault_path / "architecture.md"),
+            self._rel_path(layout.vault_path / "decisions.md"),
+            self._rel_path(layout.vault_path / "runbooks.md"),
+            self._rel_path(layout.vault_path / "runbooks" / "enterprise-runbook.md"),
+            self._rel_path(layout.vault_path / "runbooks" / "git-vault-policy.md"),
+            self._rel_path(layout.enterprise_vault_path / "runbooks") + "/",
+            self._rel_path(layout.enterprise_vault_path / "decisions") + "/",
+            self._rel_path(layout.enterprise_vault_path / "incidents") + "/",
+            self._rel_path(layout.enterprise_vault_path / "hu") + "/",
+            self._rel_path(layout.enterprise_vault_path / "README.md"),
             ".github/workflows/ci-pull-request.yml",
             ".github/workflows/ci-feature.yml",
             ".github/workflows/cd-deploy.yml",
             ".github/workflows/ci-enterprise-governance.yml",
-            _rel(layout.scripts_dir / "devsecdocops.sh"),
-            _rel(layout.workspace_yaml_path),
+            self._rel_path(layout.scripts_dir / "devsecdocops.sh"),
+            self._rel_path(layout.workspace_yaml_path),
         ]
         for item in simulated:
             self.created.append(f"{item} (dry-run)")
@@ -292,19 +297,19 @@ class SetupOrchestrator:
         for dirname in ("runbooks", "decisions", "incidents", "hu"):
             target = enterprise_root / dirname
             if target.exists():
-                self.skipped.append(f"{target.relative_to(self.root)}/ (already exists)")
+                self.skipped.append(f"{self._rel_path(target)}/ (already exists)")
             else:
                 target.mkdir(parents=True, exist_ok=True)
-                self.created.append(f"{target.relative_to(self.root)}/")
+                self.created.append(f"{self._rel_path(target)}/")
                 created_any = True
 
         readme_path = enterprise_root / "README.md"
         if readme_path.exists():
-            self.skipped.append(f"{readme_path.relative_to(self.root)} (already exists)")
+            self.skipped.append(f"{self._rel_path(readme_path)} (already exists)")
         else:
             enterprise_root.mkdir(parents=True, exist_ok=True)
             readme_path.write_text(render_enterprise_vault_readme(self.ctx), encoding="utf-8")
-            self.created.append(str(readme_path.relative_to(self.root)))
+            self.created.append(self._rel_path(readme_path))
             created_any = True
 
         if not created_any and not enterprise_root.exists():
@@ -340,11 +345,11 @@ class SetupOrchestrator:
         sdir.mkdir(parents=True, exist_ok=True)
         path = sdir / "devsecdocops.sh"
         if path.exists():
-            self.skipped.append(f"{path.relative_to(self.root)} (already exists)")
+            self.skipped.append(f"{self._rel_path(path)} (already exists)")
         else:
             path.write_text(DEVSECDOCSOPS_SCRIPT, encoding="utf-8")
             path.chmod(0o755)
-            self.created.append(str(path.relative_to(self.root)))
+            self.created.append(self._rel_path(path))
 
     def _create_agent_guidelines(self) -> None:
         # ensure_cortex_workspace still writes to .cortex/ which is correct
@@ -364,9 +369,9 @@ class SetupOrchestrator:
         installed = _inst(cortex_skills)
         for skill in installed:
             if "already exists" in skill:
-                self.skipped.append(f"{cortex_skills.relative_to(self.root)}/{skill}")
+                self.skipped.append(f"{self._rel_path(cortex_skills)}/{skill}")
             else:
-                self.created.append(f"{cortex_skills.relative_to(self.root)}/{skill}")
+                self.created.append(f"{self._rel_path(cortex_skills)}/{skill}")
 
     def _check_vault_pipeline_interactive(self) -> None:
         layout = self.layout
@@ -377,7 +382,7 @@ class SetupOrchestrator:
                 "    ¿Es el de Cortex? [yes] para usarlo, [no] para crear uno nuevo."
             )
             if typer.confirm(msg, default=True):
-                self.skipped.append(f"{vp.relative_to(self.root)}/ (existing)")
+                self.skipped.append(f"{self._rel_path(vp)}/ (existing)")
                 return
         self._create_directories()
 
@@ -403,7 +408,7 @@ class SetupOrchestrator:
                 self.created.append(".cortex/webgraph/ (configured)")
                 if self.attach_project_root:
                     workspace_file = attach_project_root(self.root, Path(self.attach_project_root))
-                    self.created.append(str(workspace_file.relative_to(self.root)))
+                    self.created.append(self._rel_path(workspace_file))
             else:
                 missing = get_missing_webgraph_dependencies()
                 if missing:
