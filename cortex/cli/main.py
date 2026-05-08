@@ -36,6 +36,12 @@ from __future__ import annotations
 import sys
 import warnings
 
+# Windows: reconfigurar stdout a UTF-8 para evitar UnicodeEncodeError con emojis
+# cuando stdout es un pipe (ej. subprocess en tests E2E).
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # SILENCE PROTOCOL v2.14: Suprimir advertencias de runpy/typer antes de que toquen stdout
 warnings.filterwarnings("ignore")
 

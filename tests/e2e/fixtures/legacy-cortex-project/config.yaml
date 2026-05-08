@@ -1,0 +1,14 @@
+episodic:
+  persist_dir: .memory/chroma
+  collection_name: cortex_episodic
+  embedding_model: all-MiniLM-L6-v2
+  embedding_backend: onnx
+semantic:
+  vault_path: vault
+retrieval:
+  top_k: 5
+  episodic_weight: 1.0
+  semantic_weight: 1.0
+llm:
+  provider: none
+  model: ""

@@ -98,3 +98,9 @@ disable_error_code = ["prop-decorator"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=cortex --cov-report=term-missing -q"
+markers = [
+    "e2e: marks tests as end-to-end (deselect with '-m not e2e')",
+    "smoke: marks tests as smoke tests (slow, run nightly)",
+    "artefact: marks tests as artefact integrity checks",
+    "slow: marks tests as slow (ONNX real or network, exclude in fast CI)",
+]

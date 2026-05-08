@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copiar el repo completo (incluyendo .git/ para que git funcione)
+COPY . /cortex-src
+
+# Establecer workdir sobre el código fuente
+WORKDIR /cortex-src
+
+# Instalar Cortex en modo editable con dependencias de desarrollo
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Marcar el entrypoint como ejecutable
+RUN chmod +x tests/smoke/entrypoint.sh
+
+ENTRYPOINT ["tests/smoke/entrypoint.sh"]

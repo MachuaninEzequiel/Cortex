@@ -116,7 +116,9 @@ class SetupOrchestrator:
 
         self._create_directories()
         self._create_config()
-        self._create_enterprise_org_config(profile=profile, overrides=overrides)
+        # force=True: un preset explícito del usuario siempre debe aplicarse,
+        # incluso si org.yaml ya existe de un 'setup agent' previo.
+        self._create_enterprise_org_config(profile=profile, overrides=overrides, force=True)
         self._create_vault_docs()
         self._create_enterprise_vault()
         self._create_workflows()
@@ -226,14 +228,27 @@ class SetupOrchestrator:
         self,
         profile: str = "small-company",
         overrides: dict[str, Any] | None = None,
+        force: bool = False,
     ) -> None:
+        """Crea o actualiza org.yaml con el preset enterprise.
+
+        Args:
+            profile: Preset a aplicar (small-company, multi-project-team,
+                     regulated-organization, custom).
+            overrides: Overrides adicionales sobre el preset base.
+            force: Si True, sobrescribe org.yaml aunque ya exista. Usar en
+                   el flujo enterprise cuando el usuario pasa un preset
+                   explícito; False en los flujos agent/pipeline/full para
+                   mantener idempotencia.
+        """
         if not self.ctx:
             return
         layout = self.layout
         path = layout.org_config_path
-        if path.exists():
+        if path.exists() and not force:
             self.skipped.append(f"{self._rel_path(path)} (already exists)")
             return
+        already_existed = path.exists()
         path.parent.mkdir(parents=True, exist_ok=True)
         resolved = resolve_enterprise_setup(
             project_name=self.ctx.stack.project_name or self.root.name,
@@ -243,7 +258,10 @@ class SetupOrchestrator:
         )
         config = EnterpriseOrgConfig.model_validate(resolved.overrides)
         path.write_text(render_enterprise_config_yaml(config), encoding="utf-8")
-        self.created.append(self._rel_path(path))
+        if force and already_existed:
+            self.created.append(f"{self._rel_path(path)} (updated with preset '{profile}')")
+        else:
+            self.created.append(self._rel_path(path))
 
     def _create_enterprise_workspace(self) -> None:
         layout = self.layout
