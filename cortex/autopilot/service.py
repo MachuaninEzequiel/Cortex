@@ -49,6 +49,7 @@ from cortex.autopilot.policies.default import (
     SpecRequiredPolicy,
 )
 from cortex.autopilot.state_store import StateStore
+from cortex.autopilot.session_builder import SessionBuilder
 
 
 # Default detector / policy instances used when none are explicitly injected.
@@ -71,60 +72,6 @@ _DEFAULT_POLICIES = [
 ]
 
 
-def _minimal_render(state: AutopilotSessionState) -> SessionDraft:
-    """Produce a minimal session draft from observed state.
-
-    This is a placeholder renderer used until Phase 4 introduces
-    the full ``SessionBuilder`` with multiple renderers.
-    """
-    title = state.title_hint or state.user_request or "Autopilot session"
-    if len(title) > 80:
-        title = title[:77] + "..."
-
-    lines: list[str] = [f"# {title}", ""]
-
-    if state.user_request:
-        lines.append(f"## Request")
-        lines.append(state.user_request)
-        lines.append("")
-
-    if state.changed_files:
-        lines.append("## Files changed")
-        for f in state.changed_files:
-            lines.append(f"- `{f}`")
-        lines.append("")
-
-    if state.checkpoints:
-        lines.append("## Checkpoints")
-        for ck in state.checkpoints:
-            lines.append(f"- {ck.summary}")
-        lines.append("")
-
-    if state.spec_path:
-        lines.append(f"## Spec")
-        lines.append(f"- {state.spec_path}")
-        lines.append("")
-
-    body = "\n".join(lines)
-    confidence: str = "medium"
-    warnings: list[str] = []
-
-    if not state.changed_files and not state.user_request:
-        confidence = "auto-draft"
-        warnings.append("No user request or file changes observed")
-
-    if state.checkpoints and not any(ck.verified for ck in state.checkpoints):
-        warnings.append("No verified checkpoints")
-
-    return SessionDraft(
-        title=title,
-        body=body,
-        confidence=confidence,  # type: ignore[arg-type]
-        warnings=warnings,
-        source_events=len(state.checkpoints),
-    )
-
-
 class AutopilotService:
     """Central business service for the Autopilot lifecycle.
 
@@ -143,10 +90,12 @@ class AutopilotService:
         state_store: StateStore,
         detectors: list[object] | None = None,
         policies: list[object] | None = None,
+        session_builder: SessionBuilder | None = None,
     ) -> None:
         self._store = state_store
         self._detectors = detectors if detectors is not None else list(_DEFAULT_DETECTORS)
         self._policies = policies if policies is not None else list(_DEFAULT_POLICIES)
+        self._builder = session_builder if session_builder is not None else SessionBuilder()
 
     # ------------------------------------------------------------------
     # Class-method factory
@@ -285,6 +234,29 @@ class AutopilotService:
         """Attempt to close the session, generating a draft if needed."""
         state = self._store.require_state(request.session_id)
 
+        # Guard against duplicate session notes
+        if state.session_note_path:
+            state.status = "documented"
+            state.updated_at = datetime.now()
+            self._store.save_state(state)
+            self._store.append_event(
+                AutopilotEvent(
+                    session_id=state.session_id,
+                    event_type="finish",
+                    source="cli",
+                    payload={
+                        "auto": request.auto,
+                        "saved": False,
+                        "reason": "Session note already exists",
+                    },
+                )
+            )
+            return FinishResult(
+                state=state,
+                draft=None,
+                saved=False,
+            )
+
         # Evaluate policies before finishing
         policy_decisions = evaluate_policies(
             self._policies,  # type: ignore[arg-type]
@@ -296,14 +268,13 @@ class AutopilotService:
         saved = False
 
         if request.auto and (worst is None or worst.action != "block"):
-            draft = _minimal_render(state)
+            draft = self._builder.build(state)
             saved = True
             state.status = "documented"
             state.session_note_path = f"vault/sessions/{state.session_id}-auto-draft.md"
         elif worst and worst.action == "block":
             # Blocked — generate an auto-draft anyway but do not mark documented
-            draft = _minimal_render(state)
-            draft.confidence = "auto-draft"  # type: ignore[assignment]
+            draft = self._builder.build(state)
             state.warnings.append(worst.reason)
             state.status = "finished"
         else:
