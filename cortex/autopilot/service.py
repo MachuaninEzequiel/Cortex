@@ -11,6 +11,7 @@ from cortex.workspace.layout import WorkspaceLayout
 from cortex.autopilot.config import load_autopilot_config
 from cortex.autopilot.context import fetch_context
 from cortex.autopilot.context_budget import profile_for_task_type
+from cortex.autopilot.delegation import DelegationEngine, ReviewVerdict
 from cortex.autopilot.detectors.base import resolve_detectors
 from cortex.autopilot.detectors.ambiguous import AmbiguousRequestDetector
 from cortex.autopilot.detectors.default import (
@@ -38,6 +39,7 @@ from cortex.autopilot.models import (
     AutopilotCheckpoint,
     AutopilotEvent,
     AutopilotSessionState,
+    DelegationResult,
     DetectionRequest,
     PolicyDecision,
     SessionDraft,
@@ -364,3 +366,58 @@ class AutopilotService:
             )
         )
         return result.prompt_text, result.budget
+
+    # ------------------------------------------------------------------
+    # delegation / two-stage review
+    # ------------------------------------------------------------------
+    def review_delegation(
+        self,
+        session_id: str,
+        result: DelegationResult,
+    ) -> ReviewVerdict:
+        """Run two-stage review on a ``DelegationResult``.
+
+        Persist the review outcome as an event and, if accepted, record a
+        checkpoint automatically.
+        """
+        state = self._store.require_state(session_id)
+        engine = DelegationEngine()
+        verdict = engine.review(result, state)
+
+        event_payload: dict = {
+            "task_id": result.task_id,
+            "status": result.status,
+            "accepted": verdict.accepted,
+            "stage_1_passed": verdict.stage_1_passed,
+            "stage_2_passed": verdict.stage_2_passed,
+            "reason": verdict.reason,
+            "action": verdict.action,
+        }
+
+        if not verdict.accepted:
+            state.warnings.append(
+                f"Delegation {result.task_id} rejected: {verdict.reason}"
+            )
+            self._store.save_state(state)
+
+        self._store.append_event(
+            AutopilotEvent(
+                session_id=state.session_id,
+                event_type="delegation_review",
+                source="cli",
+                payload=event_payload,
+            )
+        )
+
+        if verdict.accepted:
+            ck = AutopilotCheckpoint(
+                timestamp=datetime.now(),
+                summary=f"Delegation accepted: {result.task_id}",
+                files_at_checkpoint=list(result.files_changed),
+                verified=result.tests_passed or False,
+            )
+            state.checkpoints.append(ck)
+            state.updated_at = datetime.now()
+            self._store.save_state(state)
+
+        return verdict

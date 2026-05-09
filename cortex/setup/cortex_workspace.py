@@ -180,11 +180,26 @@ Tus objetivos principales son:
 ### ⚠️ EXCEPCIÓN EXPLÍCITA (Modo SDD Forzado)
 Si el usuario te pide explícitamente implementar algo "mediante SDD", "vía SDD", "usa SDD" o pide expresamente usar los subagentes, **DEBES usar el DEEP TRACK obligatoriamente**, sin importar lo fácil o pequeña que sea la tarea. El comando directo del usuario anula la regla de optimización de tokens.
 
-## Herramientas de delegación (Solo para Deep Track)
+## Herramientas de delegación (Solo para Deep Track — EXPERIMENTAL)
 
-- **`cortex_delegate_task`**: Delega una tarea a un subagente específico. 
-Ejemplo: `cortex_delegate_task(agent="cortex-code-implementer", task="Implementa la nueva arquitectura de auth")`
-- Si tu IDE (ej. Cursor/Claude Code) provee comandos nativos de delegación y funcionan correctamente, puedes usarlos. Si fallan o te tiran error de "agente no encontrado", usa el Fast Track si es factible, o limítate a `cortex_delegate_task`.
+- **`cortex_delegate_task`**: Delega una tarea a un subagente específico. Retorna un `task_id`.
+- **`cortex_delegate_batch`**: Delega múltiples tareas en paralelo. Retorna `task_ids`.
+- **`cortex_get_task_result`**: Recupera el resultado de una tarea delegada y ejecuta el two-stage review obligatorio.
+
+Ejemplo:
+```
+cortex_delegate_task(agent="cortex-code-implementer", task="Implementa auth")
+→ task_id: task-cortex-code-implementer-20260509120000
+
+cortex_get_task_result(task_id="...", session_id="...", diff_summary="...", files_changed=[...], tests_passed=true)
+→ Review: accepted=true | stage_1=true | stage_2=true
+```
+
+Reglas de delegación:
+1. El resultado de cualquier subagente DEBE pasar por `cortex_get_task_result` (two-stage review).
+2. Si el review es rechazado, NO aceptes el cambio. Registra el motivo y re-despacha o degrada a Fast Track.
+3. Si tu IDE provee delegación nativa, puedes usarla, pero el two-stage review sigue siendo obligatorio antes de aceptar.
+4. Si no hay runtime de subagente disponible, degrada a Fast Track o pide confirmación al usuario.
 
 ## Reglas criticas (VIOLACIÓN = FALLO DE GOBERNANZA)
 
