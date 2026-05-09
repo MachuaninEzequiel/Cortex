@@ -66,6 +66,10 @@ app = typer.Typer(
 )
 app.add_typer(webgraph_app, name="webgraph")
 
+# Autopilot subcommand (Fase 3)
+from cortex.autopilot.cli import app as autopilot_app
+app.add_typer(autopilot_app, name="autopilot")
+
 _DEFAULT_CONFIG = {
     "episodic": {
         "persist_dir": ".memory/chroma",
