@@ -90,3 +90,34 @@ class StateStore:
         return [
             p.stem for p in self.sessions_dir.glob("*.json")
         ]
+
+    def cleanup(self, *, older_than_days: int = 30, max_size_mb: float = 5.0) -> dict[str, list[str]]:
+        """Archive or remove old/large event JSONL files.
+
+        Returns:
+            Dict with lists of archived and removed files.
+        """
+        import time
+        archived: list[str] = []
+        removed: list[str] = []
+        if not self.events_dir.exists():
+            return {"archived": archived, "removed": removed}
+
+        archive_dir = self.root / "events_archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        now = time.time()
+        for path in self.events_dir.glob("*.jsonl"):
+            size_mb = path.stat().st_size / (1024 * 1024)
+            age_days = (now - path.stat().st_mtime) / 86400
+
+            if age_days > older_than_days:
+                dest = archive_dir / path.name
+                path.rename(dest)
+                archived.append(str(dest))
+            elif size_mb > max_size_mb:
+                dest = archive_dir / path.name
+                path.rename(dest)
+                archived.append(str(dest))
+
+        return {"archived": archived, "removed": removed}

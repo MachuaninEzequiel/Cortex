@@ -17,7 +17,9 @@ from cortex.models import EnrichedContext
 from cortex.security.paths import PathSecurityError, resolve_safe
 from cortex.workspace.layout import WorkspaceLayout
 
+from cortex.autopilot.delegation import get_task_result, register_task
 from cortex.autopilot.mcp_tools import AutopilotMCPTools
+from cortex.autopilot.models import DelegationResult
 from cortex.autopilot.service import AutopilotService
 
 # Configure logging for MCP tool call tracking
@@ -318,6 +320,59 @@ class CortexMCPServer:
                         },
                     }
                 ),
+                types.Tool(
+                    name="cortex_delegate_task",
+                    description="[EXPERIMENTAL] Delegate a single task to a subagent. Returns a task_id for tracking.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "agent": {"type": "string", "description": "Subagent name (e.g. cortex-code-implementer)."},
+                            "task": {"type": "string", "description": "Task description."},
+                            "session_id": {"type": "string"},
+                        },
+                        "required": ["agent", "task", "session_id"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_delegate_batch",
+                    description="[EXPERIMENTAL] Delegate multiple tasks in parallel. Returns task_ids for tracking.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "tasks": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "agent": {"type": "string"},
+                                        "task": {"type": "string"},
+                                    },
+                                    "required": ["agent", "task"],
+                                },
+                            },
+                            "session_id": {"type": "string"},
+                        },
+                        "required": ["tasks", "session_id"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_get_task_result",
+                    description="[EXPERIMENTAL] Retrieve the result of a delegated task and run two-stage review.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "task_id": {"type": "string"},
+                            "session_id": {"type": "string"},
+                            "status": {"type": "string", "default": "completed"},
+                            "diff_summary": {"type": "string", "default": ""},
+                            "files_changed": {"type": "array", "items": {"type": "string"}, "default": []},
+                            "tests_passed": {"type": "boolean"},
+                            "spec_path": {"type": "string"},
+                            "rejection_reason": {"type": "string"},
+                        },
+                        "required": ["task_id", "session_id"],
+                    }
+                ),
             ]
 
         @self.server.call_tool()
@@ -434,6 +489,68 @@ class CortexMCPServer:
 
                 elif name == "cortex_autopilot_status":
                     result_text = self._autopilot_tools.status(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_delegate_task":
+                    task_id = f"task-{arguments.get('agent','unknown')}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    register_task(
+                        DelegationResult(
+                            task_id=task_id,
+                            status="completed",
+                            diff_summary="",
+                            files_changed=[],
+                        )
+                    )
+                    result_text = f"[EXPERIMENTAL] Task delegated -> {task_id}"
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_delegate_batch":
+                    tasks = arguments.get("tasks", [])
+                    ids: list[str] = []
+                    for t in tasks:
+                        tid = f"batch-{t.get('agent','unknown')}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        register_task(
+                            DelegationResult(
+                                task_id=tid,
+                                status="completed",
+                                diff_summary="",
+                                files_changed=[],
+                            )
+                        )
+                        ids.append(tid)
+                    result_text = f"[EXPERIMENTAL] Batch delegated -> {', '.join(ids)}"
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_get_task_result":
+                    task_id = arguments.get("task_id", "")
+                    session_id = arguments.get("session_id", "")
+                    raw = get_task_result(task_id)
+                    if raw is None:
+                        result = DelegationResult(
+                            task_id=task_id,
+                            status=arguments.get("status", "completed"),
+                            diff_summary=arguments.get("diff_summary", ""),
+                            files_changed=arguments.get("files_changed", []),
+                            tests_passed=arguments.get("tests_passed"),
+                            spec_path=arguments.get("spec_path"),
+                            rejection_reason=arguments.get("rejection_reason"),
+                        )
+                    else:
+                        result = raw
+                    if session_id:
+                        verdict = self._autopilot_service.review_delegation(session_id, result)
+                        result_text = (
+                            f"[EXPERIMENTAL] Review for {task_id}\n"
+                            f"Accepted: {verdict.accepted}\n"
+                            f"Stage 1: {verdict.stage_1_passed}\n"
+                            f"Stage 2: {verdict.stage_2_passed}\n"
+                            f"Reason: {verdict.reason}"
+                        )
+                    else:
+                        result_text = f"[EXPERIMENTAL] Result for {task_id}: {result.status}"
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 

@@ -20,6 +20,7 @@ from cortex.autopilot.lifecycle import (
     StartRequest,
 )
 from cortex.autopilot.service import AutopilotService
+from cortex.autopilot.state_store import StateStore
 
 app = typer.Typer(
     name="autopilot",
@@ -245,44 +246,86 @@ def doctor(
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
     """Diagnose the Autopilot installation and state. (Read-only)"""
-    from cortex.autopilot.config import load_autopilot_config
+    from cortex.autopilot.doctor import run_diagnosis
 
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    layout = WorkspaceLayout.discover(root)
+    report = run_diagnosis(root)
 
-    checks: list[dict[str, object]] = []
-    ok = True
+    checks = [
+        {
+            "name": c.name,
+            "ok": c.ok,
+            "detail": c.detail,
+            "action": c.action,
+        }
+        for c in report.checks
+    ]
+    payload: dict[str, object] = {
+        "project_root": str(root),
+        "ok": report.ok,
+        "checks": checks,
+        "warnings": report.warnings,
+    }
+    _output(payload, json_output)
 
-    # 1. Config present or defaults
-    try:
-        cfg = load_autopilot_config(layout)
-        checks.append({"name": "config", "ok": True, "detail": f"mode={cfg.mode}, profile={cfg.default_budget_profile}"})
-    except Exception as exc:
-        checks.append({"name": "config", "ok": False, "detail": str(exc)})
-        ok = False
 
-    # 2. Run dir writable
-    run_dir = layout.workspace_root / "run" / "autopilot"
-    try:
-        run_dir.mkdir(parents=True, exist_ok=True)
-        checks.append({"name": "run_dir", "ok": True, "detail": str(run_dir)})
-    except Exception as exc:
-        checks.append({"name": "run_dir", "ok": False, "detail": str(exc)})
-        ok = False
+# ---------------------------------------------------------------------------
+# report
+# ---------------------------------------------------------------------------
+@app.command()
+def report(
+    project_root: str | None = typer.Option(
+        None, "--project-root", help="Absolute path to the project root."
+    ),
+    last: int = typer.Option(10, "--last", help="Number of recent sessions to report."),
+    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+) -> None:
+    """Generate a report of recent Autopilot sessions."""
+    from cortex.autopilot.reporting import generate_report
 
-    # 3. State store reachable
-    try:
-        store = AutopilotService.from_project_root(root)
-        sessions = store.status().active
-        checks.append({"name": "state_store", "ok": True, "detail": f"active_session={sessions}"})
-    except Exception as exc:
-        checks.append({"name": "state_store", "ok": False, "detail": str(exc)})
-        ok = False
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    sessions = generate_report(root, last_n=last)
 
     payload: dict[str, object] = {
-        "project_root": str(layout.repo_root),
-        "workspace_root": str(layout.workspace_root),
-        "ok": ok,
-        "checks": checks,
+        "project_root": str(root),
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "status": s.status,
+                "mode": s.mode,
+                "task_type": s.task_type,
+                "complexity": s.complexity,
+                "checkpoints": s.checkpoints,
+                "events": s.events,
+                "chars_injected": s.chars_injected,
+                "items_retrieved": s.items_retrieved,
+                "warnings": s.warnings,
+            }
+            for s in sessions
+        ],
+    }
+    _output(payload, json_output)
+
+
+# ---------------------------------------------------------------------------
+# cleanup
+# ---------------------------------------------------------------------------
+@app.command()
+def cleanup(
+    project_root: str | None = typer.Option(
+        None, "--project-root", help="Absolute path to the project root."
+    ),
+    older_than: int = typer.Option(30, "--older-than", help="Archive event JSONL files older than N days."),
+    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+) -> None:
+    """Archive old Autopilot event JSONL files."""
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    layout = WorkspaceLayout.discover(root)
+    store = StateStore(layout.workspace_root)
+    result = store.cleanup(older_than_days=older_than)
+    payload: dict[str, object] = {
+        "project_root": str(root),
+        "archived": result["archived"],
+        "removed": result["removed"],
     }
     _output(payload, json_output)
