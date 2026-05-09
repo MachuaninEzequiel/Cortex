@@ -19,6 +19,7 @@ from cortex.autopilot.lifecycle import (
     PreflightRequest,
     StartRequest,
 )
+from cortex.autopilot.packaging import install_plugin, uninstall_plugin
 from cortex.autopilot.service import AutopilotService
 from cortex.autopilot.state_store import StateStore
 
@@ -327,5 +328,65 @@ def cleanup(
         "project_root": str(root),
         "archived": result["archived"],
         "removed": result["removed"],
+    }
+    _output(payload, json_output)
+
+
+# ---------------------------------------------------------------------------
+# install
+# ---------------------------------------------------------------------------
+@app.command()
+def install(
+    ide: str = typer.Option(..., "--ide", help="IDE adapter to install."),
+    project_root: str | None = typer.Option(
+        None, "--project-root", help="Absolute path to the project root."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+) -> None:
+    """Install the Autopilot hook for a specific IDE."""
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    try:
+        modified = install_plugin(root, ide)
+    except KeyError as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc)}), err=True)
+        else:
+            typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    payload: dict[str, object] = {
+        "installed": True,
+        "adapter": ide,
+        "modified": [str(p) for p in modified],
+    }
+    _output(payload, json_output)
+
+
+# ---------------------------------------------------------------------------
+# uninstall
+# ---------------------------------------------------------------------------
+@app.command()
+def uninstall(
+    ide: str = typer.Option(..., "--ide", help="IDE adapter to uninstall."),
+    project_root: str | None = typer.Option(
+        None, "--project-root", help="Absolute path to the project root."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+) -> None:
+    """Uninstall the Autopilot hook for a specific IDE."""
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    try:
+        modified = uninstall_plugin(root, ide)
+    except KeyError as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc)}), err=True)
+        else:
+            typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    payload: dict[str, object] = {
+        "uninstalled": True,
+        "adapter": ide,
+        "modified": [str(p) for p in modified],
     }
     _output(payload, json_output)

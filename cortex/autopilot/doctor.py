@@ -51,10 +51,14 @@ def _check_run_dir(layout: WorkspaceLayout) -> DoctorCheck:
     run_dir = layout.workspace_root / "run" / "autopilot"
     try:
         run_dir.mkdir(parents=True, exist_ok=True)
-        test_file = run_dir / ".write_test"
-        test_file.write_text("ok", encoding="utf-8")
-        test_file.unlink()
-        return DoctorCheck(name="run_dir", ok=True, detail=str(run_dir))
+        if os.access(run_dir, os.W_OK):
+            return DoctorCheck(name="run_dir", ok=True, detail=str(run_dir))
+        return DoctorCheck(
+            name="run_dir",
+            ok=False,
+            detail=f"Run directory not writable: {run_dir}",
+            action="Ensure the workspace root is writable",
+        )
     except Exception as exc:
         return DoctorCheck(
             name="run_dir",
@@ -245,7 +249,7 @@ def _check_jsonl_rotation(layout: WorkspaceLayout) -> DoctorCheck:
             name="jsonl_rotation",
             ok=False,
             detail="; ".join(details),
-            action="Run `cortex autopilot cleanup --older-than 30d`",
+            action="Run `cortex autopilot cleanup --older-than 30`",
         )
     return DoctorCheck(name="jsonl_rotation", ok=True, detail="All JSONL files within limits")
 

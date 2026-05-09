@@ -1,0 +1,17 @@
+{
+  "name": "cortex-autopilot",
+  "version": "0.1.0",
+  "description": "Autonomous workflow layer for Cortex cognitive memory",
+  "author": "DevSecDocOps",
+  "homepage": "https://github.com/MachuaninEzequiel/Cortex",
+  "skills": {
+    "directory": "cortex/autopilot/skills"
+  },
+  "hooks": {
+    "directory": "cortex/autopilot/hooks"
+  },
+  "requires": {
+    "python": ">=3.10",
+    "cortex": ">=2.0.0"
+  }
+}
