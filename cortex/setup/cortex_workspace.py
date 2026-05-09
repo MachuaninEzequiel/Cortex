@@ -16,6 +16,11 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def _autopilot_skills_dir() -> Path:
+    """Return the package directory containing Autopilot skill templates."""
+    return Path(__file__).resolve().parent.parent / "autopilot" / "skills"
+
+
 def render_system_prompt() -> str:
     return """# Cortex System Prompt
 
@@ -481,15 +486,39 @@ def workspace_file_map() -> dict[str, str]:
     }
 
 
-def ensure_cortex_workspace(root: str | Path, *, overwrite: bool = False) -> dict[str, list[str]]:
+def autopilot_file_map() -> dict[str, str]:
+    """Return Autopilot skill files to install into the workspace.
+
+    Reads ``*.md`` from the package ``cortex/autopilot/skills/`` directory.
+    """
+    skills_dir = _autopilot_skills_dir()
+    files: dict[str, str] = {}
+    if skills_dir.exists():
+        for skill_path in sorted(skills_dir.glob("*.md")):
+            content = skill_path.read_text(encoding="utf-8")
+            files[f".cortex/skills/{skill_path.name}"] = content
+    return files
+
+
+def ensure_cortex_workspace(
+    root: str | Path, *, overwrite: bool = False, autopilot: bool = False
+) -> dict[str, list[str]]:
     """
     Create the Release 2 Cortex workspace files inside ``root``.
+
+    Args:
+        autopilot: When ``True``, also install Autopilot skills into
+            ``.cortex/skills/``.  Normal setup is unaffected when ``False``.
     """
     base = Path(root)
     created: list[str] = []
     skipped: list[str] = []
 
-    for relative, content in workspace_file_map().items():
+    files = workspace_file_map()
+    if autopilot:
+        files.update(autopilot_file_map())
+
+    for relative, content in files.items():
         path = base / relative
         path.parent.mkdir(parents=True, exist_ok=True)
 

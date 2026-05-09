@@ -108,6 +108,26 @@ def build_all_prompts(project_root: Path, *, workspace_layout: WorkspaceLayout |
     return prompts
 
 
+def build_autopilot_prompts(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> dict[str, str]:
+    """Build Autopilot-specific prompts for injection.
+
+    These are read from the workspace skills directory (when Autopilot
+    has been enabled) or returned as minimal fallbacks otherwise.
+
+    Returns:
+        Dict with at least:
+            - 'using-cortex-autopilot': Meta-skill bootstrap
+            - 'cortex-autopilot-finish': Finish skill
+    """
+    layout = workspace_layout or WorkspaceLayout.discover(project_root)
+    prompts: dict[str, str] = {}
+
+    for skill_name in ("using-cortex-autopilot", "cortex-autopilot-finish"):
+        prompts[skill_name] = get_skill_prompt(project_root, skill_name, workspace_layout=layout)
+
+    return prompts
+
+
 def build_cursor_prompts(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> dict[str, str]:
     """Build Cortex prompts specifically for Cursor IDE.
 
