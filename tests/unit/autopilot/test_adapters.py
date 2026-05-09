@@ -153,7 +153,7 @@ class TestCodexAdapter:
 class TestRegistry:
     def test_list_adapters(self) -> None:
         names = list_adapters()
-        assert sorted(names) == ["claude-code", "codex", "cursor", "opencode"]
+        assert sorted(names) == ["claude-code", "codex", "cursor", "opencode", "pi"]
 
     def test_get_adapter(self) -> None:
         assert get_adapter("cursor") is CursorAutopilotAdapter
@@ -169,7 +169,8 @@ class TestRegistry:
 
     def test_get_adapter_for_current_platform_unknown(self, monkeypatch: pytest.MonkeyPatch) -> None:
         for key in ("CURSOR_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "COPILOT_CLI",
-                    "OPENCODE_PLUGIN_ROOT", "CODEX_PLUGIN_ROOT"):
+                    "OPENCODE_PLUGIN_ROOT", "CODEX_PLUGIN_ROOT",
+                    "PI_PLUGIN_ROOT", "PI_CODING_AGENT"):
             monkeypatch.delenv(key, raising=False)
         assert get_adapter_for_current_platform() is None
 

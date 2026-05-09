@@ -11,6 +11,7 @@ class Platform(Enum):
     COPILOT_CLI = "copilot-cli"
     OPENCODE = "opencode"
     CODEX = "codex"
+    PI = "pi"
     UNKNOWN = "unknown"
 
 
@@ -26,4 +27,8 @@ def detect_platform() -> Platform:
         return Platform.OPENCODE
     if os.environ.get("CODEX_PLUGIN_ROOT"):
         return Platform.CODEX
+    if os.environ.get("PI_PLUGIN_ROOT"):
+        return Platform.PI
+    if os.environ.get("PI_CODING_AGENT"):
+        return Platform.PI
     return Platform.UNKNOWN
