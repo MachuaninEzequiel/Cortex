@@ -17,6 +17,9 @@ from cortex.models import EnrichedContext
 from cortex.security.paths import PathSecurityError, resolve_safe
 from cortex.workspace.layout import WorkspaceLayout
 
+from cortex.autopilot.mcp_tools import AutopilotMCPTools
+from cortex.autopilot.service import AutopilotService
+
 # Configure logging for MCP tool call tracking
 logger = logging.getLogger(__name__)
 
@@ -66,6 +69,11 @@ class CortexMCPServer:
             sys.stdout = old_stdout
             
         self.server = Server("cortex-federated-server")
+        
+        # Autopilot tools (Phase 5)
+        self._autopilot_service = AutopilotService.from_project_root(project_root)
+        self._autopilot_tools = AutopilotMCPTools(self._autopilot_service)
+        
         self._setup_tools()
         
         logger.info(f"Cortex MCP Server inicializado. Log file: {log_file}")
@@ -245,6 +253,71 @@ class CortexMCPServer:
                     description="Sincronizar el vault y re-indexar documentos semanticamente.",
                     inputSchema={"type": "object", "properties": {}}
                 ),
+                types.Tool(
+                    name="cortex_autopilot_start",
+                    description="Start a new Autopilot session.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "project_root": {"type": "string"},
+                            "workspace_root": {"type": "string"},
+                            "mode": {"type": "string", "default": "assist"},
+                            "user_request": {"type": "string"},
+                            "title_hint": {"type": "string"},
+                        },
+                        "required": ["project_root", "workspace_root"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_autopilot_preflight",
+                    description="Run Autopilot preflight detection for a session.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "session_id": {"type": "string"},
+                            "user_request": {"type": "string"},
+                            "changed_files": {"type": "array", "items": {"type": "string"}},
+                            "git_diff_stat": {"type": "string"},
+                        },
+                        "required": ["session_id"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_autopilot_checkpoint",
+                    description="Record an Autopilot checkpoint.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "session_id": {"type": "string"},
+                            "summary": {"type": "string"},
+                            "files_at_checkpoint": {"type": "array", "items": {"type": "string"}},
+                            "verified": {"type": "boolean", "default": False},
+                        },
+                        "required": ["session_id", "summary"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_autopilot_finish",
+                    description="Finish an Autopilot session and optionally persist a draft.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "session_id": {"type": "string"},
+                            "auto": {"type": "boolean", "default": False},
+                        },
+                        "required": ["session_id"],
+                    }
+                ),
+                types.Tool(
+                    name="cortex_autopilot_status",
+                    description="Get the current Autopilot status.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "session_id": {"type": "string"},
+                        },
+                    }
+                ),
             ]
 
         @self.server.call_tool()
@@ -339,6 +412,30 @@ class CortexMCPServer:
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
+                elif name == "cortex_autopilot_start":
+                    result_text = self._autopilot_tools.start(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_autopilot_preflight":
+                    result_text = self._autopilot_tools.preflight(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_autopilot_checkpoint":
+                    result_text = self._autopilot_tools.checkpoint(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_autopilot_finish":
+                    result_text = self._autopilot_tools.finish(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_autopilot_status":
+                    result_text = self._autopilot_tools.status(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
 
                 error_msg = f"Herramienta desconocida: {name}"
                 self._log_tool_call(name, arguments, error_msg)
