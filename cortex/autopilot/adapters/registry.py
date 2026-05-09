@@ -7,6 +7,7 @@ from cortex.autopilot.adapters.claude_code import ClaudeCodeAutopilotAdapter
 from cortex.autopilot.adapters.codex import CodexPluginAutopilotAdapter
 from cortex.autopilot.adapters.cursor import CursorAutopilotAdapter
 from cortex.autopilot.adapters.opencode import OpenCodeAutopilotAdapter
+from cortex.autopilot.adapters.pi import PiAutopilotAdapter
 from cortex.autopilot.adapters.platform_detect import Platform, detect_platform
 
 T = TypeVar("T")
@@ -16,6 +17,7 @@ _ADAPTERS: dict[str, type] = {
     "claude-code": ClaudeCodeAutopilotAdapter,
     "opencode": OpenCodeAutopilotAdapter,
     "codex": CodexPluginAutopilotAdapter,
+    "pi": PiAutopilotAdapter,
 }
 
 

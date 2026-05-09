@@ -9,6 +9,7 @@ from pathlib import Path
 
 from cortex.workspace.layout import WorkspaceLayout
 from cortex.autopilot.config import load_autopilot_config
+from cortex.autopilot.context import fetch_context
 from cortex.autopilot.context_budget import profile_for_task_type
 from cortex.autopilot.detectors.base import resolve_detectors
 from cortex.autopilot.detectors.ambiguous import AmbiguousRequestDetector
@@ -33,6 +34,7 @@ from cortex.autopilot.lifecycle import (
     StatusResult,
 )
 from cortex.autopilot.models import (
+    AutopilotBudgetSnapshot,
     AutopilotCheckpoint,
     AutopilotEvent,
     AutopilotSessionState,
@@ -159,6 +161,10 @@ class AutopilotService:
 
         state.detected_task_type = detection.task_type
         state.complexity = detection.suggested_complexity
+        # Seed budget snapshot with detection metadata
+        state.budget.deep_track_reason = (
+            detection.reason if detection.suggested_complexity == "deep" else None
+        )
         state.updated_at = datetime.now()
 
         # Evaluate policies
@@ -328,3 +334,33 @@ class AutopilotService:
             return StatusResult(active=False)
         events = self._store.load_events(latest)
         return StatusResult(active=True, state=state, event_count=len(events))
+
+    # ------------------------------------------------------------------
+    # context
+    # ------------------------------------------------------------------
+    def build_context(
+        self, session_id: str, *, memory: object | None = None
+    ) -> tuple[str, AutopilotBudgetSnapshot]:
+        """Fetch enriched context for *session_id* respecting the budget profile.
+
+        Returns ``(prompt_text, budget_snapshot)`` and persists the updated
+        state with the new budget snapshot.
+        """
+        state = self._store.require_state(session_id)
+        result = fetch_context(state, memory=memory)
+        state.budget = result.budget
+        state.updated_at = datetime.now()
+        self._store.save_state(state)
+        self._store.append_event(
+            AutopilotEvent(
+                session_id=state.session_id,
+                event_type="context",
+                source="cli",
+                payload={
+                    "profile": result.profile_name,
+                    "chars": result.budget.chars_injected,
+                    "items": result.budget.items_retrieved,
+                },
+            )
+        )
+        return result.prompt_text, result.budget

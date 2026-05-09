@@ -31,8 +31,17 @@ class TestDetectPlatform:
         monkeypatch.setenv("CODEX_PLUGIN_ROOT", "/codex")
         assert detect_platform() == Platform.CODEX
 
+    def test_pi_plugin_root(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PI_PLUGIN_ROOT", "/pi")
+        assert detect_platform() == Platform.PI
+
+    def test_pi_coding_agent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PI_CODING_AGENT", "1")
+        assert detect_platform() == Platform.PI
+
     def test_unknown(self, monkeypatch: pytest.MonkeyPatch) -> None:
         for key in ("CURSOR_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "COPILOT_CLI",
-                    "OPENCODE_PLUGIN_ROOT", "CODEX_PLUGIN_ROOT"):
+                    "OPENCODE_PLUGIN_ROOT", "CODEX_PLUGIN_ROOT",
+                    "PI_PLUGIN_ROOT", "PI_CODING_AGENT"):
             monkeypatch.delenv(key, raising=False)
         assert detect_platform() == Platform.UNKNOWN
