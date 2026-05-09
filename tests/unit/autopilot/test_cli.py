@@ -206,3 +206,43 @@ class TestDoctor:
         result = runner.invoke(app, ["doctor", "--project-root", str(tmp_path)])
         assert result.exit_code == 0
         assert "config" in result.output or "run_dir" in result.output
+
+
+class TestInstall:
+    def test_install_cursor(self, tmp_path: Path) -> None:
+        result = runner.invoke(
+            app, ["install", "--project-root", str(tmp_path), "--ide", "cursor", "--json"]
+        )
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert data["installed"] is True
+        assert data["adapter"] == "cursor"
+        assert len(data["modified"]) == 1
+
+    def test_install_unknown(self, tmp_path: Path) -> None:
+        result = runner.invoke(
+            app, ["install", "--project-root", str(tmp_path), "--ide", "vscode", "--json"]
+        )
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert "error" in data
+
+
+class TestUninstall:
+    def test_uninstall_cursor(self, tmp_path: Path) -> None:
+        runner.invoke(app, ["install", "--project-root", str(tmp_path), "--ide", "cursor"])
+        result = runner.invoke(
+            app, ["uninstall", "--project-root", str(tmp_path), "--ide", "cursor", "--json"]
+        )
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert data["uninstalled"] is True
+        assert data["adapter"] == "cursor"
+
+    def test_uninstall_unknown(self, tmp_path: Path) -> None:
+        result = runner.invoke(
+            app, ["uninstall", "--project-root", str(tmp_path), "--ide", "vscode", "--json"]
+        )
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert "error" in data
