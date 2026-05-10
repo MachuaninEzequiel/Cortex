@@ -149,6 +149,17 @@ API keys:         No requeridas
 | `cortex mcp-server` | **Bridge** | Inicia el servidor MCP universal para IDEs. |
 | `cortex agent-guidelines` | **Guide** | Muestra las guidelines de comportamiento del agente. |
 
+### Comandos Autopilot
+
+| Comando | Ciclo de Vida | Descripción |
+| --- | --- | --- |
+| cortex autopilot start | **Autopilot** | Inicia sesión Autopilot (--mode observe\|assist\|autopilot). |
+| cortex autopilot preflight | **Autopilot** | Pre-enriquecimiento con budget inteligente. |
+| cortex autopilot checkpoint | **Autopilot** | Registra punto de control mid-task. |
+| cortex autopilot finish | **Autopilot** | Cierra sesión y genera session note (--auto). |
+| cortex autopilot install | **Autopilot** | Instala hooks en el IDE (--ide cursor\|claude-code\|opencode). |
+| cortex autopilot doctor | **Autopilot** | Diagnóstico completo del módulo. |
+
 ### Comandos Enterprise
 
 | Comando | Ciclo de Vida | Descripción |

@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   <br />
     <a href="https://github.com/MachuaninEzequiel/Cortex" target="_blank">
       <img src="assets/logo.png" alt="Cortex Logo" width="500">
@@ -43,6 +43,8 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 | Conocimiento aislado por proyecto | Promotion Pipeline hacia vault corporativo |
 | Sin visibilidad sobre salud de memoria | `memory-report` con JSON estable |
 | Configuración enterprise compleja | Setup guiado con presets por industria |
+| Cambio de contexto manual entre tareas | Autopilot: modo autónomo opt-in |
+| Workspace disperso en la raíz del repo | Layout v2: todo en `.cortex/`, WorkspaceLayout central |
 
 ---
 
@@ -69,6 +71,57 @@ Especificación → [Fast Track | Deep Track] → SecuritySubAgent → TestSubAg
 ### 3. `Cortex-documenter` (El Guardián)
 
 Paso final **obligatorio**. Persiste decisiones, cambios, TODOs y métricas en el Vault via `save-session`.
+
+---
+
+## Novedades Recientes
+
+###  Cortex Autopilot
+
+Autopilot es una capa autónoma **opt-in** que activa, observa y cierra el ciclo Cortex sin que el usuario tenga que operar manualmente el flujo tripartito.
+
+```bash
+cortex autopilot start --mode assist    # Iniciar sesión
+cortex autopilot preflight              # Pre-enriquecimiento inteligente
+cortex autopilot checkpoint             # Guardar punto de control
+cortex autopilot finish --auto          # Cierre y session note automática
+cortex autopilot doctor                 # Diagnóstico del módulo
+```
+
+**Tres modos de operación:**
+
+| Modo | Comportamiento |
+| --- | --- |
+| `observe` | Registra sin intervenir. Ideal para adopción gradual. |
+| `assist` | Sugiere acciones y pide cierre. Default recomendado. |
+| `autopilot` | Preflight y cierre automáticos con políticas activas. |
+
+Autopilot es **reversible**: `cortex autopilot disable` o `cortex autopilot uninstall --ide cursor` restaura el flujo manual intacto. Para la especificación técnica completa, ver [`docs/autopilot/`](docs/autopilot/).
+
+---
+
+###  Workspace Layout v2
+
+El setup de Cortex ahora consolida **toda** la infraestructura en un único directorio `.cortex/`, eliminando archivos sueltos en la raíz del repo:
+
+```
+.cortex/              ← todo Cortex aquí
+  config.yaml
+  vault/
+  vault-enterprise/
+  memory/
+  enterprise-memory/
+  skills/
+  subagents/
+  org.yaml
+  workspace.yaml      ← layout_version: 2
+  webgraph/
+  logs/
+  scripts/
+.github/workflows/    ← único elemento fuera de .cortex (requerido por GitHub)
+```
+
+La resolución de rutas está centralizada en `WorkspaceLayout` (`cortex/workspace/layout.py`), que soporta dual-discovery (layout nuevo y legacy) de forma transparente. Los repos inicializados con versiones anteriores siguen funcionando sin migración manual.
 
 ---
 
@@ -102,6 +155,15 @@ API keys:         No requeridas
 
 Detección de dominio, co-occurrence boost, multi-strategy search con budget control.
 
+### WebGraph
+
+Visualización interactiva del grafo de conocimiento (episódico + semántico + enterprise) con contrato JSON estable, resiliencia frontend y filtros por scope, tipo y proyecto.
+
+```bash
+cortex webgraph serve     # Inicia el servidor de visualización
+cortex webgraph export    # Exporta snapshot del grafo
+```
+
 ---
 
 ## CLI Reference
@@ -130,6 +192,19 @@ Detección de dominio, co-occurrence boost, multi-strategy search con budget con
 | `cortex install-skills` | Inyecta habilidades Obsidian. |
 | `cortex mcp-server` | Inicia servidor MCP para IDEs. |
 | `cortex agent-guidelines` | Muestra guidelines del agente. |
+
+### Comandos Autopilot
+
+| Comando | Descripción |
+| --- | --- |
+| `cortex autopilot start` | Inicia sesión Autopilot (`--mode observe\|assist\|autopilot`). |
+| `cortex autopilot preflight` | Pre-enriquecimiento con budget inteligente. |
+| `cortex autopilot checkpoint` | Registra punto de control mid-task. |
+| `cortex autopilot finish` | Cierra sesión y genera session note (`--auto`). |
+| `cortex autopilot status` | Estado de la sesión activa. |
+| `cortex autopilot install` | Instala hooks en el IDE (`--ide cursor\|claude-code\|opencode`). |
+| `cortex autopilot uninstall` | Desinstala hooks del IDE. |
+| `cortex autopilot doctor` | Diagnóstico completo del módulo. |
 
 ### Comandos Enterprise
 
@@ -229,6 +304,8 @@ just audit             # Auditoría de calidad
 
 `cortex_search`, `cortex_search_vector`, `cortex_context`, `cortex_sync_ticket`, `cortex_create_spec`, `cortex_save_session`, `cortex_import_hu`, `cortex_get_hu`, `cortex_sync_vault`.
 
+Herramientas Autopilot: `cortex_autopilot_start`, `cortex_autopilot_preflight`, `cortex_autopilot_checkpoint`, `cortex_autopilot_finish`, `cortex_autopilot_status`.
+
 ---
 
 ## Instalación — Guía para Nuevos Usuarios
@@ -276,9 +353,15 @@ pipx install --editable C:\Cortex
 # Variante con extras opcionales
 pipx install --editable "C:\Cortex[all]"
 
+# Actualizar Cortex cuando haya cambios en el repo
+# (después de hacer git pull en C:\Cortex)
+pipx upgrade cortex-memory
+
 # Desinstalar Cortex cuando ya no lo necesites
 pipx uninstall cortex-memory
 ```
+
+> **¿Cómo actualizo Cortex?** Si instalaste con `pipx` en modo `--editable`, los cambios del código se aplican automáticamente al hacer `git pull`. Si necesitás actualizar el entorno virtual de pipx (por ejemplo, porque agregamos dependencias nuevas a `pyproject.toml`), simplemente ejecutá `pipx upgrade cortex-memory`. No hace falta desinstalar y reinstalar.
 
 #### Opción alternativa: instalar Cortex dentro del `.venv` del proyecto
 
@@ -365,6 +448,22 @@ cortex mcp-server --project-root D:\MiProyecto
 
 ---
 
+### Paso 5: Activar Autopilot (Opcional)
+
+Si querés que Cortex opere de forma más autónoma, podés activar el módulo Autopilot:
+
+```bash
+# Instalar hooks en tu IDE preferido
+cortex autopilot install --ide claude-code
+
+# O iniciarlo manualmente para una sesión
+cortex autopilot start --mode assist
+```
+
+Autopilot es completamente opt-in y reversible.
+
+---
+
 ### Resumen del flujo diario
 
 ```bash
@@ -421,6 +520,7 @@ Cortex/
 ├── cortex/                    # Núcleo del Sistema (AgentMemory)
 │   ├── cli/                   # Interfaz Typer (30+ comandos)
 │   ├── core.py                # Fachada Principal (Inyección de Servicios)
+│   ├── autopilot/             # Módulo Autopilot (ciclo de vida autónomo)
 │   ├── enterprise/            # Capa Enterprise Corporativa (org.yaml, promotion, reporting)
 │   ├── services/              # Lógica de negocio (spec, session, pr)
 │   ├── pipeline/              # Abstracciones DevSecDocOps (CI/CD Gates)
@@ -429,6 +529,7 @@ Cortex/
 │   ├── retrieval/             # Motor de búsqueda híbrida adaptativo
 │   ├── embedders/             # Factory de backends (ONNX, local, openai)
 │   ├── context_enricher/      # Enriquecimiento proactivo de contexto
+│   ├── workspace/             # WorkspaceLayout — resolución central de rutas
 │   ├── mcp/                   # Servidor Model Context Protocol
 │   ├── setup/                 # Orquestador (Agent/Pipeline/Full/Enterprise/WebGraph)
 │   ├── webgraph/              # Visualización de grafos + nodos enterprise
@@ -436,7 +537,11 @@ Cortex/
 │   └── ide/                   # Adaptadores IDE (Cursor, VSCode, Claude, Pi)
 ├── cortex-pi/                 # Entorno Pi Agent (Premium Edition)
 ├── tests/                     # Suite (unit/, integration/, e2e/)
-├── docs/enterprise/           # Documentación Enterprise (Plans, Avances, Backlog)
+├── docs/
+│   ├── enterprise/            # Manifiesto, planes y bitácoras Enterprise
+│   ├── autopilot/             # Plan, contratos y estrategia de tests de Autopilot
+│   ├── BusinessSignal/        # Propuesta: inteligencia de negocio sobre memoria
+│   └── refact/                # Specs de refactorización (workspace, WebGraph)
 ├── .github/workflows/         # CI/CD Pipelines (PR, Enterprise, Security, Release)
 ├── .cortex/                   # Cortex Workspace v2 (new-layout default)
 │   ├── config.yaml            # Configuración principal
@@ -447,7 +552,6 @@ Cortex/
 │   ├── subagents/             # Subagentes de documentación
 │   ├── org.yaml               # Topología enterprise
 │   └── scripts/               # Scripts DevSecDocOps
-├── vault/                     # Knowledge base (legacy layout only)
 └── pyproject.toml             # Configuración de empaquetado
 ```
 
