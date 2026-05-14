@@ -150,7 +150,11 @@ class DocGenerator:
         """
         Generate fallback session note.
 
-        In fallback mode, only session notes are generated.
+        In fallback mode, only session notes are generated. If the PR carries
+        an ``adr`` label, the 3-criteria filter (Tripartita Refinada §2)
+        decides whether an ADR fallback also makes sense; in the current
+        implementation we still only emit the session, but ``_meets_adr_criteria``
+        is available for future use by automated agents.
         """
         skip = set(skip_types or [])
         docs: list[GeneratedDoc] = []
@@ -175,3 +179,32 @@ class DocGenerator:
         """One-shot: generate all docs from context and write them to vault."""
         docs = self.generate_all(ctx, **kwargs)
         return self.write_docs(docs)
+
+
+def _meets_adr_criteria(ctx: PRContext) -> bool:
+    """Apply the Tripartita Refinada 3-criteria filter to PR context.
+
+    Returns ``True`` only when the PR body has evidence of:
+
+    1. **Hard to reverse** — keywords like ``migration``, ``refactor``,
+       ``schema``, ``breaking``, ``contract``.
+    2. **Surprising without context** — keywords like ``decided``,
+       ``rationale``, ``tradeoff``, ``trade-off``, ``why``.
+    3. **Real trade-off** — keywords like ``alternative``, ``considered``,
+       ``instead of``, ``rejected``.
+
+    Heuristic only — the canonical filter lives in the documenter prompt
+    (``.cortex/subagents/cortex-documenter.md``). This function is the
+    machine-level approximation for fallback flows.
+    """
+    body = (ctx.body or "").lower()
+    hard_reverse = any(
+        k in body for k in ("migration", "refactor", "schema", "breaking", "contract")
+    )
+    surprising = any(
+        k in body for k in ("decided", "rationale", "tradeoff", "trade-off", "why")
+    )
+    tradeoff = any(
+        k in body for k in ("alternative", "considered", "instead of", "rejected")
+    )
+    return hard_reverse and surprising and tradeoff

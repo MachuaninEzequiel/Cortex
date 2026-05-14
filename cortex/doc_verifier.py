@@ -83,17 +83,25 @@ class DocVerifier:
         """
         Verify docs using git diff or an explicit file list.
 
+        Classification contract (Ola 4 fix, regression of weakness #7):
+        - ``vault_files`` is the **union** of all vault ``.md`` paths that
+          appear in the diff, regardless of status.
+        - ``new_files``, ``modified_files``, ``deleted_files`` are
+          **mutually exclusive** partitions of ``vault_files``: every
+          path in ``vault_files`` appears in exactly one of the three.
+        - Paths outside the vault are dropped from every list.
+
         Parameters
         ----------
         base_branch : str
             Branch to diff against (used when *changed_files* is None).
         changed_files : list[str] | None
             Explicit list of changed file paths. When provided, git diff
-            is skipped and this list is used directly.
+            is skipped and the list is treated as ``modified`` (no status
+            info available without git).
         """
         result = DocVerificationResult()
 
-        # Discover vault-relative paths
         vault_rel = self._get_vault_relative()
         if vault_rel is None:
             result.errors.append(
@@ -101,51 +109,55 @@ class DocVerifier:
             )
             return result
 
-        # Determine changed files
-        if changed_files is not None:
-            files = changed_files
-        else:
-            try:
-                files = self._git_diff_files(base_branch)
-            except subprocess.CalledProcessError as exc:
-                result.errors.append(f"git diff failed: {exc.stderr}")
-                return result
-
-        # Classify files
-        for fpath in files:
-            if fpath == vault_rel:
-                continue  # the vault directory itself isn't a doc
-
-            if fpath.startswith(vault_rel + "/"):
-                rel_to_vault = fpath[len(vault_rel) + 1:]
-                if rel_to_vault.endswith(".md"):
-                    result.vault_files.append(rel_to_vault)
-
-        # For new/modified detection we need status info
+        # Resolve status info first — it is the authoritative source.
         if changed_files is None:
             try:
                 new, modified, deleted = self._git_diff_status(base_branch)
             except subprocess.CalledProcessError as exc:
                 result.errors.append(f"git status failed: {exc.stderr}")
-                new, modified, deleted = [], [], []
+                return result
         else:
-            # Without git status, treat all as modified
-            new, modified, deleted = [], changed_files, []
+            # Without git status, treat the explicit list as modified.
+            new, modified, deleted = [], list(changed_files), []
 
+        # Single classification pass. Each vault ``.md`` path lands in
+        # exactly one partition AND in the union ``vault_files``.
+        prefix = vault_rel + "/"
         for fpath in new:
-            if fpath.startswith(vault_rel + "/") and fpath.endswith(".md"):
-                result.new_files.append(fpath[len(vault_rel) + 1:])
-
+            rel = self._vault_relative_md(fpath, prefix)
+            if rel is None:
+                continue
+            result.new_files.append(rel)
+            result.vault_files.append(rel)
         for fpath in modified:
-            if fpath.startswith(vault_rel + "/") and fpath.endswith(".md"):
-                result.modified_files.append(fpath[len(vault_rel) + 1:])
-
+            rel = self._vault_relative_md(fpath, prefix)
+            if rel is None:
+                continue
+            result.modified_files.append(rel)
+            result.vault_files.append(rel)
         for fpath in deleted:
-            if fpath.startswith(vault_rel + "/") and fpath.endswith(".md"):
-                result.deleted_files.append(fpath[len(vault_rel) + 1:])
+            rel = self._vault_relative_md(fpath, prefix)
+            if rel is None:
+                continue
+            result.deleted_files.append(rel)
+            result.vault_files.append(rel)
 
         result.has_agent_docs = bool(result.new_files) or bool(result.modified_files)
         return result
+
+    @staticmethod
+    def _vault_relative_md(fpath: str, prefix: str) -> str | None:
+        """Return the vault-relative path if *fpath* is a vault ``.md``.
+
+        Returns ``None`` for paths outside the vault or non-markdown files,
+        so the caller can use it as a single filter point.
+        """
+        if not fpath.startswith(prefix):
+            return None
+        rel = fpath[len(prefix):]
+        if not rel.endswith(".md"):
+            return None
+        return rel
 
     def verify_from_list(
         self, changed_files: list[str]

@@ -46,9 +46,15 @@ def test_install_ide_specific_target_uses_adapter_layer(monkeypatch) -> None:
 def test_inject_uses_new_ide_module(monkeypatch) -> None:
     called: dict[str, object] = {}
 
-    def fake_inject(ide_name: str, project_root: Path | None = None) -> list[str]:
+    def fake_inject(
+        ide_name: str,
+        project_root: Path | None = None,
+        *,
+        sync_canonical: bool = True,
+    ) -> list[str]:
         called["ide_name"] = ide_name
         called["project_root"] = project_root
+        called["sync_canonical"] = sync_canonical
         return ["ok"]
 
     monkeypatch.setattr("cortex.ide.inject", fake_inject)
@@ -58,6 +64,29 @@ def test_inject_uses_new_ide_module(monkeypatch) -> None:
     assert result.exit_code == 0
     assert called["ide_name"] == "cursor"
     assert called["project_root"] == Path.cwd()
+    # Default flag value is True (Pi-only effect, harmless for other adapters).
+    assert called["sync_canonical"] is True
+
+
+def test_inject_no_sync_canonical_flag_propagates(monkeypatch) -> None:
+    """The --no-sync-canonical CLI flag must reach cortex.ide.inject."""
+    called: dict[str, object] = {}
+
+    def fake_inject(
+        ide_name: str,
+        project_root: Path | None = None,
+        *,
+        sync_canonical: bool = True,
+    ) -> list[str]:
+        called["sync_canonical"] = sync_canonical
+        return ["ok"]
+
+    monkeypatch.setattr("cortex.ide.inject", fake_inject)
+
+    result = runner.invoke(app, ["inject", "--ide", "pi", "--no-sync-canonical"])
+
+    assert result.exit_code == 0
+    assert called["sync_canonical"] is False
 
 
 def test_validate_docs_command_writes_report(tmp_path: Path) -> None:
@@ -86,6 +115,106 @@ def test_doctor_command_fails_when_config_is_missing(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "config_yaml" in result.output
+
+
+# ---------------------------------------------------------------------------
+# `cortex context` — output format parity (regresión weakness #6)
+# ---------------------------------------------------------------------------
+
+
+class _FakeEnriched:
+    """Minimal stand-in for ``EnrichedContext`` covering the surface used by
+    the ``context`` CLI command.
+    """
+
+    items: list = []
+    total_items = 0
+    total_chars = 0
+    work = None
+
+    def model_dump_json(self, indent: int = 2) -> str:
+        return '{"items": [], "total_items": 0, "total_chars": 0}'
+
+    def to_prompt_format(self, *, compact: bool = False, expand: bool = False) -> str:
+        if compact:
+            return "## Cortex Context (compact)\n- compact bullet"
+        return "🧠 Cortex Context\n- markdown bullet"
+
+
+class _FakeMemoryForContext:
+    def enrich(self, changed_files, keywords=None, pr_title=None, pr_body=None, pr_labels=None, *, top_k=None):
+        return _FakeEnriched()
+
+
+def test_context_output_json_writes_parseable_json(monkeypatch, tmp_path: Path) -> None:
+    """``cortex context --output X --format json`` must write valid JSON.
+
+    Regression of `vault/architecture/release-2-known-weaknesses.md` #6.
+    """
+    import json
+
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: _FakeMemoryForContext())
+    output = tmp_path / "out.json"
+    result = runner.invoke(
+        app,
+        [
+            "context",
+            "--files",
+            "src/foo.py",
+            "--format",
+            "json",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert output.exists()
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert "items" in payload
+    assert "total_items" in payload
+
+
+def test_context_output_markdown_default_writes_markdown(monkeypatch, tmp_path: Path) -> None:
+    """Without ``--format``, ``--output`` must write the markdown rendering."""
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: _FakeMemoryForContext())
+    output = tmp_path / "out.md"
+    result = runner.invoke(
+        app,
+        [
+            "context",
+            "--files",
+            "src/foo.py",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert output.exists()
+    body = output.read_text(encoding="utf-8")
+    assert "Cortex Context" in body
+    # Not JSON
+    assert not body.lstrip().startswith("{")
+
+
+def test_context_output_compact_writes_compact_markdown(monkeypatch, tmp_path: Path) -> None:
+    """``--format compact`` must write the compact markdown rendering."""
+    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: _FakeMemoryForContext())
+    output = tmp_path / "out.md"
+    result = runner.invoke(
+        app,
+        [
+            "context",
+            "--files",
+            "src/foo.py",
+            "--format",
+            "compact",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    body = output.read_text(encoding="utf-8")
+    assert "compact" in body.lower()
 
 
 def test_doctor_enterprise_scope_fails_when_org_config_is_missing(tmp_path: Path) -> None:

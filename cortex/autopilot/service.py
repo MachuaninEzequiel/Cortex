@@ -54,6 +54,49 @@ from cortex.autopilot.policies.default import (
 )
 from cortex.autopilot.state_store import StateStore
 from cortex.autopilot.session_builder import SessionBuilder
+from cortex.autopilot.session_writer import (
+    IndexingSessionWriter,
+    SessionWriter,
+    VaultSessionWriter,
+)
+
+
+logger = __import__("logging").getLogger(__name__)
+
+
+def _build_default_session_writer(layout: WorkspaceLayout) -> SessionWriter:
+    """Build the production-grade session writer for a discovered layout.
+
+    Returns an :class:`IndexingSessionWriter` whenever ``AgentMemory`` can
+    be initialised from the workspace config — making indexing mandatory
+    on every Autopilot persist.
+
+    Falls back to :class:`VaultSessionWriter` (persistence only) when the
+    workspace is not fully set up (no config.yaml, etc.). The fallback is
+    visible via ``cortex autopilot doctor`` so degraded setups never go
+    unnoticed.
+    """
+    base = VaultSessionWriter(layout.vault_path)
+    try:
+        from cortex.core import AgentMemory
+
+        memory = AgentMemory(config_path=str(layout.config_path))
+    except Exception as exc:
+        logger.warning(
+            "Autopilot indexing disabled (AgentMemory unavailable): %s. "
+            "Session notes will be persisted to disk but NOT indexed into "
+            "semantic / episodic memory. Run `cortex setup agent` to enable "
+            "full indexing.",
+            exc,
+        )
+        return base
+    return IndexingSessionWriter(
+        inner=base,
+        vault_path=layout.vault_path,
+        semantic=memory.semantic,
+        episodic=memory.episodic,
+        context_metadata=memory._runtime_metadata,
+    )
 
 
 # Default detector / policy instances used when none are explicitly injected.
@@ -95,21 +138,36 @@ class AutopilotService:
         detectors: list[object] | None = None,
         policies: list[object] | None = None,
         session_builder: SessionBuilder | None = None,
+        session_writer: SessionWriter | None = None,
     ) -> None:
         self._store = state_store
         self._detectors = detectors if detectors is not None else list(_DEFAULT_DETECTORS)
         self._policies = policies if policies is not None else list(_DEFAULT_POLICIES)
         self._builder = session_builder if session_builder is not None else SessionBuilder()
+        self._writer = session_writer
 
     # ------------------------------------------------------------------
     # Class-method factory
     # ------------------------------------------------------------------
     @classmethod
     def from_project_root(cls, project_root: Path) -> "AutopilotService":
-        """Create a service instance for *project_root* using ``WorkspaceLayout``."""
+        """Create a service instance for *project_root* using ``WorkspaceLayout``.
+
+        The default factory wires an :class:`IndexingSessionWriter` so that
+        every successful ``finish --auto`` not only persists the session
+        note to disk but also indexes it into the semantic and episodic
+        memory stores — making the new note immediately retrievable via
+        ``cortex search``.
+
+        If the workspace is not fully configured (no ``config.yaml``,
+        missing dependencies), the factory falls back to a persist-only
+        :class:`VaultSessionWriter` and logs a warning. ``cortex autopilot
+        doctor`` surfaces this degraded mode so it never goes unnoticed.
+        """
         layout = WorkspaceLayout.discover(project_root)
         store = StateStore(layout.workspace_root)
-        return cls(state_store=store)
+        writer = _build_default_session_writer(layout)
+        return cls(state_store=store, session_writer=writer)
 
     # ------------------------------------------------------------------
     # start
@@ -277,9 +335,17 @@ class AutopilotService:
 
         if request.auto and (worst is None or worst.action != "block"):
             draft = self._builder.build(state)
-            saved = True
-            state.status = "documented"
-            state.session_note_path = f"vault/sessions/{state.session_id}-auto-draft.md"
+            persisted_path = self._persist_draft(state, draft)
+            if persisted_path is not None:
+                state.session_note_path = str(persisted_path)
+                state.status = "documented"
+                saved = True
+            else:
+                # Writer not configured or write failed — the draft exists
+                # in memory but not on disk. Mark the session finished, not
+                # documented, so the contract "documented ⇒ file on disk"
+                # is never violated.
+                state.status = "finished"
         elif worst and worst.action == "block":
             # Blocked — generate an auto-draft anyway but do not mark documented
             draft = self._builder.build(state)
@@ -299,12 +365,39 @@ class AutopilotService:
                 payload={
                     "auto": request.auto,
                     "saved": saved,
+                    "session_note_path": state.session_note_path if saved else None,
                     "blocked_by": worst.reason if worst and worst.action == "block" else None,
                 },
             )
         )
 
         return FinishResult(state=state, draft=draft, saved=saved)
+
+    # ------------------------------------------------------------------
+    # finish helpers
+    # ------------------------------------------------------------------
+    def _persist_draft(
+        self,
+        state: AutopilotSessionState,
+        draft: SessionDraft,
+    ) -> Path | None:
+        """Persist *draft* via the configured ``SessionWriter``.
+
+        Returns the path written, or ``None`` when no writer is configured
+        or the write failed. On failure, a warning is appended to the
+        session state so operators can diagnose the issue from telemetry.
+        """
+        if self._writer is None:
+            state.warnings.append(
+                "AutopilotService has no session_writer; "
+                "draft was generated but not persisted to disk."
+            )
+            return None
+        try:
+            return self._writer.write(state, draft)
+        except Exception as exc:  # pragma: no cover - defensive
+            state.warnings.append(f"Session note persistence failed: {exc}")
+            return None
 
     # ------------------------------------------------------------------
     # status

@@ -42,6 +42,43 @@ mypy cortex/
 - **⛔ NO APRUEBAS SI HAY ERRORES DE MYPY.**
 - **⛔ NO APRUEBAS SI LOS TESTS TARDAN MÁS DE LO RAZONABLE SIN MOTIVO.**
 
+## Anti-Rationalization Signals (test verifier)
+
+| Pensamiento | Realidad | Acción |
+|-------------|----------|--------|
+| "Cobertura cae 1pp pero los tests pasan, lo dejo" | 1pp hoy + 1pp mañana = drift inaceptable | Bloqueá si baja del límite; el implementador agrega los tests |
+| "Mypy se queja pero el código corre" | Mypy red en main = nadie va a confiar en él en el futuro | Bloqueá hasta que mypy esté verde sobre los archivos tocados |
+| "El test es flaky pero pasó esta vez" | Flaky = no probaste nada | Marcá el flaky en `unverified_claims` y pedí re-trabajo |
+| "Edge cases ya estaban testeados antes, no agrego más" | Cambios nuevos pueden romper edge cases viejos no cubiertos | Verificá cobertura **incremental** sobre el diff |
+
+## Contrato de Salida (Tripartita Refinada — Output Obligatorio)
+
+Al cerrar tu turno, además del veredicto al usuario, emití un bloque YAML conforme al
+schema `cortex.handoff.AgentHandoff`. El orquestador (`cortex-SDDwork`) lo validará con
+`cortex_validate_handoff` antes de pasarlo a `cortex-documenter`.
+
+```yaml
+agent: cortex-test-verifier
+status: complete            # complete (APROBADO) | blocked (BLOQUEADO) | partial
+verified_claims:
+  - "pytest --cov=cortex --cov-fail-under=85 ejecutado, 100% pass rate"
+  - "Cobertura incremental sobre <archivos modificados>: 92%"
+  - "mypy cortex/ sin errores"
+unverified_claims:
+  - "Edge case X no testeado por falta de fixture; documentado en TODO"
+artifacts_produced:
+  - path: tests/unit/<nuevo-archivo>.py
+    action: created
+    lines_changed: <n>
+context_for_next:
+  - "documenter: cobertura final XX%, listar tests nuevos en changes_made"
+suggested_adr: false
+```
+
+Si el veredicto es BLOQUEADO, status: blocked y `verified_claims` debe listar
+**qué tests fallan** o **qué pp de cobertura falta**. Vague descriptions no permiten
+al orquestador decidir si re-delegar al implementer o escalar al usuario.
+
 ## Mensaje de Salida
 
 Al terminar, reporta tu veredicto claramente:

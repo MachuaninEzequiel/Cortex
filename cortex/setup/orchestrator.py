@@ -30,6 +30,7 @@ from cortex.setup.templates import (
     render_ci_feature,
     render_ci_pull_request,
     render_config_yaml,
+    render_context_md,
     render_workspace_yaml,
     render_decisions_md,
     render_enterprise_vault_readme,
@@ -74,12 +75,19 @@ class SetupOrchestrator:
         dry_run: bool = False,
         enterprise_profile: str = "small-company",
         enterprise_overrides: dict[str, Any] | None = None,
+        non_interactive: bool = False,
     ) -> dict:
-        """Execute the setup pipeline based on mode. Returns a summary dict."""
+        """Execute the setup pipeline based on mode. Returns a summary dict.
+
+        When ``non_interactive`` is True, any prompts are skipped with the
+        safe default (e.g. accept the detected vault). Required for CI,
+        containerised onboarding and scripted setups.
+        """
         self.git_depth = git_depth
         self.ide = ide
         self.attach_project_root = attach_project_root
         self.dry_run = dry_run
+        self.non_interactive = non_interactive
         self.ctx = self.detector.detect()
         # Resolve workspace layout — for a brand-new project this
         # will be new-layout (``repo_root / .cortex``).
@@ -148,7 +156,12 @@ class SetupOrchestrator:
         self._create_devsecdocops_script()
 
     def _run_full_flow(self) -> None:
-        """Run everything."""
+        """Run the complete adopter onboarding flow.
+
+        Includes the three pillars Cortex recommends to early adopters:
+        agentic workspace + WebGraph visualization + DevSecDocOps pipeline.
+        Idempotent — running twice does not duplicate state.
+        """
         self._create_directories()
         self._create_config()
         self._create_enterprise_org_config()
@@ -158,8 +171,51 @@ class SetupOrchestrator:
         self._create_devsecdocops_script()
         self._create_agent_guidelines()
         self._install_skills()
+        # Webgraph: the visualization pillar of the full adopter setup.
+        self._install_webgraph()
+        # Memory init + cold start (vault preseed, git history mining, README fallback)
         self._init_memory()
+        self._update_gitignore()
         self._install_ide()
+
+    def _update_gitignore(self) -> None:
+        """Append the Cortex layout-aware gitignore patterns to the repo's
+        ``.gitignore``.
+
+        Idempotent: existing entries are not duplicated. The patterns are
+        chosen from ``git_policy`` based on the active layout, so a new
+        layout repo gets ``.cortex/memory/`` and a legacy repo gets
+        ``.memory/`` — never both.
+        """
+        from cortex.git_policy import (
+            LEGACY_GITIGNORE_PATTERNS,
+            NEW_LAYOUT_GITIGNORE_PATTERNS,
+            gitignore_contains,
+        )
+
+        layout = self.layout
+        if layout is not None and layout.is_new_layout:
+            patterns = NEW_LAYOUT_GITIGNORE_PATTERNS
+            header = "# Cortex (new layout)"
+        else:
+            patterns = LEGACY_GITIGNORE_PATTERNS
+            header = "# Cortex"
+
+        gi = self.root / ".gitignore"
+        missing = [p for p in patterns if not gitignore_contains(self.root, p)]
+        if not missing:
+            self.skipped.append(".gitignore (already current)")
+            return
+
+        existing = gi.read_text(encoding="utf-8") if gi.exists() else ""
+        lines = []
+        if existing and not existing.endswith("\n"):
+            lines.append("")
+        lines.append(header)
+        lines.extend(missing)
+        lines.append("")  # trailing newline
+        gi.write_text(existing + "\n".join(lines), encoding="utf-8")
+        self.created.append(f".gitignore (+ {len(missing)} pattern(s))")
 
     def _run_webgraph_flow(self) -> None:
         """Setup only the webgraph module with minimal supporting files."""
@@ -223,6 +279,17 @@ class SetupOrchestrator:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(renderer(self.ctx), encoding="utf-8")
                 self.created.append(self._rel_path(path))
+
+        # Tripartita Refinada (Plan 01 §3): create the optional CONTEXT.md
+        # glossary template at the workspace root if it does not exist.
+        # Adopters extend it manually with their domain vocabulary.
+        context_md = layout.context_md_path
+        if context_md.exists():
+            self.skipped.append(f"{self._rel_path(context_md)} (already exists)")
+        else:
+            context_md.parent.mkdir(parents=True, exist_ok=True)
+            context_md.write_text(render_context_md(self.ctx), encoding="utf-8")
+            self.created.append(self._rel_path(context_md))
 
     def _create_enterprise_org_config(
         self,
@@ -338,24 +405,39 @@ class SetupOrchestrator:
 
         Workflows are ALWAYS written to ``.github/workflows/`` at the
         repo root (GitHub requirement), regardless of layout mode.
+        The memory cache path inside each workflow is resolved against
+        the active layout so adopters in new layout cache ``.cortex/memory``
+        and legacy adopters cache ``.memory/chroma``.
         """
         if not self.ctx:
             return
         layout = self.layout
         wdir = layout.workflows_dir
         wdir.mkdir(parents=True, exist_ok=True)
-        for fn, rd in [
-            ("ci-pull-request.yml", render_ci_pull_request),
-            ("ci-feature.yml", render_ci_feature),
-            ("cd-deploy.yml", render_cd_deploy),
-            ("ci-enterprise-governance.yml", render_ci_enterprise_governance),
-        ]:
+
+        # Renderers that accept a layout argument (Ola 2).
+        layout_aware_renderers = {
+            "ci-pull-request.yml": render_ci_pull_request,
+            "ci-feature.yml": render_ci_feature,
+            "cd-deploy.yml": render_cd_deploy,
+        }
+
+        for fn, rd in layout_aware_renderers.items():
             path = wdir / fn
             if path.exists():
                 self.skipped.append(f".github/workflows/{fn} (already exists)")
             else:
-                path.write_text(rd(self.ctx), encoding="utf-8")
+                path.write_text(rd(self.ctx, layout=layout), encoding="utf-8")
                 self.created.append(f".github/workflows/{fn}")
+
+        # Enterprise governance workflow does not need layout (reads
+        # .cortex/org.yaml directly, location identical in both layouts).
+        ent_path = wdir / "ci-enterprise-governance.yml"
+        if ent_path.exists():
+            self.skipped.append(".github/workflows/ci-enterprise-governance.yml (already exists)")
+        else:
+            ent_path.write_text(render_ci_enterprise_governance(self.ctx), encoding="utf-8")
+            self.created.append(".github/workflows/ci-enterprise-governance.yml")
 
     def _create_devsecdocops_script(self) -> None:
         layout = self.layout
@@ -395,6 +477,11 @@ class SetupOrchestrator:
         layout = self.layout
         vp = layout.vault_path
         if vp.exists():
+            if getattr(self, "non_interactive", False):
+                # Auto-accept the detected vault — sensible default for CI,
+                # scripted onboarding and `cortex setup full` flows.
+                self.skipped.append(f"{self._rel_path(vp)}/ (existing, non-interactive)")
+                return
             msg = (
                 f"\n[?] Se detecto un vault en '{vp}'.\n"
                 "    ¿Es el de Cortex? [yes] para usarlo, [no] para crear uno nuevo."

@@ -30,7 +30,15 @@ class MemoryType(str, Enum):
 
 
 class MemoryEntry(BaseModel):
-    """A single episodic memory record."""
+    """A single episodic memory record.
+
+    ``confidence`` (Tripartita Refinada): tri-state label produced by the
+    Verification Gate of the documenter. ``verified`` means the claim was
+    cross-checked against the diff; ``asserted`` means the implementer
+    reported it but it was not verified; ``contradicted`` means the diff
+    showed the opposite. Optional for backwards compatibility — pre-0.5.0
+    memories have ``None`` here.
+    """
 
     id: str = Field(default_factory=lambda: f"mem_{uuid4().hex[:8]}")
     content: str
@@ -39,6 +47,7 @@ class MemoryEntry(BaseModel):
     files: list[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict[str, Any] = Field(default_factory=dict)
+    confidence: Literal["verified", "asserted", "contradicted"] | None = None
 
     def to_dict(self) -> dict:
         return self.model_dump(mode="json")
@@ -143,8 +152,9 @@ class RetrievalResult(BaseModel):
             for u_hit in self.unified_hits:
                 if u_hit.source == "episodic" and u_hit.entry:
                     e = u_hit.entry
+                    conf_label = f" [{e.confidence}]" if e.confidence else ""
                     parts.append(
-                        f"- [EPISODIC:{e.memory_type}] {e.content}"
+                        f"- [EPISODIC:{e.memory_type}{conf_label}] {e.content}"
                         f"  (files: {', '.join(e.files) or 'none'}, score: {u_hit.score:.4f})"
                     )
                 elif u_hit.source == "semantic" and u_hit.doc:
@@ -158,8 +168,9 @@ class RetrievalResult(BaseModel):
                 parts.append("### Episodic Memory (past experiences)")
                 for e_hit in self.episodic_hits:
                     e = e_hit.entry
+                    conf_label = f" [{e.confidence}]" if e.confidence else ""
                     parts.append(
-                        f"- [{e.memory_type}] {e.content}"
+                        f"- [{e.memory_type}{conf_label}] {e.content}"
                         f"  (files: {', '.join(e.files) or 'none'}, score: {e_hit.score:.2f})"
                     )
 
@@ -287,6 +298,11 @@ class EnrichedItem(BaseModel):
     """
     A single enriched context item — a memory that was found relevant
     to the current work, with explainability metadata.
+
+    ``confidence`` (Tripartita Refinada) mirrors ``MemoryEntry.confidence``
+    and is surfaced by ``EnrichedContext.to_prompt_format`` so the
+    consumer agent can weight verified vs asserted memories. Optional
+    for backwards compatibility.
     """
 
     source: Literal["episodic", "semantic"]
@@ -299,6 +315,7 @@ class EnrichedItem(BaseModel):
     files_mentioned: list[str] = Field(default_factory=list)
     date: datetime | None = None
     tags: list[str] = Field(default_factory=list)
+    confidence: Literal["verified", "asserted", "contradicted"] | None = None
 
 
 class EnrichedContext(BaseModel):
@@ -332,7 +349,8 @@ class EnrichedContext(BaseModel):
             parts = [f"## 🧠 Cortex Context ({self.total_items} memories found)\n"]
             for item in self.items:
                 source_tag = "EPISODIC" if item.source == "episodic" else "SEMANTIC"
-                parts.append(f"### {item.title} [{source_tag}]")
+                conf_tag = f" [{item.confidence}]" if item.confidence else ""
+                parts.append(f"### {item.title} [{source_tag}{conf_tag}]")
                 parts.append(item.content[:300].replace("\n", " "))
                 meta_parts = []
                 if item.files_mentioned:
@@ -350,7 +368,8 @@ class EnrichedContext(BaseModel):
         parts = [f"🧠 Cortex Context — Found {self.total_items} related memories\n"]
         for item in self.items:
             source_tag = "EPISODIC" if item.source == "episodic" else "SEMANTIC"
-            parts.append(f"### [{source_tag}] {item.title}")
+            conf_tag = f" [{item.confidence}]" if item.confidence else ""
+            parts.append(f"### [{source_tag}{conf_tag}] {item.title}")
             meta_parts = []
             if item.date:
                 meta_parts.append(item.date.strftime("%Y-%m-%d"))

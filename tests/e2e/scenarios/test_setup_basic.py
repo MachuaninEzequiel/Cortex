@@ -41,9 +41,11 @@ class TestSetupBasic:
             isolated_git_repo,
             "setup", "agent", "--git-depth", "5", "--ide", "pi",
         )
-        # Doctor requiere .gitignore con patrones de Cortex
+        # Doctor now uses layout-aware gitignore checks (Ola 3, 2026-05-13):
+        # in new layout it expects ``.cortex/memory/`` and
+        # ``.cortex/vault/sessions/`` rather than the legacy patterns.
         (isolated_git_repo / ".gitignore").write_text(
-            ".memory/\n*.chroma/\nvault/sessions/\n", encoding="utf-8"
+            ".cortex/memory/\n.cortex/vault/sessions/\n", encoding="utf-8"
         )
         result = run_cortex(isolated_git_repo, "doctor")
         assert result.returncode == 0, result.stderr
@@ -55,7 +57,7 @@ class TestSetupBasic:
             "setup", "agent", "--git-depth", "5", "--ide", "pi",
         )
         (isolated_git_repo / ".gitignore").write_text(
-            ".memory/\n*.chroma/\nvault/sessions/\n", encoding="utf-8"
+            ".cortex/memory/\n.cortex/vault/sessions/\n", encoding="utf-8"
         )
         result = run_cortex(isolated_git_repo, "doctor", "--strict")
         assert result.returncode == 0, result.stderr

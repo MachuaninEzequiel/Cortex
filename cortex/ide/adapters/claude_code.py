@@ -72,6 +72,13 @@ class ClaudeCodeAdapter(IDEAdapter):
                     "- Use `/cortex-sddwork` to implement the persisted spec with Cortex routing rules.",
                     "- Delegate deep analysis to `cortex-code-explorer`, complex implementation to `cortex-code-implementer`, and final session persistence to `cortex-documenter`.",
                     "- Never call `cortex_create_spec` before `cortex_sync_ticket`.",
+                    "",
+                    "## Tripartita Refinada — verifiable contracts",
+                    "",
+                    "- The `cortex-documenter` MUST pass the **Verification Gate** before invoking `cortex_save_session`. Use `cortex_verify_session_claims` to cross-check claims against the actual git diff and label each memory with the resulting `confidence` (verified / asserted / contradicted).",
+                    "- Every handoff between subagents MUST be a YAML block validated by `cortex_validate_handoff` against the `AgentHandoff` schema. Free-prose handoffs are not acceptable — the next agent in the chain consumes the structured fields.",
+                    "- Status `handoff` is a first-class outcome — if a verification check fails or the work is partial, close the session with `status: handoff` (NOT `completed`) so the next agent knows there is open work to verify.",
+                    "- If you encounter a domain term you do not recognize, check `CONTEXT.md` first (if it exists) before inventing a new one. Update `CONTEXT.md` via the `cortex-documenter` when a term becomes canonical.",
                 ]
             )
             + "\n",
@@ -167,10 +174,14 @@ class ClaudeCodeAdapter(IDEAdapter):
 
         data.setdefault("mcpServers", {})
 
+        # Use an absolute project_root so Claude Code can locate the
+        # Cortex workspace regardless of which directory the IDE process
+        # is launched from. Relative "." breaks when the IDE is opened
+        # via spotlight, drag-and-drop, or a shortcut.
         cortex_config = {
             "type": "stdio",
             "command": "cortex",
-            "args": ["mcp-server", "--stdio", "--project-root", "."],
+            "args": ["mcp-server", "--stdio", "--project-root", str(project_root)],
             "env": {
                 "PYTHONWARNINGS": "ignore",
             },

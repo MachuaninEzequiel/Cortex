@@ -21,10 +21,33 @@ class TestDoctor:
         assert "hooks" in check_names
         assert "adapters" in check_names
         assert "mcp_tools" in check_names
+        assert "session_indexing" in check_names
         assert "last_finish" in check_names
         assert "budget_warnings" in check_names
         assert "superpowers_conflict" in check_names
         assert "jsonl_rotation" in check_names
+
+    def test_session_indexing_degraded_without_config(self, tmp_path: Path) -> None:
+        """A workspace without config.yaml cannot wire IndexingSessionWriter."""
+        report = run_diagnosis(tmp_path)
+        idx_check = next(c for c in report.checks if c.name == "session_indexing")
+        assert idx_check.ok is False
+        assert "persist-only" in idx_check.detail or "AgentMemory" in idx_check.detail
+        assert idx_check.action
+
+    def test_session_indexing_ok_with_full_workspace(self, tmp_path: Path) -> None:
+        """A workspace with valid config wires the indexing writer."""
+        cortex = tmp_path / ".cortex"
+        cortex.mkdir()
+        (cortex / "workspace.yaml").write_text("layout_version: 2\n", encoding="utf-8")
+        (cortex / "config.yaml").write_text(
+            "episodic:\n  persist_dir: memory\nsemantic:\n  vault_path: vault\n",
+            encoding="utf-8",
+        )
+        report = run_diagnosis(tmp_path)
+        idx_check = next(c for c in report.checks if c.name == "session_indexing")
+        assert idx_check.ok is True, idx_check.detail
+        assert "indexed" in idx_check.detail.lower()
 
     def test_superpowers_conflict_detected(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", "/plugins/superpowers")

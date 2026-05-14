@@ -154,7 +154,7 @@ class TestFastCode:
         assert fin["status"] == "documented"
         assert "draft_title" in fin
 
-        # Verify that the physical session note is NOT written (known limitation)
+        # The contract: status=="documented" implies the session note exists.
         state_path = (
             autopilot_workspace
             / ".cortex"
@@ -165,9 +165,10 @@ class TestFastCode:
         )
         state = json.loads(state_path.read_text(encoding="utf-8"))
         assert state["session_note_path"] is not None
-        note_physical = autopilot_workspace / ".cortex" / state["session_note_path"]
-        assert not note_physical.exists(), (
-            "Physical session note should not exist; only path is recorded in state"
+        note_physical = Path(state["session_note_path"])
+        assert note_physical.is_absolute(), note_physical
+        assert note_physical.exists(), (
+            f"Session note must be persisted under vault/sessions/: {note_physical}"
         )
 
 

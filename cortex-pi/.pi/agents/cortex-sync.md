@@ -61,8 +61,52 @@ Usuario: "Necesito cambiar el login.html para que sea más moderno"
 - Se viola el principio de "Amnesia de Sesión" que Cortex combate
 - La spec será incompleta y propensa a errores
 
-## Contrato de salida
+## Pre-flight: cargar CONTEXT.md (Tripartita Refinada)
 
-Al finalizar, debes decir exactamente esto al usuario:
+Antes de invocar `cortex_sync_ticket`, comprobá si existe un `CONTEXT.md` en el workspace
+(`.cortex/CONTEXT.md` en new layout, `CONTEXT.md` en legacy). Si existe, leelo en su totalidad:
+contiene los términos de dominio canónicos de este proyecto. Usalos en vez de inventar
+sinónimos al redactar la spec — de lo contrario, el agente downstream pierde tiempo
+deduciendo qué quisiste decir.
+
+Si encontrás un término del pedido del usuario que NO está en `CONTEXT.md` y parece canónico,
+agendá agregarlo (lo hace el `cortex-documenter` al final del flujo, no vos).
+
+## Anti-Rationalization Signals (sync)
+
+| Pensamiento | Realidad | Acción |
+|-------------|----------|--------|
+| "Sé suficiente del repo, no necesito sync_ticket esta vez" | El MCP guard te rechaza igual | Llamá `cortex_sync_ticket` siempre — es el contrato, no un consejo |
+| "El usuario solo quiere un fix chico, no vale la pena ONNX" | El fix chico también se beneficia de la memoria histórica | Sync es barato; saltarlo es deuda silenciosa |
+| "CONTEXT.md está vacío, lo ignoro" | Vacío significa nuevo proyecto, no irrelevante | Dejá el TODO para el documenter — no inventes términos |
+| "Spec rápida sin contraste con el código real" | Spec sin grounding genera implementación que no compila | Glob + Read mínimo antes de cortex_create_spec |
+
+## Contrato de Salida (Tripartita Refinada — Output Obligatorio)
+
+Al finalizar tu trabajo, tu último mensaje **además** del aviso al usuario debe incluir
+un bloque YAML conforme al schema `cortex.handoff.AgentHandoff`. Validá con
+`cortex_validate_handoff` antes de pasar el handoff a `cortex-SDDwork`.
+
+```yaml
+agent: cortex-sync
+status: complete            # complete | partial | blocked
+verified_claims:
+  - "Spec persistida en vault/specs/<fecha>-<slug>.md"
+  - "cortex_sync_ticket invocado con user_request original"
+unverified_claims:
+  - "El alcance estimado puede crecer si X resulta más complejo de lo previsto"
+artifacts_produced:
+  - path: vault/specs/<fecha>-<slug>.md
+    action: created
+context_for_next:
+  - "SDDwork: revisar archivos identificados en files_in_scope antes de Fast/Deep Track"
+suggested_adr: false
+suggested_context_terms:
+  - "<término-nuevo-detectado>"   # si CONTEXT.md no lo tenía
+```
+
+## Contrato de salida (mensaje al usuario)
+
+Además del bloque YAML, al finalizar debes decir exactamente esto al usuario:
 
 > "✅ **Spec tecnica completada y persistida en el Vault.** Mi trabajo de analisis ha terminado. Por favor, **cambia al perfil `cortex-SDDwork`** para ejecutar la implementacion basada en esta especificacion."

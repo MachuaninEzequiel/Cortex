@@ -221,10 +221,90 @@ class CortexMCPServer:
                             "key_decisions": {"type": "array", "items": {"type": "string"}},
                             "next_steps": {"type": "array", "items": {"type": "string"}},
                             "tags": {"type": "array", "items": {"type": "string"}},
-                            "no_sync": {"type": "boolean", "default": False}
+                            "no_sync": {"type": "boolean", "default": False},
+                            "handoff": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Marca la sesion como handoff cross-session (Tripartita Refinada).",
+                            },
+                            "blockers": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Bloqueos abiertos que el siguiente agente debe resolver.",
+                            },
+                            "verified_state": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Hechos verificados contra el diff o tests reales.",
+                            },
+                            "unverified_claims": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Afirmaciones sin verificar que el siguiente agente debe re-chequear.",
+                            },
+                            "suggested_skills": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Skills/subagents recomendados para retomar el trabajo.",
+                            },
                         },
                         "required": ["title", "spec_summary"]
                     }
+                ),
+                # ----------------------------------------------------------
+                # Tripartita Refinada — Handoff & Verification tools
+                # Plan 02 §1-§2. MCP-only (sin contraparte CLI por diseno).
+                # ----------------------------------------------------------
+                types.Tool(
+                    name="cortex_validate_handoff",
+                    description=(
+                        "Validate a structured agent handoff (YAML). Use this between "
+                        "subagents to enforce the cortex.handoff.AgentHandoff schema. "
+                        "Returns OK with normalized fields or an error message detailing "
+                        "the schema violations."
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "handoff_yaml": {
+                                "type": "string",
+                                "description": "YAML text matching AgentHandoff schema.",
+                            },
+                            "expected_agent": {
+                                "type": "string",
+                                "description": "(Optional) Assert the handoff's agent field matches this value.",
+                            },
+                        },
+                        "required": ["handoff_yaml"],
+                    },
+                ),
+                types.Tool(
+                    name="cortex_verify_session_claims",
+                    description=(
+                        "Verify session claims against the actual git diff. Returns a "
+                        "structured breakdown of verified / asserted / contradicted "
+                        "claims that the documenter can use to fill the confidence field."
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "claims": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of claims to verify.",
+                            },
+                            "base_branch": {
+                                "type": "string",
+                                "description": "Branch to diff against (default: main).",
+                            },
+                            "files_to_check": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Optional file allowlist to scope verification.",
+                            },
+                        },
+                        "required": ["claims"],
+                    },
                 ),
                 types.Tool(
                     name="cortex_import_hu",
@@ -406,48 +486,26 @@ class CortexMCPServer:
 
 
                 elif name == "cortex_create_spec":
-                    # Capa 1: Validación técnica - rechazar si cortex_sync_ticket no fue llamado
-                    if "cortex_sync_ticket" not in self._called_tools:
-                        error_msg = (
-                            "❌ **VIOLACIÓN DE GOBERNANZA**: cortex_create_spec fue llamado sin "
-                            "ejecutar primero cortex_sync_ticket.\n\n"
-                            "Según las reglas de Cortex v2.0, cortex-sync DEBE llamar a "
-                            "cortex_sync_ticket como PRIMER paso para inyectar contexto histórico "
-                            "vía ONNX/hybrid retrieval antes de crear cualquier spec.\n\n"
-                            "Por favor, corrige el flujo:\n"
-                            "1. Llama a cortex_sync_ticket con el pedido del usuario\n"
-                            "2. Luego llama a cortex_create_spec\n\n"
-                            f"Herramientas llamadas en esta sesión: {', '.join(sorted(self._called_tools))}"
-                        )
-                        logger.error(f"GOVERNANCE_VIOLATION: cortex_create_spec called without cortex_sync_ticket. Tools called: {self._called_tools}")
-                        return [types.TextContent(type="text", text=error_msg)]
-                    
-                    path = self.memory.create_spec_note(
-                        title=arguments.get("title", ""),
-                        goal=arguments.get("goal", ""),
-                        requirements=arguments.get("requirements", []),
-                        files_in_scope=arguments.get("files_in_scope", []),
-                        constraints=arguments.get("constraints", []),
-                        acceptance_criteria=arguments.get("acceptance_criteria", []),
-                        tags=arguments.get("tags", []),
-                        sync_vault=not arguments.get("no_sync", False)
-                    )
-                    result_text = f"Specification saved -> {path}"
+                    # Governance guard + spec creation están centralizados en
+                    # ``_create_spec_text``. NO duplicar el guard aquí: el
+                    # mensaje canónico vive en ``_GOVERNANCE_VIOLATION_MESSAGE``
+                    # y el flujo lo prueba ``tests/unit/test_mcp_server.py``.
+                    result_text = self._create_spec_text(arguments)
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
                 elif name == "cortex_save_session":
-                    path = self.memory.save_session_note(
-                        title=arguments.get("title", ""),
-                        spec_summary=arguments.get("spec_summary", ""),
-                        changes_made=arguments.get("changes_made", []),
-                        files_touched=arguments.get("files_touched", []),
-                        key_decisions=arguments.get("key_decisions", []),
-                        next_steps=arguments.get("next_steps", []),
-                        tags=arguments.get("tags", []),
-                        sync_vault=not arguments.get("no_sync", False)
-                    )
-                    result_text = f"Session note saved -> {path}"
+                    result_text = self._save_session_text(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_validate_handoff":
+                    result_text = self._validate_handoff_text(arguments)
+                    self._log_tool_call(name, arguments, result_text)
+                    return [types.TextContent(type="text", text=result_text)]
+
+                elif name == "cortex_verify_session_claims":
+                    result_text = self._verify_session_claims_text(arguments)
                     self._log_tool_call(name, arguments, result_text)
                     return [types.TextContent(type="text", text=result_text)]
 
@@ -662,16 +720,33 @@ class CortexMCPServer:
     def _context_text(self, arguments: dict[str, Any]) -> str:
         return self._enrich_context(arguments).to_prompt_format()
 
+    # Mensaje canónico de violación del guard de gobernanza.
+    # Usado tanto desde ``handle_call_tool`` como desde ``_create_spec_text``
+    # para que el contrato sea único, testeable y libre de mojibake.
+    # NO duplicar la cadena en otra parte del archivo.
+    _GOVERNANCE_VIOLATION_MESSAGE = (
+        "❌ **VIOLACIÓN DE GOBERNANZA**: cortex_create_spec fue llamado sin "
+        "ejecutar primero cortex_sync_ticket.\n\n"
+        "Según las reglas de Cortex v2.0, cortex-sync DEBE llamar a "
+        "cortex_sync_ticket como PRIMER paso para inyectar contexto histórico "
+        "vía ONNX/hybrid retrieval antes de crear cualquier spec.\n\n"
+        "Por favor, corrige el flujo:\n"
+        "1. Llama a cortex_sync_ticket con el pedido del usuario\n"
+        "2. Luego llama a cortex_create_spec"
+    )
+
     def _create_spec_text(self, arguments: dict[str, Any]) -> str:
         called_tools: set[str] = getattr(self, "_called_tools", set())
         if "cortex_sync_ticket" not in called_tools:
+            logger.error(
+                "GOVERNANCE_VIOLATION: cortex_create_spec called without "
+                "cortex_sync_ticket. Tools called: %s",
+                called_tools,
+            )
             return (
-                "âŒ **VIOLACIÃ“N DE GOBERNANZA**: cortex_create_spec fue llamado sin "
-                "ejecutar primero cortex_sync_ticket.\n\n"
-                "Por favor, corrige el flujo:\n"
-                "1. Llama a cortex_sync_ticket con el pedido del usuario\n"
-                "2. Luego llama a cortex_create_spec\n\n"
-                f"Herramientas llamadas en esta sesiÃ³n: {', '.join(sorted(called_tools))}"
+                f"{self._GOVERNANCE_VIOLATION_MESSAGE}\n\n"
+                f"Herramientas llamadas en esta sesión: "
+                f"{', '.join(sorted(called_tools))}"
             )
 
         path = self.memory.create_spec_note(
@@ -696,8 +771,116 @@ class CortexMCPServer:
             next_steps=arguments.get("next_steps", []),
             tags=arguments.get("tags", []),
             sync_vault=not arguments.get("no_sync", False),
+            handoff=bool(arguments.get("handoff", False)),
+            blockers=list(arguments.get("blockers", []) or []),
+            verified_state=list(arguments.get("verified_state", []) or []),
+            unverified_claims=list(arguments.get("unverified_claims", []) or []),
+            suggested_skills=list(arguments.get("suggested_skills", []) or []),
         )
         return f"Session note saved -> {path}"
+
+    # ------------------------------------------------------------------
+    # Tripartita Refinada — Handoff & Verification helpers (Plan 02)
+    # ------------------------------------------------------------------
+
+    def _validate_handoff_text(self, arguments: dict[str, Any]) -> str:
+        """Validate a YAML handoff against the AgentHandoff schema."""
+        from pydantic import ValidationError
+
+        from cortex.handoff import AgentHandoff
+
+        yaml_text = str(arguments.get("handoff_yaml", "") or "")
+        expected_agent = arguments.get("expected_agent")
+        if not yaml_text.strip():
+            return "❌ handoff_yaml is required and must not be empty."
+        try:
+            handoff = AgentHandoff.from_yaml(yaml_text)
+        except ValidationError as exc:
+            details = "; ".join(
+                f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}"
+                for err in exc.errors()
+            )
+            return f"❌ Handoff schema violation:\n  {details}"
+        except Exception as exc:
+            return f"❌ Failed to parse YAML: {exc}"
+
+        if expected_agent and handoff.agent != expected_agent:
+            return (
+                f"❌ Agent mismatch: handoff says '{handoff.agent}' but "
+                f"expected '{expected_agent}'."
+            )
+
+        lines = [
+            f"✅ Handoff validated for {handoff.agent} (status: {handoff.status})",
+            f"  verified_claims: {len(handoff.verified_claims)}",
+            f"  unverified_claims: {len(handoff.unverified_claims)}",
+            f"  artifacts: {len(handoff.artifacts_produced)}",
+            f"  context_for_next: {len(handoff.context_for_next)}",
+        ]
+        if handoff.suggested_adr:
+            reason = handoff.suggested_adr_reason or "(no reason given)"
+            lines.append(f"  ⚠ suggested ADR: {reason}")
+        if handoff.suggested_context_terms:
+            lines.append(
+                f"  📚 CONTEXT.md terms: {', '.join(handoff.suggested_context_terms)}"
+            )
+        return "\n".join(lines)
+
+    def _verify_session_claims_text(self, arguments: dict[str, Any]) -> str:
+        """Cross-check claims against the current git diff (heuristic)."""
+        import subprocess
+
+        claims = [str(c).strip() for c in (arguments.get("claims") or []) if str(c).strip()]
+        base = str(arguments.get("base_branch") or "main")
+        if not claims:
+            return "❌ claims list is required and must not be empty."
+
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--unified=0", base, "--"],
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            diff_text = result.stdout or ""
+        except FileNotFoundError:
+            return "❌ git binary not available; cannot verify claims."
+        except subprocess.TimeoutExpired:
+            return f"❌ git diff against '{base}' timed out after 10s."
+        except Exception as exc:
+            return f"❌ Could not read diff: {exc}"
+
+        diff_lower = diff_text.lower()
+        verified: list[str] = []
+        asserted: list[str] = []
+        contradicted: list[str] = []  # reserved for future negation heuristic
+
+        for claim in claims:
+            tokens = [
+                t.lower()
+                for t in claim.replace("_", " ").replace("/", " ").split()
+                if len(t) > 3
+            ]
+            hits = sum(1 for t in tokens if t in diff_lower)
+            if hits >= 2:
+                verified.append(claim)
+            else:
+                asserted.append(claim)
+
+        lines = [
+            f"Verification of {len(claims)} claims against branch {base}:",
+            f"  ✅ verified: {len(verified)}",
+            f"  ⚠ asserted: {len(asserted)}",
+            f"  ❌ contradicted: {len(contradicted)}",
+        ]
+        if verified:
+            lines.append("\nVerified:")
+            lines.extend(f"  - {c}" for c in verified)
+        if asserted:
+            lines.append("\nAsserted (no diff evidence):")
+            lines.extend(f"  - {c}" for c in asserted)
+        return "\n".join(lines)
 
     def _import_hu_text(self, arguments: dict[str, Any]) -> str:
         path = self.memory.import_work_item(
