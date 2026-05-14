@@ -1,13 +1,23 @@
 ---
-title: "fix: serialize display_title to fix empty memory titles in CI"
-date: 2026-04-15
-pr: "#14"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'fix: serialize display_title to fix empty memory titles in CI'
+created_at: '2026-04-15T23:05:16.099998+00:00'
+updated_at: '2026-04-15T23:05:16.099998+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: e91567dc0d4206f6d4c7c19f409e624cb31df4f6088a33f367817e92a9bb9f02
+session_id: 2026-04-15-f
+pr: '#14'
 branch: fix/ci-memory-display
 commit: 627e558e
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # fix: serialize display_title to fix empty memory titles in CI
 
 > [!warning] Fallback Documentation

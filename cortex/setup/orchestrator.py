@@ -228,14 +228,22 @@ class SetupOrchestrator:
         In legacy layout they go to the repo root (backward compat).
         """
         layout = self.layout
+        # Canonical 12-folder layout (Fase 12 of canonical-documentation
+        # initiative). Each subfolder is backed by a write_*_note in
+        # ``cortex.documentation.writers`` and a DocType in DOC_TYPE_ROUTING.
         dirs = [
             layout.episodic_memory_path,
             layout.vault_path / "sessions",
-            layout.vault_path / "decisions",
-            layout.vault_path / "runbooks",
-            layout.vault_path / "incidents",
-            layout.vault_path / "hu",
+            layout.vault_path / "handoffs",
             layout.vault_path / "specs",
+            layout.vault_path / "decisions",       # ADR + DECISION share this
+            layout.vault_path / "incidents",
+            layout.vault_path / "postmortems",
+            layout.vault_path / "runbooks",
+            layout.vault_path / "architecture",
+            layout.vault_path / "changelog",
+            layout.vault_path / "hu",
+            layout.vault_path / "glossary",
         ]
         for d in dirs:
             if d.exists():

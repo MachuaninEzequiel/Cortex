@@ -19,6 +19,7 @@ from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.models import EnrichedContext, EnrichedItem, EpisodicHit
 
 if TYPE_CHECKING:
+    from cortex.context_enricher.telemetry import PersistentObserver
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.models import WorkContext
     from cortex.semantic.vault_reader import VaultReader
@@ -49,16 +50,19 @@ class ContextEnricher:
         episodic: EpisodicMemoryStore,
         semantic: VaultReader,
         config: ContextEnricherConfig | None = None,
+        observer: PersistentObserver | None = None,
     ) -> None:
         self.episodic = episodic
         self.semantic = semantic
         self.config = config or ContextEnricherConfig()
+        self._observer = observer
 
     def enrich(
         self,
         work: WorkContext,
         *,
         top_k: int | None = None,
+        filters: "EnrichmentFilters | None" = None,
     ) -> EnrichedContext:
         """
         Execute multi-strategy search and return enriched context.
@@ -66,10 +70,17 @@ class ContextEnricher:
         Args:
             work: WorkContext from the Observer.
             top_k: Override max items.
+            filters: optional structural filters (Fase 08). When set,
+                filters out items by ``doc_types``, ``statuses``, ``tags``,
+                ``vault_scope``, ``max_age_days`` or ``project_ids`` after
+                multi-match boost but before budget enforcement. Also
+                triggers ``DocIntent``-based boost over the remaining items.
 
         Returns:
             EnrichedContext with deduplicated, ranked items.
         """
+        import time as _time
+        _t0 = _time.perf_counter()
         max_items = top_k or self.config.max_items
 
         # Phase 1: Execute all strategies
@@ -254,6 +265,36 @@ class ContextEnricher:
                 if fb and fb.is_useful:
                     item.enriched_score *= (1.0 + self.config.implicit_boost)
 
+        # Phase 4.5: Structural filters (Fase 08).
+        if filters is not None and not filters.is_empty():
+            from cortex.context_enricher.filters import apply_filters as _apply
+            kept = _apply(list(all_items.values()), filters)
+            all_items = {it.source_id: it for it in kept}
+
+        # Phase 4.6: DocIntent-based boost (Fase 08).
+        # Multiplies enriched_score by ``RouteSpec.retrieval_boost_per_intent``
+        # for the detected intent. Unknown DocTypes and GENERIC intent
+        # leave the score untouched.
+        if queries:
+            from cortex.context_enricher.doc_intent import DocIntentDetector, DocIntent
+            from cortex.documentation.doc_type import DocType as _DocType
+            from cortex.documentation.routing import resolve_route as _resolve
+
+            intent_result = DocIntentDetector().detect(queries[0])
+            if intent_result.intent is not DocIntent.GENERIC:
+                for item in all_items.values():
+                    if not item.doc_type:
+                        continue
+                    try:
+                        route = _resolve(_DocType(item.doc_type))
+                    except (ValueError, Exception):
+                        continue
+                    boost = route.retrieval_boost_per_intent.get(
+                        intent_result.intent.value, 1.0,
+                    )
+                    if boost != 1.0:
+                        item.enriched_score *= boost
+
         # Phase 5: Filter by threshold and sort
         filtered = [
             item for item in all_items.values()
@@ -273,7 +314,7 @@ class ContextEnricher:
             budget_items.append(item)
             total_chars += item_chars
 
-        return EnrichedContext(
+        ctx = EnrichedContext(
             work=work,
             items=budget_items,
             total_searches=len(strategy_results),
@@ -282,6 +323,19 @@ class ContextEnricher:
             total_chars=total_chars,
             within_budget=total_chars <= self.config.max_chars,
         )
+
+        # Phase 7: telemetry (Fase 05 of canonical-documentation).
+        # Non-blocking: failures must not abort the pipeline.
+        if self._observer is not None:
+            try:
+                latency_ms = int((_time.perf_counter() - _t0) * 1000)
+                run_id = self._observer.record_enrichment(ctx, latency_ms=latency_ms)
+                if run_id:
+                    ctx = ctx.model_copy(update={"enricher_run_id": run_id})
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Telemetry record_enrichment failed: %s", exc)
+
+        return ctx
 
     # ------------------------------------------------------------------
     # Internal: search helpers
@@ -350,6 +404,8 @@ class ContextEnricher:
                 files_mentioned=hit.entry.files,
                 date=hit.entry.timestamp,
                 tags=hit.entry.tags,
+                vault_scope=getattr(hit.entry, "origin_scope", "local") or "local",
+                origin_project_id=getattr(hit.entry, "origin_project_id", None) or None,
             )
         elif hit.source == "semantic" and hit.doc:
             return EnrichedItem(
@@ -363,6 +419,12 @@ class ContextEnricher:
                 files_mentioned=[],
                 date=None,
                 tags=hit.doc.tags,
+                doc_type=_doc_type_from_doc(hit.doc),
+                status=_status_from_doc(hit.doc),
+                vault_scope=getattr(hit.doc, "origin_scope", "local") or "local",
+                origin_project_id=getattr(hit.doc, "origin_project_id", None) or None,
+                matched_chunk_id=getattr(hit.doc, "matched_chunk_id", None),
+                matched_section_title=getattr(hit.doc, "matched_section_title", None),
             )
         return None
 
@@ -380,6 +442,8 @@ class ContextEnricher:
             files_mentioned=entry.files,
             date=entry.timestamp,
             tags=entry.tags,
+            vault_scope=getattr(hit, "origin_scope", "local") or "local",
+            origin_project_id=getattr(hit, "origin_project_id", None) or None,
         )
 
     def _semantic_hit_to_enriched(self, hit, strategy: str) -> EnrichedItem:
@@ -395,6 +459,12 @@ class ContextEnricher:
             files_mentioned=[],
             date=None,
             tags=hit.tags,
+            doc_type=_doc_type_from_doc(hit),
+            status=_status_from_doc(hit),
+            vault_scope=getattr(hit, "origin_scope", "local") or "local",
+            origin_project_id=getattr(hit, "origin_project_id", None) or None,
+            matched_chunk_id=getattr(hit, "matched_chunk_id", None),
+            matched_section_title=getattr(hit, "matched_section_title", None),
         )
 
     # ------------------------------------------------------------------
@@ -543,3 +613,50 @@ class ContextEnricher:
 
         max_possible = len(current_files) * len(memory_files)
         return total / max_possible if max_possible > 0 else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers for structural metadata (Fase 08).
+# ---------------------------------------------------------------------------
+
+
+_SUBFOLDER_TO_TYPE_SLUG: dict[str, str] = {
+    "sessions": "session",
+    "handoffs": "handoff",
+    "specs": "spec",
+    "incidents": "incident",
+    "postmortems": "postmortem",
+    "runbooks": "runbook",
+    "architecture": "architecture",
+    "changelog": "changelog",
+    "hu": "hu",
+    "glossary": "glossary",
+}
+
+
+def _doc_type_from_doc(doc) -> str | None:
+    """Best-effort DocType slug for a SemanticDocument.
+
+    Reads ``doc.frontmatter`` if exposed by the parser; otherwise delegates
+    to the canonical ``infer_doc_type_from_path`` helper (Fase 13 single
+    source of truth shared with inventory + webgraph).
+    """
+    fm = getattr(doc, "frontmatter", None)
+    if isinstance(fm, dict):
+        slug = fm.get("doc_type")
+        if isinstance(slug, str) and slug:
+            return slug
+    from cortex.documentation.doc_type import infer_doc_type_from_path
+    path = getattr(doc, "path", "") or ""
+    dt = infer_doc_type_from_path(path) if path else None
+    return dt.value if dt else None
+
+
+def _status_from_doc(doc) -> str | None:
+    """Status from frontmatter when available."""
+    fm = getattr(doc, "frontmatter", None)
+    if isinstance(fm, dict):
+        status = fm.get("status")
+        if isinstance(status, str) and status:
+            return status
+    return None

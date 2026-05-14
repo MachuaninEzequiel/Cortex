@@ -76,6 +76,7 @@ class SessionService:
         verified_state: list[str] | None = None,
         unverified_claims: list[str] | None = None,
         suggested_skills: list[str] | None = None,
+        cortex_telemetry: dict | None = None,
     ) -> Path:
         """
         Create a session note and persist it to the vault.
@@ -117,6 +118,7 @@ class SessionService:
             verified_state=verified_state or [],
             unverified_claims=unverified_claims or [],
             suggested_skills=suggested_skills or [],
+            cortex_telemetry=cortex_telemetry,
         )
         logger.debug("Session note written: %s", path)
 

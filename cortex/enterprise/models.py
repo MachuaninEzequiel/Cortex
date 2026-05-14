@@ -69,6 +69,49 @@ class IntegrationConfig(BaseModel):
     ide_profiles: list[str] = Field(default_factory=list)
 
 
+# Multi-tenant & governance (Fase 10 of canonical-documentation initiative).
+# All fields are optional and default empty, so existing org.yaml files keep
+# working unchanged.
+
+class TeamConfig(BaseModel):
+    """A team inside the organization."""
+
+    id: str = Field(min_length=1, pattern=r"^[a-z0-9-]+$")
+    members: list[str] = Field(default_factory=list)
+    can_promote: bool = True
+    can_review: bool = False
+
+
+Classification = Literal["public", "internal", "confidential"]
+
+
+class RetentionPolicy(BaseModel):
+    """Default retention in days per DocType. ``0`` means no expiration."""
+
+    session: int = Field(default=365, ge=0)
+    handoff: int = Field(default=30, ge=0)
+    spec: int = Field(default=1095, ge=0)
+    adr: int = Field(default=2555, ge=0)
+    decision: int = Field(default=365, ge=0)
+    incident: int = Field(default=1825, ge=0)
+    postmortem: int = Field(default=2555, ge=0)
+    runbook: int = Field(default=730, ge=0)
+    architecture: int = Field(default=2555, ge=0)
+    changelog: int = Field(default=0, ge=0)
+    hu: int = Field(default=90, ge=0)
+    glossary: int = Field(default=0, ge=0)
+
+    def for_doc_type(self, slug: str) -> int:
+        """Return the retention days for a doc_type slug. Unknown -> 0."""
+        return int(getattr(self, slug, 0)) if isinstance(slug, str) else 0
+
+
+class EnterprisePolicies(BaseModel):
+    """Free-form policies applied across the org."""
+
+    confidential_visible_to: list[str] = Field(default_factory=list)
+
+
 class EnterpriseOrgConfig(BaseModel):
     schema_version: int = 1
     organization: OrganizationConfig = Field(default_factory=OrganizationConfig)
@@ -76,6 +119,13 @@ class EnterpriseOrgConfig(BaseModel):
     promotion: PromotionConfig = Field(default_factory=PromotionConfig)
     governance: GovernanceConfig = Field(default_factory=GovernanceConfig)
     integration: IntegrationConfig = Field(default_factory=IntegrationConfig)
+    # Multi-tenant governance (Fase 10).
+    teams: list[TeamConfig] = Field(default_factory=list)
+    classifications: list[Classification] = Field(
+        default_factory=lambda: ["public", "internal", "confidential"]
+    )
+    policies: EnterprisePolicies = Field(default_factory=EnterprisePolicies)
+    retention_defaults: RetentionPolicy = Field(default_factory=RetentionPolicy)
 
     @model_validator(mode="after")
     def _validate_cross_section_rules(self) -> "EnterpriseOrgConfig":

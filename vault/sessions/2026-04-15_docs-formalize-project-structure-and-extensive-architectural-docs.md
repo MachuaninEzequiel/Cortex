@@ -1,13 +1,23 @@
 ---
-title: "docs: formalize project structure and extensive architectural docs"
-date: 2026-04-15
-pr: "#8"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'docs: formalize project structure and extensive architectural docs'
+created_at: '2026-04-15T23:05:16.078181+00:00'
+updated_at: '2026-04-15T23:05:16.078181+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: e690d9ceddc16ff5acde178a46ecf043ae86d7fa8b373016ca63dc0f3d8022d3
+session_id: 2026-04-15-d
+pr: '#8'
 branch: docs/formalize-architecture-and-readme
 commit: 9c9b6501
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # docs: formalize project structure and extensive architectural docs
 
 > [!warning] Fallback Documentation

@@ -1,8 +1,25 @@
 ---
-title: "Incidente: Desviación de Comportamiento y Confusión de Identidad (Sync vs Work)"
-date: 2026-04-15
-tags: [incidente, gobernanza, prompts, perfiles]
+schema_version: 1
+doc_type: incident
+title: 'Incidente: Desviación de Comportamiento y Confusión de Identidad (Sync vs
+  Work)'
+created_at: '2026-04-16T15:32:18.398705+00:00'
+updated_at: '2026-04-16T15:32:18.398705+00:00'
+tags:
+- incidente
+- gobernanza
+- prompts
+- perfiles
 status: open
+links: []
+vault_scope: local
+fingerprint: cd2948bbc2a645ec1be0a785fb7691e3ad70d14204f38974745aa9e985538668
+incident_number: 1
+severity: medium
+opened_at: '2026-04-16T15:32:18.398705+00:00'
+closed_at: null
+affected_services: []
+root_cause_postmortem: null
 ---
 
 # Incidente: Desviación de Comportamiento y Confusión de Identidad

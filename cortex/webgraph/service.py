@@ -87,11 +87,23 @@ class WebGraphService:
         *,
         mode: WebGraphMode = "hybrid",
         use_cache: bool = True,
+        include_legend: bool = True,
     ) -> Path:
         snapshot = self.build_snapshot(mode=mode, use_cache=use_cache)
         path = output_path or self.cache.snapshot_path(mode)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
+
+        if include_legend:
+            # Inject the DocType + edge legend as a sibling field so the UI
+            # can render the color/shape key without having to import
+            # ``cortex.webgraph.style`` directly.
+            import json
+            from cortex.webgraph.style import build_legend
+            payload = snapshot.model_dump(mode="json")
+            payload["legend"] = build_legend()
+            path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        else:
+            path.write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
         return path
 
     def get_node_detail(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> WebGraphNodeDetail:

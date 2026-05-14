@@ -1,13 +1,23 @@
 ---
-title: "docs: document MCP server integration for IDEs"
-date: 2026-04-15
-pr: "#12"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'docs: document MCP server integration for IDEs'
+created_at: '2026-04-15T23:05:16.059410+00:00'
+updated_at: '2026-04-15T23:05:16.059410+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 825ab0172741fac323a8460dc5ba5b07e52d4383473240446b910a280b684c2e
+session_id: 2026-04-15-d
+pr: '#12'
 branch: docs/add-mcp-server-integration
 commit: 2775ad40
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # docs: document MCP server integration for IDEs
 
 > [!warning] Fallback Documentation

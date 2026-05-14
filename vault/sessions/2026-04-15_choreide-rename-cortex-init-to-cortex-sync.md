@@ -1,13 +1,23 @@
 ---
-title: "chore(ide): rename 'cortex-init' to 'cortex-sync'"
-date: 2026-04-15
-pr: "#7"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'chore(ide): rename ''cortex-init'' to ''cortex-sync'''
+created_at: '2026-04-15T14:51:34.351272+00:00'
+updated_at: '2026-04-15T14:51:34.351272+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 806339812006ede65b755dd7247b9292aa5f2df7069b4237e925d9a9f9511480
+session_id: 2026-04-15-c
+pr: '#7'
 branch: chore/rename-to-cortex-sync
 commit: db811a83
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # chore(ide): rename 'cortex-init' to 'cortex-sync'
 
 > [!warning] Fallback Documentation

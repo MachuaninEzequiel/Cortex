@@ -1,13 +1,23 @@
 ---
-title: "feat: add login implementation with jwt placeholder"
-date: 2026-04-14
-pr: "#1"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'feat: add login implementation with jwt placeholder'
+created_at: '2026-04-15T14:41:51.796736+00:00'
+updated_at: '2026-04-15T14:41:51.796736+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 0735b4bd80358d0759afe4218236ad2c25fdfa8f0cfe136bda444c70ef920d4d
+session_id: 2026-04-14-f
+pr: '#1'
 branch: feat/auth-login
 commit: eee5afec
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # feat: add login implementation with jwt placeholder
 
 > [!warning] Fallback Documentation

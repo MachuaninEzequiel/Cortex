@@ -104,6 +104,23 @@ def doc_type_from_str(value: str) -> DocType:
         raise UnknownDocTypeError(f"Unknown doc_type: {value!r}") from exc
 
 
+def infer_doc_type_from_path(path: Path | str) -> DocType | None:
+    """Canonical DocType inference (Fase 13).
+
+    Accepts a ``Path`` or a string (POSIX or Windows separator). Normalizes
+    backslashes to forward slashes before delegating to ``doc_type_from_path``.
+
+    This is the single source of truth — three older helpers
+    (``inventory.classify_path``, ``enricher._doc_type_from_doc``,
+    ``semantic_source._doc_type_from_rel_path``) now delegate here so the
+    inference logic only lives in one place.
+    """
+    if isinstance(path, str):
+        # Normalize separators so Windows-style paths work too.
+        path = Path(path.replace("\\", "/"))
+    return doc_type_from_path(path)
+
+
 def doc_type_from_path(path: Path) -> DocType | None:
     """Infer the DocType from a markdown file's path.
 

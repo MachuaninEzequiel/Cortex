@@ -1,8 +1,8 @@
 # Fase 06 - Vector Persistence
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 1.5 dias
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 1.5 dias (real: ~1 hora)
 **Riesgo:** medio
 **Dependencias:** ninguna (puede ir en paralelo con Fase 05)
 
@@ -514,13 +514,13 @@ def test_cold_start_1000_notes_no_cache(benchmark, vault_1000_notes_no_cache):
 
 ## 6. Checklist
 
-- [ ] `cortex/semantic/vector_cache.py` con `VectorCache`, `CacheEntry`, `CacheStats`
-- [ ] `VaultReader.sync()` y `index_file()` usan cache
-- [ ] CLI `cortex docs vectorization stats/compact/clear`
-- [ ] Tests >= 15
-- [ ] Tests de performance con benchmark
-- [ ] Coverage >= 90%
-- [ ] Persistencia verificada (restart)
+- [x] `cortex/semantic/vector_cache.py` con `VectorCache`, `CacheEntry`, `CacheStats`
+- [x] `VaultReader.sync()` y `index_file()` usan cache
+- [x] CLI `cortex docs vectorization stats/compact/clear`
+- [x] Tests >= 15 (40 implementados)
+- [x] Tests de performance con benchmark (2 implementados)
+- [x] Coverage >= 90% (95%)
+- [x] Persistencia verificada (restart)
 
 ---
 

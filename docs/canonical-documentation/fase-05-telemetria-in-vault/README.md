@@ -1,8 +1,8 @@
 # Fase 05 - Telemetria In-Vault
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 1 dia
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 1 dia (real: ~1 hora)
 **Riesgo:** bajo
 **Dependencias:** Fase 04
 
@@ -363,15 +363,18 @@ def test_aggregate_includes_recent_sessions(tmp_vault, observer):
 
 ## 7. Checklist
 
-- [ ] `cortex/context_enricher/telemetry.py` con `PersistentObserver`
-- [ ] `ContextEnricher` acepta `observer` opcional
-- [ ] `CortexTelemetry` agregado a `SessionFrontmatter`
-- [ ] `SessionService.create()` acepta y persiste `cortex_telemetry`
-- [ ] `cortex memory-report` extendido
-- [ ] Config con seccion `retrieval.telemetry`
-- [ ] Citation detection implementada
-- [ ] Tests >= 20
-- [ ] Coverage >= 90%
+- [x] `cortex/context_enricher/telemetry.py` con `PersistentObserver`
+- [x] `ContextEnricher` acepta `observer` opcional
+- [x] `CortexTelemetry` agregado a `SessionFrontmatter` (desde Fase 01)
+- [x] `SessionService.create()` acepta y persiste `cortex_telemetry`
+- [x] `cortex memory-report` extendido (`--telemetry`, `--since-days`)
+- [x] Config con seccion `retrieval.telemetry` (cerrado en deuda post-Fase 06, ver `REALIZACION.md` seccion "Cierre de deuda")
+- [x] Citation detection implementada
+- [x] Tests: 23 nuevos en deuda (helper, CLI, E2E), 25 originales = 48 totales
+- [x] Coverage 100% en `telemetry.py` (cierre completo, sin lineas defensive sin cubrir)
+- [x] Helper `make_observer(workspace_layout, config=...)` en `telemetry.py`
+- [x] Tests integration E2E (`tests/integration/test_telemetry_e2e.py`)
+- [x] Tests CLI `cortex memory-report --telemetry` con CliRunner (4 tests)
 
 ---
 

@@ -1,13 +1,23 @@
 ---
-title: "feat: Integración de Instalador IDE y servidor MCP"
-date: 2026-04-15
-pr: "#5"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'feat: Integración de Instalador IDE y servidor MCP'
+created_at: '2026-04-15T14:41:51.812773+00:00'
+updated_at: '2026-04-15T14:41:51.812773+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 0d15c712d92dff38bd66a58c33d4b0115c1194427fa617b5420f55071d6a618e
+session_id: 2026-04-15-f
+pr: '#5'
 branch: feature/ide-integration
 commit: 3adcbc95
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # feat: Integración de Instalador IDE y servidor MCP
 
 > [!warning] Fallback Documentation

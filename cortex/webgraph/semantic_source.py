@@ -36,6 +36,17 @@ def _semantic_node_type(rel_path: str, tags: list[str]) -> str:
     return "semantic_doc"
 
 
+def _doc_type_from_rel_path(rel_path: str) -> str | None:
+    """Best-effort DocType slug from the relative path inside the vault.
+
+    Thin wrapper over the canonical ``infer_doc_type_from_path`` (Fase 13);
+    kept for API compatibility with existing callers in this module.
+    """
+    from cortex.documentation.doc_type import infer_doc_type_from_path
+    dt = infer_doc_type_from_path(rel_path)
+    return dt.value if dt else None
+
+
 class SemanticSource:
     """Adapter that projects VaultReader documents into webgraph records."""
 
@@ -70,11 +81,24 @@ class SemanticSource:
         )
 
     def load_records(self, *, include_embeddings: bool = True) -> list[SemanticRecord]:
+        from cortex.webgraph.style import style_for_doc_type
         records: list[SemanticRecord] = []
         for rel_path, doc in self.reader.iter_documents():
             rel_posix = rel_path.replace("\\", "/")
             node_type = _semantic_node_type(rel_posix, doc.tags)
             search_text = f"{doc.title} {doc.content}".strip()
+            doc_type_slug = _doc_type_from_rel_path(rel_posix)
+            style = style_for_doc_type(doc_type_slug)
+            metadata: dict[str, Any] = {
+                "path": rel_posix,
+                "doc_type": doc_type_slug,
+                "vault_scope": getattr(doc, "origin_scope", "local") or "local",
+                "color": style.color,
+                "shape": style.shape,
+            }
+            origin_project = getattr(doc, "origin_project_id", None)
+            if origin_project:
+                metadata["origin_project_id"] = origin_project
             records.append(
                 SemanticRecord(
                     node_id=f"semantic:{rel_posix}",
@@ -87,7 +111,7 @@ class SemanticSource:
                     links=list(doc.links),
                     content=doc.content,
                     embedding=self.embedder.embed(search_text) if include_embeddings else None,
-                    metadata={"path": rel_posix},
+                    metadata=metadata,
                 )
             )
         return records

@@ -1,8 +1,8 @@
 # Fase 11 - Migration y Backfill
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 1.5 dias
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 1.5 dias (real: ~1 hora)
 **Riesgo:** alto
 **Dependencias:** Fases 01-04
 

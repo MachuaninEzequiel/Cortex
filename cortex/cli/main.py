@@ -1722,6 +1722,16 @@ def memory_report(
         "--json",
         help="Print the report as JSON.",
     ),
+    telemetry: bool = typer.Option(
+        False,
+        "--telemetry",
+        help="Include the in-vault retrieval telemetry section (Fase 05).",
+    ),
+    since_days: int = typer.Option(
+        30,
+        "--since-days",
+        help="Telemetry window in days (used only with --telemetry).",
+    ),
 ) -> None:
     """Report enterprise memory health and promotion visibility."""
     from cortex.enterprise.reporting import EnterpriseReportingService
@@ -1735,8 +1745,23 @@ def memory_report(
     service = EnterpriseReportingService.from_project_root(root, workspace_layout=layout)
     report = service.build_memory_report(scope=scope)  # type: ignore[arg-type]
 
+    telemetry_payload: dict | None = None
+    if telemetry:
+        from cortex.context_enricher.telemetry import make_observer
+
+        observer = make_observer(layout, enabled=True)
+        telemetry_payload = observer.aggregate(since_days=since_days)
+        telemetry_payload["events_path"] = str(observer.path)
+
     if json_output:
-        typer.echo(report.model_dump_json(indent=2))
+        # Merge telemetry into the JSON output without touching the existing
+        # report schema. Adopters that already parse the report keep working.
+        payload = report.model_dump(mode="json")
+        if telemetry_payload is not None:
+            payload["telemetry"] = telemetry_payload
+        import json as _json
+
+        typer.echo(_json.dumps(payload, indent=2, default=str))
         return
 
     typer.echo("")
@@ -1775,6 +1800,36 @@ def memory_report(
         typer.echo("warnings:")
         for w in promo.warnings:
             typer.echo(f"  - {w}")
+
+    if telemetry_payload is not None:
+        typer.echo("")
+        typer.echo("Retrieval Telemetry (Fase 05)")
+        typer.echo("-----------------------------")
+        typer.echo(f"events_path: {telemetry_payload['events_path']}")
+        typer.echo(
+            f"window_days: {telemetry_payload['window_days']} "
+            f"(0 events found)" if telemetry_payload["enrichments"] == 0
+            else f"window_days: {telemetry_payload['window_days']}"
+        )
+        typer.echo(f"enrichments: {telemetry_payload['enrichments']}")
+        typer.echo(f"citations: {telemetry_payload['citations']}")
+        typer.echo(f"items_offered: {telemetry_payload['items_offered']}")
+        typer.echo(f"items_used: {telemetry_payload['items_used']}")
+        typer.echo(f"hit_rate: {telemetry_payload['hit_rate']:.3f}")
+        if telemetry_payload["by_strategy"]:
+            typer.echo("by_strategy:")
+            for strategy, stats in telemetry_payload["by_strategy"].items():
+                typer.echo(
+                    f"  - {strategy}: offered={stats['offered']} "
+                    f"used={stats['used']} hit_rate={stats['hit_rate']:.3f}"
+                )
+        if telemetry_payload["latency"]:
+            lat = telemetry_payload["latency"]
+            typer.echo(
+                f"latency: p50={lat.get('p50_ms', 0):.0f}ms "
+                f"p95={lat.get('p95_ms', 0):.0f}ms "
+                f"p99={lat.get('p99_ms', 0):.0f}ms"
+            )
 
 
 # ---------------------------------------------------------------------------

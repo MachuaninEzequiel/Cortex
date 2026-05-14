@@ -67,6 +67,7 @@ def write_session_note(
     verified_state: list[str] | None = None,
     unverified_claims: list[str] | None = None,
     suggested_skills: list[str] | None = None,
+    cortex_telemetry: dict | None = None,
 ) -> Path:
     """Legacy-shaped wrapper around the canonical session writer.
 
@@ -75,6 +76,9 @@ def write_session_note(
 
     The canonical writer requires ``session_id``; the shim generates a 12-char
     hex id when the caller doesn't provide one (legacy behavior).
+
+    Fase 05 adds the optional ``cortex_telemetry`` block which is embedded in
+    the session frontmatter so adopters can audit retrieval quality.
     """
     final_tags = ["session"] + list(tags or [])
     if handoff and "handoff" not in final_tags:
@@ -96,6 +100,7 @@ def write_session_note(
         unverified_claims=list(unverified_claims or []),
         blockers=list(blockers or []),
         suggested_skills=list(suggested_skills or []),
+        cortex_telemetry=cortex_telemetry,
     )
     vault = _PathOnlyVault(Path(vault_path))
     return write_session_note_canonical(data, vault=vault)

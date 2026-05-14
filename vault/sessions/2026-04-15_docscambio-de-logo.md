@@ -1,13 +1,23 @@
 ---
-title: "Docs/cambio de logo"
-date: 2026-04-15
-pr: "#15"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: Docs/cambio de logo
+created_at: '2026-04-15T23:05:22.864673+00:00'
+updated_at: '2026-04-15T23:05:22.864673+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 5d9ec078975c51b6620ded16dc70fe8a7860395ba729cfced03bb9746f3db217
+session_id: 2026-04-15-d
+pr: '#15'
 branch: docs/cambio-de-logo
 commit: efc89379
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # Docs/cambio de logo
 
 > [!warning] Fallback Documentation

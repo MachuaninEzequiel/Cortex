@@ -1,13 +1,23 @@
 ---
-title: "feat(architecture): phase 1-4 massive refactoring, testing and security stabilization"
-date: 2026-04-22
-pr: "#20"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'feat(architecture): phase 1-4 massive refactoring, testing and security stabilization'
+created_at: '2026-04-23T18:19:40.800855+00:00'
+updated_at: '2026-04-23T18:19:40.800855+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: f344dd19415ab8bda0701d0ee4b821929eb8f57bcb0b49697d4503c8011f8eef
+session_id: 2026-04-22-f
+pr: '#20'
 branch: feature/v2.4.0-stabilization
 commit: 526d083e
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # feat(architecture): phase 1-4 massive refactoring, testing and security stabilization
 
 > [!warning] Fallback Documentation

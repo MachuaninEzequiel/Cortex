@@ -1,9 +1,23 @@
 ---
-title: "Release 2 Known Weaknesses and Hardening Backlog"
-date: 2026-04-16
-last_review: 2026-05-13
-tags: [architecture, technical-debt, release-2, hardening, backlog]
-status: partially-resolved
+schema_version: 1
+doc_type: architecture
+title: Release 2 Known Weaknesses and Hardening Backlog
+created_at: '2026-05-13T22:29:18.577758+00:00'
+updated_at: '2026-05-13T22:29:18.577758+00:00'
+tags:
+- architecture
+- technical-debt
+- release-2
+- hardening
+- backlog
+status: current
+links:
+- ADR-001-hybrid-search-fusion
+- architecture
+vault_scope: local
+fingerprint: fc6c871492d93a4c9becaaf5b93616fa17b324a7d7b1c970cf903c467ef94760
+related_adrs: []
+legacy_last_review: 2026-05-13
 ---
 
 > [!success] **2026-05-13 final review (Olas 0–4 closed)**

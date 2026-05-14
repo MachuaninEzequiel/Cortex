@@ -69,6 +69,10 @@ class GraphBuilder:
 
         nodes: list[WebGraphNode] = []
         for s_record in semantic_records:
+            # Preserve doc_type / vault_scope / color / shape coming from
+            # the source. Add abs_path on top (legacy field).
+            node_meta = dict(s_record.metadata)
+            node_meta["abs_path"] = s_record.abs_path
             nodes.append(
                 WebGraphNode(
                     id=s_record.node_id,
@@ -79,7 +83,7 @@ class GraphBuilder:
                     rel_path=s_record.rel_path,
                     tags=list(s_record.tags),
                     degree=degree_counter.get(s_record.node_id, 0),
-                    metadata={"abs_path": s_record.abs_path},
+                    metadata=node_meta,
                 )
             )
 

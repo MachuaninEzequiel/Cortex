@@ -1,8 +1,23 @@
 ---
-title: "ADR-001: Hybrid Search Cross-Source Fusion"
-date: 2026-04-15
-tags: [architecture, retrieval, rrf, memory]
+schema_version: 1
+doc_type: adr
+title: 'ADR-001: Hybrid Search Cross-Source Fusion'
+created_at: '2026-04-15T23:05:16.033060+00:00'
+updated_at: '2026-04-15T23:05:16.033060+00:00'
+tags:
+- architecture
+- retrieval
+- rrf
+- memory
 status: accepted
+links: []
+vault_scope: local
+fingerprint: 2440114731735272a936cec1ee776bc033df40626934c549a16e4d121dad74f5
+adr_number: 1
+supersedes: []
+superseded_by: null
+alternatives_considered: []
+acceptance_criteria_met: false
 ---
 
 # ADR-001: Hybrid Search Cross-Source Fusion

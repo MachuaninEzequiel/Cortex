@@ -1,8 +1,8 @@
 # Fase 12 - Cleanup
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 0.5 dia
+**Estado:** Completada parcialmente (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md). Eliminaciones destructivas diferidas a Fase 13 bloque A.
+**Esfuerzo estimado:** 0.5 dia (real: ~30 min)
 **Riesgo:** bajo
 **Dependencias:** Fase 11
 
