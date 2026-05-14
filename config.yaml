@@ -19,6 +19,14 @@ retrieval:
   episodic_weight: 1.0               # RRF weight for episodic results
   semantic_weight: 1.0               # RRF weight for semantic results
 
+  # In-vault telemetry (Fase 05 of canonical-documentation initiative).
+  # When enabled, every ContextEnricher.enrich() call writes an event to
+  # ``.cortex/enrichment-events.jsonl`` and ``cortex memory-report --telemetry``
+  # can aggregate hit-rate / latency / strategy stats.
+  telemetry:
+    enabled: true                    # set to false to disable persistence
+    path: .cortex/enrichment-events.jsonl   # relative to workspace_root
+
 # ── LLM (for memory summarization) ───────────────────────────
 llm:
   provider: none                     # none | openai | anthropic | ollama

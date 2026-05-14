@@ -1,8 +1,8 @@
 # Fase 08 - Retrieval Filters
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 2 dias
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 2 dias (real: ~1 hora)
 **Riesgo:** medio
 **Dependencias:** Fase 01, Fase 07
 
@@ -357,15 +357,15 @@ Ver `testing-strategy.md` seccion 3.8 para detalle de cada test. Aplican:
 
 ## 5. Checklist
 
-- [ ] `cortex/context_enricher/filters.py` con `EnrichmentFilters` y `apply_filters`
-- [ ] `cortex/retrieval/query_intent.py` extendido con 8 intents nuevos
-- [ ] `cortex/context_enricher/enricher.py` aplica filters + boost
-- [ ] `cortex/context_enricher/presenter.py` con `GroupedPresenter`
-- [ ] `cortex/models.py` EnrichedItem extendido
-- [ ] CLI `cortex search` con flags
-- [ ] MCP `cortex_search` con filtros
-- [ ] Tests >= 47
-- [ ] Coverage >= 90%
+- [x] `cortex/context_enricher/filters.py` con `EnrichmentFilters` y `apply_filters`
+- [x] `cortex/context_enricher/doc_intent.py` (modulo separado por ortogonalidad - ver REALIZACION 3.1)
+- [x] `cortex/context_enricher/enricher.py` aplica filters + boost
+- [x] `cortex/context_enricher/presenter.py` con grouped output (`to_markdown_grouped`, `to_compact_grouped`)
+- [x] `cortex/models.py` EnrichedItem extendido con 6 campos opcionales
+- [ ] CLI `cortex search` con flags - postergado (ver REALIZACION pendientes)
+- [ ] MCP `cortex_search` con filtros - postergado idem
+- [x] Tests >= 47 (48 implementados)
+- [x] Coverage >= 90% (100% en filters y doc_intent)
 
 ---
 

@@ -114,6 +114,86 @@ class ContextPresenter:
         return "\n".join(parts)
 
     @staticmethod
+    def to_markdown_grouped(ctx: "EnrichedContext") -> str:
+        """Markdown grouped by ``doc_type`` (Fase 08).
+
+        Groups are sorted by the max ``enriched_score`` of their items. Within
+        each group items keep their score-descending order. Items without a
+        ``doc_type`` (legacy episodic memories) collapse into an ``OTHER``
+        section at the end.
+        """
+        if not ctx.items:
+            return "🧠 Cortex Context — No related memories found."
+
+        from collections import defaultdict
+
+        groups: dict[str, list] = defaultdict(list)
+        for item in ctx.items:
+            label = (item.doc_type or "OTHER").upper()
+            groups[label].append(item)
+
+        ordered = sorted(
+            groups.items(),
+            key=lambda kv: max(i.enriched_score for i in kv[1]),
+            reverse=True,
+        )
+
+        parts: list[str] = [
+            f"# Cortex Context ({ctx.total_items} items, {ctx.total_chars} chars)\n",
+        ]
+        for label, items in ordered:
+            parts.append(f"\n## {label} ({len(items)} items)")
+            for item in items:
+                parts.append(f"\n### {item.title}")
+                meta = [f"score: {item.enriched_score:.3f}"]
+                if item.matched_by:
+                    meta.append(f"matched_by: {', '.join(item.matched_by)}")
+                if item.matched_section_title:
+                    meta.append(f"section: {item.matched_section_title}")
+                if item.vault_scope and item.vault_scope != "local":
+                    meta.append(f"scope: {item.vault_scope}")
+                parts.append(" | ".join(meta))
+                excerpt = (item.content or "")[:200]
+                if len(item.content or "") > 200:
+                    excerpt += "…"
+                parts.append(f"> {excerpt}")
+        return "\n".join(parts)
+
+    @staticmethod
+    def to_compact_grouped(ctx: "EnrichedContext") -> str:
+        """Compact format grouped by ``doc_type`` (Fase 08)."""
+        if not ctx.items:
+            return "🧠 Cortex Context — No related memories found."
+
+        from collections import defaultdict
+
+        groups: dict[str, list] = defaultdict(list)
+        for item in ctx.items:
+            label = (item.doc_type or "other").lower()
+            groups[label].append(item)
+
+        ordered = sorted(
+            groups.items(),
+            key=lambda kv: max(i.enriched_score for i in kv[1]),
+            reverse=True,
+        )
+
+        parts: list[str] = [f"## Cortex Context ({ctx.total_items} items)\n"]
+        for label, items in ordered:
+            parts.append(f"[{label.upper()}]")
+            for item in items:
+                section = (
+                    f" §{item.matched_section_title}"
+                    if item.matched_section_title else ""
+                )
+                parts.append(
+                    f"- {item.title}{section} (score={item.enriched_score:.2f})"
+                )
+                parts.append(f"  {(item.content or '')[:200].replace(chr(10), ' ')}")
+            parts.append("")
+        return "\n".join(parts)
+
+    @staticmethod
     def to_json(ctx: EnrichedContext) -> str:
         """
         Format as JSON for CI/CD pipeline consumption.
@@ -146,6 +226,13 @@ class ContextPresenter:
                     "files_mentioned": item.files_mentioned,
                     "date": item.date.isoformat() if item.date else None,
                     "tags": item.tags,
+                    # Structural metadata (Fase 08).
+                    "doc_type": item.doc_type,
+                    "status": item.status,
+                    "vault_scope": item.vault_scope,
+                    "origin_project_id": item.origin_project_id,
+                    "matched_chunk_id": item.matched_chunk_id,
+                    "matched_section_title": item.matched_section_title,
                 }
                 for item in ctx.items
             ],

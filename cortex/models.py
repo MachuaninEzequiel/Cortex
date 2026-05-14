@@ -66,6 +66,11 @@ class SemanticDocument(BaseModel):
     origin_project_id: str = ""
     origin_vault: str = ""
     origin_persist_dir: str = ""
+    # Chunking-aware retrieval (Fase 07): when a chunked doc wins a search,
+    # ``matched_chunk_id`` and ``matched_section_title`` identify the best
+    # section. Both are ``None`` for unchunked docs.
+    matched_chunk_id: str | None = None
+    matched_section_title: str | None = None
 
 
 class EpisodicHit(BaseModel):
@@ -316,6 +321,14 @@ class EnrichedItem(BaseModel):
     date: datetime | None = None
     tags: list[str] = Field(default_factory=list)
     confidence: Literal["verified", "asserted", "contradicted"] | None = None
+    # Structural metadata (Fase 08 of canonical-documentation initiative).
+    # All optional; legacy items have None / "local" / None.
+    doc_type: str | None = None             # DocType.value (kept as str for serialization)
+    status: str | None = None               # frontmatter status
+    vault_scope: str = "local"              # "local" | "enterprise"
+    origin_project_id: str | None = None    # multi-tenant marker
+    matched_chunk_id: str | None = None     # propagated from semantic search
+    matched_section_title: str | None = None
 
 
 class EnrichedContext(BaseModel):
@@ -333,6 +346,7 @@ class EnrichedContext(BaseModel):
     total_items: int = 0
     total_chars: int = 0
     within_budget: bool = True
+    enricher_run_id: str | None = None  # set when PersistentObserver is attached
 
     def to_prompt_format(self, *, compact: bool = False, expand: bool = False) -> str:
         """

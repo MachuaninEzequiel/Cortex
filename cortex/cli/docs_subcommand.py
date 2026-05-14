@@ -20,6 +20,26 @@ from cortex.documentation.routing import list_all_routes, resolve_route
 
 app = typer.Typer(help="Canonical documentation system commands.")
 
+# Vector cache operations live under ``cortex docs vectorization`` (Fase 06).
+from cortex.cli.docs_vectorization import app as _vec_app
+app.add_typer(_vec_app, name="vectorization")
+
+# Migration / validate / restore (Fase 11).
+from cortex.cli.docs_migrate import (
+    list_backups_cmd as _list_backups_cmd,
+    migrate as _migrate_cmd,
+    restore as _restore_cmd,
+    validate as _validate_cmd,
+)
+app.command(name="migrate")(_migrate_cmd)
+app.command(name="validate")(_validate_cmd)
+app.command(name="restore")(_restore_cmd)
+app.command(name="list-backups")(_list_backups_cmd)
+
+# Structural search with EnrichmentFilters (Fase 13 backlog).
+from cortex.cli.docs_search import search as _search_cmd
+app.command(name="search")(_search_cmd)
+
 
 @app.callback()
 def _docs_main() -> None:
@@ -27,6 +47,7 @@ def _docs_main() -> None:
 
     Subcommands:
         routing-table    Print the canonical DOC_TYPE_ROUTING table.
+        vectorization    Inspect and manage the persistent vector cache.
     """
     # Forces Typer to treat ``app`` as a command group even when it only has
     # one subcommand. Future phases add ``validate``, ``migrate``, etc.

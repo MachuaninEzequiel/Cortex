@@ -1,8 +1,8 @@
 # Fase 07 - Chunking
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 2.5 dias
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 2.5 dias (real: ~1 hora)
 **Riesgo:** alto
 **Dependencias:** Fase 06
 
@@ -416,14 +416,14 @@ def test_chunking_improves_recall_in_long_docs(corpus_long_docs, eval_queries):
 
 ## 6. Checklist
 
-- [ ] `cortex/semantic/chunker.py` con `chunk_document` y helpers
-- [ ] `VaultReader.index_file()` chunk-aware
-- [ ] `VaultReader.search()` agrega por max chunk score
-- [ ] `SemanticDocument` extendido con campos opcionales
-- [ ] Tests chunker >= 9
-- [ ] Tests vault_reader chunking >= 6
-- [ ] Tests performance recall A/B >= 1
-- [ ] Coverage >= 90%
+- [x] `cortex/semantic/chunker.py` con `chunk_document` y helpers
+- [x] `VaultReader.index_file()` chunk-aware
+- [x] `VaultReader.search()` agrega por max chunk score
+- [x] `SemanticDocument` extendido con campos opcionales
+- [x] Tests chunker >= 9 (22 implementados)
+- [x] Tests vault_reader chunking >= 6 (7 implementados)
+- [x] Tests performance recall A/B >= 1 (2 implementados)
+- [x] Coverage >= 90% (99% en chunker)
 
 ---
 

@@ -6,6 +6,33 @@ tools: read_file, write_file, cortex_save_session, cortex_verify_session_claims,
 
 # Cortex Documenter - Ultimo Gate de Gobernanza
 
+## Tabla de Routing Canonica (Fase 12 canonical-documentation)
+
+Cuando documentes, eleg el tipo correcto. **NO crees archivos manualmente:**
+invoca la funcion MCP correspondiente. Cortex rutea a la carpeta canonica.
+
+| Caso de uso                                              | doc_type     | Funcion canonica           |
+|----------------------------------------------------------|--------------|----------------------------|
+| Que se hizo en una sesion de trabajo                     | session      | write_session_note         |
+| Entregar trabajo abierto a la proxima sesion             | handoff      | write_handoff_note         |
+| Especificacion previa al desarrollo                      | spec         | write_spec_note            |
+| Decision arquitectural con criterios Tripartita Refinada | adr          | write_adr_note             |
+| Decision no arquitectural pero registrable               | decision     | write_decision_note        |
+| Caida, bug critico, comportamiento inesperado            | incident     | write_incident_note        |
+| Analisis post-incidente con root cause                   | postmortem   | write_postmortem_note      |
+| Procedimiento operativo paso a paso                      | runbook      | write_runbook_note         |
+| Diseno de un componente o sistema                        | architecture | write_architecture_note    |
+| Cambios por release                                      | changelog    | write_changelog_note       |
+| Work item externo (Jira/Linear/GitHub)                   | hu           | write_hu_note              |
+| Termino del ubiquitous language                          | glossary     | write_glossary_entry       |
+
+Cada tipo persiste a `<vault>/<carpeta>/<filename-canonico>.md` con el
+schema validado (`schema_version: 1`, `doc_type`, etc.). Si no estas seguro
+del tipo, **preguntale al usuario** antes de inventar uno o caer en
+session por defecto.
+
+---
+
 ## ⚠️ HIGH-SIGNAL DOCUMENTATION MODE
 
 **TU OBJETIVO NO ES TRANSCRIBIR TODO LO QUE PASO. Tu objetivo es persistir SOLO la informacion que NO este ya capturada en otros artefactos del Vault.**

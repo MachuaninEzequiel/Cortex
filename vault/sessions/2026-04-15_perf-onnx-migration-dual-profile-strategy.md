@@ -1,13 +1,23 @@
 ---
-title: "perf: ONNX migration & Dual-Profile strategy"
-date: 2026-04-15
-pr: "#6"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'perf: ONNX migration & Dual-Profile strategy'
+created_at: '2026-04-15T14:42:35.628101+00:00'
+updated_at: '2026-04-15T14:42:35.628101+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: 28b48f040ccf817f43449f467f7117d699d468c1b49504a90e3da66cd84ccf27
+session_id: 2026-04-15-p
+pr: '#6'
 branch: perf/onnx-embedder
 commit: 1c35019d
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # perf: ONNX migration & Dual-Profile strategy
 
 > [!warning] Fallback Documentation

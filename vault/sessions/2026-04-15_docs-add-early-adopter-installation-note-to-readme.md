@@ -1,13 +1,23 @@
 ---
-title: "docs: add early adopter installation note to README"
-date: 2026-04-15
-pr: "#13"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'docs: add early adopter installation note to README'
+created_at: '2026-04-15T23:05:16.050839+00:00'
+updated_at: '2026-04-15T23:05:16.050839+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: e26eee50d06a8d597b0d00584293e3eb1b08262c1950fe521ef8db9c1b4b9f7b
+session_id: 2026-04-15-d
+pr: '#13'
 branch: docs/early-adopter-install
 commit: 3b205cfb
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # docs: add early adopter installation note to README
 
 > [!warning] Fallback Documentation

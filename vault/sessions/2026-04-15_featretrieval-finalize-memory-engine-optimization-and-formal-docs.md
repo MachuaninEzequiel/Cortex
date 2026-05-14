@@ -1,13 +1,23 @@
 ---
-title: "feat(retrieval): finalize memory engine optimization and formal docs"
-date: 2026-04-15
-pr: "#11"
-author: MachuaninEzequiel
+schema_version: 1
+doc_type: session
+title: 'feat(retrieval): finalize memory engine optimization and formal docs'
+created_at: '2026-04-15T23:05:16.091335+00:00'
+updated_at: '2026-04-15T23:05:16.091335+00:00'
+tags:
+- session
+status: fallback
+links: []
+vault_scope: local
+fingerprint: c6901f16d3045bd26ae8932bb1c82d370a6e00e42b1d5f9e77acb2533672cb52
+session_id: 2026-04-15-f
+pr: '#11'
 branch: fix/memory-engine-and-docs
 commit: 2ffe306a
-tags: [session]
-status: fallback
+cortex_telemetry: null
+legacy_author: MachuaninEzequiel
 ---
+
 # feat(retrieval): finalize memory engine optimization and formal docs
 
 > [!warning] Fallback Documentation

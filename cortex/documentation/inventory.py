@@ -53,8 +53,9 @@ class VaultInventory:
 def classify_path(path: Path, vault_root: Path) -> str | None:
     """Infer a doc_type slug from a markdown file's location in the vault.
 
-    Returns the slug as a string (not a DocType enum, to keep this module
-    independent of Fase 01).
+    Returns the slug as a string. Delegates to
+    ``cortex.documentation.doc_type.infer_doc_type_from_path`` (Fase 13
+    single source of truth).
 
     Rules:
         - ``vault_root/sessions/<file>``  -> ``"session"``
@@ -73,17 +74,10 @@ def classify_path(path: Path, vault_root: Path) -> str | None:
         # File directly in vault root; not classifiable by subfolder.
         return None
 
-    subfolder = parts[0]
-    if subfolder not in _SUBFOLDER_TO_DOC_TYPE:
-        return None
-
-    # Special case: ADR vs DECISION inside ``decisions/``.
-    if subfolder == "decisions":
-        if _ADR_FILENAME_RE.match(path.stem):
-            return "adr"
-        return "decision"
-
-    return _SUBFOLDER_TO_DOC_TYPE[subfolder]
+    # Lazy import to keep this module independent of Fase 01 at import time.
+    from cortex.documentation.doc_type import infer_doc_type_from_path
+    dt = infer_doc_type_from_path(rel)
+    return dt.value if dt else None
 
 
 def inventory_vault(vault_path: Path) -> VaultInventory:

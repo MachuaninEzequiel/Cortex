@@ -1,8 +1,8 @@
 # Fase 09 - Webgraph Update
 
 **Fuente:** `docs/canonical-documentation/README.md`
-**Estado:** Pendiente de ejecucion
-**Esfuerzo estimado:** 1 dia
+**Estado:** Completada (2026-05-14) - ver [`REALIZACION.md`](REALIZACION.md)
+**Esfuerzo estimado:** 1 dia (real: ~30 min)
 **Riesgo:** medio
 **Dependencias:** Fase 01, Fase 02
 
@@ -241,13 +241,13 @@ def test_style_unknown_doc_type_default():
 
 ## 5. Checklist
 
-- [ ] `cortex/webgraph/style.py` con `style_for_doc_type` y `EDGE_TYPES`
-- [ ] `cortex/webgraph/semantic_source.py` extendido (doc_type, status en nodos)
-- [ ] `cortex/webgraph/episodic_source.py` analogo
-- [ ] `cortex/webgraph/builder.py` con aristas tipadas
-- [ ] Snapshot JSON con leyenda
-- [ ] cortex-pi dashboard extension (visual)
-- [ ] Tests >= 8
+- [x] `cortex/webgraph/style.py` con `style_for_doc_type` y `EDGE_TYPES`
+- [x] `cortex/webgraph/semantic_source.py` extendido (doc_type, vault_scope, color, shape en metadata)
+- [ ] `cortex/webgraph/episodic_source.py` analogo - postergado (episodicos no tienen DocType natural; ver REALIZACION pendientes)
+- [ ] `cortex/webgraph/builder.py` aristas `supersedes` - postergado (requiere parsing del frontmatter ADR; las aristas legacy siguen funcionando)
+- [x] Snapshot JSON con leyenda (via `include_legend=True`)
+- [ ] cortex-pi dashboard extension (visual) - fuera de scope backend
+- [x] Tests >= 8 (23 implementados)
 
 ---
 
