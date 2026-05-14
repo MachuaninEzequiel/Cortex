@@ -445,6 +445,22 @@ class WorkspaceLayout:
     # ────────────────────────────────────────────────────────────────
 
     @property
+    def context_md_path(self) -> Path:
+        """Path to the optional Ubiquitous Language glossary.
+
+        Lives at ``workspace_root/CONTEXT.md`` in new layout, or at
+        ``repo_root/CONTEXT.md`` in legacy. Adopters create the file
+        either manually or via ``cortex setup`` (which renders an
+        empty template). The skills ``cortex-sync`` and
+        ``cortex-documenter`` read it at boot when it exists.
+
+        Introduced by Tripartita Refinada (Plan 01 §3).
+        """
+        if self.is_legacy_layout:
+            return self.repo_root / "CONTEXT.md"
+        return self.workspace_root / "CONTEXT.md"
+
+    @property
     def vault_index_path(self) -> Path:
         """Path to the vault's search index file.
 

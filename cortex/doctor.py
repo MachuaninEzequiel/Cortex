@@ -8,7 +8,11 @@ import yaml
 
 from cortex.doc_validator import DocValidator
 from cortex.enterprise.config import describe_enterprise_topology, load_enterprise_config
-from cortex.git_policy import RECOMMENDED_GITIGNORE_PATTERNS, gitignore_contains
+from cortex.git_policy import (
+    LEGACY_GITIGNORE_PATTERNS,
+    NEW_LAYOUT_GITIGNORE_PATTERNS,
+    gitignore_contains,
+)
 from cortex.runtime_context import (
     detect_git_branch,
     detect_git_repo_path,
@@ -155,9 +159,22 @@ def run_doctor(project_root: Path, *, scope: DoctorScope = "project") -> DoctorR
         )
     )
 
-    # ── Gitignore ────────────────────────────────────────────────────
-    for pattern in RECOMMENDED_GITIGNORE_PATTERNS:
-        severity: DoctorSeverity = "fail" if pattern.startswith(".memory") or pattern.endswith(".chroma/") else "warn"
+    # ── Gitignore (layout-aware) ─────────────────────────────────────
+    # In new layout, the legacy ``.memory/`` and ``*.chroma/`` patterns
+    # are irrelevant — the memory store lives under ``.cortex/memory/``.
+    # Checking for them produced false FAILs in fresh new-layout setups
+    # and was the #1 noise source in ``cortex doctor`` reports.
+    if layout is not None and layout.is_new_layout:
+        gitignore_patterns = NEW_LAYOUT_GITIGNORE_PATTERNS
+    else:
+        gitignore_patterns = LEGACY_GITIGNORE_PATTERNS
+    for pattern in gitignore_patterns:
+        # Memory paths are still required to be ignored (they contain
+        # binary ChromaDB data). Session paths are recommended but
+        # not strictly required for project correctness.
+        severity: DoctorSeverity = (
+            "fail" if "memory" in pattern or pattern.endswith(".chroma/") else "warn"
+        )
         checks.append(
             DoctorCheck(
                 f"gitignore:{pattern}",

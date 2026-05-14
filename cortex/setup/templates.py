@@ -125,13 +125,20 @@ This vault stores durable organization-level knowledge for `{project_name}`.
 # GitHub Actions workflow templates
 # ---------------------------------------------------------------------------
 
-def render_ci_pull_request(ctx: ProjectContext) -> str:
-    """Render the PR validation workflow with Cortex integration."""
+def render_ci_pull_request(
+    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+) -> str:
+    """Render the PR validation workflow with Cortex integration.
+
+    Stack-aware (commands resolved via ``_get_*_command``) and
+    layout-aware (memory cache path resolved via ``_get_memory_cache_path``).
+    """
     test_cmd = _get_test_command(ctx)
     lint_cmd = _get_lint_command(ctx)
     audit_cmd = _get_audit_command(ctx)
     install_cmd = _get_install_command(ctx)
     setup_lang = _get_setup_language(ctx)
+    memory_cache_path = _get_memory_cache_path(layout)
 
     return f"""\
 name: CI - Pull Requests (DevSecDocOps)
@@ -159,6 +166,16 @@ jobs:
 
       - name: Install Cortex memory
         run: pip install cortex-memory
+
+      # ── CORTEX: Restore episodic memory cache (layout-aware) ───────
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
+          restore-keys: |
+            cortex-memory-
 
       - name: Cortex - Doctor
         run: cortex doctor
@@ -327,6 +344,14 @@ jobs:
       - name: Cortex — Sync Vault
         if: always()
         run: cortex sync-vault
+
+      # ── CORTEX: Persist episodic memory cache for the next run ───
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
 
       # ── Upload Context Artifact ────────────────────────────────
       - name: Upload Cortex Context Artifact
@@ -499,12 +524,18 @@ jobs:
 """
 
 
-def render_ci_feature(ctx: ProjectContext) -> str:
-    """Render the feature branch CI workflow."""
+def render_ci_feature(
+    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+) -> str:
+    """Render the feature branch CI workflow.
+
+    Stack-aware + layout-aware (cache path).
+    """
     test_cmd = _get_test_command(ctx)
     lint_cmd = _get_lint_command(ctx)
     install_cmd = _get_install_command(ctx)
     setup_lang = _get_setup_language(ctx)
+    memory_cache_path = _get_memory_cache_path(layout)
 
     return f"""\
 name: CI - Feature Branch
@@ -533,6 +564,15 @@ jobs:
 
       - name: Install Cortex memory
         run: pip install cortex-memory
+
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
+          restore-keys: |
+            cortex-memory-
 
       - name: Cortex - Doctor
         run: cortex doctor
@@ -569,6 +609,13 @@ jobs:
         if: always()
         run: cortex validate-docs --vault vault --output .doc-validation.json
 
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
+
       - name: Check Lint
         if: steps.lint.outcome != 'success'
         run: |
@@ -583,10 +630,16 @@ jobs:
 """
 
 
-def render_cd_deploy(ctx: ProjectContext) -> str:
-    """Render the CD deployment workflow with Cortex integration."""
+def render_cd_deploy(
+    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+) -> str:
+    """Render the CD deployment workflow with Cortex integration.
+
+    Stack-aware + layout-aware (cache path).
+    """
     install_cmd = _get_install_command(ctx)
     setup_lang = _get_setup_language(ctx)
+    memory_cache_path = _get_memory_cache_path(layout)
 
     return f"""\
 name: CD - Deploy to Production
@@ -616,6 +669,15 @@ jobs:
       - name: Install Cortex memory
         run: pip install cortex-memory
 
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
+          restore-keys: |
+            cortex-memory-
+
       - name: Cortex — Capture Deployment Context
         run: |
           cortex remember "Deploy to production: ${{{{ github.event.head_commit.message }}}}" \\
@@ -636,6 +698,13 @@ jobs:
             --type deployment \\
             --tag deploy \\
             --tag ${{{{ job.status }}}}
+
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: {memory_cache_path}
+          key: cortex-memory-${{{{ github.run_id }}}}
 """
 
 
@@ -727,6 +796,51 @@ Copy this template for each new decision:
 - **Context**: What is the issue/decision we're facing?
 - **Decision**: What did we decide?
 - **Consequences**: What are the trade-offs and impacts?
+"""
+
+
+def render_context_md(ctx: ProjectContext) -> str:
+    """Render the optional Ubiquitous Language glossary stub (CONTEXT.md).
+
+    Introduced by Tripartita Refinada (Plan 01 §3). The file is intentionally
+    minimal — adopters extend it manually with the vocabulary of their
+    domain. The skills ``cortex-sync`` and ``cortex-documenter`` read it
+    at boot when present.
+    """
+    project = ctx.stack.project_name or "your-project"
+    return f"""---
+title: Ubiquitous Language Guide
+tags: [glossary, domain, cortex-context]
+created: 2026-05-13
+project: {project}
+---
+
+# Ubiquitous Language (CONTEXT.md)
+
+Este archivo define el **vocabulario canonico del dominio** de `{project}`.
+Los skills `cortex-sync` y `cortex-documenter` lo leen al boot para usar
+terminos consistentes. **No es una capa de retrieval** — es material de
+prompt para los agentes.
+
+## Como extenderlo
+
+Cuando descubras un termino del dominio nuevo:
+
+1. Agregalo a la tabla de abajo con su definicion canonica.
+2. Lista sinonimos prohibidos (que NO se deben usar en docs).
+3. Si entra en conflicto con uso previo, crea un ADR de rename.
+
+## Terminos
+
+| Termino canonico | Definicion | Sinonimos prohibidos |
+|------------------|------------|----------------------|
+| _completar con terminos del dominio_ |   |   |
+
+## Reglas de uso
+
+1. Usa SIEMPRE el termino canonico en session notes y specs.
+2. Si descubris un nuevo concepto del dominio, registralo aqui ANTES de usarlo.
+3. Si un concepto entra en conflicto con uso previo, crea un ADR de rename.
 """
 
 
@@ -1086,6 +1200,21 @@ esac
 # ---------------------------------------------------------------------------
 # Helper functions for project-aware commands
 # ---------------------------------------------------------------------------
+
+def _get_memory_cache_path(layout: "WorkspaceLayout | None") -> str:
+    """Return the relative path to cache Cortex episodic memory in CI.
+
+    Layout-aware: in new layout the episodic store lives at
+    ``.cortex/memory`` (workspace_root); in legacy mode it lives at
+    ``.memory/chroma`` at the repo root. Both are valid keys for
+    ``actions/cache``; the workflow consumer doesn't need to know
+    which layout was used, only that ``cortex`` finds its data under
+    the cached directory.
+    """
+    if layout is not None and layout.is_new_layout:
+        return ".cortex/memory"
+    return ".memory/chroma"
+
 
 def _get_test_command(ctx: ProjectContext) -> str:
     if ctx.stack.test_command:

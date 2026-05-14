@@ -28,8 +28,23 @@ from cortex.workspace.layout import WorkspaceLayout
 __all__ = ["inject", "inject_all", "uninstall", "uninstall_all", "get_supported_ides"]
 
 
-def inject(ide_name: str, project_root: Path | None = None) -> list[str]:
-    """Inject Cortex profiles and MCP config into a specific IDE."""
+def inject(
+    ide_name: str,
+    project_root: Path | None = None,
+    *,
+    sync_canonical: bool = True,
+) -> list[str]:
+    """Inject Cortex profiles and MCP config into a specific IDE.
+
+    Args:
+        ide_name:       IDE adapter name or alias.
+        project_root:   Cortex project root. Discovered if not provided.
+        sync_canonical: Pi-only flag (Plan 05). When True (default) the
+                        Pi adapter mirrors ``.cortex/subagents/`` into
+                        ``cortex-pi/.pi/agents/`` before copying the
+                        bundle, so adopters always receive the latest
+                        canonical contracts. Ignored by other adapters.
+    """
     if project_root is None:
         project_root = _find_project_root()
 
@@ -45,7 +60,14 @@ def inject(ide_name: str, project_root: Path | None = None) -> list[str]:
         prompts = build_all_prompts(project_root, workspace_layout=layout)
 
     print(f"[Cortex IDE] Injecting profiles for {adapter.display_name}...")
-    files = adapter.inject_all(project_root, prompts)
+    # The Pi adapter is the only one that supports the sync_canonical
+    # flag today. Detect it by name to avoid an isinstance import cycle
+    # (cortex.ide.adapters.pi imports cortex.ide.base which imports here).
+    if adapter.name == "pi":
+        files = list(adapter.inject_profiles(project_root, prompts, sync_canonical=sync_canonical))
+        files.extend(adapter.inject_mcp(project_root))
+    else:
+        files = adapter.inject_all(project_root, prompts)
 
     for f in files:
         print(f"  [OK] {f}")

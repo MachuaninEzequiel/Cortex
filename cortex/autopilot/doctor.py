@@ -13,6 +13,7 @@ from cortex.workspace.layout import WorkspaceLayout
 from cortex.autopilot.adapters.registry import list_adapters
 from cortex.autopilot.config import load_autopilot_config
 from cortex.autopilot.service import AutopilotService
+from cortex.autopilot.session_writer import is_indexing_writer
 
 
 @dataclass
@@ -221,6 +222,41 @@ def _check_superpowers_conflict(layout: WorkspaceLayout) -> DoctorCheck:
     return DoctorCheck(name="superpowers_conflict", ok=True, detail="No conflict detected")
 
 
+def _check_session_indexing(layout: WorkspaceLayout) -> DoctorCheck:
+    """Verify that the Autopilot service wires an indexing-capable writer.
+
+    The Cortex promise is that every persisted session note is also
+    indexed into semantic + episodic memory so it is retrievable via
+    ``cortex search``. If this check fails, ``finish --auto`` will still
+    write files to disk, but they will be invisible to retrieval.
+    """
+    try:
+        svc = AutopilotService.from_project_root(layout.repo_root)
+    except Exception as exc:
+        return DoctorCheck(
+            name="session_indexing",
+            ok=False,
+            detail=f"Could not build AutopilotService: {exc}",
+            action="Run `cortex setup agent` to configure the workspace",
+        )
+    if is_indexing_writer(svc._writer):
+        return DoctorCheck(
+            name="session_indexing",
+            ok=True,
+            detail="Session notes are indexed into semantic + episodic memory on write",
+        )
+    return DoctorCheck(
+        name="session_indexing",
+        ok=False,
+        detail=(
+            "Autopilot is using a persist-only writer. Session notes will "
+            "be saved to disk but NOT indexed into memory — they will not "
+            "appear in `cortex search` until a manual `cortex sync-vault`."
+        ),
+        action="Run `cortex setup agent` to enable mandatory indexing",
+    )
+
+
 def _check_jsonl_rotation(layout: WorkspaceLayout) -> DoctorCheck:
     events_dir = layout.workspace_root / "run" / "autopilot" / "events"
     if not events_dir.exists():
@@ -266,6 +302,7 @@ def run_diagnosis(project_root: Path | None = None) -> DoctorReport:
         _check_hooks_installed(layout),
         _check_adapter_recognized(layout),
         _check_mcp_tools(),
+        _check_session_indexing(layout),
         _check_last_finish(layout),
         _check_budget_warnings(layout),
         _check_superpowers_conflict(layout),

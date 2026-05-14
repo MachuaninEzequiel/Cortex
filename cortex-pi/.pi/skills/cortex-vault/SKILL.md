@@ -96,3 +96,37 @@ vault/
 ├── bugs/          # Bugs conocidos y sus fixes
 └── adr/           # Architecture Decision Records
 ```
+
+## CONTEXT.md awareness (Tripartita Refinada — 0.5.0)
+
+Junto al vault, el workspace puede tener un `CONTEXT.md` (en `.cortex/CONTEXT.md` para
+new layout, o `CONTEXT.md` en root para legacy). Este archivo es **un prompt asset**: una
+tabla de términos de dominio canónicos que el equipo decidió usar para este proyecto.
+El uso correcto:
+
+1. **Antes de buscar** — si el usuario menciona un término que parece de dominio
+   (no genérico de programación), revisá `CONTEXT.md` para ver si tiene un sinónimo
+   canónico. Si lo tiene, buscá por el canónico en lugar del término del usuario.
+2. **Antes de persistir memoria** — si vas a guardar una memoria episódica que mencione
+   un concepto recurrente, usá el término canónico del `CONTEXT.md`. Esto mejora la
+   recuperación futura porque ONNX colocaliza embeddings sobre el mismo término.
+3. **Si un término nuevo emerge** — no lo agregues a `CONTEXT.md` vos mismo. Sugerilo
+   en el `suggested_context_terms` del handoff para que el `cortex-documenter` decida
+   si amerita ser canónico (criterio: el término aparece ≥3 veces en sesiones distintas).
+
+CONTEXT.md vacío significa "proyecto nuevo, sin glosario aún" — no significa "irrelevante".
+
+## Confidence labels en respuestas (Tripartita Refinada — 0.5.0)
+
+A partir de 0.5.0, los hits que retorna `cortex search` y `cortex context` pueden traer
+un label `[verified]`, `[asserted]` o `[contradicted]` junto al `memory_type`. Significa:
+
+- **`[verified]`** — el documenter cruzó esta memoria contra el `git diff` real al persistirla.
+  Confiá: el contenido refleja cambios que efectivamente ocurrieron.
+- **`[asserted]`** — el implementador la reportó pero el Verification Gate no la pudo cruzar
+  contra evidencia. Tratala como hipótesis, no como hecho.
+- **`[contradicted]`** — la memoria afirma algo que el diff contradice. Ignorala o pedí
+  confirmación al usuario antes de usarla.
+
+Memorias sin label son pre-0.5.0 y no pasaron por el Verification Gate. Tratalas con
+confianza media (mejor que `[asserted]`, peor que `[verified]`).

@@ -71,6 +71,11 @@ class SessionService:
         tags: list[str] | None = None,
         sync_vault: bool = False,
         remember: bool = True,
+        handoff: bool = False,
+        blockers: list[str] | None = None,
+        verified_state: list[str] | None = None,
+        unverified_claims: list[str] | None = None,
+        suggested_skills: list[str] | None = None,
     ) -> Path:
         """
         Create a session note and persist it to the vault.
@@ -79,15 +84,21 @@ class SessionService:
         newly created session note is vectorised, not the entire vault.
 
         Args:
-            title:         Session title (e.g. "Fix login refresh bug").
-            spec_summary:  The specification that was implemented.
-            changes_made:  List of changes performed.
-            files_touched: Files modified during the session.
-            key_decisions: Architectural or design decisions taken.
-            next_steps:    Remaining work items.
-            tags:          Vault front-matter tags.
-            sync_vault:    If True, also re-index the full vault after saving.
-            remember:      If True, store a summary in episodic memory.
+            title:             Session title (e.g. "Fix login refresh bug").
+            spec_summary:      The specification that was implemented.
+            changes_made:      List of changes performed.
+            files_touched:     Files modified during the session.
+            key_decisions:     Architectural or design decisions taken.
+            next_steps:        Remaining work items.
+            tags:              Vault front-matter tags.
+            sync_vault:        If True, also re-index the full vault after saving.
+            remember:          If True, store a summary in episodic memory.
+            handoff:           If True, mark the note as a cross-session handoff
+                               (status: handoff, ``handoff`` tag added).
+            blockers:          Open blockers the next agent must resolve.
+            verified_state:    Facts cross-checked against diff/tests.
+            unverified_claims: Statements the next agent should re-check.
+            suggested_skills:  Skills/subagents recommended to continue.
 
         Returns:
             Path to the newly created session note file.
@@ -101,6 +112,11 @@ class SessionService:
             key_decisions=key_decisions or [],
             next_steps=next_steps or [],
             tags=tags or [],
+            handoff=handoff,
+            blockers=blockers or [],
+            verified_state=verified_state or [],
+            unverified_claims=unverified_claims or [],
+            suggested_skills=suggested_skills or [],
         )
         logger.debug("Session note written: %s", path)
 
@@ -112,13 +128,16 @@ class SessionService:
             self._semantic.sync()
 
         if remember:
+            episodic_tags = list(tags or [])
+            if handoff and "handoff" not in episodic_tags:
+                episodic_tags.append("handoff")
             self._store_episodic(
                 title=title,
                 spec_summary=spec_summary,
                 changes_made=changes_made or [],
                 files_touched=files_touched or [],
                 key_decisions=key_decisions or [],
-                tags=tags or [],
+                tags=episodic_tags,
             )
 
         return path

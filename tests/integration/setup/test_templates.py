@@ -197,3 +197,176 @@ class TestGenericContext:
 
         assert data is not None
         assert "episodic" in data
+
+
+# ------------------------------------------------------------------
+# Layout-aware cache paths (Ola 2)
+# ------------------------------------------------------------------
+
+
+class _FakeLayout:
+    """Minimal stand-in for WorkspaceLayout used by template tests."""
+
+    def __init__(self, *, is_new_layout: bool) -> None:
+        self.is_new_layout = is_new_layout
+        self.is_legacy_layout = not is_new_layout
+
+
+class TestLayoutAwareCachePaths:
+    """The memory cache path inside workflows must match the active layout.
+
+    Ola 2 regression: previously workflows hardcoded ``.memory/chroma``
+    even when the adopter ran new layout. Now the cache step uses the
+    same path that ``WorkspaceLayout.episodic_memory_path`` resolves to.
+    """
+
+    def test_new_layout_uses_cortex_memory(self, node_ctx: ProjectContext) -> None:
+        layout = _FakeLayout(is_new_layout=True)
+        content = render_ci_pull_request(node_ctx, layout=layout)
+        # New layout caches the .cortex/memory directory.
+        assert "path: .cortex/memory" in content
+        assert ".memory/chroma" not in content
+
+    def test_legacy_layout_uses_memory_chroma(self, node_ctx: ProjectContext) -> None:
+        layout = _FakeLayout(is_new_layout=False)
+        content = render_ci_pull_request(node_ctx, layout=layout)
+        assert "path: .memory/chroma" in content
+        assert ".cortex/memory" not in content
+
+    def test_no_layout_falls_back_to_legacy(self, node_ctx: ProjectContext) -> None:
+        # Backwards-compat: no layout passed → legacy path (safest default).
+        content = render_ci_pull_request(node_ctx)
+        assert "path: .memory/chroma" in content
+
+    def test_ci_feature_respects_layout(self, node_ctx: ProjectContext) -> None:
+        layout = _FakeLayout(is_new_layout=True)
+        content = render_ci_feature(node_ctx, layout=layout)
+        assert "path: .cortex/memory" in content
+        # Cache steps must be both restore + save.
+        assert "actions/cache/restore@v4" in content
+        assert "actions/cache/save@v4" in content
+
+    def test_cd_deploy_respects_layout(self, node_ctx: ProjectContext) -> None:
+        layout = _FakeLayout(is_new_layout=True)
+        content = render_cd_deploy(node_ctx, layout=layout)
+        assert "path: .cortex/memory" in content
+        assert "actions/cache/restore@v4" in content
+        assert "actions/cache/save@v4" in content
+
+
+class TestCliAlignment:
+    """Every ``cortex <subcmd>`` mentioned in the generated workflows must
+    exist in the CLI with the flags shown. If a refactor renames or removes
+    a command, this test fails before adopters notice via CI breakage.
+    """
+
+    @pytest.fixture
+    def all_workflows(self, node_ctx: ProjectContext) -> list[str]:
+        return [
+            render_ci_pull_request(node_ctx),
+            render_ci_feature(node_ctx),
+            render_cd_deploy(node_ctx),
+        ]
+
+    def test_workflows_reference_known_subcommands(self, all_workflows: list[str]) -> None:
+        """All ``cortex <subcmd>`` calls land on registered Typer commands."""
+        import re
+
+        from cortex.cli.main import app
+
+        # Collect every "cortex <subcmd>" token across the workflows.
+        cortex_calls: set[tuple[str, ...]] = set()
+        for content in all_workflows:
+            # Capture cortex + 1 or 2 tokens (subcmd, optional sub-subcmd).
+            for match in re.finditer(
+                r"cortex\s+([a-z][a-z0-9-]*)(?:\s+([a-z][a-z0-9-]*))?",
+                content,
+            ):
+                head = match.group(1)
+                sub = match.group(2)
+                if sub:
+                    cortex_calls.add((head, sub))
+                else:
+                    cortex_calls.add((head,))
+
+        # Build the set of registered top-level commands (and sub-app names).
+        # Typer infers a command name from the function name when ``name`` is
+        # None, so we fall back to that to cover all commands.
+        def _cmd_name(cmd) -> str:
+            return cmd.name or (cmd.callback.__name__.replace("_", "-") if cmd.callback else "")
+
+        known_top = {_cmd_name(cmd) for cmd in app.registered_commands}
+        known_top.discard("")
+        known_sub_apps = {grp.name for grp in app.registered_groups if grp.name}
+        # Walk sub-apps for their commands.
+        known_pairs: set[tuple[str, str]] = set()
+        for grp in app.registered_groups:
+            if not grp.name:
+                continue
+            for cmd in grp.typer_instance.registered_commands:
+                known_pairs.add((grp.name, _cmd_name(cmd)))
+
+        for call in cortex_calls:
+            head = call[0]
+            # Allow shell builtins or words that follow a `cortex` literal
+            # but aren't actually subcommands (e.g. ``cortex doctor`` then
+            # a pipe). We only flag tokens that look like commands.
+            if head in known_top or head in known_sub_apps:
+                if len(call) == 2:
+                    sub = call[1]
+                    # Sub-app calls must match a registered sub-command.
+                    if head in known_sub_apps:
+                        assert (head, sub) in known_pairs, (
+                            f"Workflow calls `cortex {head} {sub}` "
+                            f"but `{sub}` is not a registered sub-command "
+                            f"of `cortex {head}`."
+                        )
+                continue
+            # Common false positives that grep-match but aren't subcommands.
+            if head in {"memory", "context"}:
+                continue
+            raise AssertionError(
+                f"Workflow calls `cortex {head}` but `{head}` is not a "
+                f"registered top-level command nor sub-app. "
+                f"Known top: {sorted(known_top)[:8]}... "
+                f"Known sub-apps: {sorted(known_sub_apps)}"
+            )
+
+
+class TestCommandsAcrossStacks:
+    """Workflows must emit stack-correct commands for Node, Python and Go."""
+
+    def test_node_workflow_uses_npm_commands(self, node_ctx: ProjectContext) -> None:
+        content = render_ci_pull_request(node_ctx)
+        assert "npm ci" in content  # install
+        assert "npm test" in content
+        assert "npm run lint" in content
+        assert "npm audit" in content
+        assert "actions/setup-node@v4" in content
+
+    def test_python_workflow_uses_pytest_and_ruff(self, python_ctx: ProjectContext) -> None:
+        content = render_ci_pull_request(python_ctx)
+        assert "pytest" in content
+        assert "ruff check" in content
+        assert "pip audit" in content
+        assert "actions/setup-python@v5" in content
+
+    def test_go_workflow_uses_go_commands(self) -> None:
+        go_ctx = ProjectContext(
+            stack=StackInfo(
+                language="go",
+                package_manager="go",
+                project_name="my-go-svc",
+                frameworks=[],
+                has_tests=True,
+                test_command="",
+                lint_command="",
+            ),
+            ci=CIInfo(has_github_actions=True),
+            env=EnvInfo(),
+        )
+        content = render_ci_pull_request(go_ctx)
+        assert "go test ./..." in content
+        assert "golangci-lint run" in content
+        assert "govulncheck ./..." in content
+        assert "actions/setup-go@v5" in content

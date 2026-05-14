@@ -270,16 +270,36 @@ class TestMcpCliAlignment:
     """Valida que las herramientas MCP tengan contraparte CLI."""
 
     # Mapeo manual verificado contra cortex/mcp/server.py
+    # Value semantics:
+    #   "<name>"          → tool tiene CLI directa (`cortex <name>`)
+    #   "autopilot <sub>" → tool tiene sub-CLI (`cortex autopilot <sub>`)
+    #   None              → tool intencionalmente sin CLI (gobernanza/experimental)
     MCP_TO_CLI = {
+        # Memory + retrieval
         "cortex_search_vector": "search",
         "cortex_search": "search",
         "cortex_context": "context",
-        "cortex_sync_ticket": None,  # no tiene CLI directa
+        "cortex_sync_vault": "sync-vault",
+        # Workflow (governance-guarded)
+        "cortex_sync_ticket": None,  # no tiene CLI directa — paso 1 obligatorio del MCP
         "cortex_create_spec": "create-spec",
         "cortex_save_session": "save-session",
+        # Tripartita Refinada — handoff & verification (MCP-only por diseño)
+        "cortex_validate_handoff": None,
+        "cortex_verify_session_claims": None,
+        # Work items
         "cortex_import_hu": "hu",
         "cortex_get_hu": "hu",
-        "cortex_sync_vault": "sync-vault",
+        # Autopilot lifecycle (sub-CLI bajo `cortex autopilot ...`)
+        "cortex_autopilot_start": "autopilot start",
+        "cortex_autopilot_preflight": "autopilot preflight",
+        "cortex_autopilot_checkpoint": "autopilot checkpoint",
+        "cortex_autopilot_finish": "autopilot finish",
+        "cortex_autopilot_status": "autopilot status",
+        # Delegation (experimental — no CLI por diseño)
+        "cortex_delegate_task": None,
+        "cortex_delegate_batch": None,
+        "cortex_get_task_result": None,
     }
 
     @pytest.fixture(scope="class")

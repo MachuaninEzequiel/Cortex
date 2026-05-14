@@ -79,3 +79,42 @@ noDeletePaths:
   - ".cortex/skills/**"
   - ".pi/agents/**"
   - "AGENTS.md"
+
+# ─── Tripartita Refinada — Handoff governance (0.5.0) ─────────────────────────
+# Reglas que aplica el orquestador (cortex-SDDwork) o el runtime de Pi
+# cuando se introducen handoffs estructurados entre subagents. La extensión
+# Pi puede ignorar campos que no conozca; sirven como contrato declarativo
+# para el orquestador y los runtimes futuros.
+handoffRules:
+  - id: handoff-malformed
+    severity: block
+    description: |
+      Si el handoff YAML emitido por un subagent falla la validación contra
+      cortex_validate_handoff (schema AgentHandoff), el chain DEBE detenerse.
+      No pasar handoffs corruptos al siguiente agent — la información
+      malformada se propaga silenciosamente y degrada todas las memorias
+      derivadas.
+    action:
+      - "Stop the agent-chain immediately"
+      - "Report the validation error to the user verbatim"
+      - "Do NOT attempt to repair the YAML automatically"
+
+  - id: handoff-status-mismatch
+    severity: warn
+    description: |
+      Si un subagent declara status: complete pero su verified_claims está
+      vacío o todos sus artifacts_produced son `unchanged`, el documenter
+      debe marcar la memoria con confidence: asserted (no verified) y
+      reportarlo en next_steps.
+    action:
+      - "Tag the produced session memory with confidence: asserted"
+      - "Add an entry to next_steps describing the mismatch"
+
+  - id: handoff-context-overflow
+    severity: warn
+    description: |
+      Si context_for_next del handoff supera ~2000 caracteres, el siguiente
+      agent puede confundir señales. Truncar o sintetizar antes de pasar.
+    action:
+      - "Truncate context_for_next to the most actionable items"
+      - "Move the rest into a session note"

@@ -77,9 +77,20 @@ def write_session_note(
     next_steps: list[str] | None = None,
     tags: list[str] | None = None,
     note_date: date | None = None,
+    handoff: bool = False,
+    blockers: list[str] | None = None,
+    verified_state: list[str] | None = None,
+    unverified_claims: list[str] | None = None,
+    suggested_skills: list[str] | None = None,
 ) -> Path:
     """
     Write a session note to ``vault/sessions/`` and return the file path.
+
+    When ``handoff=True`` the note is marked as a cross-session handoff:
+    the frontmatter ``status`` becomes ``handoff`` and the new
+    Tripartita Refinada sections (Blockers / Verified State /
+    Unverified Claims / Suggested Skills) are emitted whenever the
+    corresponding lists are non-empty.
     """
     today = note_date or date.today()
     vault = Path(vault_path)
@@ -87,14 +98,17 @@ def write_session_note(
     target_dir.mkdir(parents=True, exist_ok=True)
 
     final_tags = ["session"] + list(tags or [])
+    if handoff and "handoff" not in final_tags:
+        final_tags.append("handoff")
     filename = f"{today.isoformat()}_{_slugify(title)}.md"
     path = validate_under_root(target_dir / filename, vault)
 
+    status = "handoff" if handoff else "generated"
     content = _frontmatter(
         title=title,
         today=today,
         tags=final_tags,
-        status="generated",
+        status=status,
     )
     content += f"# Session: {title}\n\n"
     content += "## Original Specification\n"
@@ -107,6 +121,19 @@ def write_session_note(
     content += _render_list(list(key_decisions or [])) + "\n\n"
     content += "## Next Steps\n"
     content += _render_list(list(next_steps or []), bullet="- [ ]") + "\n"
+
+    if verified_state:
+        content += "\n## Verified State\n"
+        content += _render_list(list(verified_state)) + "\n"
+    if unverified_claims:
+        content += "\n## Unverified Claims\n"
+        content += _render_list(list(unverified_claims)) + "\n"
+    if blockers:
+        content += "\n## Blockers\n"
+        content += _render_list(list(blockers)) + "\n"
+    if suggested_skills:
+        content += "\n## Suggested Skills\n"
+        content += _render_list(list(suggested_skills)) + "\n"
 
     path.write_text(content, encoding="utf-8")
     return path

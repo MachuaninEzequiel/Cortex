@@ -136,6 +136,10 @@ class AutopilotMCPTools:
                 f"Finish: {result.state.session_id}",
                 f"Status: {result.state.status} | Saved: {result.saved}",
             ]
+            if result.saved and result.state.session_note_path:
+                # Surface the persisted-and-indexed path so the calling IDE
+                # can show / open the session note directly.
+                lines.append(f"Note: {result.state.session_note_path}")
             if result.draft:
                 lines.append(f"Draft: {result.draft.title} ({result.draft.confidence})")
                 if result.draft.warnings:

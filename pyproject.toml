@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cortex-memory"
-version = "0.3.0"
+version = "0.5.0"
 description = "Hybrid cognitive memory system for AI agents — episodic + semantic."
 readme = "README.md"
 license = { text = "MIT" }

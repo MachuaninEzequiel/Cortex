@@ -8,13 +8,16 @@ import pytest
 from cortex.autopilot.lifecycle import StartRequest
 from cortex.autopilot.mcp_tools import AutopilotMCPTools, _format_error, _safe_call
 from cortex.autopilot.service import AutopilotService
+from cortex.autopilot.session_writer import VaultSessionWriter
 from cortex.autopilot.state_store import StateStore
 
 
 @pytest.fixture
 def mcp_tools(tmp_path: Path) -> AutopilotMCPTools:
+    """Fixture mirrors production wiring: state store + vault session writer."""
     store = StateStore(tmp_path)
-    svc = AutopilotService(state_store=store)
+    writer = VaultSessionWriter(tmp_path / "vault")
+    svc = AutopilotService(state_store=store, session_writer=writer)
     return AutopilotMCPTools(svc)
 
 

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\DevSecDocOps\\\\DevSecDocOps-3erCortex\\\\cortex-repo\\\\cortex\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"D:\\\\DevSecDocOps\\\\DevSecDocOps-3erCortex\\\\cortex-repo\\\\cortex\\\\enterprise\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Csv -NoTypeInformation)",
+      "Bash(Get-ChildItem -Path \"D:\\\\DevSecDocOps\\\\DevSecDocOps-3erCortex\\\\cortex-repo\" -Recurse -Directory)",
+      "Bash(Select-Object -First 20)",
+      "PowerShell(Get-Item *)",
+      "Bash(python -m pytest tests/unit/autopilot/test_session_writer.py -x -q --no-cov)",
+      "Bash(python -m pytest tests/unit/autopilot/test_service.py -x -q --no-cov)",
+      "Bash(python -m pytest tests/e2e/scenarios/test_autopilot_finish.py -x -q --no-cov)",
+      "Bash(python -m pytest tests/unit/autopilot/ tests/e2e/scenarios/test_autopilot_basic.py tests/e2e/scenarios/test_autopilot_budget.py tests/e2e/scenarios/test_autopilot_finish.py -q --no-cov)",
+      "Bash(python -m pytest tests/unit tests/integration -q --no-cov -m \"not e2e and not smoke and not slow\")",
+      "Bash(python -m pytest tests/unit tests/integration --no-cov -m \"not e2e and not smoke and not slow\")",
+      "Bash(python -m pytest tests/e2e/scenarios/test_autopilot_finish.py::TestFinishIndexesAutomatically -x -q --no-cov)",
+      "Bash(python -m pytest tests/unit/autopilot/ tests/e2e/scenarios/test_autopilot_basic.py tests/e2e/scenarios/test_autopilot_budget.py tests/e2e/scenarios/test_autopilot_finish.py --no-cov)",
+      "Bash(python -m pytest tests/e2e --no-cov)",
+      "Bash(python -m pytest tests/e2e/test_artefact_integrity.py::TestMcpCliAlignment::test_mcp_tools_have_cli_counterpart_or_documented tests/e2e/scenarios/test_enterprise_setup.py::TestEnterpriseSetup::test_enterprise_setup_multi_project_team --no-cov)",
+      "Bash(git stash *)",
+      "Bash(python -m pytest tests/unit tests/integration tests/e2e/test_artefact_integrity.py tests/e2e/scenarios/test_autopilot_basic.py tests/e2e/scenarios/test_autopilot_budget.py tests/e2e/scenarios/test_autopilot_finish.py --no-cov)",
+      "Bash(python -m pytest tests/unit tests/integration tests/e2e --no-cov)",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "Bash(Get-ChildItem *)"
+    ]
+  }
+}

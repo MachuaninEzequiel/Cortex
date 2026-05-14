@@ -92,6 +92,11 @@ class OpenCodeAdapter(IDEAdapter):
                     "cortex_context": True, "cortex_search": True,
                     "cortex_search_vector": True, "cortex_sync_ticket": True,
                     "cortex_create_spec": True, "cortex_sync_vault": True,
+                    # Tripartita Refinada (Plan 02 §1-§2): sync valida los
+                    # handoffs producidos aguas abajo por SDDwork antes de
+                    # cerrar su propio turno.
+                    "cortex_validate_handoff": True,
+                    "cortex_verify_session_claims": True,
                 },
             },
             "cortex-SDDwork": {
@@ -103,6 +108,11 @@ class OpenCodeAdapter(IDEAdapter):
                     "cortex_context": True, "cortex_search": True,
                     "cortex_search_vector": True, "cortex_save_session": True,
                     "cortex_sync_vault": True, "Task": True,
+                    # Tripartita Refinada (Plan 02 §1-§2): el orquestador
+                    # valida los handoffs de los subagents delegated via
+                    # Task y verifica claims antes de pasarlos al documenter.
+                    "cortex_validate_handoff": True,
+                    "cortex_verify_session_claims": True,
                 },
             },
         }

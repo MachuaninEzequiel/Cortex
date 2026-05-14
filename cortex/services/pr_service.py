@@ -23,6 +23,7 @@ from cortex.models import GeneratedDoc, MemoryEntry, PRContext
 
 if TYPE_CHECKING:
     from cortex.episodic.memory_store import EpisodicMemoryStore
+    from cortex.semantic.vault_reader import VaultReader
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,17 @@ class PRService:
     1. Enrich a raw PRContext with pipeline results (lint, audit, tests).
     2. Store the enriched PR context as an episodic memory.
     3. Generate fallback documentation when no agent-written docs exist.
-    4. Write generated docs to the vault.
+    4. Write generated docs to the vault **and index them immediately**
+       so they are retrievable via ``cortex search`` without a manual
+       ``sync-vault``.
     5. Search past PRs for similar context.
 
     Args:
         vault_path: Absolute or relative path to the Obsidian vault.
         episodic:   EpisodicMemoryStore instance for episodic memory.
+        semantic:   Optional VaultReader for selective indexing of
+                    generated docs. When omitted, written docs are
+                    persisted but NOT indexed (legacy behaviour).
     """
 
     def __init__(
@@ -48,9 +54,11 @@ class PRService:
         vault_path: str | Path,
         episodic: EpisodicMemoryStore,
         context_metadata: dict[str, str] | None = None,
+        semantic: "VaultReader | None" = None,
     ) -> None:
         self._vault_path = Path(vault_path)
         self._episodic = episodic
+        self._semantic = semantic
         self._context_metadata = dict(context_metadata or {})
 
     def store_pr_context(
@@ -129,7 +137,11 @@ class PRService:
 
     def write_pr_docs(self, docs: list[GeneratedDoc]) -> list[str]:
         """
-        Write generated PR documents to the vault.
+        Write generated PR documents to the vault and index them.
+
+        Each persisted document is immediately indexed into the semantic
+        vault (when a ``VaultReader`` is wired) so it shows up in
+        ``cortex search`` without requiring a manual ``sync-vault``.
 
         Args:
             docs: List of GeneratedDoc to write.
@@ -141,4 +153,26 @@ class PRService:
 
         gen = DocGenerator(vault_path=self._vault_path)
         written = gen.write_docs(docs)
+
+        # Mandatory selective indexing for every generated doc.
+        if self._semantic is not None:
+            for path in written:
+                try:
+                    rel = str(Path(path).relative_to(self._vault_path))
+                except ValueError:
+                    # Doc written outside the vault — should not happen,
+                    # but skip defensively rather than indexing the wrong path.
+                    logger.warning(
+                        "Generated doc outside vault, skipping index: %s", path
+                    )
+                    continue
+                if not self._semantic.index_file(rel):
+                    logger.warning("Failed to index generated PR doc: %s", rel)
+        else:
+            logger.warning(
+                "PRService.write_pr_docs invoked without a VaultReader; "
+                "generated docs were written but NOT indexed. "
+                "Run `cortex sync-vault` to make them retrievable."
+            )
+
         return [str(p) for p in written]

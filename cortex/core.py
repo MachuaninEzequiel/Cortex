@@ -134,24 +134,49 @@ class AgentMemory:
         print(results.to_prompt())
     """
 
-    def __init__(self, config_path: str | Path = "config.yaml") -> None:
-        self._config_path = Path(config_path)
-        self._raw_config = self._load_config(self._config_path)
-        self.config = self._validate_config(self._raw_config)
+    def __init__(self, config_path: str | Path | None = None) -> None:
+        """Initialize the Cortex memory façade.
 
-        # ── Workspace layout discovery ──────────────────────────────────
-        # If config_path was explicitly provided and resolves to a file,
-        # use its parent as the starting point for discovery.  Otherwise
-        # fall back to cwd().
+        Args:
+            config_path: Explicit path to ``config.yaml``. When ``None``
+                (recommended), the layout is discovered from the current
+                working directory and the canonical ``layout.config_path``
+                is used. This is the only path-shape that works correctly
+                in new-layout repos (``.cortex/config.yaml``) without
+                forcing the caller to ``cd`` first.
+        """
         from cortex.workspace import WorkspaceLayout
 
-        if self._config_path.is_file():
-            _discover_start = self._config_path.resolve().parent
-        else:
+        if config_path is None:
+            # Discover-first path: walk up from CWD to find a Cortex
+            # workspace, then use its canonical config path. This is the
+            # only invocation shape that "just works" in new layout when
+            # the user runs ``cortex search`` from anywhere inside the
+            # project tree.
             from pathlib import Path as _P
-            _discover_start = _P.cwd()
 
-        self._layout = WorkspaceLayout.discover(_discover_start)
+            self._layout = WorkspaceLayout.discover(_P.cwd())
+            self._config_path = self._layout.config_path
+        else:
+            self._config_path = Path(config_path)
+            # Honor the explicit path; discovery happens after to resolve
+            # downstream relative paths.
+            if self._config_path.is_file():
+                _discover_start = self._config_path.resolve().parent
+            else:
+                from pathlib import Path as _P
+                _discover_start = _P.cwd()
+            self._layout = WorkspaceLayout.discover(_discover_start)
+
+        if not self._config_path.exists():
+            raise FileNotFoundError(
+                f"❌ Cortex no está configurado: no encuentro `{self._config_path}`.\n"
+                "   Ejecutá `cortex setup full --non-interactive` en este "
+                "directorio (o pasá `--project-root <ruta>` al comando)."
+            )
+
+        self._raw_config = self._load_config(self._config_path)
+        self.config = self._validate_config(self._raw_config)
 
         # workspace_root is the directory against which all relative
         # paths in config.yaml and org.yaml should resolve.
@@ -243,6 +268,7 @@ class AgentMemory:
             vault_path=str(self._vault_path_resolved),
             episodic=self.episodic,
             context_metadata=self._runtime_metadata,
+            semantic=self.semantic,
         )
         self._workitem_service: WorkItemService | None = None
 
@@ -485,12 +511,20 @@ class AgentMemory:
         tags: list[str] | None = None,
         sync_vault: bool = False,
         remember: bool = True,
+        handoff: bool = False,
+        blockers: list[str] | None = None,
+        verified_state: list[str] | None = None,
+        unverified_claims: list[str] | None = None,
+        suggested_skills: list[str] | None = None,
     ) -> Path:
         """
         Persist a structured session note into the vault.
 
         Delegates to :class:`~cortex.services.SessionService`.
-        See its ``create()`` method for full parameter documentation.
+        See its ``create()`` method for full parameter documentation,
+        including the Tripartita Refinada handoff fields (``handoff``,
+        ``blockers``, ``verified_state``, ``unverified_claims``,
+        ``suggested_skills``).
         """
         return self._session_service.create(
             title=title,
@@ -502,6 +536,11 @@ class AgentMemory:
             tags=tags,
             sync_vault=sync_vault,
             remember=remember,
+            handoff=handoff,
+            blockers=blockers,
+            verified_state=verified_state,
+            unverified_claims=unverified_claims,
+            suggested_skills=suggested_skills,
         )
 
     # ------------------------------------------------------------------

@@ -36,6 +36,7 @@ class AutopilotSessionState(BaseModel):
         "documented",
         "finished",
         "failed",
+        "handoff",  # Tripartita Refinada: sesión cerró con TODOs/blockers
     ] = "started"
     mode: Literal["observe", "assist", "autopilot"] = "assist"
     user_request: str | None = None
@@ -92,6 +93,10 @@ class SessionDraft(BaseModel):
     confidence: Literal["high", "medium", "auto-draft"] = "medium"
     warnings: list[str] = []
     source_events: int = 0
+    # Tripartita Refinada (Plan 01 §6): set by the Verification Gate when
+    # claims are cross-checked against the diff. None means the gate did
+    # not run (e.g. pre-0.5.0 sessions).
+    confidence_level: Literal["verified", "asserted", "contradicted"] | None = None
 
 
 class HookSessionStartOutput(BaseModel):

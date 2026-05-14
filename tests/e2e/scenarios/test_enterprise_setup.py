@@ -47,11 +47,14 @@ class TestEnterpriseSetup:
         assert_valid_org_yaml(org_path)
         # Bug 4 corregido: setup enterprise --preset fuerza la escritura del
         # org.yaml con el preset correcto, aunque setup agent haya creado uno
-        # previo con small-company.
+        # previo con small-company. El schema pone ``profile`` dentro de
+        # ``organization`` (ver cortex/enterprise/models.py).
         import yaml
         org_data = yaml.safe_load(org_path.read_text(encoding="utf-8"))
-        assert org_data.get("profile") == "multi-project-team", (
-            f"Expected profile 'multi-project-team', got '{org_data.get('profile')}'"
+        organization = org_data.get("organization") or {}
+        assert organization.get("profile") == "multi-project-team", (
+            f"Expected organization.profile 'multi-project-team', "
+            f"got '{organization.get('profile')}'"
         )
 
     def test_enterprise_setup_regulated_organization(self, e2e_project_dir):
@@ -101,8 +104,9 @@ class TestEnterpriseSetup:
             "--preset", "small-company",
             "--non-interactive",
         )
+        # Layout-aware gitignore (Ola 3, 2026-05-13).
         (isolated_git_repo / ".gitignore").write_text(
-            ".memory/\n*.chroma/\nvault/sessions/\n", encoding="utf-8"
+            ".cortex/memory/\n.cortex/vault/sessions/\n", encoding="utf-8"
         )
         result = run_cortex(
             isolated_git_repo,

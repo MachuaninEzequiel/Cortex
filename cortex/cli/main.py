@@ -1,34 +1,80 @@
 """
 cortex.cli.main
 ---------------
-Command-line interface for cortex.
+Command-line interface for Cortex (Typer).
 
-Commands
---------
-init              Bootstrap .memory/ and vault/ directory with default config.
-setup             Full project setup with auto-detection and CI/CD integration.
-context           Get enriched context for current work.
-save-session      Persist a structured session note into the Cortex vault.
-create-spec       Persist an implementation specification into the Cortex vault.
-verify-docs       Check if PR includes agent-generated documentation.
-validate-docs     Validate markdown docs stored in the vault.
-index-docs        Index vault docs as semantic memory.
-doctor            Validate Cortex runtime, vault and Git governance state.
-org-config        Display the resolved enterprise organization config.
-promote-knowledge  Promote local knowledge into enterprise vault (requires review by default).
-review-knowledge   Approve/reject promotion candidates (enterprise pipeline).
-sync-enterprise-vault Validate + index the enterprise vault knowledge base.
-agent-guidelines  Display agent behavior guidelines for session-end documentation.
-install-skills    Install Obsidian skills into the project's .cortex/skills/ directory.
-remember          Store a new episodic memory from the command line.
-search            Query both memory layers and print results.
-hu                Import and inspect tracked work item notes.
-sync-vault        Re-index the markdown vault.
-stats             Print memory store statistics.
-forget            Delete an episodic memory by ID.
-pr-context        PR documentation pipeline (DevSecDocOps).
-install-ide       Install Cortex inside OpenCode / Claude Code locally.
-mcp-server        Start the standard MCP Server for universal IDE usage.
+Surface area is split into top-level commands plus four sub-CLIs
+(``webgraph``, ``autopilot``, ``pr-context``, ``hu``). Every command
+accepts ``--help``; this docstring lists the canonical entrypoints
+adopters are expected to use.
+
+Setup
+~~~~~
+- ``cortex setup agent``        — agentic workspace only (`.cortex/` + IDE).
+- ``cortex setup pipeline``     — CI/CD workflows only (supports ``--non-interactive``).
+- ``cortex setup full``         — three pillars: agent + pipeline + webgraph
+  (supports ``--non-interactive`` + ``--ide`` + ``--git-depth``).
+- ``cortex setup webgraph``     — visualization module only.
+- ``cortex setup enterprise``   — enterprise topology (wizard or preset).
+- ``cortex init``               — alias for ``setup agent``.
+
+Memory + retrieval
+~~~~~~~~~~~~~~~~~~
+- ``cortex search``             — hybrid RRF search (scope: local/enterprise/all).
+- ``cortex context``            — enriched context for current work (``--format json|compact|markdown``).
+- ``cortex remember``           — store an episodic memory (with ``--branch``, ``--commit``, ``--repo``).
+- ``cortex forget``             — delete an episodic memory by id.
+- ``cortex stats``              — memory store statistics (``--project-root`` aware).
+- ``cortex sync-vault``         — re-index the semantic vault.
+
+Workflow (governance-guarded)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- ``cortex create-spec``        — persist a spec into ``.cortex/vault/specs/``.
+- ``cortex save-session``       — persist a session note into ``.cortex/vault/sessions/``.
+
+Documentation pipeline
+~~~~~~~~~~~~~~~~~~~~~~
+- ``cortex verify-docs``        — detect agent-generated docs in a PR diff.
+- ``cortex validate-docs``      — validate markdown frontmatter and structure.
+- ``cortex index-docs``         — selectively index vault docs as semantic memory.
+- ``cortex pr-context``         — sub-app: ``capture / store / search / generate``.
+
+Enterprise
+~~~~~~~~~~
+- ``cortex org-config``         — print the resolved enterprise org config.
+- ``cortex promote-knowledge``  — promote vault docs to the enterprise vault.
+- ``cortex review-knowledge``   — approve/reject promotion candidates.
+- ``cortex sync-enterprise-vault`` — validate + index the enterprise vault.
+- ``cortex memory-report``      — health + promotion metrics (``--scope``, ``--json``).
+
+Doctor + diagnostics
+~~~~~~~~~~~~~~~~~~~~
+- ``cortex doctor``             — runtime/layout/git checks (``--scope``, ``--strict``).
+- ``cortex agent-guidelines``   — display the canonical AGENT.md.
+
+Work items + integrations
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- ``cortex hu``                 — sub-app: ``import / list / show`` (Jira read-only).
+
+IDE + MCP
+~~~~~~~~~
+- ``cortex inject``             — inject Cortex into an IDE (``--ide``).
+- ``cortex sync-ide``           — re-sync IDE-side artifacts.
+- ``cortex install-skills``     — copy Obsidian skills into ``.cortex/skills/``.
+- ``cortex install-ide``        — alias to ``cortex inject`` (deprecated, kept for compatibility).
+- ``cortex mcp-server``         — start the MCP server (stdio).
+- ``cortex mcp-serve``          — hidden alias of ``mcp-server``.
+
+Autopilot
+~~~~~~~~~
+- ``cortex autopilot``          — sub-app: ``start / preflight / checkpoint / finish /
+  status / doctor / report / cleanup / install / uninstall``.
+
+Visualization
+~~~~~~~~~~~~~
+- ``cortex webgraph``           — sub-app: ``serve / export / setup``.
+
+For adopter-facing onboarding, see ``docs/guides/getting-started-adopters.md``.
 """
 
 from __future__ import annotations
@@ -64,6 +110,30 @@ app = typer.Typer(
     help="Cortex -- hybrid cognitive memory for AI agents.",
     add_completion=False,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        from cortex import __version__
+
+        typer.echo(f"cortex {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        help="Print Cortex version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
+) -> None:
+    """Cortex — hybrid cognitive memory for AI agents."""
+
+
 app.add_typer(webgraph_app, name="webgraph")
 
 # Autopilot subcommand (Fase 3)
@@ -402,6 +472,11 @@ def setup_pipeline(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be done without making changes."
     ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Skip prompts (auto-accept detected vault). Required for CI/scripted setups.",
+    ),
 ) -> None:
     """
     Setup only CI/CD / DevOps components (Workflows, Scripts, Config).
@@ -412,7 +487,7 @@ def setup_pipeline(
     typer.echo("")
 
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.PIPELINE)
+    summary = orchestrator.run(mode=SetupMode.PIPELINE, non_interactive=non_interactive)
     typer.echo(format_summary(summary))
 
 
@@ -424,17 +499,43 @@ def setup_full(
     git_depth: int = typer.Option(
         None, "--git-depth", help="Number of git commits to index for context."
     ),
+    ide: str | None = typer.Option(
+        None,
+        "--ide",
+        help="IDE to configure profiles for (claude-code, opencode, pi, codex, ...).",
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Skip prompts (uses safe defaults). Required for CI/scripted setups.",
+    ),
 ) -> None:
     """
-    Full project setup (Agent + Pipeline).
+    Full project setup — agent + pipeline + webgraph (the three pillars).
+
+    With ``--non-interactive`` plus ``--git-depth N`` (and optional ``--ide X``),
+    this command runs end-to-end without prompts. Recommended for adopters
+    onboarding fresh repos and for scripted/CI provisioning.
     """
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
     if git_depth is None:
-        git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
-    typer.echo("🧠 Cortex — Setting up Full project...")
+        if non_interactive:
+            git_depth = 50
+        else:
+            git_depth = typer.prompt(
+                "📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?",
+                default=50,
+                type=int,
+            )
+    typer.echo("🧠 Cortex — Setting up Full project (agent + pipeline + webgraph)...")
     typer.echo("")
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.FULL, git_depth=git_depth)
+    summary = orchestrator.run(
+        mode=SetupMode.FULL,
+        git_depth=git_depth,
+        ide=ide,
+        non_interactive=non_interactive,
+    )
     typer.echo(format_summary(summary))
 
 
@@ -1471,6 +1572,15 @@ def mcp_serve_legacy() -> None:
 @app.command(name="inject")
 def inject(
     ide: str | None = typer.Option(None, "--ide", help="IDE to inject (canonical names or aliases such as claude-code / claude-desktop)."),
+    sync_canonical: bool = typer.Option(
+        True,
+        "--sync-canonical/--no-sync-canonical",
+        help=(
+            "(Pi only) Mirror .cortex/subagents/ into cortex-pi/.pi/agents/ "
+            "before copying the bundle. Default: enabled. Pass --no-sync-canonical "
+            "to copy the bundle as-is (snapshot mode)."
+        ),
+    ),
 ) -> None:
     """Inject Cortex agent profiles into the specified IDE.
 
@@ -1488,7 +1598,7 @@ def inject(
 
     if ide:
         # Direct injection for specified IDE
-        cortex_ide.inject(ide, project_root=Path.cwd())
+        cortex_ide.inject(ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
         typer.echo(f"\n✅ Successfully configured {ide}")
         typer.echo("Run 'cortex inject' again to configure another IDE.")
     else:
@@ -1512,7 +1622,7 @@ def inject(
             selected_ide = choice
 
         if selected_ide:
-            cortex_ide.inject(selected_ide, project_root=Path.cwd())
+            cortex_ide.inject(selected_ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
             typer.echo(f"\n✅ Successfully configured {selected_ide}")
             typer.echo("Run 'cortex inject' again to configure another IDE.")
         else:
@@ -1578,9 +1688,15 @@ def hu_show(
 
 
 @app.command()
-def stats() -> None:
+def stats(
+    project_root: str | None = typer.Option(
+        None,
+        "--project-root",
+        help="Absolute path to the project root. Defaults to CWD.",
+    ),
+) -> None:
     """Print memory store statistics."""
-    mem = _load_memory()
+    mem = _load_memory(project_root)
     s = mem.stats()
     typer.echo(json.dumps(s, indent=2))
 
@@ -1684,15 +1800,24 @@ def forget(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _load_memory() -> AgentMemory:  # noqa: F821
+def _load_memory(project_root: str | Path | None = None) -> AgentMemory:  # noqa: F821
+    """Return an ``AgentMemory`` rooted at *project_root* (or CWD if None).
+
+    Accepts ``--project-root`` from any CLI command so that adopters
+    don't need to ``cd`` into their workspace just to run a query.
+    """
     from cortex.core import AgentMemory
     from cortex.workspace import WorkspaceLayout
 
-    layout = WorkspaceLayout.discover(Path.cwd())
+    start = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
+    layout = WorkspaceLayout.discover(start)
     config_path = layout.config_path
     if not config_path.exists():
         typer.echo(
-            f"Config not found at {config_path}. Run `cortex setup agent` first.",
+            f"❌ Cortex no está configurado en {start}.\n"
+            f"   No encuentro `{config_path}`.\n"
+            "   Ejecutá `cortex setup full --non-interactive` para inicializar el workspace,\n"
+            "   o pasá `--project-root <ruta>` apuntando a un repo ya configurado.",
             err=True,
         )
         sys.exit(1)
