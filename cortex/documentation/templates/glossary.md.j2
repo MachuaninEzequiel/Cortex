@@ -1,0 +1,21 @@
+# {{ term }}
+
+{% if domain %}**Domain:** {{ domain }}{% endif %}
+
+## Definition
+
+{{ definition }}
+
+{% if examples %}
+## Examples
+
+{% for ex in examples %}- {{ ex }}
+{% endfor %}
+{% endif %}
+
+{% if related_terms %}
+## Related Terms
+
+{% for r in related_terms %}- [[{{ r }}]]
+{% endfor %}
+{% endif %}

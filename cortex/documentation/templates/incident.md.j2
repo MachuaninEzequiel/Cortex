@@ -1,0 +1,37 @@
+## Short Description
+
+{{ short_description }}
+
+## Severity
+
+**{{ severity | upper }}**
+
+## Affected Services
+
+{% if affected_services %}
+{% for svc in affected_services %}- {{ svc }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Impact
+
+{{ impact }}
+
+## Timeline
+
+{% if timeline %}
+{% for event in timeline %}- {{ event }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Root Cause
+
+{% if root_cause_postmortem %}
+See [[{{ root_cause_postmortem }}]].
+{% else %}
+Pending postmortem.
+{% endif %}

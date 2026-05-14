@@ -1,0 +1,21 @@
+## Context
+
+{{ context }}
+
+## Decision
+
+{{ decision }}
+
+## Alternative Rejected
+
+{{ alternative_rejected }}
+
+## Reason
+
+{{ reason }}
+
+{% if reversible_within_days > 0 %}
+## Reversibility
+
+This decision can be reverted within {{ reversible_within_days }} days without significant cost.
+{% endif %}

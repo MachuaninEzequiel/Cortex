@@ -1,0 +1,50 @@
+## Context Required
+
+{{ context_required or "(none)" }}
+
+## Verified State
+
+{% if verified_state %}
+{% for v in verified_state %}- {{ v }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Unverified Claims
+
+{% if unverified_claims %}
+{% for c in unverified_claims %}- {{ c }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Blockers
+
+{% if blockers %}
+{% for b in blockers %}- {{ b }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Next Session Needs
+
+{% if next_session_needs %}
+{% for n in next_session_needs %}- [ ] {{ n }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+{% if suggested_skills %}
+## Suggested Skills
+
+{% for s in suggested_skills %}- {{ s }}
+{% endfor %}
+{% endif %}
+
+## Parent Session
+
+[[{{ parent_session_id }}]]

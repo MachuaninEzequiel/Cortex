@@ -38,7 +38,6 @@ Para cumplir tu objetivo de documentación completa:
 Tu nota de sesión debe incluir:
 
 1. **Frontmatter (Obsidian properties)**:
-
    ```yaml
    ---
    date: YYYY-MM-DD
@@ -71,40 +70,32 @@ related-spec: "[Contador HTML con login](vault/specs/contador-html-login.md)"
 # Sesión: Contador HTML con Login
 
 ## Resumen Ejecutivo
-
 Implementación de contador interactivo con validación de login hardcodeada.
 
 ## Spec Original
-
 [[Contador HTML con login]] - Crear contador.html con botones +/- y modificar login.html para validar usuario:user/password:user.
 
 ## Plan de Implementación
-
 1. Modificar login.html: Agregar script de validación
 2. Crear contador.html: Nuevo archivo con contador interactivo
 
 ## Cambios Realizados
-
 - `login.html`: Agregado event listener para validación de credenciales
 - `contador.html`: Creado nuevo archivo con lógica de contador
 
 ## Decisiones Técnicas
-
 - Patrón de validación: Event listener en form submit
 - Patrón de redirección: window.location.href
 - Estilo: Dark mode consistente (#0f0c29 → #302b63 → #24243e)
 - Trade-off: Validación hardcodeada como prototipo (requiere autenticación real en producción)
 
 ## Resultados de Revisión
-
 LGTM - Validación hardcodeada aceptada como prototipo temporal
 
 ## Resultados de Tests
-
 NO TESTS - Proyecto HTML simple sin suite de tests
 
 ## Próximos Pasos
-
 - Considerar implementar autenticación real en producción
 - Refactor contador a clase para mejor escalabilidad
 ```
@@ -126,7 +117,7 @@ Si hubo una decisión técnica significativa, crea un ADR con:
 Al terminar, responde EXACTAMENTE:
 
 > ✅ **Documentacion generada:**
->
+> 
 > - Sesion: `vault/sessions/YYYY-MM-DD-{ticket}.md`
 > - [ADR: `vault/adrs/YYYY-MM-DD-{titulo}.md`] (si aplica)
 >   📥 La sesion ha sido indexada en la memoria episodica de Cortex.

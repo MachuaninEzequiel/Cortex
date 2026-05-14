@@ -1,0 +1,45 @@
+# {{ version }}
+
+{% if release_date %}**Released:** {{ release_date }}{% endif %}
+
+{% if added %}
+## Added
+
+{% for a in added %}- {{ a }}
+{% endfor %}
+{% endif %}
+{% if changed %}
+
+## Changed
+
+{% for c in changed %}- {{ c }}
+{% endfor %}
+{% endif %}
+{% if deprecated %}
+
+## Deprecated
+
+{% for d in deprecated %}- {{ d }}
+{% endfor %}
+{% endif %}
+{% if removed %}
+
+## Removed
+
+{% for r in removed %}- {{ r }}
+{% endfor %}
+{% endif %}
+{% if fixed %}
+
+## Fixed
+
+{% for f in fixed %}- {{ f }}
+{% endfor %}
+{% endif %}
+{% if security %}
+
+## Security
+
+{% for s in security %}- {{ s }}
+{% endfor %}
+{% endif %}

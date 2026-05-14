@@ -140,6 +140,10 @@ app.add_typer(webgraph_app, name="webgraph")
 from cortex.autopilot.cli import app as autopilot_app
 app.add_typer(autopilot_app, name="autopilot")
 
+# Canonical documentation system (Fase 02 of canonical-documentation initiative)
+from cortex.cli.docs_subcommand import app as docs_app
+app.add_typer(docs_app, name="docs")
+
 _DEFAULT_CONFIG = {
     "episodic": {
         "persist_dir": ".memory/chroma",
