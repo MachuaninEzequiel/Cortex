@@ -1,8 +1,21 @@
+"""Tests for the legacy-shaped writers exposed via ``cortex.documentation``.
+
+After Fase 04 these writers are wrappers around the canonical writers.
+The tests verify the public contract (path, frontmatter, body markers)
+under the new canonical schema. Formato YAML exacto (block vs flow style)
+NO se asume; verificamos campos por contenido textual.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from cortex.documentation import write_session_note, write_spec_note, write_tracked_item_note
+from cortex.documentation import (
+    parse_frontmatter_lenient,
+    write_session_note,
+    write_spec_note,
+    write_tracked_item_note,
+)
 from cortex.workitems.models import TrackedItem, WorkItemKind, WorkItemSource
 
 
@@ -19,8 +32,13 @@ def test_write_session_note_creates_session_file(tmp_path: Path) -> None:
     )
 
     assert path.exists()
+    assert path.parent.name == "sessions"
     content = path.read_text(encoding="utf-8")
-    assert "Session: Implement Release 2 flow" in content
+    # Title appears in frontmatter (canonical) instead of an H1 prefix.
+    fm = parse_frontmatter_lenient(path)
+    assert fm["title"] == "Implement Release 2 flow"
+    assert fm["doc_type"] == "session"
+    # Original spec summary and files appear in the body.
     assert "Replace cortex-work with cortex-SDDwork." in content
     assert "cortex/ide_installer.py" in content
 
@@ -38,48 +56,53 @@ def test_write_spec_note_creates_spec_file(tmp_path: Path) -> None:
     )
 
     assert path.exists()
+    assert path.parent.name == "specs"
+    fm = parse_frontmatter_lenient(path)
+    assert fm["title"] == "Release 2 subagent architecture"
+    assert fm["doc_type"] == "spec"
     content = path.read_text(encoding="utf-8")
-    assert "Specification: Release 2 subagent architecture" in content
     assert "Preserve Cortex isolation" in content
     assert "documenter is mandatory" in content
 
 
 # ---------------------------------------------------------------------------
-# Tripartita Refinada — Plan 07 §4: cascade save_session(handoff=True) e2e
+# Tripartita Refinada - Plan 07 §4: cascade save_session(handoff=True) e2e
 # ---------------------------------------------------------------------------
 
 
 def test_write_session_note_handoff_mode_writes_handoff_status(tmp_path: Path) -> None:
-    """Plan 07 §4 — when ``handoff=True``, the materialized session note
-    must carry ``status: handoff`` in its frontmatter and the ``handoff``
-    tag (idempotently, not duplicated). This test cuts the cascade at the
-    last layer so it exercises real frontmatter rendering on disk
-    instead of mock kwargs.
+    """Cuando ``handoff=True``, la session note canonica debe llevar
+    ``status: handoff`` en el frontmatter y el tag ``handoff`` (idempotente,
+    no duplicado). Las 4 secciones Tripartita Refinada deben renderizarse
+    cuando las listas son no vacias.
     """
     path = write_session_note(
         tmp_path,
-        title="Tripartita Refinada — Plan 07 cierre",
+        title="Tripartita Refinada - Plan 07 cierre",
         spec_summary="Cierre del bloque Tripartita Refinada con bump 0.5.0",
         changes_made=["MCP tools handoff", "agents canonical"],
         files_touched=["cortex/handoff.py"],
         key_decisions=["Bump 0.5.0"],
-        next_steps=["Reunión adopters"],
+        next_steps=["Reunion adopters"],
         tags=["release"],
         handoff=True,
         blockers=["Smoke manual de los 4 IDEs pendiente del usuario"],
         verified_state=["Suite global verde", "MCP tools registrados"],
         unverified_claims=["Performance overhead < 10% no medido en este ciclo"],
-        suggested_skills=["cortex-documenter para review de la bitácora"],
+        suggested_skills=["cortex-documenter para review de la bitacora"],
     )
 
     assert path.exists()
+    fm = parse_frontmatter_lenient(path)
+    assert fm["status"] == "handoff"
+    tags = fm["tags"]
+    assert "session" in tags
+    assert "release" in tags
+    assert "handoff" in tags
+    # 'handoff' must appear at most once (idempotent).
+    assert tags.count("handoff") == 1
+
     content = path.read_text(encoding="utf-8")
-    # Frontmatter status must be 'handoff', not the default 'generated'.
-    assert "status: handoff" in content
-    # 'handoff' tag must appear once in the tags list.
-    assert "tags: [session, release, handoff]" in content or (
-        "handoff" in content and content.count(", handoff]") + content.count(", handoff,") == 1
-    )
     # The 4 new sections must be emitted because we passed non-empty lists.
     assert "## Verified State" in content
     assert "## Unverified Claims" in content
@@ -91,16 +114,18 @@ def test_write_session_note_handoff_mode_writes_handoff_status(tmp_path: Path) -
 
 
 def test_write_session_note_handoff_false_omits_new_sections(tmp_path: Path) -> None:
-    """Negative control: when handoff=False (default) the 4 new sections
-    do NOT appear, even if you pass empty lists. This guarantees the
-    Tripartita Refinada additions are scoped to handoff mode."""
+    """Negative control: cuando handoff=False (default) las 4 secciones nuevas
+    NO aparecen aun pasando listas vacias. Asegura que las extensiones
+    Tripartita Refinada estan ligadas al modo handoff."""
     path = write_session_note(
         tmp_path,
         title="Normal session",
         spec_summary="x",
     )
     content = path.read_text(encoding="utf-8")
-    assert "status: generated" in content
+    fm = parse_frontmatter_lenient(path)
+    # Canonical schema replaces legacy "generated" with "completed".
+    assert fm["status"] == "completed"
     assert "## Verified State" not in content
     assert "## Unverified Claims" not in content
     assert "## Blockers" not in content
@@ -108,8 +133,8 @@ def test_write_session_note_handoff_false_omits_new_sections(tmp_path: Path) -> 
 
 
 def test_write_session_note_handoff_with_empty_lists_skips_sections(tmp_path: Path) -> None:
-    """handoff=True but with no blockers/verified/etc → status changes
-    but no sections appear. Only non-empty lists materialize sections."""
+    """handoff=True but con listas vacias -> status cambia pero no aparecen
+    secciones. Solo listas no vacias materializan secciones."""
     path = write_session_note(
         tmp_path,
         title="Empty handoff",
@@ -117,7 +142,8 @@ def test_write_session_note_handoff_with_empty_lists_skips_sections(tmp_path: Pa
         handoff=True,
     )
     content = path.read_text(encoding="utf-8")
-    assert "status: handoff" in content
+    fm = parse_frontmatter_lenient(path)
+    assert fm["status"] == "handoff"
     assert "## Verified State" not in content
     assert "## Blockers" not in content
 
@@ -139,7 +165,13 @@ def test_write_tracked_item_note_creates_hu_file(tmp_path: Path) -> None:
     )
 
     assert path.exists()
+    assert path.parent.name == "hu"
+    fm = parse_frontmatter_lenient(path)
+    assert fm["external_id"] == "PROJ-123"
+    assert fm["doc_type"] == "hu"
+    assert fm["source"] == "jira"
+    assert fm["kind"] == "story"
     content = path.read_text(encoding="utf-8")
-    assert 'external_id: "PROJ-123"' in content
-    assert "# PROJ-123: Import Jira story" in content
+    # Description and acceptance criteria rendered in body.
+    assert "Read-only import for the current ticket." in content
     assert "Ticket is persisted locally" in content

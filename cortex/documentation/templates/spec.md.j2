@@ -1,0 +1,39 @@
+## Goal
+
+{{ goal or "(none)" }}
+
+## Requirements
+
+{% if requirements %}
+{% for r in requirements %}- {{ r }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Files in Scope
+
+{% if files_in_scope %}
+{% for f in files_in_scope %}- `{{ f }}`
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Constraints
+
+{% if constraints %}
+{% for c in constraints %}- {{ c }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Acceptance Criteria
+
+{% if acceptance_criteria %}
+{% for a in acceptance_criteria %}- [ ] {{ a }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}

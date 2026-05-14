@@ -1,0 +1,27 @@
+## Context
+
+{{ context }}
+
+## Decision
+
+{{ decision }}
+
+## Alternatives Considered
+
+{% if alternatives_considered %}
+{% for alt in alternatives_considered %}- {{ alt }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Consequences
+
+{{ consequences }}
+
+{% if supersedes %}
+## Supersedes
+
+{% for prev in supersedes %}- [[{{ prev }}]]
+{% endfor %}
+{% endif %}

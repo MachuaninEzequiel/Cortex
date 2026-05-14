@@ -1,0 +1,68 @@
+## Description
+
+{{ description }}
+
+## Kind
+
+**{{ runbook_kind }}**
+
+## Applies To
+
+{% if applies_to %}
+{% for s in applies_to %}- {{ s }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Prerequisites
+
+{% if prerequisites %}
+{% for p in prerequisites %}- [ ] {{ p }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Procedure
+
+{% if procedure %}
+{% for step in procedure %}
+### Step {{ loop.index }}
+
+{{ step }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+{% if rollback_procedure %}
+## Rollback Procedure
+
+{% for step in rollback_procedure %}
+### Rollback Step {{ loop.index }}
+
+{{ step }}
+{% endfor %}
+{% endif %}
+
+## Verification
+
+{% if verification %}
+{% for v in verification %}- [ ] {{ v }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+{% if estimated_duration_minutes %}
+## Estimated Duration
+
+{{ estimated_duration_minutes }} minutes
+{% endif %}
+
+{% if last_verified_at %}
+## Last Verified
+
+{{ last_verified_at }}
+{% endif %}

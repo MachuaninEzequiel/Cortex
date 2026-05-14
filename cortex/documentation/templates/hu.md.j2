@@ -1,0 +1,21 @@
+## Description
+
+{{ description }}
+
+## Acceptance Criteria
+
+{% if acceptance_criteria %}
+{% for a in acceptance_criteria %}- [ ] {{ a }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Metadata
+
+- **External ID:** `{{ external_id }}`
+- **Source:** {{ source }}
+- **Kind:** {{ kind }}
+{% if assignee %}- **Assignee:** {{ assignee }}{% endif %}
+{% if external_url %}- **External URL:** {{ external_url }}{% endif %}
+{% if synced_at %}- **Last sync:** {{ synced_at }}{% endif %}

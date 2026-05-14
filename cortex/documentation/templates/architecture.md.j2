@@ -1,0 +1,40 @@
+## Summary
+
+{{ summary }}
+
+## Components
+
+{% if components %}
+{% for c in components %}- {{ c }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+{% if diagrams %}
+## Diagrams
+
+{% for d in diagrams %}
+![{{ d }}]({{ d }})
+{% endfor %}
+{% endif %}
+
+## Contracts
+
+{% if contracts %}
+{% for c in contracts %}- {{ c }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Rationale
+
+{{ rationale }}
+
+{% if related_adrs %}
+## Related ADRs
+
+{% for adr in related_adrs %}- [[{{ adr }}]]
+{% endfor %}
+{% endif %}

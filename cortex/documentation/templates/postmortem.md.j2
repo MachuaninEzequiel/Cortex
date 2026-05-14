@@ -1,0 +1,56 @@
+## Incident Reference
+
+See [[{{ incident_path }}]].
+
+## Severity
+
+**{{ severity | upper }}**
+
+## Root Cause
+
+{{ root_cause }}
+
+## Contributing Factors
+
+{% if contributing_factors %}
+{% for f in contributing_factors %}- {{ f }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Timeline
+
+{% if timeline %}
+{% for event in timeline %}- {{ event }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## What Went Well
+
+{% if what_went_well %}
+{% for w in what_went_well %}- {{ w }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## What Went Wrong
+
+{% if what_went_wrong %}
+{% for w in what_went_wrong %}- {{ w }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Action Items
+
+{% if action_items %}
+{% for a in action_items %}- [ ] {{ a }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}

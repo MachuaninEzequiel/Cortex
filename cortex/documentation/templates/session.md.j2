@@ -1,0 +1,67 @@
+## Original Specification
+
+{{ spec_summary or "(none)" }}
+
+## Changes Made
+
+{% if changes_made %}
+{% for change in changes_made %}- {{ change }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Files Touched
+
+{% if files_touched %}
+{% for file in files_touched %}- `{{ file }}`
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Key Decisions
+
+{% if key_decisions %}
+{% for decision in key_decisions %}- {{ decision }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+## Next Steps
+
+{% if next_steps %}
+{% for step in next_steps %}- [ ] {{ step }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+{% if verified_state %}
+## Verified State
+
+{% for v in verified_state %}- {{ v }}
+{% endfor %}
+{% endif %}
+{% if unverified_claims %}
+
+## Unverified Claims
+
+{% for c in unverified_claims %}- {{ c }}
+{% endfor %}
+{% endif %}
+{% if blockers %}
+
+## Blockers
+
+{% for b in blockers %}- {{ b }}
+{% endfor %}
+{% endif %}
+{% if suggested_skills %}
+
+## Suggested Skills for Next Session
+
+{% for s in suggested_skills %}- {{ s }}
+{% endfor %}
+{% endif %}
