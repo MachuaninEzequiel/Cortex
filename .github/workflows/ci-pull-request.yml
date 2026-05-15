@@ -57,6 +57,11 @@ jobs:
         run: mypy cortex/
         continue-on-error: true
 
+      - name: Type Check Strict (Mypy - cortex.documentation)
+        id: mypy_documentation_strict
+        run: mypy cortex/documentation/
+        continue-on-error: false
+
       - name: Run Tests with Coverage
         id: tests
         run: |

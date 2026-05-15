@@ -1,7 +1,10 @@
 import asyncio
+import collections
+import concurrent.futures
+import json
 import logging
+import os
 import re
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -12,15 +15,12 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
+from cortex.autopilot.mcp_tools import AutopilotMCPTools
+from cortex.autopilot.service import AutopilotService
 from cortex.core import AgentMemory
 from cortex.models import EnrichedContext
 from cortex.security.paths import PathSecurityError, resolve_safe
 from cortex.workspace.layout import WorkspaceLayout
-
-from cortex.autopilot.delegation import get_task_result, register_task
-from cortex.autopilot.mcp_tools import AutopilotMCPTools
-from cortex.autopilot.models import DelegationResult
-from cortex.autopilot.service import AutopilotService
 
 # Configure logging for MCP tool call tracking
 logger = logging.getLogger(__name__)
@@ -29,31 +29,81 @@ class CortexMCPServer:
     """
     Cortex v3.0 Engine Server.
     Provides tools for search, context, and memory.
-    
+
     This is the Cortex Engine - a passive MCP server that exposes memory and
     semantic search capabilities. Delegation is now handled by IDE-native tools
     (Task, runSubagent, etc.) configured via profile injection.
+
+    Fase 1 — Capa 1 del plan multi-IDE & MCP hardening:
+    Cada tool call corre en un ``ThreadPoolExecutor`` con timeout enforced.
+    Sin este aislamiento, una llamada bloqueante (subprocess colgado, carga
+    de modelo, IO masivo) bloqueaba el event loop async — exactamente el
+    incidente del 2026-05-15.
     """
+
+    # Timeout en segundos por tool. Default 30s; ajustar solo para tools
+    # que sabemos que son legitimamente mas lentas (ej. carga del modelo
+    # ONNX la primera vez).
+    _TOOL_TIMEOUT_DEFAULT: float = 30.0
+    _TOOL_TIMEOUTS: dict[str, float] = {
+        "cortex_search_vector": 60.0,   # primera invocacion carga ONNX (~10MB)
+        "cortex_sync_vault": 120.0,     # indexacion masiva de disco
+        "cortex_ping": 5.0,             # health check debe ser FAST FAIL
+    }
+
+    # Server version expuesta por ``cortex_ping`` y por InitializationOptions.
+    # Bump manual cuando el contrato del MCP cambie de forma incompatible.
+    SERVER_VERSION: str = "2.2"
+
+    # Threshold: el server se considera "starting" durante los primeros N
+    # segundos post-init. Despues del threshold, status pasa a "ok" o
+    # "degraded" segun haya o no errores recientes.
+    _STARTUP_GRACE_SECONDS: float = 2.0
+
+    # Tope de caracteres del mensaje de error guardado en last_error_seen.
+    # Suficiente para diagnosticar sin riesgo de incluir un traceback completo
+    # con paths sensibles.
+    _ERROR_MESSAGE_MAX_CHARS: int = 200
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self._layout = WorkspaceLayout.discover(project_root)
-        
+
         # Capa 1: Sistema de tracking de herramientas llamadas para logging y validación
         self._tool_call_history: list[dict[str, Any]] = []
         self._called_tools: set[str] = set()
+
+        # Fase 2: tracking para cortex_ping.
+        # ``_startup_time`` permite calcular uptime; ``_error_history`` mantiene
+        # los ultimos 10 errores capturados por el dispatcher (timeouts o
+        # exceptions). El client puede consultar ``cortex_ping`` para detectar
+        # estado degradado antes de gastar tiempo en operaciones costosas.
+        self._startup_time: datetime = datetime.now()
+        self._error_history: collections.deque[dict[str, Any]] = collections.deque(maxlen=10)
         
-        # Configurar logging para archivo
+        # Configurar logging para archivo.
+        #
+        # En modo stdio (el unico transport del MCP server actualmente), escribir
+        # logs a sys.stderr es un bug latente: si el cliente MCP no drena el pipe
+        # stderr rapidamente, el siguiente ``logger.info`` se bloquea por
+        # contrapresion del pipe — y bloquea el handler async del server entero.
+        # Esto causo el incidente del 2026-05-15 (subagente colgado 14 minutos +
+        # MCP desconectandose mid-operacion).
+        #
+        # Por defecto solo escribimos a archivo. Escape hatch para debugging:
+        # ``CORTEX_MCP_LOG_TO_STDERR=1`` reactiva el StreamHandler en stderr.
         log_dir = self._layout.logs_dir
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / f"mcp_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        
+
+        handlers: list[logging.Handler] = [logging.FileHandler(log_file)]
+        if os.environ.get("CORTEX_MCP_LOG_TO_STDERR") == "1":
+            handlers.append(logging.StreamHandler(sys.stderr))
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler(sys.stderr)
-            ]
+            handlers=handlers,
         )
         
         # Buscar config usando WorkspaceLayout
@@ -76,8 +126,18 @@ class CortexMCPServer:
         self._autopilot_service = AutopilotService.from_project_root(project_root)
         self._autopilot_tools = AutopilotMCPTools(self._autopilot_service)
         
+        # Executor para aislar tool calls bloqueantes del event loop async.
+        # max_workers=4 por default; configurable via CORTEX_MCP_MAX_WORKERS.
+        max_workers = int(os.environ.get("CORTEX_MCP_MAX_WORKERS", "4") or "4")
+        self._executor: concurrent.futures.ThreadPoolExecutor = (
+            concurrent.futures.ThreadPoolExecutor(
+                max_workers=max(1, max_workers),
+                thread_name_prefix="cortex-mcp-",
+            )
+        )
+
         self._setup_tools()
-        
+
         logger.info(f"Cortex MCP Server inicializado. Log file: {log_file}")
 
     def _log_tool_call(self, tool_name: str, arguments: dict[str, Any], result: str | None = None) -> None:
@@ -99,7 +159,8 @@ class CortexMCPServer:
         }
         self._tool_call_history.append(log_entry)
         
-        # Log al archivo y stderr
+        # Log al FileHandler configurado en __init__ (Capa 2: stderr solo
+        # bajo CORTEX_MCP_LOG_TO_STDERR=1 para evitar bloqueo del pipe stdio).
         logger.info(f"TOOL_CALL: {tool_name} | args: {arguments}")
         
         if result:
@@ -109,6 +170,23 @@ class CortexMCPServer:
         @self.server.list_tools()
         async def handle_list_tools() -> list[types.Tool]:
             return [
+                types.Tool(
+                    name="cortex_ping",
+                    description=(
+                        "Health check rapido del MCP server. Devuelve JSON con "
+                        "{status, version, uptime_seconds, indices_loaded, "
+                        "models_loaded, last_error_seen}. Latencia objetivo <50ms. "
+                        "Pensado para que los agentes verifiquen disponibilidad "
+                        "ANTES de gastar tiempo y contexto en operaciones costosas. "
+                        "Si status != 'ok', abortar la operacion con error claro al usuario; "
+                        "NO degradar features, NO hacer fallback manual."
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                ),
                 types.Tool(
                     name="cortex_search_vector",
                     description="Búsqueda semántica profunda en el vault (Requiere carga de modelo ONNX). Úsala para análisis inicial y contexto histórico complejo.",
@@ -123,12 +201,62 @@ class CortexMCPServer:
                 ),
                 types.Tool(
                     name="cortex_search",
-                    description="Búsqueda rápida de palabras clave (Bypass IA - Instantánea). Úsala para encontrar archivos, funciones o términos específicos sin carga de modelos.",
+                    description=(
+                        "Búsqueda rápida de palabras clave (Bypass IA - Instantánea). "
+                        "Úsala para encontrar archivos, funciones o términos específicos sin carga de modelos. "
+                        "Acepta filtros estructurales opcionales (doc_type, scope, status, tags, max_age_days, "
+                        "strict): si alguno es informado, el resultado se construye con ContextEnricher en lugar "
+                        "del RRF crudo (mismo backend que `cortex docs search`)."
+                    ),
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "query": {"type": "string", "description": "Términos de búsqueda."},
-                            "limit": {"type": "integer", "default": 5}
+                            "limit": {"type": "integer", "default": 5},
+                            "doc_type": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Filtrar por DocType slug (adr, runbook, ...).",
+                            },
+                            "exclude_doc_type": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Excluir DocTypes.",
+                            },
+                            "status": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Filtrar por frontmatter status (accepted, draft, ...).",
+                            },
+                            "tag": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Items deben contener TODOS los tags.",
+                            },
+                            "tag_any": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Items deben contener al menos uno de estos tags.",
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["local", "enterprise", "all"],
+                                "default": "local",
+                            },
+                            "max_age_days": {
+                                "type": "integer",
+                                "description": "Descartar items más antiguos que N días.",
+                            },
+                            "project_id": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Filtro multi-tenant por origin_project_id.",
+                            },
+                            "strict": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Descartar items sin doc_type cuando doc_type filtra.",
+                            }
                         },
                         "required": ["query"]
                     }
@@ -400,59 +528,18 @@ class CortexMCPServer:
                         },
                     }
                 ),
-                types.Tool(
-                    name="cortex_delegate_task",
-                    description="[EXPERIMENTAL] Delegate a single task to a subagent. Returns a task_id for tracking.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "agent": {"type": "string", "description": "Subagent name (e.g. cortex-code-implementer)."},
-                            "task": {"type": "string", "description": "Task description."},
-                            "session_id": {"type": "string"},
-                        },
-                        "required": ["agent", "task", "session_id"],
-                    }
-                ),
-                types.Tool(
-                    name="cortex_delegate_batch",
-                    description="[EXPERIMENTAL] Delegate multiple tasks in parallel. Returns task_ids for tracking.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "tasks": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "agent": {"type": "string"},
-                                        "task": {"type": "string"},
-                                    },
-                                    "required": ["agent", "task"],
-                                },
-                            },
-                            "session_id": {"type": "string"},
-                        },
-                        "required": ["tasks", "session_id"],
-                    }
-                ),
-                types.Tool(
-                    name="cortex_get_task_result",
-                    description="[EXPERIMENTAL] Retrieve the result of a delegated task and run two-stage review.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "task_id": {"type": "string"},
-                            "session_id": {"type": "string"},
-                            "status": {"type": "string", "default": "completed"},
-                            "diff_summary": {"type": "string", "default": ""},
-                            "files_changed": {"type": "array", "items": {"type": "string"}, "default": []},
-                            "tests_passed": {"type": "boolean"},
-                            "spec_path": {"type": "string"},
-                            "rejection_reason": {"type": "string"},
-                        },
-                        "required": ["task_id", "session_id"],
-                    }
-                ),
+                # NOTA (Fase 5 plan multi-IDE & MCP hardening, 2026-05-15):
+                # Los tools experimentales `cortex_delegate_task`,
+                # `cortex_delegate_batch` y `cortex_get_task_result` fueron
+                # ELIMINADOS. Razon: estaban hardcoded a `opencode run` via
+                # subprocess y devolvian no-op silencioso en cualquier otro
+                # IDE — el bug exacto del incidente del 2026-05-15.
+                #
+                # La delegacion a subagentes ahora es responsabilidad NATIVA
+                # del IDE (Task tool en Claude Code, mode: subagent en
+                # opencode, secuencial single-agent en codex). Ver
+                # `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md`
+                # seccion 1 para detalles por IDE.
             ]
 
         @self.server.call_tool()
@@ -460,166 +547,149 @@ class CortexMCPServer:
             if not arguments:
                 arguments = {}
 
-            # Capa 1: Logging genérico al inicio de cada llamada
+            # Capa 1: Logging generico al inicio de cada llamada
             self._log_tool_call(name, arguments)
 
+            # Capa 1 (defensive): cada tool call corre en un thread del executor
+            # con timeout enforced. Si el handler bloquea (subprocess colgado,
+            # carga ONNX, IO masivo), el event loop async sigue libre — el
+            # cliente recibe error de timeout en lugar de un servidor muerto.
+            timeout = self._TOOL_TIMEOUTS.get(name, self._TOOL_TIMEOUT_DEFAULT)
+            # ``get_running_loop`` en lugar de ``get_event_loop``: este ultimo
+            # esta deprecated en Python 3.10+ cuando se llama desde dentro
+            # de una corutina. Como ``handle_call_tool`` ES una corutina
+            # (decorada con async), siempre hay un loop corriendo y
+            # ``get_running_loop`` es la API correcta.
+            loop = asyncio.get_running_loop()
             try:
-                result_text = None
-                
-                if name == "cortex_search":
-                    query = arguments.get("query", "")
-                    limit = arguments.get("limit", 5)
-                    result_text = self._search_text(query, limit)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_context":
-                    result_text = self._context_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_sync_ticket":
-                    sync_context = self._build_sync_ticket_context(arguments)
-                    result_text = sync_context
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-
-                elif name == "cortex_create_spec":
-                    # Governance guard + spec creation están centralizados en
-                    # ``_create_spec_text``. NO duplicar el guard aquí: el
-                    # mensaje canónico vive en ``_GOVERNANCE_VIOLATION_MESSAGE``
-                    # y el flujo lo prueba ``tests/unit/test_mcp_server.py``.
-                    result_text = self._create_spec_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_save_session":
-                    result_text = self._save_session_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_validate_handoff":
-                    result_text = self._validate_handoff_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_verify_session_claims":
-                    result_text = self._verify_session_claims_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_import_hu":
-                    result_text = self._import_hu_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_get_hu":
-                    result_text = self._get_hu_text(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_sync_vault":
-                    count = self.memory.sync_vault()
-                    result_text = f"Vault synced - {count} documents indexed."
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_autopilot_start":
-                    result_text = self._autopilot_tools.start(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_autopilot_preflight":
-                    result_text = self._autopilot_tools.preflight(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_autopilot_checkpoint":
-                    result_text = self._autopilot_tools.checkpoint(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_autopilot_finish":
-                    result_text = self._autopilot_tools.finish(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_autopilot_status":
-                    result_text = self._autopilot_tools.status(arguments)
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_delegate_task":
-                    task_id = f"task-{arguments.get('agent','unknown')}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                    register_task(
-                        DelegationResult(
-                            task_id=task_id,
-                            status="completed",
-                            diff_summary="",
-                            files_changed=[],
-                        )
-                    )
-                    result_text = f"[EXPERIMENTAL] Task delegated -> {task_id}"
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_delegate_batch":
-                    tasks = arguments.get("tasks", [])
-                    ids: list[str] = []
-                    for t in tasks:
-                        tid = f"batch-{t.get('agent','unknown')}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        register_task(
-                            DelegationResult(
-                                task_id=tid,
-                                status="completed",
-                                diff_summary="",
-                                files_changed=[],
-                            )
-                        )
-                        ids.append(tid)
-                    result_text = f"[EXPERIMENTAL] Batch delegated -> {', '.join(ids)}"
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                elif name == "cortex_get_task_result":
-                    task_id = arguments.get("task_id", "")
-                    session_id = arguments.get("session_id", "")
-                    raw = get_task_result(task_id)
-                    if raw is None:
-                        result = DelegationResult(
-                            task_id=task_id,
-                            status=arguments.get("status", "completed"),
-                            diff_summary=arguments.get("diff_summary", ""),
-                            files_changed=arguments.get("files_changed", []),
-                            tests_passed=arguments.get("tests_passed"),
-                            spec_path=arguments.get("spec_path"),
-                            rejection_reason=arguments.get("rejection_reason"),
-                        )
-                    else:
-                        result = raw
-                    if session_id:
-                        verdict = self._autopilot_service.review_delegation(session_id, result)
-                        result_text = (
-                            f"[EXPERIMENTAL] Review for {task_id}\n"
-                            f"Accepted: {verdict.accepted}\n"
-                            f"Stage 1: {verdict.stage_1_passed}\n"
-                            f"Stage 2: {verdict.stage_2_passed}\n"
-                            f"Reason: {verdict.reason}"
-                        )
-                    else:
-                        result_text = f"[EXPERIMENTAL] Result for {task_id}: {result.status}"
-                    self._log_tool_call(name, arguments, result_text)
-                    return [types.TextContent(type="text", text=result_text)]
-
-                error_msg = f"Herramienta desconocida: {name}"
-                self._log_tool_call(name, arguments, error_msg)
-                return [types.TextContent(type="text", text=error_msg)]
+                result_text = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        self._executor, self._dispatch_tool_sync, name, arguments
+                    ),
+                    timeout=timeout,
+                )
+            except TimeoutError:
+                result_text = (
+                    f"❌ Tool '{name}' excedio el timeout ({timeout}s). "
+                    "El handler quedo bloqueado — el server continua operando."
+                )
+                self._register_error(name, f"timeout after {timeout}s")
+                self._log_tool_call(name, arguments, result_text)
             except Exception as e:
-                error_msg = f"Error ejecutando {name}: {str(e)}"
-                self._log_tool_call(name, arguments, error_msg)
+                result_text = f"Error ejecutando {name}: {str(e)}"
+                self._register_error(name, str(e))
+                self._log_tool_call(name, arguments, result_text)
                 logger.exception(f"Exception in tool call: {name}")
-                return [types.TextContent(type="text", text=error_msg)]
+            return [types.TextContent(type="text", text=result_text)]
+
+    def _dispatch_tool_sync(self, name: str, arguments: dict[str, Any]) -> str:
+        """Sync dispatcher de tool calls.
+
+        Vive en un thread del executor (no bloquea el event loop). Cada branch
+        invoca el handler especifico y retorna el texto a devolver al cliente.
+
+        Errores propagan al caller (``handle_call_tool``), que los captura
+        y los formatea como ``TextContent`` con marca de error.
+        """
+        if name == "cortex_ping":
+            result_text = self._ping_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_search":
+            result_text = self._search_text_dispatch(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_search_vector":
+            result_text = self._search_vector_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_context":
+            result_text = self._context_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_sync_ticket":
+            result_text = self._build_sync_ticket_context(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_create_spec":
+            # Governance guard + spec creation estan centralizados en
+            # ``_create_spec_text``. NO duplicar el guard aqui: el
+            # mensaje canonico vive en ``_GOVERNANCE_VIOLATION_MESSAGE``
+            # y el flujo lo prueba ``tests/unit/test_mcp_server.py``.
+            result_text = self._create_spec_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_save_session":
+            result_text = self._save_session_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_validate_handoff":
+            result_text = self._validate_handoff_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_verify_session_claims":
+            result_text = self._verify_session_claims_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_import_hu":
+            result_text = self._import_hu_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_get_hu":
+            result_text = self._get_hu_text(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_sync_vault":
+            count = self.memory.sync_vault()
+            result_text = f"Vault synced - {count} documents indexed."
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_autopilot_start":
+            result_text = self._autopilot_tools.start(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_autopilot_preflight":
+            result_text = self._autopilot_tools.preflight(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_autopilot_checkpoint":
+            result_text = self._autopilot_tools.checkpoint(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_autopilot_finish":
+            result_text = self._autopilot_tools.finish(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        if name == "cortex_autopilot_status":
+            result_text = self._autopilot_tools.status(arguments)
+            self._log_tool_call(name, arguments, result_text)
+            return result_text
+
+        # Tools cortex_delegate_task / cortex_delegate_batch /
+        # cortex_get_task_result eliminados en Fase 5 del plan multi-IDE
+        # & MCP hardening (2026-05-15). La delegacion a subagentes ahora
+        # es responsabilidad nativa del IDE — ver
+        # `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md` seccion 5.
+
+        error_msg = f"Herramienta desconocida: {name}"
+        self._log_tool_call(name, arguments, error_msg)
+        return error_msg
 
     @staticmethod
     def _extract_query_keywords(query: str) -> list[str]:
@@ -716,6 +786,74 @@ class CortexMCPServer:
     def _search_text(self, query: str, limit: int = 5) -> str:
         results = self.memory.retrieve(query, top_k=limit)
         return str(results.to_prompt())
+
+    def _search_vector_text(self, arguments: dict[str, Any]) -> str:
+        """Handler para ``cortex_search_vector``: forces the semantic/vector path.
+
+        Difiere de ``cortex_search`` en que NUNCA cae al modo ContextEnricher
+        estructural — siempre invoca el path retrieval con ``use_embeddings=True``.
+        Pensado para casos donde el caller quiere busqueda semantica pura
+        aunque el costo de cargar el modelo ONNX sea mayor.
+        """
+        query = str(arguments.get("query", "") or "")
+        limit = int(arguments.get("limit", 5) or 5)
+        results = self.memory.retrieve(query, top_k=limit, use_embeddings=True)
+        return str(results.to_prompt())
+
+    _STRUCTURAL_KEYS = (
+        "doc_type",
+        "exclude_doc_type",
+        "status",
+        "tag",
+        "tag_any",
+        "max_age_days",
+        "project_id",
+        "strict",
+    )
+
+    def _search_text_dispatch(self, arguments: dict[str, Any]) -> str:
+        """Route ``cortex_search`` to legacy RRF or structural enricher path."""
+        query = arguments.get("query", "")
+        limit = int(arguments.get("limit", 5) or 5)
+
+        scope = arguments.get("scope", "local") or "local"
+        structural = any(arguments.get(k) for k in self._STRUCTURAL_KEYS) or scope != "local"
+        if not structural:
+            return self._search_text(query, limit)
+
+        from cortex.cli._search_filters import build_enrichment_filters_from_cli
+        from cortex.context_enricher.config import ContextEnricherConfig
+        from cortex.context_enricher.enricher import ContextEnricher
+        from cortex.models import WorkContext
+
+        try:
+            filters = build_enrichment_filters_from_cli(
+                doc_type=arguments.get("doc_type") or [],
+                exclude_doc_type=arguments.get("exclude_doc_type") or [],
+                status=arguments.get("status") or [],
+                tag=arguments.get("tag") or [],
+                tag_any=arguments.get("tag_any") or [],
+                scope=scope,
+                max_age_days=arguments.get("max_age_days"),
+                project_id=arguments.get("project_id") or [],
+                strict=bool(arguments.get("strict", False)),
+            )
+        except ValueError as exc:
+            return f"cortex_search: invalid filter — {exc}"
+
+        enricher = ContextEnricher(
+            episodic=self.memory.episodic,
+            semantic=self.memory.semantic,
+            config=ContextEnricherConfig(),
+        )
+        work = WorkContext(
+            source="manual",
+            changed_files=[],
+            keywords=str(query).split(),
+            search_queries=[str(query)],
+        )
+        ctx = enricher.enrich(work, top_k=limit, filters=filters)
+        return ctx.to_prompt_format()
 
     def _context_text(self, arguments: dict[str, Any]) -> str:
         return self._enrich_context(arguments).to_prompt_format()
@@ -828,28 +966,31 @@ class CortexMCPServer:
 
     def _verify_session_claims_text(self, arguments: dict[str, Any]) -> str:
         """Cross-check claims against the current git diff (heuristic)."""
-        import subprocess
+        from cortex.mcp._subprocess import git_branch_exists, safe_run
 
         claims = [str(c).strip() for c in (arguments.get("claims") or []) if str(c).strip()]
         base = str(arguments.get("base_branch") or "main")
         if not claims:
             return "❌ claims list is required and must not be empty."
 
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--unified=0", base, "--"],
-                cwd=str(self.project_root),
-                capture_output=True,
-                text=True,
-                timeout=10,
+        # Pre-validacion barata: si la rama base no existe, fallar rapido (~100ms)
+        # en lugar de esperar el timeout completo del diff. Esto evita el caso
+        # donde el adopter pasa "main" pero su repo usa "master" — sin esto, el
+        # handler queda bloqueado 10s antes de devolver un error.
+        if not git_branch_exists(base, cwd=self.project_root, timeout=2.0):
+            return (
+                f"❌ Base branch '{base}' does not exist in this repo. "
+                f"Pass a valid branch via `base_branch` argument."
             )
-            diff_text = result.stdout or ""
-        except FileNotFoundError:
-            return "❌ git binary not available; cannot verify claims."
-        except subprocess.TimeoutExpired:
-            return f"❌ git diff against '{base}' timed out after 10s."
-        except Exception as exc:
-            return f"❌ Could not read diff: {exc}"
+
+        diff_result = safe_run(
+            ["git", "diff", "--unified=0", base, "--"],
+            cwd=self.project_root,
+            timeout=10.0,
+        )
+        if not diff_result.ok:
+            return f"❌ git diff against '{base}' failed: {diff_result.error}"
+        diff_text = diff_result.stdout
 
         diff_lower = diff_text.lower()
         verified: list[str] = []
@@ -900,19 +1041,116 @@ class CortexMCPServer:
 
 
     async def run(self):
-        async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name="cortex",
-                    server_version="2.1",
-                    capabilities=self.server.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={},
+        try:
+            async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    InitializationOptions(
+                        server_name="cortex",
+                        server_version="2.1",
+                        capabilities=self.server.get_capabilities(
+                            notification_options=NotificationOptions(),
+                            experimental_capabilities={},
+                        ),
                     ),
-                ),
-            )
+                )
+        finally:
+            # Liberar workers del executor al terminar (cancel_futures evita
+            # esperar tareas zombie si el cliente cerro el pipe abruptamente).
+            self.shutdown()
+
+    def _register_error(self, tool_name: str, error_msg: str) -> None:
+        """Append a sanitized error to the rolling ``_error_history``.
+
+        Llamado por ``handle_call_tool`` cuando captura timeout o exception.
+        El mensaje se trunca a ``_ERROR_MESSAGE_MAX_CHARS`` para que el
+        tracking nunca acumule tracebacks completos (que pueden contener
+        paths sensibles del filesystem del adopter).
+        """
+        sanitized = (error_msg or "").strip()
+        if len(sanitized) > self._ERROR_MESSAGE_MAX_CHARS:
+            sanitized = sanitized[: self._ERROR_MESSAGE_MAX_CHARS - 3] + "..."
+        self._error_history.append({
+            "tool": tool_name,
+            "timestamp": datetime.now().isoformat(),
+            "error": sanitized,
+        })
+
+    def _ping_text(self, arguments: dict[str, Any]) -> str:
+        """Build the JSON response for ``cortex_ping``.
+
+        Latencia objetivo <50ms p99: este metodo NO hace IO, NO toca disco,
+        NO invoca subprocesos. Solo lee estado in-memory.
+
+        Estructura del JSON devuelto:
+
+        - ``status``: ``"ok" | "degraded" | "starting"``.
+          * ``starting`` durante los primeros ``_STARTUP_GRACE_SECONDS``.
+          * ``degraded`` si hay errores en ``_error_history``.
+          * ``ok`` en cualquier otro caso.
+        - ``version``: ``SERVER_VERSION`` (string).
+        - ``uptime_seconds``: float, segundos desde init.
+        - ``indices_loaded``: bool, ``self.memory`` existe y esta usable.
+        - ``models_loaded``: lista de nombres de modelos actualmente cargados
+          (vacia hasta que algun caller dispare carga lazy).
+        - ``last_error_seen``: el ultimo error registrado, o ``null``.
+
+        El argumento ``arguments`` se acepta por uniformidad con el
+        dispatcher pero se ignora.
+        """
+        del arguments  # ping no acepta inputs
+        now = datetime.now()
+        uptime = (now - self._startup_time).total_seconds()
+
+        # Determinar status
+        if uptime < self._STARTUP_GRACE_SECONDS:
+            status = "starting"
+        elif len(self._error_history) > 0:
+            status = "degraded"
+        else:
+            status = "ok"
+
+        # Modelos cargados (lazy singletons)
+        models_loaded: list[str] = []
+        try:
+            from cortex.embedders.onnx import OnnxEmbedder
+            if OnnxEmbedder._onnx_fn is not None:
+                models_loaded.append("onnx-embeddings")
+        except Exception:
+            # Si el import falla por algun motivo, no rompemos el ping.
+            pass
+
+        # Indices loaded: proxy = self.memory existe y no es None
+        indices_loaded = getattr(self, "memory", None) is not None
+
+        last_error = self._error_history[-1] if self._error_history else None
+
+        payload = {
+            "status": status,
+            "version": self.SERVER_VERSION,
+            "uptime_seconds": round(uptime, 3),
+            "indices_loaded": indices_loaded,
+            "models_loaded": models_loaded,
+            "last_error_seen": last_error,
+        }
+        return json.dumps(payload, indent=2, ensure_ascii=False)
+
+    def shutdown(self) -> None:
+        """Liberar recursos del server (executor + handlers de logging).
+
+        Idempotente: llamarlo dos veces no rompe nada. Invocado automaticamente
+        por ``run()`` en su ``finally`` block, y exponible para tests o
+        embebido en otros runtimes que necesiten control explicito del cleanup.
+        """
+        executor = getattr(self, "_executor", None)
+        if executor is not None:
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except Exception:
+                # Cleanup defensivo: nunca propagar al caller.
+                logger.exception("Error shutting down MCP executor")
+            self._executor = None  # type: ignore[assignment]
 
     # ------------------------------------------------------------------
     # Subagent delegation layer (used by cortex-SDDwork flow)
@@ -924,168 +1162,15 @@ class CortexMCPServer:
             self._layout = WorkspaceLayout.discover(self.project_root)
         return self._layout
 
-    def _store_task_result(
-        self,
-        agent_name: str,
-        status: str,
-        message: str,
-        task: str = "",
-    ) -> None:
-        """
-        Persist a subagent task result so it can be retrieved later
-        via ``_get_task_result``.
-
-        Args:
-            agent_name: Identifier of the subagent (e.g. 'cortex-code-explorer').
-            status:     Outcome status string ('success', 'error', etc.).
-            message:    Human-readable output from the subagent.
-            task:       Original task description that was delegated.
-        """
-        if not hasattr(self, "_task_results"):
-            self._task_results: dict[str, dict] = {}
-        self._task_results[agent_name] = {
-            "status": status,
-            "task": task,
-            "message": message,
-        }
-        logger.info(
-            "Stored task result: agent=%s status=%s task=%s",
-            agent_name, status, task[:60],
-        )
-
-    def _get_task_result(self, agent_name: str) -> str:
-        """
-        Retrieve a formatted summary of a stored subagent result.
-
-        Args:
-            agent_name: Identifier used when ``_store_task_result`` was called.
-
-        Returns:
-            Human-readable string with status, task, and message.
-        """
-        if not hasattr(self, "_task_results"):
-            self._task_results = {}
-
-        result = self._task_results.get(agent_name)
-        if result is None:
-            return f"No result found for subagent '{agent_name}'."
-
-        return (
-            f"Subagente: {agent_name}\n"
-            f"Estado: {result['status']}\n"
-            f"Tarea: {result['task']}\n"
-            f"Resultado: {result['message']}"
-        )
-
-    async def _delegate_task(
-        self,
-        agent_name: str,
-        task: str,
-        timeout_seconds: int | None = 60,
-    ) -> str:
-        """
-        Delegate a single task to a named subagent.
-
-        Attempts to invoke the subagent via ``opencode`` CLI if available.
-        Falls back to a deterministic "not available" message when the
-        binary is not present, so calling code can handle the degraded path.
-
-        Args:
-            agent_name:      Subagent profile name (e.g. 'cortex-code-explorer').
-            task:            Plain-text task description to send to the subagent.
-            timeout_seconds: Max seconds to wait for subagent completion.
-
-        Returns:
-            Subagent output string (or an error message if unavailable).
-        """
-        if not hasattr(self, "_task_results"):
-            self._task_results = {}
-
-        # Locate the subagent definition file
-        subagent_file = (
-            self._get_layout().subagents_dir / f"{agent_name}.md"
-        )
-
-        # Check for the opencode runtime
-        opencode_bin = shutil.which("opencode")
-        if not opencode_bin:
-            msg = (
-                f"opencode binary not found. Cannot delegate to '{agent_name}'. "
-                "Install opencode or configure an alternative delegate runtime."
-            )
-            self._store_task_result(agent_name, "error", msg, task)
-            return msg
-
-        if not subagent_file.exists():
-            msg = f"Subagent definition not found: {subagent_file}"
-            self._store_task_result(agent_name, "error", msg, task)
-            return msg
-
-        try:
-            proc = await asyncio.wait_for(
-                asyncio.create_subprocess_exec(
-                    opencode_bin,
-                    "run",
-                    "--agent", str(subagent_file),
-                    "--task", task,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                ),
-                timeout=timeout_seconds,
-            )
-            stdout, stderr = await proc.communicate()
-            output = stdout.decode("utf-8", errors="replace").strip()
-            status = "success" if proc.returncode == 0 else "error"
-            if proc.returncode != 0:
-                output = stderr.decode("utf-8", errors="replace").strip() or output
-
-        except asyncio.TimeoutError:
-            output = f"Timeout after {timeout_seconds}s delegating to '{agent_name}'."
-            status = "timeout"
-        except Exception as exc:
-            output = f"Delegation error for '{agent_name}': {exc}"
-            status = "error"
-
-        self._store_task_result(agent_name, status, output, task)
-        return output
-
-    async def _delegate_batch(
-        self,
-        tasks: list[dict[str, str]],
-        timeout_seconds: int | None = 60,
-    ) -> str:
-        """
-        Delegate multiple tasks to subagents concurrently.
-
-        Each item in ``tasks`` must be a dict with ``agent`` and ``task`` keys.
-        All delegations run in parallel via ``asyncio.gather``.
-
-        Args:
-            tasks:           List of ``{agent: str, task: str}`` dicts.
-            timeout_seconds: Shared timeout applied to each delegation.
-
-        Returns:
-            Human-readable summary of all subagent results.
-        """
-        if not hasattr(self, "_task_results"):
-            self._task_results = {}
-
-        coroutines = [
-            self._delegate_task(
-                item["agent"],
-                item["task"],
-                timeout_seconds=timeout_seconds,
-            )
-            for item in tasks
-        ]
-        results = await asyncio.gather(*coroutines, return_exceptions=True)
-
-        lines = ["## Resultados de todos los subagentes", ""]
-        for item, result in zip(tasks, results, strict=False):
-            agent = item["agent"]
-            outcome = f"Error: {result}" if isinstance(result, Exception) else str(result)
-            lines.append(f"### Subagente: {agent}")
-            lines.append(outcome)
-            lines.append("")
-
-        return "\n".join(lines)
+    # NOTA (Fase 5 plan multi-IDE & MCP hardening, 2026-05-15):
+    # Los metodos privados ``_store_task_result``, ``_get_task_result``,
+    # ``_delegate_task`` y ``_delegate_batch`` fueron eliminados junto con
+    # los tools MCP `cortex_delegate_task`/`cortex_delegate_batch`/
+    # `cortex_get_task_result` que los usaban.
+    #
+    # La logica de invocar subagents via subprocess (`opencode run --agent`)
+    # estaba hardcoded a opencode y devolvia no-op silencioso en cualquier
+    # otro IDE — el bug exacto que detono el incidente del 2026-05-15.
+    # La delegacion ahora es responsabilidad nativa del IDE, no del MCP
+    # server. Ver `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md`
+    # seccion 5 para detalles por IDE.

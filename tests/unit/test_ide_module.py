@@ -30,12 +30,14 @@ class FakeAdapter:
 
 
 def test_inject_uses_adapter_and_prompts(monkeypatch, tmp_path: Path) -> None:
+    """Tras Fase 4 del plan multi-IDE, todos los adapters consumen los
+    mismos prompts canonicos via ``build_all_prompts``. La rama especial
+    ``build_cursor_prompts`` fue eliminada (Decision 3 firmada)."""
     adapter = FakeAdapter("cursor", ["cursor.json"])
     prompts = {"cortex-sync": "sync"}
 
     monkeypatch.setattr(ide, "get_adapter", lambda _: adapter)
     monkeypatch.setattr(ide, "build_all_prompts", lambda _pr, **_kw: prompts)
-    monkeypatch.setattr(ide, "build_cursor_prompts", lambda _pr, **_kw: prompts)
 
     files = ide.inject("cursor", project_root=tmp_path)
 

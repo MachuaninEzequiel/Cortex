@@ -1,5 +1,18 @@
 # Fase 9 — Delegación y Deep Track Real: Realización
 
+> **NOTA RETROACTIVA (2026-05-15) — Fase 5 del plan multi-IDE & MCP hardening:**
+> Los 3 tools MCP introducidos por esta Fase 9 (`cortex_delegate_task`,
+> `cortex_delegate_batch`, `cortex_get_task_result`) **fueron eliminados**.
+> Estaban hardcoded a `opencode run` via subprocess y devolvian no-op
+> silencioso en cualquier IDE distinto de opencode — el bug exacto que
+> detono el incidente del 2026-05-15 (subagente colgado 14 min + MCP
+> caido). La delegacion a subagents ahora es responsabilidad NATIVA del
+> IDE — ver `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md`.
+>
+> El motor `DelegationEngine` y las funciones `register_task` /
+> `get_task_result` en `cortex/autopilot/delegation.py` se PRESERVARON
+> como API interna del autopilot (two-stage review legitimo).
+
 ## Fecha
 2026-05-09
 

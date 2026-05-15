@@ -128,27 +128,9 @@ def build_autopilot_prompts(project_root: Path, *, workspace_layout: WorkspaceLa
     return prompts
 
 
-def build_cursor_prompts(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> dict[str, str]:
-    """Build Cortex prompts specifically for Cursor IDE.
-
-    Cursor only supports subagents, so we use a hybrid architecture:
-        - 'cortex-sync': Pre-flight analysis (unchanged)
-        - 'cortex-SDDwork-cursor': Hybrid orchestrator (explorer + implementer combined)
-        - 'cortex-documenter': Documentation specialist (from subagents)
-
-    Returns:
-        Dict with the 3 Cursor-specific prompts.
-    """
-    layout = workspace_layout or WorkspaceLayout.discover(project_root)
-    prompts: dict[str, str] = {}
-
-    # Cortex-sync (unchanged)
-    prompts["cortex-sync"] = get_skill_prompt(project_root, "cortex-sync", workspace_layout=layout)
-
-    # Cortex-SDDwork-cursor (hybrid version for Cursor)
-    prompts["cortex-SDDwork-cursor"] = get_skill_prompt(project_root, "cortex-SDDwork-cursor", workspace_layout=layout)
-
-    # Cortex-documenter (from subagents directory)
-    prompts["cortex-documenter"] = get_subagent_prompt(project_root, "cortex-documenter", workspace_layout=layout)
-
-    return prompts
+# NOTA: ``build_cursor_prompts`` fue eliminado en Fase 4 del plan
+# multi-IDE & MCP hardening (2026-05-15). Cursor 2.4+ soporta subagents
+# nativos en ``.cursor/agents/``, asi que el adapter consume los mismos
+# 3 subagents canonicos que claude_code (cortex-code-explorer, -implementer,
+# -documenter) — sin variante hibrida especifica por IDE. Ver
+# ``docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md`` decision 3.

@@ -20,6 +20,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.errors import RoutingError, UnknownDocTypeError
@@ -43,7 +44,7 @@ class RouteSpec:
     template_path: Path
 
     # Writing (filled by Fase 03)
-    writer: Callable | None = None
+    writer: Callable[..., Any] | None = None
     indexer: str = "auto"  # "auto" | "manual"
 
     # Enterprise
@@ -336,7 +337,7 @@ def resolve_route(doc_type: DocType) -> RouteSpec:
     return DOC_TYPE_ROUTING[doc_type]
 
 
-def render_filename(spec: RouteSpec, context: dict) -> str:
+def render_filename(spec: RouteSpec, context: dict[str, Any]) -> str:
     """Render ``spec.filename_template`` with ``context``.
 
     Raises:
@@ -358,7 +359,7 @@ def render_filename(spec: RouteSpec, context: dict) -> str:
 
 def resolve_target_path(
     spec: RouteSpec,
-    context: dict,
+    context: dict[str, Any],
     vault_root: Path,
     vault_scope: str = "local",
     project_id: str | None = None,

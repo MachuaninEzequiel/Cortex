@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 from cortex.mcp.server import CortexMCPServer
@@ -79,21 +78,11 @@ def test_enrich_context_preserves_explicit_files_and_keywords() -> None:
     }
 
 
-def test_get_task_result_returns_saved_delegate_output() -> None:
-    server = CortexMCPServer.__new__(CortexMCPServer)
-    server._task_results = {
-        "cortex-code-explorer": {
-            "status": "success",
-            "task": "inspect auth flow",
-            "message": "found auth entrypoints",
-        }
-    }
-
-    result = server._get_task_result("cortex-code-explorer")
-
-    assert "Estado: success" in result
-    assert "inspect auth flow" in result
-    assert "found auth entrypoints" in result
+# Tests del MCP delegate experimental (cortex_delegate_task /
+# cortex_delegate_batch / cortex_get_task_result) ELIMINADOS en Fase 5
+# del plan multi-IDE & MCP hardening (2026-05-15). Esos tools del MCP
+# server fueron retirados — la delegacion ahora es responsabilidad
+# nativa del IDE. Ver `docs/multi-ide-mcp-hardening/FASE-5-REALIZACION.md`.
 
 
 def test_sync_ticket_context_infers_scope_and_combines_historical_context(tmp_path: Path) -> None:
@@ -112,41 +101,6 @@ def test_sync_ticket_context_infers_scope_and_combines_historical_context(tmp_pa
     assert "context prompt" in result
 
 
-def test_delegate_batch_summarizes_each_subagent(monkeypatch) -> None:
-    server = CortexMCPServer.__new__(CortexMCPServer)
-    server._task_results = {}
-
-    async def fake_delegate(agent_name: str, task: str, timeout_seconds=None) -> str:
-        server._store_task_result(agent_name, "success", f"done: {task}", task)
-        return f"done: {task}"
-
-    monkeypatch.setattr(server, "_delegate_task", fake_delegate)
-
-    result = asyncio.run(
-        server._delegate_batch(
-            [
-                {"agent": "cortex-code-explorer", "task": "inspect login flow"},
-                {"agent": "cortex-code-planner", "task": "plan login redesign"},
-            ]
-        )
-    )
-
-    assert "Subagente: cortex-code-explorer" in result
-    assert "Subagente: cortex-code-planner" in result
-    assert "todos los subagentes" in result
-
-
-def test_delegate_task_reports_missing_opencode(monkeypatch, tmp_path: Path) -> None:
-    server = CortexMCPServer.__new__(CortexMCPServer)
-    server.project_root = tmp_path
-    server._task_results = {}
-    subagents = tmp_path / ".cortex" / "subagents"
-    subagents.mkdir(parents=True)
-    (subagents / "cortex-code-explorer.md").write_text("name: cortex-code-explorer", encoding="utf-8")
-
-    monkeypatch.setattr("cortex.mcp.server.shutil.which", lambda _: None)
-
-    result = asyncio.run(server._delegate_task("cortex-code-explorer", "inspect auth flow"))
-
-    assert "opencode" in result
-    assert "cortex-code-explorer" in server._task_results
+# Tests de _delegate_batch / _delegate_task ELIMINADOS en Fase 5: esos
+# metodos privados ya no existen en el MCP server. La delegacion es
+# responsabilidad nativa del IDE.

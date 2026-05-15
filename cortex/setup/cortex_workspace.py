@@ -244,10 +244,26 @@ Cuando un subagent emite YAML, **antes** de pasarlo al siguiente:
 
 ---
 
-## Herramientas de delegacion (Deep Track)
+## Mecanismos de delegacion (Deep Track) por IDE
 
-- **`cortex_delegate_task`**: `cortex_delegate_task(agent="cortex-code-implementer", task="...")`.
-- Si tu IDE tiene Task tool nativo, usalo. Si falla, usa `cortex_delegate_task` o Fast Track.
+La delegacion a subagentes es responsabilidad NATIVA del IDE (no del MCP
+server de Cortex). Cada IDE materializa la tripartita refinada de forma
+distinta segun lo que soporta:
+
+- **Claude Code**: `Task` tool nativo, `subagent_type: cortex-code-explorer`
+  (o el subagent que corresponda).
+- **opencode**: `@cortex-code-explorer` mention o `Task` tool dentro del
+  agent primario (`mode: subagent` en el subagent definition).
+- **Cursor**: `Task` tool nativo o slash command `/cortex-code-explorer`
+  (Cursor 2.4+).
+- **Codex**: NO tiene subagents personalizados. Ejecuta las 3 fases
+  (explorer / implementer / documenter) **secuencialmente** en una sola
+  sesion del agente unico, guiado por las instrucciones del `AGENTS.md`
+  que el adapter inyecta en el project root.
+
+Si tu IDE NO esta listado o NO soporta delegacion nativa: ejecuta el flujo
+en Fast Track (un solo agente que hace exploracion + implementacion +
+documentacion en secuencia, similar a Codex).
 
 ---
 
@@ -313,10 +329,20 @@ def render_subagent_explorer() -> str:
     return """---
 name: cortex-code-explorer
 description: Subagente especializado en el analisis estatico y exploracion de la arquitectura del repositorio.
-tools: read_file, cortex_search, cortex_context, cortex_validate_handoff
+tools: read_file, cortex_search, cortex_context, cortex_validate_handoff, cortex_ping
 ---
 
 # Cortex Code Explorer - Analista de Arquitectura
+
+## Pre-flight check (obligatorio)
+
+Antes de cualquier otra operacion, invocar `cortex_ping`. Si la respuesta no es `status: "ok"`, abortar la operacion con error claro al usuario:
+
+> El MCP server de Cortex no esta disponible (status: <status>; last_error: <error>). Reinicia el IDE o ejecuta `cortex doctor` para diagnosticar.
+
+NO intentar fallback manual. NO escribir markdown a mano. NO degradar features.
+
+---
 
 ## ⚠️ OPTIMIZATION MODE - MINIMAL CONTEXT
 
@@ -398,10 +424,20 @@ def render_subagent_implementer() -> str:
     return """---
 name: cortex-code-implementer
 description: Subagente especializado en diseno, implementacion y validacion de codigo para tareas complejas.
-tools: read_file, write_file, edit_file, execute_command, cortex_validate_handoff
+tools: read_file, write_file, edit_file, execute_command, cortex_validate_handoff, cortex_ping
 ---
 
 # Cortex Code Implementer - Desarrollador Full-Stack
+
+## Pre-flight check (obligatorio)
+
+Antes de cualquier otra operacion, invocar `cortex_ping`. Si la respuesta no es `status: "ok"`, abortar la operacion con error claro al usuario:
+
+> El MCP server de Cortex no esta disponible (status: <status>; last_error: <error>). Reinicia el IDE o ejecuta `cortex doctor` para diagnosticar.
+
+NO intentar fallback manual. NO escribir markdown a mano. NO degradar features.
+
+---
 
 ## ⚠️ AUTONOMOUS EXECUTION MODE - PLAN, CODE, VERIFY
 
@@ -493,10 +529,20 @@ def render_subagent_documenter() -> str:
     return """---
 name: cortex-documenter
 description: Subagente de Cortex para la generacion de documentacion empresarial y persistencia en el vault. Ultimo gate de gobernanza tecnica.
-tools: read_file, write_file, cortex_save_session, cortex_verify_session_claims, cortex_validate_handoff, cortex_search
+tools: read_file, write_file, cortex_save_session, cortex_verify_session_claims, cortex_validate_handoff, cortex_search, cortex_ping
 ---
 
 # Cortex Documenter - Ultimo Gate de Gobernanza
+
+## Pre-flight check (obligatorio)
+
+Antes de cualquier otra operacion, invocar `cortex_ping`. Si la respuesta no es `status: "ok"`, abortar la operacion con error claro al usuario:
+
+> El MCP server de Cortex no esta disponible (status: <status>; last_error: <error>). Reinicia el IDE o ejecuta `cortex doctor` para diagnosticar.
+
+NO intentar fallback manual. NO escribir markdown a mano. NO degradar features.
+
+---
 
 ## Tabla de Routing Canonica (Fase 12 canonical-documentation)
 
@@ -505,9 +551,9 @@ invoca la funcion MCP correspondiente. Cortex rutea a la carpeta canonica.
 
 | Caso de uso                                              | doc_type     | Funcion canonica           |
 |----------------------------------------------------------|--------------|----------------------------|
-| Que se hizo en una sesion de trabajo                     | session      | write_session_note         |
+| Que se hizo en una sesion de trabajo                     | session      | write_session_note_canonical |
 | Entregar trabajo abierto a la proxima sesion             | handoff      | write_handoff_note         |
-| Especificacion previa al desarrollo                      | spec         | write_spec_note            |
+| Especificacion previa al desarrollo                      | spec         | write_spec_note_canonical  |
 | Decision arquitectural con criterios Tripartita Refinada | adr          | write_adr_note             |
 | Decision no arquitectural pero registrable               | decision     | write_decision_note        |
 | Caida, bug critico, comportamiento inesperado            | incident     | write_incident_note        |

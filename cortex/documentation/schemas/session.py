@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from cortex.documentation.doc_type import DocType
@@ -23,7 +25,7 @@ class CortexTelemetry(BaseModel):
     enriched_score_p50: float = 0.0
     enriched_score_p95: float = 0.0
     enricher_latency_ms: int = Field(default=0, ge=0)
-    filters_applied: dict | None = None
+    filters_applied: dict[str, Any] | None = None
 
 
 class _SessionFields(BaseModel):

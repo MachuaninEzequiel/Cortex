@@ -11,12 +11,37 @@ from cortex.ide.base import (
     _deep_merge_dict,
     _generate_autogen_header,
 )
-from cortex.ide.prompts import get_subagent_prompt, strip_markdown_frontmatter
+from cortex.ide.canonical_tools import translate_list
+from cortex.ide.prompts import (
+    get_subagent_prompt,
+    split_markdown_frontmatter,
+    strip_markdown_frontmatter,
+)
 
 
 def _render_claude_markdown(frontmatter: list[str], header: str, body: str) -> str:
     frontmatter_block = "\n".join(frontmatter)
     return f"---\n{frontmatter_block}\n---\n\n<!--\n{header.strip()}\n-->\n\n{body.strip()}\n"
+
+
+def _parse_canonical_tools(frontmatter_text: str | None) -> list[str]:
+    """Parse el campo ``tools:`` del frontmatter de un prompt canonico.
+
+    Los renders en ``cortex_workspace.py`` usan formato comma-separated:
+
+        tools: read_file, write_file, cortex_save_session, cortex_ping
+
+    Devuelve la lista de tool names canonicos. Lista vacia si no hay
+    frontmatter o no hay campo tools.
+    """
+    if not frontmatter_text:
+        return []
+    for line in frontmatter_text.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("tools:"):
+            value = stripped.split(":", 1)[1].strip()
+            return [t.strip() for t in value.split(",") if t.strip()]
+    return []
 
 
 class ClaudeCodeAdapter(IDEAdapter):
@@ -127,17 +152,34 @@ class ClaudeCodeAdapter(IDEAdapter):
         for agent_name, description in agent_specs.items():
             agent_path = agents_dir / f"{agent_name}.md"
             _backup_file(agent_path)
+
+            # Leer el prompt canonico y separar frontmatter del body. El
+            # frontmatter del canonico declara los tools en vocabulario
+            # canonico de Cortex; los traducimos al formato de Claude Code
+            # (PascalCase + ``mcp__cortex__<tool>``) via ``translate_list``.
+            canonical_md = get_subagent_prompt(project_root, agent_name)
+            canonical_frontmatter, canonical_body = split_markdown_frontmatter(canonical_md)
+            canonical_tools = _parse_canonical_tools(canonical_frontmatter)
+            translated_tools = translate_list(canonical_tools, "claude_code")
+
+            frontmatter_lines = [
+                f"name: {agent_name}",
+                f"description: {description}",
+            ]
+            # Solo inyectar ``tools:`` si el canonico declara tools. Sin la
+            # linea, Claude Code hereda TODAS las tools del padre — eso
+            # viola la restriccion declarada por el prompt canonico.
+            if translated_tools:
+                frontmatter_lines.append(f"tools: {', '.join(translated_tools)}")
+
             agent_path.write_text(
                 _render_claude_markdown(
-                    [
-                        f"name: {agent_name}",
-                        f"description: {description}",
-                    ],
+                    frontmatter_lines,
                     _generate_autogen_header(
                         sources=[f".cortex/subagents/{agent_name}.md"],
                         ide_name="claude_code",
                     ),
-                    strip_markdown_frontmatter(get_subagent_prompt(project_root, agent_name)),
+                    canonical_body,
                 ),
                 encoding="utf-8",
             )

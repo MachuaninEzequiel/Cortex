@@ -81,38 +81,39 @@ class OpenCodeAdapter(IDEAdapter):
 
         data.setdefault("agent", {})
 
-        # OpenCode specific profile map
+        # OpenCode agent profile map.
+        #
+        # Cambio (Fase 4 plan multi-IDE & MCP hardening, 2026-05-15):
+        # 1. Migrado del campo legacy ``tools`` (deprecated en opencode)
+        #    al campo moderno ``permission`` con valores ``allow|ask|deny``.
+        #    Ver https://opencode.ai/docs/agents/.
+        # 2. Eliminadas las entradas ``cortex_*`` del set de tools — las
+        #    tools MCP de Cortex se descubren dinamicamente cuando opencode
+        #    se conecta al MCP server. Declararlas en frontmatter es invalido
+        #    (el campo solo acepta nombres nativos de opencode: read, edit,
+        #    bash, task, etc.).
         cortex_profiles = {
             "cortex-sync": {
                 "mode": "primary",
                 "description": "PRE-FLIGHT: Context gathering and spec preparation.",
                 "prompt": f"{{file:{skills_dir / 'cortex-sync.md'}}}",
-                "tools": {
-                    "read": True, "write": False, "edit": False, "bash": False,
-                    "cortex_context": True, "cortex_search": True,
-                    "cortex_search_vector": True, "cortex_sync_ticket": True,
-                    "cortex_create_spec": True, "cortex_sync_vault": True,
-                    # Tripartita Refinada (Plan 02 §1-§2): sync valida los
-                    # handoffs producidos aguas abajo por SDDwork antes de
-                    # cerrar su propio turno.
-                    "cortex_validate_handoff": True,
-                    "cortex_verify_session_claims": True,
+                "permission": {
+                    "read": "allow",
+                    "write": "deny",
+                    "edit": "deny",
+                    "bash": "deny",
                 },
             },
             "cortex-SDDwork": {
                 "mode": "primary",
                 "description": "ORCHESTRATOR: Fast Track direct edits or Deep Track delegation.",
                 "prompt": f"{{file:{skills_dir / 'cortex-SDDwork.md'}}}",
-                "tools": {
-                    "read": True, "write": True, "edit": True, "bash": False,
-                    "cortex_context": True, "cortex_search": True,
-                    "cortex_search_vector": True, "cortex_save_session": True,
-                    "cortex_sync_vault": True, "Task": True,
-                    # Tripartita Refinada (Plan 02 §1-§2): el orquestador
-                    # valida los handoffs de los subagents delegated via
-                    # Task y verifica claims antes de pasarlos al documenter.
-                    "cortex_validate_handoff": True,
-                    "cortex_verify_session_claims": True,
+                "permission": {
+                    "read": "allow",
+                    "write": "allow",
+                    "edit": "allow",
+                    "bash": "ask",
+                    "task": "allow",
                 },
             },
         }

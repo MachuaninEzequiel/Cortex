@@ -29,6 +29,14 @@ class NodeStyle:
     shape: str
 
 
+# Synthetic non-canonical doc_types surfaced by the webgraph (Item #6).
+# Episodic memories are not part of the closed DocType enum but the
+# visualization still needs a consistent legend entry.
+_EXTRA_NODE_STYLES: dict[str, NodeStyle] = {
+    "episodic": NodeStyle(color="#9b59b6", shape="diamond"),
+}
+
+
 def style_for_doc_type(doc_type: DocType | str | None) -> NodeStyle:
     """Resolve a ``NodeStyle`` for a DocType.
 
@@ -40,6 +48,9 @@ def style_for_doc_type(doc_type: DocType | str | None) -> NodeStyle:
         return NodeStyle(color=_DEFAULT_NODE_COLOR, shape=_DEFAULT_NODE_SHAPE)
 
     if isinstance(doc_type, str):
+        extra = _EXTRA_NODE_STYLES.get(doc_type)
+        if extra is not None:
+            return extra
         try:
             doc_type = DocType(doc_type)
         except ValueError:
@@ -85,6 +96,11 @@ EDGE_TYPES: dict[str, dict[str, str]] = {
         "style": "solid",
         "label": "supersedes",
     },
+    "superseded_by": {
+        "color": "#9e9e9e",
+        "style": "dotted",
+        "label": "superseded by",
+    },
     "promoted_from": {
         "color": "#aa66cc",
         "style": "dashed",
@@ -125,6 +141,15 @@ def build_legend() -> dict[str, list[dict[str, str]]]:
         style = style_for_doc_type(dt)
         doc_types_entries.append({
             "type": dt.value,
+            "color": style.color,
+            "shape": style.shape,
+        })
+    # Item #6 — surface synthetic types (episodic) in the legend so adopters
+    # can interpret coloured nodes that live outside the canonical DocType
+    # closed list.
+    for synthetic_type, style in _EXTRA_NODE_STYLES.items():
+        doc_types_entries.append({
+            "type": synthetic_type,
             "color": style.color,
             "shape": style.shape,
         })

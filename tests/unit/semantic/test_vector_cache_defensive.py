@@ -49,7 +49,9 @@ def test_get_handles_truncated_chunks_bin(tmp_path: Path) -> None:
 
 
 def test_invalidate_twice_returns_true(tmp_path: Path) -> None:
-    cache = VectorCache(tmp_path / "vectors")
+    # ``auto_compact=False`` keeps the invalidated entry around so the
+    # idempotence contract is observable.
+    cache = VectorCache(tmp_path / "vectors", auto_compact=False)
     cache.put("fp1", "c", _rand())
     assert cache.invalidate("fp1") is True
     # Idempotent: second call still returns True because the entry still exists.

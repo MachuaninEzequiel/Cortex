@@ -8,7 +8,7 @@ Principle. This service owns the complete lifecycle of a Session Note:
 vault persistence, selective indexing, and episodic memory storage.
 
 Depends on:
-- ``cortex.documentation.write_session_note`` (persistence)
+- ``cortex.documentation.write_session_note_canonical`` (persistence)
 - ``cortex.semantic.vault_reader.VaultReader``     (semantic indexing)
 - ``cortex.episodic.memory_store.EpisodicMemoryStore`` (episodic memory)
 """
@@ -16,15 +16,36 @@ Depends on:
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cortex.documentation import write_session_note
+from cortex.documentation import write_session_note_canonical
+from cortex.documentation.data import SessionData
+from cortex.documentation.writers import VaultLike
 from cortex.models import MemoryEntry
 
 if TYPE_CHECKING:
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.semantic.vault_reader import VaultReader
+
+
+class _PathOnlyVault:
+    """Minimal VaultLike that wraps a bare path for canonical writers.
+
+    SessionService receives ``vault_path`` directly (not a VaultReader) for
+    persistence. Indexing happens separately through ``self._semantic``.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self._root = root
+
+    @property
+    def path(self) -> Path:
+        return self._root
+
+    def index_file(self, relative_path: str) -> bool:
+        return False
 
 logger = logging.getLogger(__name__)
 
@@ -104,22 +125,29 @@ class SessionService:
         Returns:
             Path to the newly created session note file.
         """
-        path = write_session_note(
-            self._vault_path,
+        final_tags = ["session"] + list(tags or [])
+        if handoff and "handoff" not in final_tags:
+            final_tags.append("handoff")
+        status = "handoff" if handoff else "completed"
+
+        data = SessionData(
             title=title,
-            spec_summary=spec_summary,
-            changes_made=changes_made or [],
-            files_touched=files_touched or [],
-            key_decisions=key_decisions or [],
-            next_steps=next_steps or [],
-            tags=tags or [],
-            handoff=handoff,
-            blockers=blockers or [],
-            verified_state=verified_state or [],
-            unverified_claims=unverified_claims or [],
-            suggested_skills=suggested_skills or [],
+            tags=final_tags,
+            status=status,
+            session_id=uuid.uuid4().hex[:12],
+            spec_summary=spec_summary or "",
+            changes_made=list(changes_made or []),
+            files_touched=list(files_touched or []),
+            key_decisions=list(key_decisions or []),
+            next_steps=list(next_steps or []),
+            verified_state=list(verified_state or []),
+            unverified_claims=list(unverified_claims or []),
+            blockers=list(blockers or []),
+            suggested_skills=list(suggested_skills or []),
             cortex_telemetry=cortex_telemetry,
         )
+        vault: VaultLike = _PathOnlyVault(self._vault_path)
+        path = write_session_note_canonical(data, vault=vault)
         logger.debug("Session note written: %s", path)
 
         # SELECTIVE INDEXING — vectorise only this new session note

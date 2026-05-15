@@ -94,7 +94,13 @@ class VectorCache:
         >>> got = cache.get("fingerprint-hash")
     """
 
-    def __init__(self, cache_dir: Path) -> None:
+    def __init__(
+        self,
+        cache_dir: Path,
+        *,
+        auto_compact: bool = True,
+        auto_compact_threshold: float = 0.30,
+    ) -> None:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._index_path = self.cache_dir / "index.json"
@@ -104,7 +110,31 @@ class VectorCache:
         self._invalidated: set[str] = set()
         self._hit_count = 0
         self._miss_count = 0
+        self._auto_compact = bool(auto_compact)
+        if not 0.0 < auto_compact_threshold <= 1.0:
+            raise ValueError(
+                f"auto_compact_threshold must be in (0, 1], got {auto_compact_threshold!r}"
+            )
+        self._auto_compact_threshold = float(auto_compact_threshold)
         self._load()
+
+    # ------------------------------------------------------------------
+    # Auto-compaction helper (Item #3 PLAN-DEUDA-RESIDUAL).
+    # ------------------------------------------------------------------
+
+    def _maybe_auto_compact(self) -> None:
+        """Trigger ``compact()`` when invalidated entries cross the threshold.
+
+        Caller must hold ``self._lock``. Skipped when auto-compaction is
+        disabled or the cache is empty.
+        """
+        if not self._auto_compact:
+            return
+        total = len(self._index)
+        if total == 0:
+            return
+        if (len(self._invalidated) / total) >= self._auto_compact_threshold:
+            self.compact()
 
     # ------------------------------------------------------------------
     # Persistence
@@ -241,11 +271,49 @@ class VectorCache:
             if fingerprint in self._index and fingerprint not in self._invalidated:
                 self._invalidated.add(fingerprint)
                 self._save_index()
+                self._maybe_auto_compact()
                 return True
             if fingerprint in self._index:
                 # Already invalidated.
                 return True
             return False
+
+    def get_chunk_fingerprints(self, parent_path: str) -> dict[str, str]:
+        """Return ``{chunk_id: fingerprint}`` for every chunk under ``parent_path``.
+
+        Used by ``VaultReader`` to do granular invalidation: only purge cache
+        entries for chunk_ids that no longer exist in the re-parsed document
+        (Item #4 PLAN-DEUDA-RESIDUAL).
+        """
+        prefix_sep = parent_path + "#"
+        with self._lock:
+            out: dict[str, str] = {}
+            for fp, entry in self._index.items():
+                if fp in self._invalidated:
+                    continue
+                if entry.chunk_id == parent_path or entry.chunk_id.startswith(prefix_sep):
+                    out[entry.chunk_id] = fp
+            return out
+
+    def invalidate_chunks(self, chunk_ids: list[str]) -> int:
+        """Invalidate cache entries by exact ``chunk_id`` match.
+
+        Returns the count of newly invalidated entries. Idempotent: re-marking
+        an already-invalidated entry is a no-op.
+        """
+        if not chunk_ids:
+            return 0
+        targets = set(chunk_ids)
+        with self._lock:
+            count = 0
+            for fp, entry in self._index.items():
+                if entry.chunk_id in targets and fp not in self._invalidated:
+                    self._invalidated.add(fp)
+                    count += 1
+            if count > 0:
+                self._save_index()
+                self._maybe_auto_compact()
+            return count
 
     def invalidate_by_chunk_id(self, chunk_id_prefix: str) -> int:
         """Invalidate every entry whose ``chunk_id`` starts with ``chunk_id_prefix``.
@@ -262,6 +330,7 @@ class VectorCache:
                     count += 1
             if count > 0:
                 self._save_index()
+                self._maybe_auto_compact()
             return count
 
     def compact(self) -> None:

@@ -23,8 +23,23 @@ from cortex.context_enricher.telemetry import (
     detect_citations,
     make_observer,
 )
-from cortex.documentation import parse_frontmatter_lenient, write_session_note
+import uuid
+
+from cortex.documentation import parse_frontmatter_lenient, write_session_note_canonical
+from cortex.documentation.data import SessionData
 from cortex.models import EnrichedContext, EnrichedItem, WorkContext
+
+
+class _PathOnlyVault:
+    def __init__(self, root: Path) -> None:
+        self._root = root
+
+    @property
+    def path(self) -> Path:
+        return self._root
+
+    def index_file(self, relative_path: str) -> bool:
+        return False
 
 
 def _make_work() -> WorkContext:
@@ -77,7 +92,7 @@ def test_make_observer_returns_disabled_via_config(tmp_path: Path) -> None:
 
 
 def test_session_persists_telemetry_block_in_frontmatter(tmp_path: Path) -> None:
-    """write_session_note round-trips a cortex_telemetry block."""
+    """write_session_note_canonical round-trips a cortex_telemetry block."""
     telemetry = {
         "enricher_run_id": "abc123",
         "context_items_offered": 5,
@@ -90,12 +105,15 @@ def test_session_persists_telemetry_block_in_frontmatter(tmp_path: Path) -> None
         "enriched_score_p95": 0.8,
         "enricher_latency_ms": 120,
     }
-    path = write_session_note(
-        tmp_path,
+    data = SessionData(
         title="Integration test",
+        tags=["session"],
+        status="completed",
+        session_id=uuid.uuid4().hex[:12],
         spec_summary="E2E telemetry",
         cortex_telemetry=telemetry,
     )
+    path = write_session_note_canonical(data, vault=_PathOnlyVault(tmp_path))
     fm = parse_frontmatter_lenient(path)
     assert fm["cortex_telemetry"]["enricher_run_id"] == "abc123"
     assert fm["cortex_telemetry"]["enricher_latency_ms"] == 120

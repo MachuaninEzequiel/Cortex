@@ -70,9 +70,54 @@ def test_unknown_ide_error_lists_tiers() -> None:
     message = str(info.value)
     assert "Target" in message
     assert "claude_code" in message
-    assert "opencode" in message
-    assert "pi" in message
-    assert "codex" in message
+
+
+# ---------------------------------------------------------------------------
+# Validation status (Fase 4 plan multi-IDE & MCP hardening, 2026-05-15)
+# ---------------------------------------------------------------------------
+
+
+def test_validated_ides_list_matches_decisions_firmadas() -> None:
+    """get_validated_ides_list debe contener exactamente los 5 IDEs que el
+    creador certifico en Decision 1+2+3 firmadas el 2026-05-15."""
+    from cortex.ide.registry import get_validated_ides_list
+    assert get_validated_ides_list() == ["claude_code", "codex", "cursor", "opencode", "pi"]
+
+
+def test_unvalidated_ides_list_includes_all_remaining() -> None:
+    """Adapters NO validados: vscode, claude_desktop, windsurf,
+    antigravity, hermes, zed (Decision 4 firmada)."""
+    from cortex.ide.registry import get_unvalidated_ides_list
+    expected = sorted({"vscode", "claude_desktop", "windsurf", "antigravity", "hermes", "zed"})
+    assert get_unvalidated_ides_list() == expected
+
+
+def test_is_ide_validated_true_for_target_5() -> None:
+    from cortex.ide.registry import is_ide_validated
+    for name in ("claude_code", "opencode", "codex", "cursor", "pi"):
+        assert is_ide_validated(name) is True, name
+
+
+def test_is_ide_validated_false_for_community_experimental() -> None:
+    from cortex.ide.registry import is_ide_validated
+    for name in ("vscode", "claude_desktop", "windsurf", "antigravity", "hermes", "zed"):
+        assert is_ide_validated(name) is False, name
+
+
+def test_is_ide_validated_supports_aliases() -> None:
+    from cortex.ide.registry import is_ide_validated
+    assert is_ide_validated("claude") is True
+    assert is_ide_validated("claude-code") is True
+    assert is_ide_validated("codex-cli") is True
+
+
+def test_is_ide_validated_raises_on_unknown() -> None:
+    """KeyError para IDEs no registrados (no es una decision silenciosa)."""
+    import pytest
+
+    from cortex.ide.registry import is_ide_validated
+    with pytest.raises(KeyError):
+        is_ide_validated("does-not-exist")
 
 
 # ---------------------------------------------------------------------------
@@ -81,58 +126,34 @@ def test_unknown_ide_error_lists_tiers() -> None:
 
 
 def test_codex_adapter_inject_profiles(tmp_path: Path) -> None:
+    """Codex no soporta subagents personalizados (Decision 2 firmada
+    2026-05-15, ver docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md
+    seccion 4). El adapter inyecta SOLO ``AGENTS.md`` en project root con
+    el flujo tripartito secuencial. NO genera ``.codex/agents/*.md`` ni
+    ``.codex/skills/*.md`` (Codex los ignora segun docs oficiales)."""
     project_root = tmp_path / "project"
     project_root.mkdir()
-    # Provide the canonical Cortex skills/subagents under .cortex/ so the
-    # adapter can read them when rendering Codex files.
-    (project_root / ".cortex" / "skills").mkdir(parents=True)
-    (project_root / ".cortex" / "subagents").mkdir(parents=True)
-    for subagent in (
-        "cortex-code-explorer.md",
-        "cortex-code-implementer.md",
-        "cortex-documenter.md",
-    ):
-        (project_root / ".cortex" / "subagents" / subagent).write_text(
-            f"# {subagent}\nbody for {subagent}",
-            encoding="utf-8",
-        )
 
     adapter = get_adapter("codex")
-    prompts = {
-        "cortex-sync": "Pre-flight prompt for Codex",
-        "cortex-SDDwork": "Orchestrator prompt for Codex",
-    }
-    files = adapter.inject_profiles(project_root, prompts)
+    files = adapter.inject_profiles(project_root, prompts={})
 
-    # AGENTS.md must reference the tripartite governance.
-    agents_md = project_root / ".codex" / "AGENTS.md"
+    # AGENTS.md va al project root, NO ``.codex/AGENTS.md``.
+    agents_md = project_root / "AGENTS.md"
     assert agents_md.exists()
     body = agents_md.read_text(encoding="utf-8")
-    assert "cortex-sync" in body
-    assert "cortex-sddwork" in body
+    assert "Cortex Workflow for Codex" in body
+    assert "single-agent sequence" in body
     assert "cortex_create_spec" in body
     assert "cortex_sync_ticket" in body
 
-    # Skills
-    sync_skill = project_root / ".codex" / "skills" / "cortex-sync.md"
-    sddwork_skill = project_root / ".codex" / "skills" / "cortex-sddwork.md"
-    assert sync_skill.exists()
-    assert sddwork_skill.exists()
-    assert "Pre-flight prompt for Codex" in sync_skill.read_text(encoding="utf-8")
-    assert "Orchestrator prompt for Codex" in sddwork_skill.read_text(encoding="utf-8")
-
-    # Agents
-    for agent in (
-        "cortex-code-explorer.md",
-        "cortex-code-implementer.md",
-        "cortex-documenter.md",
-    ):
-        path = project_root / ".codex" / "agents" / agent
-        assert path.exists(), agent
+    # NO se debe generar .codex/agents/ ni .codex/skills/
+    assert not (project_root / ".codex" / "agents").exists()
+    assert not (project_root / ".codex" / "skills").exists()
+    # Tampoco .codex/AGENTS.md (path obsoleto pre-Fase 4).
+    assert not (project_root / ".codex" / "AGENTS.md").exists()
 
     # All written paths are reported.
     assert str(agents_md) in files
-    assert str(sync_skill) in files
 
 
 # ---------------------------------------------------------------------------
@@ -141,136 +162,116 @@ def test_codex_adapter_inject_profiles(tmp_path: Path) -> None:
 
 
 class TestCodexTripartitaRefinada:
-    """Plan 06 contract — ``.codex/AGENTS.md`` must mention the new
-    contracts, and the agent files under ``.codex/agents/`` must inherit
-    the canonical markers verbatim from ``.cortex/subagents/``.
-
-    These tests catch silent drift: if someone reverts the new template
-    lines or if the adapter starts filtering the canonical body, the
-    assertions fail before adopters see broken Codex prompts.
+    """Decision 2 firmada del creador (2026-05-15): Codex NO soporta
+    subagents personalizados. El flujo tripartito se materializa como
+    secuencia inline en ``AGENTS.md`` (project root). Los tests viejos
+    que verificaban ``.codex/agents/*.md`` fueron eliminados (esos
+    archivos ya no se generan porque Codex los ignora segun docs
+    oficiales).
     """
 
-    def _setup_canonical(self, project_root: Path) -> None:
-        """Drop a synthetic canonical bundle that contains all 8 markers
-        Plan 01 introduced, so we can assert the adapter copies them
-        verbatim into ``.codex/agents/``."""
-        subagents = project_root / ".cortex" / "subagents"
-        subagents.mkdir(parents=True)
-        documenter_body = (
-            "---\nname: cortex-documenter\ndescription: documenter\n---\n\n"
-            "# HIGH-SIGNAL DOCUMENTATION MODE\n\n"
-            "## Criterios para crear un ADR (3 criterios)\n"
-            "...\n\n"
-            "## VERIFICATION GATE\n"
-            "...\n\n"
-            "## Modo Handoff\n"
-            "...\n\n"
-            "## Anti-rationalization\n"
-            "...\n\n"
-            "## Contrato de Salida\n"
-            "```yaml\nagent: cortex-documenter\n```\n"
-        )
-        explorer_body = (
-            "---\nname: cortex-code-explorer\ndescription: explorer\n---\n\n"
-            "## Anti-rationalization\n...\n\n## Contrato de Salida\n...\n"
-        )
-        implementer_body = (
-            "---\nname: cortex-code-implementer\ndescription: implementer\n---\n\n"
-            "## Anti-rationalization\n...\n\n## Contrato de Salida\n...\n"
-        )
-        (subagents / "cortex-documenter.md").write_text(documenter_body, encoding="utf-8")
-        (subagents / "cortex-code-explorer.md").write_text(explorer_body, encoding="utf-8")
-        (subagents / "cortex-code-implementer.md").write_text(implementer_body, encoding="utf-8")
-
     def test_agents_md_mentions_verification_gate(self, tmp_path: Path) -> None:
+        """AGENTS.md en project root debe mencionar todos los gates."""
         project_root = tmp_path / "project"
-        self._setup_canonical(project_root)
+        project_root.mkdir()
         adapter = get_adapter("codex")
-        adapter.inject_profiles(
-            project_root,
-            prompts={
-                "cortex-sync": "---\nname: cortex-sync\n---\n\nx",
-                "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\ny",
-            },
-        )
+        adapter.inject_profiles(project_root, prompts={})
 
-        agents_md = (project_root / ".codex" / "AGENTS.md").read_text(encoding="utf-8")
-        # All 4 new rules must be present.
+        # AGENTS.md va al PROJECT ROOT, no .codex/.
+        agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
         assert "Verification Gate" in agents_md
         assert "cortex_validate_handoff" in agents_md
         assert "cortex_verify_session_claims" in agents_md
         assert "AgentHandoff" in agents_md
         assert "status: handoff" in agents_md.lower() or "`handoff`" in agents_md
         assert "CONTEXT.md" in agents_md
-        # Codex-specific note about the absence of native Task delegation.
-        assert "no native `Task`" in agents_md or "Codex has no native" in agents_md
+        assert "no native `Task`" in agents_md
 
-    def test_documenter_agent_inherits_canonical_markers(self, tmp_path: Path) -> None:
-        """``.codex/agents/cortex-documenter.md`` must carry every Plan 01
-        marker through unchanged."""
+    def test_agents_md_describes_sequential_tripartite_flow(self, tmp_path: Path) -> None:
+        """AGENTS.md describe las 3 fases tripartitas como SECUENCIA,
+        no como subagents paralelos (Codex no los soporta)."""
         project_root = tmp_path / "project"
-        self._setup_canonical(project_root)
+        project_root.mkdir()
         adapter = get_adapter("codex")
-        adapter.inject_profiles(
-            project_root,
-            prompts={
-                "cortex-sync": "---\nname: cortex-sync\n---\n\nx",
-                "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\ny",
-            },
-        )
+        adapter.inject_profiles(project_root, prompts={})
 
-        documenter = (
-            project_root / ".codex" / "agents" / "cortex-documenter.md"
-        ).read_text(encoding="utf-8")
-        for marker in (
-            "HIGH-SIGNAL DOCUMENTATION MODE",
-            "3 criterios",
-            "VERIFICATION GATE",
-            "Modo Handoff",
-            "Anti-rationalization",
-            "Contrato de Salida",
-        ):
-            assert marker in documenter, f"{marker!r} missing from .codex/agents/cortex-documenter.md"
+        agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
+        for marker in ("Phase 1", "Phase 2", "Phase 3", "Explorer", "Implementer", "Documenter"):
+            assert marker in agents_md, f"missing flow marker: {marker!r}"
+        # Pre-flight check obligatorio (Fase 2 del plan multi-IDE).
+        assert "cortex_ping" in agents_md
+        assert "Pre-flight check" in agents_md
 
-    def test_explorer_and_implementer_inherit_anti_rationalization(self, tmp_path: Path) -> None:
+    def test_agents_md_uses_cortex_section_markers(self, tmp_path: Path) -> None:
+        """El bloque Cortex va entre marcadores para coexistir con
+        AGENTS.md preexistente del adopter."""
         project_root = tmp_path / "project"
-        self._setup_canonical(project_root)
+        project_root.mkdir()
         adapter = get_adapter("codex")
-        adapter.inject_profiles(
-            project_root,
-            prompts={
-                "cortex-sync": "---\nname: cortex-sync\n---\n\nx",
-                "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\ny",
-            },
-        )
+        adapter.inject_profiles(project_root, prompts={})
 
-        for agent in ("cortex-code-explorer", "cortex-code-implementer"):
-            content = (
-                project_root / ".codex" / "agents" / f"{agent}.md"
-            ).read_text(encoding="utf-8")
-            assert "Anti-rationalization" in content, agent
-            assert "Contrato de Salida" in content, agent
+        agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
+        assert "BEGIN CORTEX SECTION" in agents_md
+        assert "END CORTEX SECTION" in agents_md
+
+    def test_agents_md_preserves_user_content_when_existing(self, tmp_path: Path) -> None:
+        """Si el adopter ya tiene AGENTS.md, su contenido se preserva."""
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        agents_md = project_root / "AGENTS.md"
+        user_content = "# My Project\n\nUser-authored guidance here.\n"
+        agents_md.write_text(user_content, encoding="utf-8")
+
+        adapter = get_adapter("codex")
+        adapter.inject_profiles(project_root, prompts={})
+
+        merged = agents_md.read_text(encoding="utf-8")
+        assert "User-authored guidance here." in merged
+        assert "BEGIN CORTEX SECTION" in merged
+
+    def test_agents_md_replaces_cortex_block_idempotent(self, tmp_path: Path) -> None:
+        """Re-inyectar reemplaza el bloque Cortex anterior, no lo duplica."""
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        adapter = get_adapter("codex")
+        adapter.inject_profiles(project_root, prompts={})
+        adapter.inject_profiles(project_root, prompts={})  # idempotente
+
+        agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
+        # Solo debe haber UN bloque Cortex.
+        assert agents_md.count("BEGIN CORTEX SECTION") == 1
+        assert agents_md.count("END CORTEX SECTION") == 1
 
 
 def test_codex_adapter_inject_mcp_uses_absolute_path(tmp_path: Path) -> None:
-    """Codex MCP must use absolute --project-root, not '.'."""
+    """Codex MCP debe usar absolute --project-root, no '.'.
+
+    Decision 2 firmada: Codex MCP config va en .codex/config.toml (TOML),
+    no .codex/mcp.json (JSON). Sintaxis: [mcp_servers.cortex] (snake_case).
+    """
+    import tomllib
+
     project_root = (tmp_path / "project").resolve()
     project_root.mkdir()
     adapter = get_adapter("codex")
     files = adapter.inject_mcp(project_root)
 
-    mcp_path = project_root / ".codex" / "mcp.json"
-    assert mcp_path.exists()
-    import json
+    config_path = project_root / ".codex" / "config.toml"
+    assert config_path.exists(), "MCP config debe ir en .codex/config.toml (TOML, no JSON)"
 
-    data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    args = data["mcpServers"]["cortex"]["args"]
+    data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    cortex_cfg = data["mcp_servers"]["cortex"]
+    args = cortex_cfg["args"]
     assert "--project-root" in args
-    # The value right after --project-root must be the absolute project_root.
     idx = args.index("--project-root")
     assert args[idx + 1] == str(project_root)
     assert args[idx + 1] != "."
-    assert str(mcp_path) in files
+    assert cortex_cfg["enabled"] is True
+    assert cortex_cfg["env"] == {"PYTHONWARNINGS": "ignore"}
+    assert str(config_path) in files
+
+    # Confirma que NO se genera el path obsoleto .codex/mcp.json
+    assert not (project_root / ".codex" / "mcp.json").exists()
 
 
 def test_claude_code_adapter_inject_mcp_uses_absolute_path(tmp_path: Path) -> None:
@@ -291,8 +292,12 @@ def test_claude_code_adapter_inject_mcp_uses_absolute_path(tmp_path: Path) -> No
 
 
 def test_opencode_adapter_inject_profiles(monkeypatch, tmp_path: Path) -> None:
+    """OpenCode usa el campo ``permission`` (moderno) en lugar de ``tools``
+    (deprecated). Los MCP tools NO se declaran en el agent profile — se
+    descubren dinamicamente al conectarse al MCP server (ver Fase 4 plan
+    multi-IDE & MCP hardening, 2026-05-15)."""
     project_root = tmp_path / "project"
-    
+
     # Mock home dir for the adapter to write to
     monkeypatch.setattr("cortex.ide.adapters.opencode.Path.home", staticmethod(lambda: tmp_path))
 
@@ -310,22 +315,42 @@ def test_opencode_adapter_inject_profiles(monkeypatch, tmp_path: Path) -> None:
 
     data = json.loads(config_path.read_text(encoding="utf-8"))
 
-    # Assert basic structure
+    # Estructura basica
     assert "cortex-sync" in data["agent"]
     assert "cortex-SDDwork" in data["agent"]
-    
-    # Check that tools are correctly enabled
-    assert data["agent"]["cortex-sync"]["tools"]["cortex_sync_ticket"] is True
-    assert data["agent"]["cortex-sync"]["tools"]["write"] is False
-    assert data["agent"]["cortex-SDDwork"]["tools"]["Task"] is True
-    assert data["agent"]["cortex-SDDwork"]["tools"]["edit"] is True
-    assert data["agent"]["cortex-SDDwork"]["tools"]["write"] is True
 
-    # Check that the files were written
+    # Cortex-sync usa permission (no tools) y es read-only.
+    sync_perm = data["agent"]["cortex-sync"]["permission"]
+    assert sync_perm["read"] == "allow"
+    assert sync_perm["write"] == "deny"
+    assert sync_perm["edit"] == "deny"
+    assert sync_perm["bash"] == "deny"
+
+    # Cortex-SDDwork puede modificar archivos.
+    sddwork_perm = data["agent"]["cortex-SDDwork"]["permission"]
+    assert sddwork_perm["read"] == "allow"
+    assert sddwork_perm["write"] == "allow"
+    assert sddwork_perm["edit"] == "allow"
+    # bash queda en "ask" para que el usuario apruebe ejecuciones de shell.
+    assert sddwork_perm["bash"] == "ask"
+
+    # Verificar que los MCP tools NO estan en permission (descubrimiento dinamico).
+    for mcp_tool in ("cortex_save_session", "cortex_search", "cortex_validate_handoff"):
+        assert mcp_tool not in sync_perm, (
+            f"MCP tool '{mcp_tool}' no debe estar en permission de opencode "
+            "(se descubre dinamicamente)"
+        )
+        assert mcp_tool not in sddwork_perm
+
+    # El campo legacy 'tools' NO debe estar (migrado a permission).
+    assert "tools" not in data["agent"]["cortex-sync"]
+    assert "tools" not in data["agent"]["cortex-SDDwork"]
+
+    # Skills files
     skills_dir = tmp_path / ".config" / "opencode" / "skills"
     sync_content = (skills_dir / "cortex-sync.md").read_text(encoding="utf-8")
     work_content = (skills_dir / "cortex-SDDwork.md").read_text(encoding="utf-8")
-    
+
     assert "AUTOGENERATED BY CORTEX" in sync_content
     assert "Pre-flight prompt" in sync_content
     assert "AUTOGENERATED BY CORTEX" in work_content
@@ -338,10 +363,15 @@ def test_opencode_adapter_inject_profiles(monkeypatch, tmp_path: Path) -> None:
 
 
 class TestOpenCodeTripartitaRefinada:
-    """Plan 04 contract — the two primary OpenCode agents (sync + SDDwork)
-    must expose the new handoff/verification MCP tools introduced by
-    Plan 02 §1-§2. Without this, the canonical prompts reference tools
-    the IDE would refuse to call.
+    """Decision 4 firmada (2026-05-15): los MCP tools de Cortex en opencode
+    se descubren DINAMICAMENTE al conectarse al MCP server. NO se declaran
+    en el agent profile (eso es invalido segun docs oficiales — el campo
+    permission solo acepta tools NATIVOS de opencode).
+
+    Tests viejos que verificaban ``tools["cortex_validate_handoff"] is True``
+    fueron eliminados. Estos tests garantizan lo opuesto: que los MCP tools
+    NO esten declarados (regression guard contra el bug que detecto el
+    creador en la sesion del 2026-05-15).
     """
 
     def _inject(self, monkeypatch, tmp_path: Path) -> dict:
@@ -357,30 +387,46 @@ class TestOpenCodeTripartitaRefinada:
         config_path = tmp_path / ".config" / "opencode" / "opencode.json"
         return json.loads(config_path.read_text(encoding="utf-8"))
 
-    def test_sync_agent_has_new_handoff_tools(self, monkeypatch, tmp_path: Path) -> None:
+    def test_sync_agent_uses_permission_not_tools(self, monkeypatch, tmp_path: Path) -> None:
+        """OpenCode adapter DEBE usar el campo moderno 'permission'."""
         data = self._inject(monkeypatch, tmp_path)
-        tools = data["agent"]["cortex-sync"]["tools"]
-        assert tools["cortex_validate_handoff"] is True
-        assert tools["cortex_verify_session_claims"] is True
+        agent = data["agent"]["cortex-sync"]
+        assert "permission" in agent
+        assert "tools" not in agent  # Campo legacy debe estar AUSENTE.
 
-    def test_sddwork_agent_has_new_handoff_tools(self, monkeypatch, tmp_path: Path) -> None:
+    def test_sddwork_agent_uses_permission_not_tools(self, monkeypatch, tmp_path: Path) -> None:
         data = self._inject(monkeypatch, tmp_path)
-        tools = data["agent"]["cortex-SDDwork"]["tools"]
-        assert tools["cortex_validate_handoff"] is True
-        assert tools["cortex_verify_session_claims"] is True
+        agent = data["agent"]["cortex-SDDwork"]
+        assert "permission" in agent
+        assert "tools" not in agent
 
-    def test_pre_existing_tools_remain_enabled(self, monkeypatch, tmp_path: Path) -> None:
-        """Sanity check — adding new tools must not silently drop old ones."""
+    def test_no_mcp_tools_declared_in_permission(self, monkeypatch, tmp_path: Path) -> None:
+        """Regression guard: ningun cortex_* debe aparecer en permission.
+
+        Los MCP tools se descubren dinamicamente al conectarse al MCP
+        server. Declararlos aqui es invalido segun docs oficiales de
+        opencode y reproduce el bug del 2026-05-15.
+        """
         data = self._inject(monkeypatch, tmp_path)
-        sync_tools = data["agent"]["cortex-sync"]["tools"]
-        # A representative subset of the pre-existing tools.
-        assert sync_tools["cortex_sync_ticket"] is True
-        assert sync_tools["cortex_create_spec"] is True
-        assert sync_tools["write"] is False  # sync stays read-only.
-        sddwork_tools = data["agent"]["cortex-SDDwork"]["tools"]
-        assert sddwork_tools["Task"] is True
-        assert sddwork_tools["cortex_save_session"] is True
-        assert sddwork_tools["edit"] is True
+        for agent_name in ("cortex-sync", "cortex-SDDwork"):
+            perm = data["agent"][agent_name]["permission"]
+            mcp_keys_found = [k for k in perm if k.startswith("cortex_")]
+            assert not mcp_keys_found, (
+                f"[{agent_name}] MCP tools en permission: {mcp_keys_found}. "
+                "Estos se descubren dinamicamente, no van declarados."
+            )
+
+    def test_permission_uses_allow_ask_deny_values(self, monkeypatch, tmp_path: Path) -> None:
+        """Los valores en permission son strings 'allow'|'ask'|'deny',
+        no booleanos (ese era el formato del campo legacy 'tools')."""
+        data = self._inject(monkeypatch, tmp_path)
+        for agent_name in ("cortex-sync", "cortex-SDDwork"):
+            perm = data["agent"][agent_name]["permission"]
+            for key, value in perm.items():
+                assert value in ("allow", "ask", "deny"), (
+                    f"[{agent_name}.{key}] valor '{value}' invalido. "
+                    "Permitidos: 'allow', 'ask', 'deny'."
+                )
 
 
 def test_opencode_adapter_inject_mcp_uses_opencode_local_command_shape(
@@ -811,6 +857,10 @@ class TestTripartitaCrossIDE:
     bundle instead of straight from ``.cortex/subagents/``.
     """
 
+    # Decision firmada (2026-05-15): Codex NO esta en este parametrizado
+    # porque NO genera ``.codex/agents/`` (no soporta subagents). El flujo
+    # tripartito en Codex se valida en TestCodexTripartitaRefinada
+    # (AGENTS.md en project root con flujo secuencial).
     _MARKERS_PER_IDE = {
         "claude_code": {
             "agents/cortex-documenter.md": [
@@ -826,21 +876,6 @@ class TestTripartitaCrossIDE:
                 "Verification Gate",
                 "cortex_validate_handoff",
                 "CONTEXT.md",
-            ],
-        },
-        "codex": {
-            "agents/cortex-documenter.md": [
-                "HIGH-SIGNAL DOCUMENTATION MODE",
-                "VERIFICATION GATE",
-                "Modo Handoff",
-                "Anti-rationalization",
-                "Contrato de Salida",
-            ],
-            "_top_level_governance": [
-                "Verification Gate",
-                "cortex_validate_handoff",
-                "CONTEXT.md",
-                "no native `Task`",  # Codex-specific note
             ],
         },
     }
@@ -865,10 +900,14 @@ class TestTripartitaCrossIDE:
             )
         (subagents / "cortex-documenter.md").write_text(documenter_body, encoding="utf-8")
 
-    @pytest.mark.parametrize("ide_name", ["claude_code", "codex"])
+    @pytest.mark.parametrize("ide_name", ["claude_code"])
     def test_documenter_inherits_full_marker_set(self, ide_name: str, tmp_path: Path) -> None:
         """The documenter agent must receive ALL Plan 01 markers from
-        the canonical, regardless of which IDE adapter is rendering it."""
+        the canonical, regardless of which IDE adapter is rendering it.
+
+        Decision firmada: codex se removio del parametrizado porque NO
+        genera ``.codex/agents/`` (no soporta subagents personalizados).
+        """
         project_root = tmp_path / "project"
         self._setup_canonical(project_root)
         adapter = get_adapter(ide_name)
@@ -881,7 +920,7 @@ class TestTripartitaCrossIDE:
         )
 
         # Each IDE materializes the documenter under its own directory.
-        ide_dir = {"claude_code": ".claude", "codex": ".codex"}[ide_name]
+        ide_dir = {"claude_code": ".claude"}[ide_name]
         documenter = (
             project_root / ide_dir / "agents" / "cortex-documenter.md"
         ).read_text(encoding="utf-8")
@@ -891,10 +930,12 @@ class TestTripartitaCrossIDE:
                 f"[{ide_name}] documenter missing marker: {marker!r}"
             )
 
-    @pytest.mark.parametrize("ide_name", ["claude_code", "codex"])
+    @pytest.mark.parametrize("ide_name", ["claude_code"])
     def test_top_level_governance_mentions_tripartita(self, ide_name: str, tmp_path: Path) -> None:
-        """CLAUDE.md (Claude Code) and .codex/AGENTS.md (Codex) must
-        mention the Tripartita Refinada contracts."""
+        """CLAUDE.md (Claude Code) must mention the Tripartita Refinada
+        contracts. Codex tiene su test propio en TestCodexTripartitaRefinada
+        (AGENTS.md en project root).
+        """
         project_root = tmp_path / "project"
         self._setup_canonical(project_root)
         adapter = get_adapter(ide_name)
@@ -908,7 +949,6 @@ class TestTripartitaCrossIDE:
 
         path_per_ide = {
             "claude_code": project_root / "CLAUDE.md",
-            "codex": project_root / ".codex" / "AGENTS.md",
         }[ide_name]
         content = path_per_ide.read_text(encoding="utf-8")
 
@@ -916,27 +956,6 @@ class TestTripartitaCrossIDE:
             assert marker in content, (
                 f"[{ide_name}] top-level governance missing marker: {marker!r}"
             )
-
-    def test_opencode_agents_have_handoff_tools(self, tmp_path: Path, monkeypatch) -> None:
-        """OpenCode's primary agents must have the new MCP tools enabled
-        in opencode.json. Smoke equivalent of the per-tool tests in
-        ``TestOpenCodeTripartitaRefinada``."""
-        monkeypatch.setattr(
-            "cortex.ide.adapters.opencode.Path.home",
-            staticmethod(lambda: tmp_path),
-        )
-        adapter = get_adapter("opencode")
-        adapter.inject_profiles(
-            tmp_path / "project",
-            prompts={"cortex-sync": "x", "cortex-SDDwork": "y"},
-        )
-        config = json.loads(
-            (tmp_path / ".config" / "opencode" / "opencode.json").read_text(encoding="utf-8")
-        )
-        for agent_name in ("cortex-sync", "cortex-SDDwork"):
-            tools = config["agent"][agent_name]["tools"]
-            assert tools.get("cortex_validate_handoff") is True, agent_name
-            assert tools.get("cortex_verify_session_claims") is True, agent_name
 
 
 class TestPiBundleHasTripartitaRefinada:
