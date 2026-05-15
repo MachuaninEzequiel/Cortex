@@ -128,7 +128,7 @@ Esta ola es **la última** antes de la reunión. Si en esta etapa encontramos un
 
 #### Contexto
 
-Weakness #7 del `vault/architecture/release-2-known-weaknesses.md`: `cortex/doc_verifier.py:verify_from_diff()` tiene clasificación inconsistente para archivos del vault. Probable que mezcle `vault_files`, `new_files`, `modified_files`, `deleted_files` con lógica que se pisa.
+Weakness #7 del `docs/architecture/release-2-known-weaknesses.md`: `cortex/doc_verifier.py:verify_from_diff()` tiene clasificación inconsistente para archivos del vault. Probable que mezcle `vault_files`, `new_files`, `modified_files`, `deleted_files` con lógica que se pisa.
 
 #### Pasos
 
@@ -206,7 +206,7 @@ Repetir el camino EXACTO con cada uno de los 4 IDEs target. Documentar en este a
 
 ### 4.D — Limpieza de release-2-known-weaknesses
 
-Al cierre de esta ola, el archivo `vault/architecture/release-2-known-weaknesses.md` debe estar limpio (todos los items resueltos o explícitamente marcados como "decididamente fuera de alcance"). Si quedan items abiertos:
+Al cierre de esta ola, el archivo `docs/architecture/release-2-known-weaknesses.md` debe estar limpio (todos los items resueltos o explícitamente marcados como "decididamente fuera de alcance"). Si quedan items abiertos:
 
 - Crear un issue / TODO en `docs/roadmap/` con el detalle.
 - Borrar el item del archivo de weaknesses (porque ya no es "release-2 known weakness", es backlog).

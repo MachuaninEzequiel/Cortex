@@ -18,7 +18,7 @@ Un bug es crítico si cumple cualquiera de:
 
 1. Rompe la promesa pública del README ("autopilot persiste la nota", "search encuentra lo que escribimos", "create-spec requiere sync-ticket").
 2. Hace que un comando documentado retorne mentirosamente success cuando no hubo success real.
-3. Está marcado en `vault/architecture/release-2-known-weaknesses.md` y todavía no se resolvió.
+3. Está marcado en `docs/architecture/release-2-known-weaknesses.md` y todavía no se resolvió.
 4. Bloquea el flujo tripartito (`sync_ticket → create_spec → save_session`).
 
 ## Estado de cada ítem
@@ -66,7 +66,7 @@ Un bug es crítico si cumple cualquiera de:
 
 ### Contexto
 
-Weakness #6 del `vault/architecture/release-2-known-weaknesses.md`. En `cortex/cli/main.py:712-714`, cuando se pasa `--output <file>`, siempre se escribe markdown (`enriched.to_prompt_format(...)`) sin importar el valor de `--format json`. Si los adopters integran Cortex en su CI propio y esperan JSON, reciben markdown.
+Weakness #6 del `docs/architecture/release-2-known-weaknesses.md`. En `cortex/cli/main.py:712-714`, cuando se pasa `--output <file>`, siempre se escribe markdown (`enriched.to_prompt_format(...)`) sin importar el valor de `--format json`. Si los adopters integran Cortex en su CI propio y esperan JSON, reciben markdown.
 
 ### Pasos
 
@@ -78,13 +78,13 @@ Weakness #6 del `vault/architecture/release-2-known-weaknesses.md`. En `cortex/c
 4. **Agregar test** en `tests/unit/cli/test_main.py` (o crear `tests/unit/cli/test_context.py`):
    - `test_context_output_json_writes_json`: invocar CLI con `--format json --output foo.json`, verificar que el archivo parsea con `json.loads` y contiene las keys esperadas (`work`, `items`, etc.).
    - `test_context_output_markdown_writes_markdown`: invocar con `--output foo.md` (sin format), verificar que arranca con `🧠 Cortex Context` o un encabezado markdown.
-5. **Actualizar** `vault/architecture/release-2-known-weaknesses.md` marcando #6 como resuelto, o eliminar la entrada.
+5. **Actualizar** `docs/architecture/release-2-known-weaknesses.md` marcando #6 como resuelto, o eliminar la entrada.
 
 ### Archivos a tocar
 
 - `cortex/cli/main.py` — bloque del comando `context`.
 - `tests/unit/cli/test_main.py` o `tests/unit/cli/test_context.py` — tests.
-- `vault/architecture/release-2-known-weaknesses.md` — actualizar.
+- `docs/architecture/release-2-known-weaknesses.md` — actualizar.
 
 ### Criterio de cierre
 
@@ -117,7 +117,7 @@ Weakness #1 del known-weaknesses doc. `EpisodicMemoryStore.add()` extrae entidad
 
 - `cortex/episodic/memory_store.py` — fix de serialización si aplica.
 - `tests/unit/episodic/test_memory_store.py` — agregar tests round-trip.
-- `vault/architecture/release-2-known-weaknesses.md` — actualizar.
+- `docs/architecture/release-2-known-weaknesses.md` — actualizar.
 
 ### Criterio de cierre
 
@@ -214,6 +214,6 @@ Indexing mandatorio confirmado: la nota del autopilot aparece inmediatamente en 
 - [x] 0.5 — Entity round-trip cubierto por tests.
 - [x] Smoke test manual ejecutado y verde (CLI completo, sin IDE — Ola 1 cubre IDE).
 - [x] Suite global verde: 807 passed, 6 skipped, 0 failed.
-- [x] `vault/architecture/release-2-known-weaknesses.md` actualizado: items #1, #3, #4, #5, #6 marcados como resueltos. Quedan abiertos #2 (graph empty-query) y #7 (doc_verifier) — el #2 pertenece a Ola 1 o más tarde, el #7 a Ola 4.
+- [x] `docs/architecture/release-2-known-weaknesses.md` actualizado: items #1, #3, #4, #5, #6 marcados como resueltos. Quedan abiertos #2 (graph empty-query) y #7 (doc_verifier) — el #2 pertenece a Ola 1 o más tarde, el #7 a Ola 4.
 
 **Ola 0 cerrada al 100%. Lista para arrancar Ola 1.**

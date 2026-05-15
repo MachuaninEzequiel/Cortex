@@ -149,7 +149,7 @@ class _FakeMemoryForContext:
 def test_context_output_json_writes_parseable_json(monkeypatch, tmp_path: Path) -> None:
     """``cortex context --output X --format json`` must write valid JSON.
 
-    Regression of `vault/architecture/release-2-known-weaknesses.md` #6.
+    Regression of `docs/architecture/release-2-known-weaknesses.md` #6.
     """
     import json
 
