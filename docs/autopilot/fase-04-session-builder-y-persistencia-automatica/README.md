@@ -96,14 +96,14 @@ Usar `AgentMemory.save_session_note()` o `SessionService` por la fachada.
 
 ### Checklist
 
-- [ ] Render minimo con titulo, resumen, archivos y eventos.
-- [ ] Render implementacion con cambios y decisiones.
-- [ ] Render docs-only para tareas de documentacion.
-- [ ] `FallbackDraftRenderer` genera draft seguro con confidence `auto-draft`.
-- [ ] `finish()` ejecuta self-review antes de persistir.
-- [ ] `finish()` marca estado `documented`.
-- [ ] `finish()` no duplica session notes si ya existe `session_note_path`.
-- [ ] Tests unitarios para cada renderer y para self-review.
+- [x] Render minimo con titulo, resumen, archivos y eventos.
+- [x] Render implementacion con cambios y decisiones.
+- [x] Render docs-only para tareas de documentacion.
+- [x] `FallbackDraftRenderer` genera draft seguro con confidence `auto-draft`.
+- [x] `finish()` ejecuta self-review antes de persistir.
+- [x] `finish()` marca estado `documented`.
+- [x] `finish()` no duplica session notes si ya existe `session_note_path`.
+- [x] Tests unitarios para cada renderer y para self-review.
 
 ### Gate de salida
 

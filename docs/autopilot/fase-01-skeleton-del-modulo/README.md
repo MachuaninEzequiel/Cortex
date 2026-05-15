@@ -266,11 +266,11 @@ tests/unit/autopilot/test_state_store.py
 
 ### Checklist
 
-- [ ] `AutopilotSessionState` serializa y deserializa.
-- [ ] `StateStore.create_session()` genera un id estable.
-- [ ] `StateStore.append_event()` escribe JSONL.
-- [ ] `StateStore.load()` falla con error claro si no existe.
-- [ ] Tests unitarios cubren new layout y legacy layout.
+- [x] `AutopilotSessionState` serializa y deserializa.
+- [x] `StateStore.create_session()` genera un id estable.
+- [x] `StateStore.append_event()` escribe JSONL.
+- [x] `StateStore.load()` falla con error claro si no existe.
+- [x] Tests unitarios cubren new layout y legacy layout.
 
 ### Gate de salida
 

@@ -48,7 +48,7 @@ Eliminar el patrón `episodic.search("", top_k=N)` que se usa hoy para aproximar
 
 ### Contexto y por qué se postpuso
 
-Detectado en `vault/architecture/release-2-known-weaknesses.md` weakness #2 (release 2). Durante Olas 0-4 se evaluó:
+Detectado en `docs/architecture/release-2-known-weaknesses.md` weakness #2 (release 2). Durante Olas 0-4 se evaluó:
 - **Impacto real:** el enricher sigue funcionando con las otras 4 estrategias (topic, files, keywords, pr_title). Para sesiones cortas de adopters early no se nota. El graph boost solo destaca cuando hay >50 memorias acumuladas.
 - **Costo del fix:** requiere agregar **una API nueva** al store episódico (`list_all`), conectarla en 2 puntos del enricher, agregar tests que verifiquen que con N memorias guardadas el typed graph tiene N nodos. Es trabajo de un release minor.
 
@@ -115,7 +115,7 @@ def test_typed_graph_populates_with_real_memories(episodic_store, ...):
 
 **Paso 4 — Actualizar known-weaknesses**:
 
-En `vault/architecture/release-2-known-weaknesses.md`, mover el item #2 de "SCOPED OUT" a "RESOLVED" con referencia al PR.
+En `docs/architecture/release-2-known-weaknesses.md`, mover el item #2 de "SCOPED OUT" a "RESOLVED" con referencia al PR.
 
 ### Criterio de cierre
 

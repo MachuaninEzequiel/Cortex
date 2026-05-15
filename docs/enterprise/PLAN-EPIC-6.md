@@ -188,13 +188,13 @@ flowchart TD
 
 ## 11. Checklist Final de Cierre
 
-- [ ] Existe `cortex memory-report` documentado y usable.
-- [ ] La salida JSON de reporting es estable.
-- [ ] El reporte de promotion expone pendientes, promociones y rechazos.
-- [ ] WebGraph refleja información enterprise mínima con filtro por scope.
-- [ ] Tests de reporting y regresión en verde.
-- [ ] Compatibilidad con CLI/WebGraph actual preservada.
-- [ ] Documentación operativa enterprise actualizada.
+- [x] Existe `cortex memory-report` documentado y usable.
+- [x] La salida JSON de reporting es estable.
+- [x] El reporte de promotion expone pendientes, promociones y rechazos.
+- [x] WebGraph refleja información enterprise mínima con filtro por scope.
+- [x] Tests de reporting y regresión en verde.
+- [x] Compatibilidad con CLI/WebGraph actual preservada.
+- [x] Documentación operativa enterprise actualizada.
 
 ---
 name: Plan Epic 6 Observability
@@ -386,10 +386,10 @@ flowchart TD
 
 ## 11. Checklist Final de Cierre
 
-- [ ] Existe `cortex memory-report` documentado y usable.
-- [ ] La salida JSON de reporting es estable.
-- [ ] El reporte de promotion expone pendientes, promociones y rechazos.
-- [ ] WebGraph refleja información enterprise mínima con filtro por scope.
-- [ ] Tests de reporting y regresión en verde.
-- [ ] Compatibilidad con CLI/WebGraph actual preservada.
-- [ ] Documentación operativa enterprise actualizada.
+- [x] Existe `cortex memory-report` documentado y usable.
+- [x] La salida JSON de reporting es estable.
+- [x] El reporte de promotion expone pendientes, promociones y rechazos.
+- [x] WebGraph refleja información enterprise mínima con filtro por scope.
+- [x] Tests de reporting y regresión en verde.
+- [x] Compatibilidad con CLI/WebGraph actual preservada.
+- [x] Documentación operativa enterprise actualizada.

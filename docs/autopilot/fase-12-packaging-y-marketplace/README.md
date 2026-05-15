@@ -77,12 +77,12 @@ El plugin debe instalar Autopilot, no reemplazar Cortex base.
 
 ### Checklist
 
-- [ ] Manifest incluye metadata clara.
-- [ ] Skills apuntan a carpeta Autopilot.
-- [ ] Hooks usan wrapper Python cross-platform.
-- [ ] Documentar install/uninstall.
-- [ ] Versionar compatibilidad por harness.
-- [ ] Formato compatible con ecosistema Superpowers.
+- [x] Manifest incluye metadata clara.
+- [x] Skills apuntan a carpeta Autopilot.
+- [x] Hooks usan wrapper Python cross-platform.
+- [x] Documentar install/uninstall.
+- [x] Versionar compatibilidad por harness.
+- [x] Formato compatible con ecosistema Superpowers.
 
 ### Gate de salida
 

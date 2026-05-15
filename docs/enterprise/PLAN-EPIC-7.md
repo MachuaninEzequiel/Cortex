@@ -178,9 +178,9 @@ flowchart TD
 
 ## 11. Checklist Final de Cierre
 
-- [ ] Backward compatibility auditada y garantizada por tests.
-- [ ] UX de la CLI pulida; los errores informan a los usuarios con sugerencias de acciones a tomar.
-- [ ] Documentación técnica de referencia (`Arquitectura`, `Setup`, `Promotion`, `CI`) publicada.
-- [ ] Playbooks de adopción (Dev, Tech Lead, Arquitecto, Platform) creados.
-- [ ] Checklist interno de lanzamiento definido.
-- [ ] Validada la estrategia de migración desde modo no-enterprise.
+- [x] Backward compatibility auditada y garantizada por tests.
+- [x] UX de la CLI pulida; los errores informan a los usuarios con sugerencias de acciones a tomar.
+- [x] Documentación técnica de referencia (`Arquitectura`, `Setup`, `Promotion`, `CI`) publicada.
+- [x] Playbooks de adopción (Dev, Tech Lead, Arquitecto, Platform) creados.
+- [x] Checklist interno de lanzamiento definido.
+- [x] Validada la estrategia de migración desde modo no-enterprise.

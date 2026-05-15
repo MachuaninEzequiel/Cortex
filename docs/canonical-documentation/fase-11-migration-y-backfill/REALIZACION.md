@@ -152,7 +152,7 @@ cortex/cli/docs_migrate.py             ~85% (paths CLI defensive)
 - [x] CLI `cortex docs list-backups`
 - [x] Tests >= 20 (26 implementados)
 - [x] Vault real de Cortex migrado y validado
-- [ ] 3 archivos raiz reubicados manualmente - Fase 13 bloque E
+- [x] 3 archivos raiz resueltos (Fase 13 cirugia `32aa2e9`): eliminados + 3 historicos distintos migrados a `docs/` -> `cortex docs validate --all` reporta `Invalid: 0`
 
 ---
 

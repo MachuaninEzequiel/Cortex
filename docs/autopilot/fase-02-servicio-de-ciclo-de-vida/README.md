@@ -101,14 +101,14 @@ Las policies usan el contrato `PolicyDecision` de `models.py`. El implementador 
 
 ### Checklist
 
-- [ ] `start()` no carga ONNX.
-- [ ] `preflight()` puede operar sin user_request y dejar warning.
-- [ ] `checkpoint()` agrega archivos, comandos, tools y resumen.
-- [ ] `finish(auto=True)` genera draft si falta documentacion.
-- [ ] Policies pueden bloquear o degradar modo.
-- [ ] `AmbiguousRequestDetector` detecta requests vagos correctamente.
-- [ ] `AutoCheckpointPolicy` fuerza checkpoint tras 5 archivos sin registrar.
-- [ ] `DetectorRegistry` resuelve conflictos entre detectores segun prioridad.
+- [x] `start()` no carga ONNX.
+- [x] `preflight()` puede operar sin user_request y dejar warning.
+- [x] `checkpoint()` agrega archivos, comandos, tools y resumen.
+- [x] `finish(auto=True)` genera draft si falta documentacion.
+- [x] Policies pueden bloquear o degradar modo.
+- [x] `AmbiguousRequestDetector` detecta requests vagos correctamente.
+- [x] `AutoCheckpointPolicy` fuerza checkpoint tras 5 archivos sin registrar.
+- [x] `DetectorRegistry` resuelve conflictos entre detectores segun prioridad.
 
 ### Gate de salida
 

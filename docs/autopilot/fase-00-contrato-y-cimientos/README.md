@@ -63,11 +63,11 @@ cortex/ide/adapters/*
 
 ### Checklist
 
-- [ ] Documentar `AutopilotSessionState`.
-- [ ] Documentar `AutopilotEvent`.
-- [ ] Documentar modos `observe`, `assist`, `autopilot`.
-- [ ] Documentar extension points.
-- [ ] Documentar no objetivos.
+- [x] Documentar `AutopilotSessionState`.
+- [x] Documentar `AutopilotEvent`.
+- [x] Documentar modos `observe`, `assist`, `autopilot`.
+- [x] Documentar extension points.
+- [x] Documentar no objetivos.
 
 ### Gate de salida
 

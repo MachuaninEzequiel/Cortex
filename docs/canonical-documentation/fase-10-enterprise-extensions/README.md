@@ -360,15 +360,15 @@ def test_filter_by_team_default_when_actor_present()
 
 ## 5. Checklist
 
-- [ ] `cortex/enterprise/governance.py` con permissions
-- [ ] `cortex/enterprise/models.py` extendido (Team, RetentionPolicy)
-- [ ] `cortex/documentation/writers.py` aplican enterprise scope
-- [ ] Promotion DocType-aware con 3 modos
-- [ ] `cortex/cli/review_knowledge.py` con pending/approve/reject
-- [ ] `cortex/enterprise/maintenance.py` con retention
-- [ ] Multi-tenant retrieval con filtros automaticos
-- [ ] Tests >= 35
-- [ ] Coverage >= 90%
+- [x] `cortex/enterprise/governance.py` con permissions
+- [x] `cortex/enterprise/models.py` extendido (Team, RetentionPolicy)
+- [x] `cortex/documentation/writers.py` aplican enterprise scope
+- [x] Promotion DocType-aware con 3 modos
+- [ ] `cortex/cli/review_knowledge.py` con pending/approve/reject (Item #9 en `../fase-13-backlog-consolidado/PLAN-DEUDA-RESIDUAL.md`)
+- [x] `cortex/enterprise/maintenance.py` con retention
+- [x] Multi-tenant retrieval con filtros automaticos
+- [x] Tests >= 35
+- [x] Coverage >= 90%
 
 ---
 

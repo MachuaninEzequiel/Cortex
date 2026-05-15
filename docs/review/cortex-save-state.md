@@ -476,7 +476,7 @@ Secrets esperados (env vars):
 - `docs/agents/` (untracked) — `MEJORA-TRIPARTITO.md` propone 5+ mejoras concretas para cortex-documenter (Signal>Noise, ADR 3 criterios, CONTEXT.md como tercera capa, verification gate, handoff mode, progressive disclosure, lexical boost RRF, contradiction detection). `ANALISIS-MEJORA-TRIPARTITO.md` critica/refina la propuesta. No están aplicadas. **Importante: leer y considerar antes de tocar el documenter.**
 
 **Posiblemente obsoleta:**
-- `vault/architecture/release-2-known-weaknesses.md` — 7 hallazgos. **Reverifiqué cada uno contra el código actual:**
+- `docs/architecture/release-2-known-weaknesses.md` — 7 hallazgos. **Reverifiqué cada uno contra el código actual:**
 
 | # | Hallazgo histórico | Estado real verificado |
 |---|---|---|

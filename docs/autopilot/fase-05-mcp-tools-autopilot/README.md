@@ -67,10 +67,10 @@ cortex_autopilot_status
 
 ### Checklist
 
-- [ ] Tools aparecen en `list_tools`.
-- [ ] Tools devuelven texto compacto y JSON si conviene.
-- [ ] Errores se registran como eventos.
-- [ ] `cortex_save_session` puede marcar estado si recibe `session_id`.
+- [x] Tools aparecen en `list_tools`.
+- [x] Tools devuelven texto compacto y JSON si conviene.
+- [x] Errores se registran como eventos.
+- [x] `cortex_save_session` puede marcar estado si recibe `session_id`.
 
 ### Gate de salida
 

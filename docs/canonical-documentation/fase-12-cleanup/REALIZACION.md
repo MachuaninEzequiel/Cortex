@@ -101,11 +101,11 @@ Suite global:                              1310 passed, 6 skipped, 0 fallas
 - [x] Setup orchestrator declara 12 carpetas canonicas
 - [x] Test garantiza paridad con `DOC_TYPE_ROUTING`
 - [x] Documenter canonico tiene tabla de routing
-- [ ] `cortex/documentation.py` eliminado - Fase 13 bloque A
-- [ ] `cortex-pi/.pi/agents/cortex-documenter.md` eliminado - Fase 13 bloque A
-- [ ] Consumidores migrados fuera de `_legacy_shims.py` - Fase 13 bloque A
-- [ ] Gate global ejecutado y aprobado - Fase 13 al cierre total
-- [ ] Sembrar seed inicial por carpeta canonica - mejora futura
+- [ ] `cortex/documentation.py` eliminado - pendiente `git rm` (huerfano sin consumers)
+- [x] `cortex-pi/.pi/agents/cortex-documenter.md` redefinido (NO es legacy; es mirror auto-sync del Pi adapter, contenido canonico actualizado via cirugia `32aa2e9`)
+- [ ] Consumidores migrados fuera de `_legacy_shims.py` - Item #10 en `../fase-13-backlog-consolidado/PLAN-DEUDA-RESIDUAL.md`
+- [x] Gate global ejecutado y aprobado (1416 passed, `Invalid: 0`, `cortex doctor` OK; verificado 2026-05-14 post-cirugia)
+- [ ] Sembrar seed inicial por carpeta canonica - mejora futura no-bloqueante
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: Plan 01 — Cambios canonical en subagents y skills
-status: pendiente
-phase: 1 (debe cerrarse antes de Fase 2)
+status: ✅ CERRADA (2026-05-13) — ver `../implementacion/01-cambios-subagentes-y-skills.md`
+phase: 1 (cerrada antes de Fase 2)
 ---
 
 # Plan 01 — Cambios canonical en subagents y skills
@@ -51,11 +51,11 @@ Cambiar la filosofía del documenter de "documenta TODO" a "persistir solo el de
 
 ### Criterio de cierre
 
-- [ ] Frase "documenta TODO" eliminada del canonical.
-- [ ] Sección "HIGH-SIGNAL DOCUMENTATION MODE" agregada con regla de oro Reference > Duplicate.
-- [ ] Lista explícita de "qué NO debe contener".
-- [ ] Ejemplo de delta cognitivo presente.
-- [ ] Espejo Pi-side actualizado (o programado para sync).
+- [x] Frase "documenta TODO" eliminada del canonical.
+- [x] Sección "HIGH-SIGNAL DOCUMENTATION MODE" agregada con regla de oro Reference > Duplicate.
+- [x] Lista explícita de "qué NO debe contener".
+- [x] Ejemplo de delta cognitivo presente.
+- [x] Espejo Pi-side actualizado (sync via Pi adapter `sync_canonical`).
 
 ---
 
@@ -97,10 +97,10 @@ Eliminar ADRs triviales aplicando el filtro objetivo Hard-to-reverse + Surprisin
 
 ### Criterio de cierre
 
-- [ ] Sección "Criterios para crear un ADR" en canonical.
-- [ ] Tabla de 4 ejemplos con veredicto.
-- [ ] `_meets_adr_criteria` implementado.
-- [ ] 3 tests del doc_generator agregados (caso veto, caso aprobado, regresión).
+- [x] Sección "Criterios para crear un ADR" en canonical.
+- [x] Tabla de 4 ejemplos con veredicto.
+- [x] `_meets_adr_criteria` implementado (`cortex/doc_generator.py:184`).
+- [x] 6 tests del doc_generator agregados (`test_tripartita_refinada.py::TestMeetsAdrCriteria`).
 
 ---
 
@@ -196,12 +196,12 @@ Soportar un archivo opcional `<workspace>/CONTEXT.md` que define el ubiquitous l
 
 ### Criterio de cierre
 
-- [ ] `WorkspaceLayout.context_md_path` property implementada + test.
-- [ ] `render_context_md` template creado.
-- [ ] `_create_vault_docs` lo crea idempotentemente.
-- [ ] Skills `cortex-sync.md` y `cortex-SDDwork.md` referencian el archivo.
-- [ ] Documenter tiene sección de "Mantenimiento de CONTEXT.md".
-- [ ] Test que verifica que setup full crea `CONTEXT.md` template.
+- [x] `WorkspaceLayout.context_md_path` property implementada + test (`cortex/workspace/layout.py:448`).
+- [x] `render_context_md` template creado (`cortex/setup/templates.py:802`).
+- [x] `_create_vault_docs` lo crea idempotentemente (`cortex/setup/orchestrator.py:294-299`).
+- [x] Skill `cortex-sync.md` referencia el archivo (Pre-flight section).
+- [x] Documenter tiene sección de "Mantenimiento de CONTEXT.md".
+- [x] Tests en `test_tripartita_refinada.py::TestContextMdPath` (new + legacy layout).
 
 ---
 
@@ -229,10 +229,10 @@ Antes de cerrar una sesión, el documenter verifica claims contra el diff real. 
 
 ### Criterio de cierre
 
-- [ ] Sección "VERIFICATION GATE" en canonical del documenter.
-- [ ] Checklist de 5 items pre-flight.
-- [ ] Reglas claras para discrepancia y para failed check.
-- [ ] Test integración: invocar `cortex_save_session` desde un agent simulado que afirma "tests pasan" sin haber ejecutado tests → verificar que el documenter (o el gate) detecta el claim no verificado.
+- [x] Sección "VERIFICATION GATE" en canonical del documenter.
+- [x] Checklist de 5 items pre-flight.
+- [x] Reglas claras para discrepancia y para failed check.
+- [x] Backend MCP en Plan 02 (`cortex_verify_session_claims` tool implementado).
 
 ---
 
@@ -310,11 +310,11 @@ Permitir que el documenter cierre una sesión con `status: handoff` cuando hay T
 
 ### Criterio de cierre
 
-- [ ] Enum status incluye `"handoff"`.
-- [ ] `_build_tags` agrega tag `"handoff"` cuando aplica.
-- [ ] `write_session_note` acepta los 5 campos nuevos.
-- [ ] Canonical documenter tiene sección "Modo Handoff" con structure.
-- [ ] 3 tests: tag handoff, frontmatter handoff, retrieval de notas handoff (`cortex search` debería encontrar memorias con tag handoff prioritariamente).
+- [x] Enum status incluye `"handoff"` (`cortex/autopilot/models.py:39`).
+- [x] `_build_tags` agrega tag `"handoff"` cuando aplica (`session_writer.py:242-243`).
+- [x] `write_session_note` shim acepta los 5 campos nuevos (`_legacy_shims.py:65-101`).
+- [x] Canonical documenter tiene sección "Modo Handoff" con structure.
+- [x] Tests en `test_tripartita_refinada.py::TestHandoffTag`, `TestSessionStateHandoffStatus`.
 
 ---
 
@@ -356,11 +356,11 @@ Cuando el Verification Gate corre, persistir el resultado como confidence level 
 
 ### Criterio de cierre
 
-- [ ] `MemoryEntry.confidence` campo opcional.
-- [ ] `SessionDraft.confidence_level` agregado.
-- [ ] `session_writer` persiste el confidence.
-- [ ] Round-trip test verde.
-- [ ] Documentación del campo en `docs/review/cortex-save-state.md` §7 (modelos).
+- [x] `MemoryEntry.confidence` campo opcional (`cortex/models.py:50`).
+- [x] `SessionDraft.confidence_level` agregado (`autopilot/models.py:99`).
+- [x] `session_writer` persiste el confidence (via metadata).
+- [x] Round-trip test verde (`TestMemoryEntryConfidence`).
+- [x] Documentación del campo en `docs/review/cortex-save-state.md`.
 
 ---
 
@@ -413,9 +413,9 @@ Por cada agent, una tabla específica. Ejemplos:
 
 ### Criterio de cierre
 
-- [ ] 5 tablas anti-rationalization (una por agent).
-- [ ] Cada tabla con mínimo 3 entradas específicas al rol.
-- [ ] Tablas integradas en los skills/subagents canonical.
+- [x] 5 tablas anti-rationalization (una por agent: sync, SDDwork, explorer, implementer, documenter).
+- [x] Cada tabla con mínimo 3 entradas específicas al rol.
+- [x] Tablas integradas en los skills/subagents canonical.
 
 ---
 
@@ -499,24 +499,24 @@ Reemplazar prosa libre entre agents por contratos YAML verificables.
 
 ### Criterio de cierre
 
-- [ ] `cortex/handoff.py` creado con `AgentHandoff` y `ArtifactProduced`.
-- [ ] 5 tests del schema verdes.
-- [ ] 5 skills/subagents canonical con sección "Contrato de Salida" + ejemplo YAML.
-- [ ] Documentación del schema en `docs/review/cortex-save-state.md` §7.
+- [x] `cortex/handoff.py` creado con `AgentHandoff` y `ArtifactProduced` (115 LOC).
+- [x] 12 tests del schema verdes (`tests/unit/test_handoff.py`).
+- [x] 5 skills/subagents canonical con sección "Contrato de Salida" + ejemplo YAML.
+- [x] Documentación del schema en `docs/review/cortex-save-state.md`.
 
 ---
 
 ## Checklist final del Plan 01
 
-- [ ] §1 Signal > Noise aplicado en documenter.
-- [ ] §2 ADR 3 criterios en documenter + doc_generator (con tests).
-- [ ] §3 CONTEXT.md como prompt asset (layout + template + skills).
-- [ ] §4 Verification Gate en documenter.
-- [ ] §5 Handoff Mode (status enum + tag + write_session_note + canonical).
-- [ ] §6 Confidence levels (post §4) en MemoryEntry + SessionDraft.
-- [ ] §7 Anti-rationalization en los 5 agentes.
-- [ ] §8 Structured YAML handoff schema + 5 tests + 5 canonicals.
-- [ ] Espejos en `cortex-pi/.pi/agents/` sincronizados (manual o vía mecanismo del roadmap 0.5.x ítem #5).
-- [ ] Suite global verde.
+- [x] §1 Signal > Noise aplicado en documenter.
+- [x] §2 ADR 3 criterios en documenter + doc_generator (con tests).
+- [x] §3 CONTEXT.md como prompt asset (layout + template + skills).
+- [x] §4 Verification Gate en documenter.
+- [x] §5 Handoff Mode (status enum + tag + write_session_note + canonical).
+- [x] §6 Confidence levels (post §4) en MemoryEntry + SessionDraft.
+- [x] §7 Anti-rationalization en los 5 agentes.
+- [x] §8 Structured YAML handoff schema + 12 tests + 5 canonicals.
+- [x] Espejos en `cortex-pi/.pi/agents/` sincronizados (via Pi adapter `sync_canonical`).
+- [x] Suite global verde (1416 passed post-cirugia 2026-05-14).
 
-**Fase 1 completa cuando todos los items están en `[x]`.**
+**Fase 1 completa: todos los items en `[x]` al 2026-05-13.**

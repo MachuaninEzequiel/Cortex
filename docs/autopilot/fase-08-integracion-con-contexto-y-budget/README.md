@@ -64,11 +64,11 @@ finish_only
 
 ### Checklist
 
-- [ ] `question_only` no llama embeddings.
-- [ ] `fast_code` limita `max_chars`.
-- [ ] `deep_code` requiere motivo de complejidad.
-- [ ] `finish_only` no hace retrieval pesado.
-- [ ] Estado guarda budget snapshot.
+- [x] `question_only` no llama embeddings.
+- [x] `fast_code` limita `max_chars`.
+- [x] `deep_code` requiere motivo de complejidad.
+- [x] `finish_only` no hace retrieval pesado.
+- [x] Estado guarda budget snapshot.
 
 ### Gate de salida
 

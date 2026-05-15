@@ -424,15 +424,15 @@ $ git commit -m "feat(docs): migrate vault to canonical schema"
 
 ## 7. Checklist
 
-- [ ] `cortex/documentation/migration.py` con `migrate_vault`, `compute_diff`, `apply_migration`
-- [ ] `cortex/documentation/backup.py` con `create_backup`, `restore_backup`
-- [ ] CLI `cortex docs migrate` con flags
-- [ ] CLI `cortex docs restore`
-- [ ] CLI `cortex docs validate --all`
-- [ ] Fixture `tests/data/legacy_vault_fixture/`
-- [ ] Tests >= 27
-- [ ] Coverage >= 90%
-- [ ] Migracion del vault de Cortex aplicada y validada
+- [x] `cortex/documentation/migration.py` con `migrate_vault`, `compute_diff`, `apply_migration`
+- [x] `cortex/documentation/backup.py` con `create_backup`, `restore_backup`
+- [x] CLI `cortex docs migrate` con flags
+- [x] CLI `cortex docs restore`
+- [x] CLI `cortex docs validate --all`
+- [x] Fixture `tests/data/legacy_vault_fixture/`
+- [x] Tests >= 27
+- [x] Coverage >= 90%
+- [x] Migracion del vault de Cortex aplicada y validada
 
 ---
 
