@@ -1,32 +1,49 @@
-# Plan — Deuda tecnica residual (canonical-documentation)
+# Plan — Deuda tecnica residual (canonical-documentation + Tripartita Refinada)
 
 **Fecha:** 2026-05-15
 **Origen:** auditoria cruzada de las 4 iniciativas (docs/agents, docs/autopilot, docs/enterprise, docs/canonical-documentation).
-**Estado:** Pendiente de ejecucion.
-**Scope:** los **12 items** de deuda tecnica que quedaron despues del cierre de las Fases 00-13 y la cirugia de limpieza (commits `32aa2e9` + `a1ad5ac`).
-**Esfuerzo estimado total:** 28-35 horas (~4 dias persona).
-**Riesgo agregado:** medio-bajo. Solo #10 toca hot paths (services); el resto son aislados.
+**Estado:** Pendiente de ejecucion en 3 tiers.
+**Scope:** los **17 items** de deuda tecnica + smoke validation pendientes despues del cierre de las Fases 00-13 y la cirugia de limpieza (commits `32aa2e9` + `a1ad5ac`).
+**Esfuerzo estimado total:** ~31 horas (Tier 1: 12h, Tier 2: 9h, Tier 3: 10h).
+**Riesgo agregado:** medio-bajo. Solo Tier 1 #10 toca hot paths (services); el resto son aislados.
 
 ---
 
-## Resumen ejecutivo
+## Resumen ejecutivo por tiers
 
-| # | Item | Origen | Esfuerzo | Riesgo | Recomendado en sprint |
-|---|------|--------|----------|--------|------------------------|
-| 1 | mypy strict sobre `cortex/documentation/` | Fase 01 | 2-3h | bajo | Dia 1 |
-| 2 | Tests presenter.py legacy paths | Fase 08 | 2h | bajo | Dia 1 |
-| 3 | Auto-compaction VectorCache 30% | Fase 06 | 2h | medio | Dia 4 |
-| 4 | Invalidacion granular de chunks | Fase 07 | 4h | medio | Dia 4 |
-| 5 | Aristas `supersedes` tipadas en webgraph | Fase 09 | 3h | bajo | Dia 2 |
-| 6 | EpisodicSource con doc_type=episodic | Fase 09 | 1h | bajo | Dia 1 |
-| 7 | CLI `cortex search` flags estructurales | Fase 08 | 2h | bajo | Dia 2 |
-| 8 | MCP tool `cortex_search` con args estructurales | Fase 08 | 2h | bajo | Dia 2 |
-| 9 | CLI `cortex review-knowledge pending/approve/reject` | Fase 10 | 4h | medio | Dia 4 |
-| 10 | Migrar 4 consumers de `_legacy_shims.py` + git rm | Fase 04 | 4-5h | medio | Dia 3 |
-| 11 | Dashboard cortex-pi UI extension (TypeScript) | Fase 09 | 4-6h | bajo | Diferido (sprint UI) |
-| 12 | File locking VectorCache multi-process | Fase 06 | 3-4h | medio | Diferido 0.6.x |
+### Tier 1 — Cierre formal de deuda (objetivo: 0 deuda formal). **Sprint: ~12h**
 
-**Si se cierra todo el core (excluye #11 UI y #12 multi-proc):** 10 items en ~3 dias.
+Despues de Tier 1 se puede certificar formalmente "0 deuda tecnica" segun la regla `feedback_no_technical_debt`.
+
+| # | Item | Origen | Esfuerzo | Riesgo | Orden |
+|---|------|--------|----------|--------|-------|
+| 10 | Migrar 4 consumers de `_legacy_shims.py` + git rm | Fase 04 | 4-5h | medio | **Primero** (desbloquea #1) |
+| 1 | mypy strict sobre `cortex/documentation/` | Fase 01 | 2-3h | bajo | Despues de #10 |
+| 9 | CLI `cortex review-knowledge pending/approve/reject` | Fase 10 | 4h | medio | Paralelo a #10 si se quiere |
+| 2 | Tests presenter.py legacy paths | Fase 08 | 2h | bajo | Cierre del dia |
+
+### Tier 2 — UX visible para adopters. **Sprint: ~9h** (semana proxima)
+
+| # | Item | Origen | Esfuerzo | Riesgo |
+|---|------|--------|----------|--------|
+| 7 | CLI `cortex search` flags estructurales | Fase 08 | 2h | bajo |
+| 8 | MCP tool `cortex_search` con args estructurales | Fase 08 | 2h | bajo |
+| 5 | Aristas `supersedes` tipadas en webgraph | Fase 09 | 3h | bajo |
+| 13 | Smoke manual `cortex inject --ide claude-code` | Plan 03 | 30 min | bajo |
+| 14 | Smoke manual `cortex inject --ide opencode` | Plan 04 | 30 min | bajo |
+| 15 | Smoke manual `cortex inject --ide pi` | Plan 05 | 30 min | bajo |
+| 16 | Smoke manual `cortex inject --ide codex` | Plan 06 | 30 min | bajo |
+
+### Tier 3 — Defer-friendly (post-0.5.0 o sprints dedicados). **Sprint: ~10h**
+
+| # | Item | Origen | Esfuerzo | Riesgo | Defer |
+|---|------|--------|----------|--------|-------|
+| 3 | Auto-compaction VectorCache al 30% | Fase 06 | 2h | medio | 0.6.x |
+| 4 | Invalidacion granular de chunks | Fase 07 | 4h | medio | 0.6.x |
+| 6 | EpisodicSource con doc_type=episodic | Fase 09 | 1h | bajo | 0.6.x |
+| 17 | Benchmark overhead handoff validation < 10% | Plan 07 §4 | 2h | bajo | Pre-release 0.6.x |
+| 11 | Dashboard cortex-pi UI extension (TypeScript) | Fase 09 | 4-6h | bajo | Sprint UI TS dedicado |
+| 12 | File locking VectorCache multi-process | Fase 06 | 3-4h | medio | 0.6.x (explicito fuera MVP) |
 
 ---
 
@@ -833,52 +850,379 @@ Medio. Concurrencia es dificil de debuggear. En Windows, fasteners puede tener e
 
 ---
 
-## Plan ordenado de ejecucion
+## Item 13 — Smoke manual `cortex inject --ide claude-code`
 
-### Si se ejecuta TODA la deuda (12 items):
+### Descripcion
 
-| Dia | Items | Esfuerzo | Justificacion |
-|-----|-------|----------|---------------|
-| **1** | #2, #6, #5 | ~6h | Low-risk wins: tests + cosmetica webgraph. Sin dependencias. |
-| **2** | #7, #8 | ~4h | CLI/MCP wiring. Extraer helper compartido. Sinergia entre los 2. |
-| **3** | #10 | ~5h | Legacy shim cleanup. Commit por consumer (4 commits + 1 git rm). Blast radius medio. |
-| **4** | #1, #4, #3, #9 | ~10h | mypy strict (post-#10 es mas facil), granular invalidation + auto-compaction (sinergia), enterprise review CLI. |
-| Diferido | #11, #12 | ~10h | UI TS y multi-proc, no bloqueantes. |
+Plan 03 (Tripartita Refinada) automatizo el inject de Claude Code via tests parametrizados en `tests/integration/test_cross_ide_smoke.py`. Pero el smoke FINAL contra una instalacion real (no tmp_path) quedo pendiente como `[ ] Pendiente del usuario`.
 
-**Cierre core (10 items, sin #11 y #12):** ~25 horas, 3 dias.
-**Cierre total (12 items):** ~35 horas, 4 dias.
+### Por que importa
 
-### Si se ejecuta solo lo critico (closeable hoy):
+Garantiza que los markers Tripartita Refinada se inyectan correctamente en un workspace de adopter real (path real `~/.config/claude/`, no fixture). Si los tests integration pasan pero un adopter abre Claude Code y no ve `cortex-sync`/`cortex-SDDwork`/`cortex-documenter`, el bug es invisible hasta produccion.
 
-Items obligatorios para certificar "0 deuda tecnica formal" segun `feedback_no_technical_debt`:
-- #1 (mypy strict — gate explicito)
-- #2 (presenter tests — coverage gap explicito)
-- #10 (legacy shim — deuda explicitamente marcada)
-- #9 (review-knowledge — workflow enterprise incompleto)
+### Propuesta de solucion
 
-**Esfuerzo critico:** ~14 horas, 2 dias.
+1. Crear repo limpio:
+   ```bash
+   mkdir /tmp/cortex-smoke-claude-code && cd /tmp/cortex-smoke-claude-code
+   git init
+   pip install -e /path/to/cortex-repo
+   cortex setup full --non-interactive
+   ```
+2. Ejecutar inject:
+   ```bash
+   cortex inject --ide claude-code
+   ```
+3. Verificar markers en los archivos generados:
+   ```bash
+   # Claude Code escribe a .claude/ o ~/.config/claude/ segun convention
+   grep -l "cortex-sync\|cortex-SDDwork\|cortex-documenter\|cortex_validate_handoff\|VERIFICATION GATE\|AgentHandoff" .claude/**/*.md
+   ```
+4. **6+ markers esperados** (segun Plan 03):
+   - `cortex-sync` skill present
+   - `cortex-SDDwork` skill present
+   - `cortex-documenter` subagent present
+   - `AGENT.md` con governance rules
+   - `system-prompt.md` con ecosystem isolation
+   - `cortex_validate_handoff` referenciado en tools
+5. Documentar resultado en `docs/agents/implementacion/03-ide-claude-code.md` (seccion smoke).
+
+### Esfuerzo
+30 minutos.
+
+### Riesgo
+Bajo. Read-only verification. No modifica cortex-repo.
+
+### Dependencias
+- Claude Code CLI instalado (no obligatorio: el inject crea los archivos, los markers se verifican via grep).
+
+### Test plan
+Manual checklist:
+- [ ] `.claude/skills/cortex-sync.md` existe
+- [ ] `.claude/skills/cortex-SDDwork.md` existe
+- [ ] `.claude/subagents/cortex-documenter.md` existe
+- [ ] Los 3 archivos contienen los 6+ markers
+- [ ] No hay errors en stdout/stderr del `cortex inject`
 
 ---
 
-## Gate de salida del plan
+## Item 14 — Smoke manual `cortex inject --ide opencode`
 
-La deuda residual canonical-documentation se considera **cerrada al 100%** cuando:
+### Descripcion
 
-- [ ] mypy strict pasa sobre `cortex/documentation/` (Item #1).
-- [ ] `cortex/context_enricher/presenter.py` >= 90% coverage (Item #2).
-- [ ] `VectorCache` auto-compacta al threshold configurado (Item #3).
-- [ ] Re-indexar 1 chunk de un doc grande no re-embedea los otros 7 (Item #4).
-- [ ] Webgraph muestra aristas typed `supersedes` con color distintivo (Item #5).
-- [ ] Webgraph legend incluye "Episodic Memory" (Item #6).
-- [ ] `cortex search "auth" --doc-type adr` funciona (Item #7).
-- [ ] MCP `cortex_search` acepta filtros estructurales (Item #8).
-- [ ] `cortex review-knowledge pending/approve/reject` operativo (Item #9).
-- [ ] `cortex/documentation/_legacy_shims.py` eliminado, 4 consumers migrados (Item #10).
-- [ ] (Opcional) Dashboard cortex-pi muestra leyenda enriquecida (Item #11).
-- [ ] (Opcional) `VectorCache` soporta multi-proceso (Item #12).
-- [ ] Suite global pasa al 100% (>=1416 tests, baseline post-cirugia).
+Plan 04 (Tripartita Refinada) automatizo el inject de OpenCode via `cortex_profiles` dict + integration tests. Smoke final contra `~/.config/opencode/` real quedo pendiente.
+
+### Por que importa
+
+OpenCode usa un formato distinto a Claude Code (TOML config + bundle de skills/subagents). Verificar que los 7+ markers se inyectan en `~/.config/opencode/cortex/` o equivalente.
+
+### Propuesta de solucion
+
+1. Repo limpio + setup (igual que #13).
+2. Ejecutar:
+   ```bash
+   cortex inject --ide opencode
+   ```
+3. Verificar markers:
+   ```bash
+   # OpenCode usa ~/.config/opencode/ por convention
+   grep -l "cortex-sync\|cortex-SDDwork\|cortex-documenter\|cortex_validate_handoff\|Anti-Rationalization\|AgentHandoff" ~/.config/opencode/cortex/**/*.md
+   ```
+4. **7+ markers esperados** (segun Plan 04):
+   - 5 prompts canonical inyectados
+   - `cortex_validate_handoff` y `cortex_verify_session_claims` en `cortex_profiles` dict
+   - MCP config presente (`opencode.json` o equivalente)
+5. Documentar en `docs/agents/implementacion/04-ide-opencode.md`.
+
+### Esfuerzo
+30 minutos.
+
+### Riesgo
+Bajo.
+
+### Dependencias
+- OpenCode CLI no requerido (verificacion via grep es suficiente).
+
+### Test plan
+Manual checklist:
+- [ ] Los 5 prompts canonical estan presentes
+- [ ] `cortex_profiles` referencia los 2 handoff tools nuevos
+- [ ] Config MCP escrita correctamente
+
+---
+
+## Item 15 — Smoke manual `cortex inject --ide pi`
+
+### Descripcion
+
+Plan 05 (Tripartita Refinada) implemento `PiAdapter.sync_canonical_subagents` + 4 Pi-only agents + `agent-chain.yaml` + `damage-control-rules.yaml`. Smoke final pendiente.
+
+### Por que importa
+
+Pi tiene 9 archivos a inyectar (mas que cualquier otro IDE). El sync_canonical es critico para que los Pi agents queden alineados con la version vigente del canonical.
+
+### Propuesta de solucion
+
+1. Repo limpio + setup (igual que #13).
+2. Ejecutar:
+   ```bash
+   cortex inject --ide pi --sync-canonical
+   ```
+3. Verificar los 9 archivos esperados:
+   ```bash
+   ls cortex-pi/.pi/agents/        # cortex-{sync,SDDwork,documenter,code-explorer,code-implementer,security-auditor,test-verifier}.md
+   ls cortex-pi/.pi/skills/         # cortex-vault/SKILL.md
+   cat cortex-pi/.pi/agent-chain.yaml         # validate_handoff, expected_input_agent
+   cat cortex-pi/.pi/damage-control-rules.yaml
+   ```
+4. **9 markers esperados** (segun Plan 05):
+   - 7 agents en `.pi/agents/`
+   - `cortex-vault/SKILL.md` con CONTEXT.md awareness
+   - `agent-chain.yaml` con declarative keys
+   - `damage-control-rules.yaml` con handoff rules
+5. Verificar que el sync canonico produjo contenido alineado a `.cortex/subagents/` actuales:
+   ```bash
+   diff cortex-pi/.pi/agents/cortex-code-explorer.md .cortex/subagents/cortex-code-explorer.md
+   # Si difiere, verificar que es la diferencia esperada (Pi-specific adaptation)
+   ```
+6. Documentar en `docs/agents/implementacion/05-ide-pi.md`.
+
+### Esfuerzo
+30 minutos.
+
+### Riesgo
+Bajo.
+
+### Dependencias
+- Pi runtime no requerido. El smoke verifica archivos en disco.
+
+### Test plan
+Manual checklist:
+- [ ] 7 agents en `.pi/agents/` con markers Tripartita Refinada
+- [ ] `cortex-vault/SKILL.md` referencia CONTEXT.md
+- [ ] `agent-chain.yaml` declara validate_handoff + expected_input_agent
+- [ ] `damage-control-rules.yaml` tiene reglas de handoff
+- [ ] sync_canonical produjo contenido alineado al canonical actual
+
+---
+
+## Item 16 — Smoke manual `cortex inject --ide codex`
+
+### Descripcion
+
+Plan 06 (Tripartita Refinada) implemento `.codex/AGENTS.md` con 4 reglas Tripartita + nota sobre la falta de native Task tool. Smoke pendiente.
+
+### Por que importa
+
+Codex es el IDE menos rico (no tiene Task tool nativo). Verificar que las 4 reglas Tripartita se inyectan en el AGENTS.md y que la nota sobre delegacion por convencion esta presente.
+
+### Propuesta de solucion
+
+1. Repo limpio + setup (igual que #13).
+2. Ejecutar:
+   ```bash
+   cortex inject --ide codex
+   ```
+3. Verificar markers en `.codex/`:
+   ```bash
+   cat .codex/AGENTS.md
+   ls .codex/skills/    # cortex-sync, cortex-SDDwork
+   ls .codex/agents/    # cortex-documenter, cortex-code-explorer, cortex-code-implementer
+   ```
+4. **6+ markers esperados** (segun Plan 06):
+   - 4 reglas Tripartita Refinada en `AGENTS.md` (handoff validation, YAML output, Verification Gate, anti-rationalization)
+   - Nota sobre delegacion por convencion (Codex no tiene Task tool)
+   - Skills + agents presentes
+5. Documentar en `docs/agents/implementacion/06-ide-codex.md`.
+
+### Esfuerzo
+30 minutos.
+
+### Riesgo
+Bajo.
+
+### Dependencias
+- Codex CLI no requerido.
+
+### Test plan
+Manual checklist:
+- [ ] `.codex/AGENTS.md` contiene las 4 reglas Tripartita Refinada
+- [ ] Nota sobre delegacion por convencion presente
+- [ ] Skills y agents inyectados correctamente
+
+---
+
+## Item 17 — Benchmark overhead handoff validation < 10%
+
+### Descripcion
+
+Plan 07 §4 (Tripartita Refinada) declaro como gate "overhead handoff validation < 10% del tiempo total del ciclo". Quedo pendiente porque "requiere instrumentar tiempo real con un LLM corriendo".
+
+### Por que importa
+
+Si la validacion de handoffs (que corre en cada paso de la cadena de subagentes) agrega mas del 10% al wall time, los adopters perciben Cortex como "lento" y la promesa de gobernanza tecnica se vuelve un trade-off no aceptable.
+
+### Propuesta de solucion
+
+**Automatizable con LLM mock** (no requiere LLM real para medir el overhead del codigo Cortex). El LLM solo se usa para generar el contenido — el overhead a medir es el del **lado Cortex** (parseo YAML, validacion pydantic, dispatch MCP).
+
+1. Crear `scripts/benchmark_handoff_overhead.py`:
+   ```python
+   """Benchmark: handoff validation overhead.
+
+   Mide el overhead del lado Cortex (parseo + validacion + dispatch)
+   en una cadena de 4 subagents (sync -> explorer -> implementer -> documenter).
+
+   Usa un LLM mock con delay fijo para aislar la medicion al lado Cortex.
+   """
+   import time
+   from pathlib import Path
+   from unittest.mock import patch
+
+   from cortex.handoff import AgentHandoff
+   from cortex.mcp.server import CortexMCPServer
+
+   ITERATIONS = 100
+   MOCK_LLM_DELAY = 0.05  # 50ms simula una respuesta LLM rapida
+
+   def _build_sample_handoff(agent: str) -> str:
+       return AgentHandoff(
+           agent=agent,
+           status="complete",
+           verified_claims=["claim 1", "claim 2"],
+           unverified_claims=[],
+           artifacts_produced=[],
+           context_for_next=["next step"],
+           suggested_adr=False,
+           suggested_adr_reason="",
+           suggested_context_terms=[],
+       ).to_yaml()
+
+   def bench_with_validation(server: CortexMCPServer) -> float:
+       start = time.perf_counter()
+       for _ in range(ITERATIONS):
+           for agent in ["cortex-sync", "cortex-code-explorer", "cortex-code-implementer", "cortex-documenter"]:
+               yaml_text = _build_sample_handoff(agent)
+               result = server._validate_handoff_text(yaml_text, expected_agent=agent)
+               time.sleep(MOCK_LLM_DELAY)
+       return time.perf_counter() - start
+
+   def bench_without_validation() -> float:
+       start = time.perf_counter()
+       for _ in range(ITERATIONS):
+           for agent in ["cortex-sync", "cortex-code-explorer", "cortex-code-implementer", "cortex-documenter"]:
+               yaml_text = _build_sample_handoff(agent)
+               # No validation, just pass-through
+               time.sleep(MOCK_LLM_DELAY)
+       return time.perf_counter() - start
+
+   def main():
+       server = CortexMCPServer(project_root=Path.cwd())
+       t_with = bench_with_validation(server)
+       t_without = bench_without_validation()
+       overhead_pct = (t_with - t_without) / t_without * 100
+       print(f"Without validation: {t_without:.3f}s")
+       print(f"With validation:    {t_with:.3f}s")
+       print(f"Overhead:           {overhead_pct:.2f}%")
+       gate = overhead_pct < 10.0
+       print(f"Gate (< 10%):       {'PASS' if gate else 'FAIL'}")
+       return 0 if gate else 1
+
+   if __name__ == "__main__":
+       import sys
+       sys.exit(main())
+   ```
+2. Correr:
+   ```bash
+   python scripts/benchmark_handoff_overhead.py
+   ```
+3. **Target:** overhead < 10%. Si supera, optimizar (cachear validacion, reducir checks heuristicos).
+4. Documentar el resultado en `docs/agents/implementacion/07-tests-y-cierre.md` (cierre del §4).
+
+### Esfuerzo
+2h (escribir script + correr + documentar + optimizar si falla).
+
+### Riesgo
+Bajo (solo medicion, no toca codigo critico). Si falla el gate, abre un mini-sprint de optimizacion (puede subir esfuerzo a 4-6h).
+
+### Dependencias
+- Plan 02 cerrado (los handoff tools deben existir en MCP server). **Ya cumplido.**
+- Plan 07 §1-§3 cerrados (cascada e2e). **Ya cumplido.**
+
+### Test plan
+- Script retorna exit code 0 (overhead < 10%).
+- Output reportado en `docs/agents/implementacion/07-tests-y-cierre.md`.
+- Si falla, abrir item nuevo "optimizar handoff validation" en deuda residual.
+
+---
+
+## Plan ordenado de ejecucion
+
+### Tier 1 — Cierre formal manana (~12h)
+
+Orden estricto. Cada item se commitea por separado para reducir blast radius.
+
+| Slot | Item | Esfuerzo | Por que en este orden |
+|------|------|----------|------------------------|
+| **AM-1** | #10 Migrar 4 consumers + git rm `_legacy_shims.py` | 4-5h | Mayor blast radius (3 services + tests). Hacer primero con energia fresca. Desbloquea #1. |
+| **AM-2** | #1 mypy strict | 2-3h | Sin `_legacy_shims.py` la tipificacion es trivial. Encontrar y arreglar errores residuales. |
+| **PM-1** | #9 `cortex review-knowledge` subcomandos | 4h | Cierra el workflow enterprise de Fase 10. CLI nuevo, contained scope. |
+| **PM-2** | #2 Tests presenter.py legacy paths | 2h | Cierre del dia. Bajo riesgo, mejora coverage al cierre. |
+
+**Gate de Tier 1 (mandatory):** Suite global `pytest -q` debe seguir en >=1416 tests passing al final del dia. `cortex doctor` sin errores. `cortex docs validate --all` reporta Invalid: 0.
+
+### Tier 2 — UX para adopters (semana proxima, ~9h)
+
+Orden recomendado:
+
+| Slot | Item | Esfuerzo |
+|------|------|----------|
+| 1 | #7 CLI `cortex search` flags | 2h |
+| 2 | #8 MCP `cortex_search` args (reusa helper de #7) | 2h |
+| 3 | #5 Aristas `supersedes` webgraph | 3h |
+| 4 | #13-#16 smoke manuals 4 IDEs (colaborativo) | 2h |
+
+### Tier 3 — Defer-friendly (sprints dedicados o pre-0.6.x)
+
+Sin orden estricto. Pueden hacerse independientemente. Recomendacion:
+- **#4 antes que #3** (granular invalidation provee mejores datos a auto-compaction).
+- **#6 independiente** (1h cosmetica).
+- **#17 benchmark** post-Tier 2 (necesita los handoff tools funcionando).
+- **#11 UI Pi** depende de #5 + #6 ready (necesita las aristas y el legend episodic).
+- **#12 multi-proc** explicitamente fuera de scope MVP, evaluar en 0.6.x.
+
+---
+
+## Gate de salida del plan (por tier)
+
+### Cert "0 deuda formal" — Tier 1 (cierre proximo)
+
+- [ ] **Item #10**: `cortex/documentation/_legacy_shims.py` eliminado, 4 consumers (`session_service`, `spec_service`, `pr_service`, `workitems/service`) migrados a la API canonica con dataclasses.
+- [ ] **Item #1**: `mypy cortex/documentation/` con `strict = true` retorna 0 errors.
+- [ ] **Item #9**: `cortex review-knowledge pending/approve/reject` operativo + tests passing.
+- [ ] **Item #2**: `cortex/context_enricher/presenter.py` coverage >= 90%.
+- [ ] Suite global pasa al 100% (>=1416 tests post-cirugia + ~25 nuevos = ~1441).
 - [ ] `cortex docs validate --all` reporta `Invalid: 0` (ya cumplido).
 - [ ] `cortex doctor` sin errores (ya cumplido).
+- [ ] Commit por item con mensaje claro + reference al plan.
+
+**Tras Tier 1, la regla `feedback_no_technical_debt` se cumple al 100% para canonical-documentation + Tripartita Refinada.**
+
+### Cert UX adopters — Tier 2
+
+- [ ] **Item #7**: `cortex search "auth" --doc-type adr --scope local` funciona end-to-end.
+- [ ] **Item #8**: MCP tool `cortex_search` acepta los filtros estructurales completos.
+- [ ] **Item #5**: Webgraph muestra aristas tipadas `supersedes` con color distintivo + legend.
+- [ ] **Items #13-#16**: smoke manual de los 4 IDEs verificado en repo limpio (claude-code, opencode, pi, codex). Markers presentes.
+
+### Cert performance/cosmetica — Tier 3
+
+- [ ] **Item #4**: re-indexar 1 chunk no re-embedea los otros 7 (medido via embedder mock count).
+- [ ] **Item #3**: `VectorCache` auto-compacta al threshold configurado (default 30%).
+- [ ] **Item #6**: Webgraph legend incluye "Episodic Memory" con color distintivo.
+- [ ] **Item #17**: Benchmark de handoff validation overhead < 10% (medido con LLM mock).
+- [ ] **Item #11** (opcional): Dashboard cortex-pi muestra leyenda enriquecida en TS.
+- [ ] **Item #12** (opcional): `VectorCache` soporta multi-proceso con file locking.
 
 ---
 
