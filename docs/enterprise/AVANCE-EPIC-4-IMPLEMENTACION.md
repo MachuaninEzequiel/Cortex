@@ -59,7 +59,7 @@
 ## Checklist EPIC 4
 
 - [x] Rama de desarrollo creada
-- [ ] Mapeo de perfiles de enforcement (E4-S1)
+- [x] Mapeo de perfiles de enforcement (E4-S1) — implementado en `cortex/enterprise/governance.py`; nota: cobertura completa de paths en hardening 1-sprint diferido
 - [x] Extensión de `doctor` con checks enterprise (E4-S2)
 - [x] Creación de workflows enterprise (E4-S3)
 - [x] Implementación de reportes de estado CI (E4-S4)

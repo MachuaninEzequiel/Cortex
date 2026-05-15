@@ -131,14 +131,14 @@ La meta-skill debe ser menor a 1500 palabras en la primera version.
 
 ### Checklist
 
-- [ ] `using-cortex-autopilot` se instala solo si Autopilot esta habilitado.
-- [ ] El setup normal sin Autopilot queda igual.
-- [ ] `build_all_prompts()` no carga Autopilot por defecto.
-- [ ] Hay una funcion separada `build_autopilot_prompts()`.
-- [ ] La meta-skill incluye la tabla anti-racionalizacion (§10.4).
-- [ ] La meta-skill incluye la regla de verificacion (§10.5).
-- [ ] La meta-skill incluye la prioridad de instrucciones (§10.6).
-- [ ] La meta-skill no supera 1500 palabras.
+- [x] `using-cortex-autopilot` se instala solo si Autopilot esta habilitado.
+- [x] El setup normal sin Autopilot queda igual.
+- [x] `build_all_prompts()` no carga Autopilot por defecto.
+- [x] Hay una funcion separada `build_autopilot_prompts()`.
+- [x] La meta-skill incluye la tabla anti-racionalizacion (§10.4).
+- [x] La meta-skill incluye la regla de verificacion (§10.5).
+- [x] La meta-skill incluye la prioridad de instrucciones (§10.6).
+- [x] La meta-skill no supera 1500 palabras.
 
 ### Gate de salida
 

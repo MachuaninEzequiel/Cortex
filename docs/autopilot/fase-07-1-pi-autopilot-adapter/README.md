@@ -830,18 +830,18 @@ No es obligatorio ejecutar e2e en esta fase salvo que el entorno Pi este disponi
 
 La fase esta completa solo si:
 
-- [ ] Existe `cortex/autopilot/adapters/pi.py`.
-- [ ] Existe template `cortex/autopilot/pi/extensions/cortex-autopilot.ts`.
-- [ ] Existe template `cortex/autopilot/pi/skills/using-cortex-autopilot/SKILL.md`.
-- [ ] `registry.py` registra `"pi"`.
-- [ ] `platform_detect.py` reconoce Pi por env vars.
-- [ ] `install()` crea/copiar extension y skill.
-- [ ] `install()` mergea `.pi/settings.json` sin pisar configuracion existente.
-- [ ] `install()` es idempotente.
-- [ ] `uninstall()` remueve solo archivos/entries Autopilot.
-- [ ] Tests unitarios de Pi pasan.
-- [ ] Tests unitarios Autopilot pasan.
-- [ ] `REALIZACION.md` documenta implementacion, decisiones, tests y riesgos.
+- [x] Existe `cortex/autopilot/adapters/pi.py`.
+- [x] Existe template `cortex/autopilot/pi/extensions/cortex-autopilot.ts`.
+- [x] Existe template `cortex/autopilot/pi/skills/using-cortex-autopilot/SKILL.md`.
+- [x] `registry.py` registra `"pi"`.
+- [x] `platform_detect.py` reconoce Pi por env vars.
+- [x] `install()` crea/copiar extension y skill.
+- [x] `install()` mergea `.pi/settings.json` sin pisar configuracion existente.
+- [x] `install()` es idempotente.
+- [x] `uninstall()` remueve solo archivos/entries Autopilot.
+- [x] Tests unitarios de Pi pasan.
+- [x] Tests unitarios Autopilot pasan.
+- [x] `REALIZACION.md` documenta implementacion, decisiones, tests y riesgos.
 
 ---
 

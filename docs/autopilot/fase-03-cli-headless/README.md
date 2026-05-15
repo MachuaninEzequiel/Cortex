@@ -68,11 +68,11 @@ cortex autopilot doctor
 
 ### Checklist
 
-- [ ] Todos aceptan `--project-root`.
-- [ ] Todos aceptan `--json` si son consumidos por hooks.
-- [ ] `start --json` devuelve `session_id`.
-- [ ] `finish --auto --json` devuelve path o razon de no-op.
-- [ ] `doctor` no modifica archivos.
+- [x] Todos aceptan `--project-root`.
+- [x] Todos aceptan `--json` si son consumidos por hooks.
+- [x] `start --json` devuelve `session_id`.
+- [x] `finish --auto --json` devuelve path o razon de no-op.
+- [x] `doctor` no modifica archivos.
 
 ### Gate de salida
 

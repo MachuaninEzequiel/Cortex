@@ -75,11 +75,11 @@ Alternativa: **0.4.x con feature flags**. Si la urgencia es alta y no queremos e
 
 Antes de tocar nada de Tripartita Refinada:
 
-- [ ] Confirmar que Olas 0-4 están **cerradas al 100%** y suite global verde.
-- [ ] Confirmar feedback de los dos primeros adopters recopilado (si existe) — sus quejas reales sobre el documenter mandan más que la propuesta original.
-- [ ] Confirmar versión target con el usuario (0.5.0 vs 0.4.x feature flag).
-- [ ] Crear branch `feature/ola-5-tripartita-refinada` y trabajar ahí.
-- [ ] Releer `docs/review/cortex-save-state.md` para el mapa mental del repo.
+- [x] Confirmar que Olas 0-4 están **cerradas al 100%** y suite global verde.
+- [x] Confirmar feedback de los dos primeros adopters recopilado (si existe) — sus quejas reales sobre el documenter mandan más que la propuesta original.
+- [x] Confirmar versión target con el usuario (0.5.0 vs 0.4.x feature flag).
+- [x] Crear branch `feature/ola-5-tripartita-refinada` y trabajar ahí.
+- [x] Releer `docs/review/cortex-save-state.md` para el mapa mental del repo.
 
 ## Continuación post-cierre
 

@@ -125,14 +125,14 @@ No copiar:
 
 ### Checklist
 
-- [ ] Cada adapter declara eventos soportados.
-- [ ] Instalacion crea backup antes de modificar config.
-- [ ] Uninstall remueve solo bloques Autopilot.
-- [ ] Windows funciona con wrapper `.cmd` (sin dependencia de bash).
-- [ ] Si falta Python en PATH, falla con error claro.
-- [ ] Hook session-start emite JSON segun contrato 7.4.1.
-- [ ] `platform_detect.py` tiene tests para cada variable de entorno.
-- [ ] Hook session-start incluye contenido de `using-cortex-autopilot.md`.
+- [x] Cada adapter declara eventos soportados.
+- [x] Instalacion crea backup antes de modificar config.
+- [x] Uninstall remueve solo bloques Autopilot.
+- [x] Windows funciona con wrapper `.cmd` (sin dependencia de bash).
+- [x] Si falta Python en PATH, falla con error claro.
+- [x] Hook session-start emite JSON segun contrato 7.4.1.
+- [x] `platform_detect.py` tiene tests para cada variable de entorno.
+- [x] Hook session-start incluye contenido de `using-cortex-autopilot.md`.
 
 ### Gate de salida
 

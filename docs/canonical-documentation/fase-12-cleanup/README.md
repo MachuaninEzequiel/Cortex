@@ -254,14 +254,14 @@ def test_memory_report_has_telemetry(cortex_vault_after_sessions):
 
 ## 5. Checklist
 
-- [ ] Carpetas muertas eliminadas en `orchestrator.py`
-- [ ] Setup crea 12 carpetas canonicas con seed notes
-- [ ] Version legacy del documenter eliminada
-- [ ] Documenter canonico actualizado con tabla de routing
-- [ ] Decision sobre shims (Opcion A o B) tomada
-- [ ] Gate global ejecutado y verificado
-- [ ] `REALIZACION.md` global creado
-- [ ] `REALIZACION.md` en cada subcarpeta de fase
+- [x] Carpetas muertas eliminadas en `orchestrator.py`
+- [x] Setup crea 12 carpetas canonicas con seed notes
+- [ ] Version legacy del documenter eliminada (`cortex/documentation.py` huerfano pendiente de `git rm`; tracked en `../fase-13-backlog-consolidado/PLAN-DEUDA-RESIDUAL.md`)
+- [x] Documenter canonico actualizado con tabla de routing
+- [x] Decision sobre shims (Opcion A o B) tomada (mantener + migrar consumers; Item #10 en deuda residual)
+- [x] Gate global ejecutado y verificado
+- [x] `REALIZACION.md` global creado
+- [x] `REALIZACION.md` en cada subcarpeta de fase
 
 ---
 
@@ -269,14 +269,14 @@ def test_memory_report_has_telemetry(cortex_vault_after_sessions):
 
 Gate global del README.md seccion 13:
 
-- [ ] `pytest` pasa al 100%
-- [ ] `cortex docs validate --all` reporta 0 drift
-- [ ] `cortex memory-report` muestra `cortex_telemetry` en >= 5 sessions
-- [ ] Carpetas muertas eliminadas
-- [ ] Webgraph coloreado por doc_type
-- [ ] Setup enterprise exige campos
-- [ ] `REALIZACION.md` en cada fase
-- [ ] Legacy documenter eliminado
+- [x] `pytest` pasa al 100% (1416 passed, 6 skipped post-cirugia 2026-05-14)
+- [x] `cortex docs validate --all` reporta 0 drift (verificado 2026-05-14)
+- [x] `cortex memory-report` muestra `cortex_telemetry` en >= 5 sessions
+- [x] Carpetas muertas eliminadas
+- [x] Webgraph coloreado por doc_type
+- [x] Setup enterprise exige campos (governance.py implementado)
+- [x] `REALIZACION.md` en cada fase
+- [ ] Legacy documenter eliminado (`cortex/documentation.py` pendiente; ver deuda residual)
 
 Si TODOS los items pasan, la iniciativa esta cerrada.
 

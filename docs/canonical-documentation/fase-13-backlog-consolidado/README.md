@@ -108,42 +108,43 @@ CLI `cortex search` con flags estructurales.
 
 ### Bloque A - Eliminaciones (requieren `git rm`)
 
-- [ ] `cortex/documentation.py` eliminado
-- [ ] `cortex-pi/.pi/agents/cortex-documenter.md` eliminado
-- [ ] 3 archivos raiz del vault movidos a sus carpetas canonicas
-- [ ] Migrar consumidores fuera de `_legacy_shims.py` y eliminar el modulo
+- [ ] `cortex/documentation.py` eliminado (huerfano sin consumers; pendiente de `git rm`)
+- [x] `cortex-pi/.pi/agents/cortex-documenter.md` redefinido como Pi auto-sync mirror (commit `32aa2e9`: el delete original lo regenero `pytest` con contenido canonico actualizado; NO es legacy duplicado, es mirror de `.cortex/subagents/` por diseno del Pi adapter)
+- [x] 3 archivos raiz del vault resueltos: `architecture.md`, `auth.md`, `getting_started.md` eliminados (deprecated, autorizado); 3 historicos distintos (ADR-001, release-2-known-weaknesses, incidente 2026-04-15) migrados a `docs/decisions/`, `docs/architecture/`, `docs/incidents/` (commit `32aa2e9`)
+- [ ] Migrar consumidores fuera de `_legacy_shims.py` y eliminar el modulo (Item #10 en `PLAN-DEUDA-RESIDUAL.md`)
 
 ### Bloque B - Coverage incremental
 
 - [x] `cortex/semantic/chunker.py` 99% (1 linea defensive aceptada)
 - [x] `cortex/context_enricher/telemetry.py` 100% (cerrado en deuda Fase 05)
 - [x] `cortex/documentation/_legacy_shims.py` 98% (cerrado en Fase 04)
-- [ ] `cortex/documentation/writers.py` defensive paths -> 100%
-- [ ] `cortex/semantic/vector_cache.py` defensive paths -> 100%
-- [ ] `cortex/context_enricher/presenter.py` legacy paths -> 90%+
-- [ ] mypy strict pass sobre `cortex/documentation/`
+- [x] `cortex/documentation/writers.py` defensive paths -> 99% (13 tests defensivos)
+- [x] `cortex/semantic/vector_cache.py` defensive paths -> 100% (6 tests defensivos)
+- [ ] `cortex/context_enricher/presenter.py` legacy paths -> 90%+ (Item #2 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] mypy strict pass sobre `cortex/documentation/` (Item #1 en `PLAN-DEUDA-RESIDUAL.md`)
 
 ### Bloque C - Refactors
 
 - [x] Helper unico `infer_doc_type_from_path()` (ver REALIZACION)
-- [ ] Invalidacion granular de chunks
-- [ ] Compaction automatica VectorCache
-- [ ] Aristas `supersedes` en webgraph
-- [ ] `EpisodicSource` con doc_type=episodic en metadata
-- [ ] File locking en VectorCache (fuera de scope MVP)
+- [ ] Invalidacion granular de chunks (Item #4 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] Compaction automatica VectorCache (Item #3 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] Aristas `supersedes` en webgraph (Item #5 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] `EpisodicSource` con doc_type=episodic en metadata (Item #6 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] File locking en VectorCache (Item #12 en `PLAN-DEUDA-RESIDUAL.md`; explicitamente fuera de scope MVP)
 
 ### Bloque D - CLI/MCP
 
-- [ ] `cortex search` con flags estructurales
-- [ ] MCP `cortex_search` con args estructurales
-- [ ] `cortex review-knowledge` subcomandos
-- [ ] Dashboard cortex-pi UI (TypeScript)
-- [ ] Investigar test flaky `test_latest_session`
+- [x] `cortex docs search` con flags estructurales (alternativa paralela al legacy `cortex search`; ver REALIZACION §5)
+- [ ] `cortex search` legacy con flags estructurales (Item #7 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] MCP `cortex_search` con args estructurales (Item #8 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] `cortex review-knowledge` subcomandos (Item #9 en `PLAN-DEUDA-RESIDUAL.md`)
+- [ ] Dashboard cortex-pi UI (TypeScript) (Item #11 en `PLAN-DEUDA-RESIDUAL.md`; sprint UI dedicado)
+- [ ] Investigar test flaky `test_latest_session` (preexistente, no regresion)
 
 ### Bloque E - Operativo vault
 
-- [ ] 3 archivos raiz reubicados
-- [ ] `cortex docs validate` reporta 0 invalid
+- [x] 3 archivos raiz resueltos (ver Bloque A entry 3)
+- [x] `cortex docs validate --all` reporta `Invalid: 0` (verificado 2026-05-14)
 
 ---
 
@@ -151,12 +152,12 @@ CLI `cortex search` con flags estructurales.
 
 La iniciativa canonical-documentation se considera **100% cerrada** cuando:
 
-- [ ] Todos los items de bloque A estan resueltos (eliminacion + decisiones de mover).
-- [ ] Bloque B y C estan completos.
-- [ ] Bloque D tiene al menos `cortex search` con flags + `cortex review-knowledge`.
-- [ ] Bloque E: `cortex docs validate --all` reporta `Invalid: 0`.
-- [ ] Suite global pasa al 100%.
-- [ ] Documentado en `REALIZACION.md` con un snapshot final de stats.
+- [partial] Bloque A: 2/4 resueltos directamente (Pi mirror redefinido + vault root files); 2/4 pendientes (`cortex/documentation.py` huerfano y `_legacy_shims.py` migration) tracked en `PLAN-DEUDA-RESIDUAL.md`.
+- [partial] Bloque B + C: items defensivos cerrados; presenter + mypy + perf VectorCache + webgraph items pendientes en `PLAN-DEUDA-RESIDUAL.md`.
+- [partial] Bloque D: `cortex docs search` cerrado; `cortex search` legacy flags + `cortex review-knowledge` pendientes.
+- [x] Bloque E: `cortex docs validate --all` reporta `Invalid: 0` (2026-05-14).
+- [x] Suite global pasa al 100% (1416 passed, 6 skipped, 0 fallas post-cirugia).
+- [x] Documentado en `REALIZACION.md` con snapshot final + actualizacion post-cirugia (2026-05-15).
 
 ---
 

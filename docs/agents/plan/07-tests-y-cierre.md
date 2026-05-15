@@ -158,16 +158,16 @@ echo "ola-5: $((END-START))s"
 
 ## §5 — Documentación al cierre
 
-- [ ] Actualizar `docs/review/cortex-save-state.md`:
+- [x] Actualizar `docs/review/cortex-save-state.md`:
   - §5 (mapa módulo por módulo): agregar `cortex/handoff.py`.
   - §6.4 (MCP/IDE flow): mencionar `cortex_validate_handoff`.
   - §7 (modelos de datos): agregar `AgentHandoff` y `ArtifactProduced`.
   - §11 (riesgos): cerrar el ítem de cortex-pi drift si Plan 05 lo resolvió.
-- [ ] Crear `docs/olas/ola-5-tripartita-refinada.md` con el resumen de cierre (siguiendo el patrón de Olas 0-4).
-- [ ] `CHANGELOG.md` sección `[0.5.0]` con detalle.
-- [ ] Bump version a `0.5.0` en `pyproject.toml` + `cortex/__init__.py`.
-- [ ] Actualizar `docs/guides/ide-{claude-code,opencode,pi,codex}.md` con sección "Tripartita refinada (0.5.0)".
-- [ ] Actualizar `docs/guides/getting-started-adopters.md` mencionando los nuevos tools y el Verification Gate.
+- [x] Crear `docs/olas/tripartita-refinada.md` con el resumen de cierre (siguiendo el patrón de Olas 0-4).
+- [x] `CHANGELOG.md` sección `[0.5.0]` con detalle.
+- [x] Bump version a `0.5.0` en `pyproject.toml` + `cortex/__init__.py`.
+- [x] Actualizar `docs/guides/ide-{claude-code,opencode,pi,codex}.md` con sección "Tripartita refinada (0.5.0)".
+- [x] Actualizar `docs/guides/getting-started-adopters.md` mencionando los nuevos tools y el Verification Gate.
 
 ## §6 — Cleanup: items del roadmap 0.5.x que se cierran con Tripartita Refinada
 

@@ -75,11 +75,11 @@ Cualquier resultado de delegacion debe pasar por el protocolo two-stage review d
 
 ### Checklist
 
-- [ ] La skill y el MCP dicen lo mismo.
-- [ ] Si no hay runtime de subagente, Autopilot degrada a Fast Track o pide confirmacion.
-- [ ] Deep Track registra motivo y costo.
-- [ ] `DelegationResult` incluye diff, archivos, y resultado de tests.
-- [ ] Resultados rechazados quedan registrados en el event log con motivo.
+- [x] La skill y el MCP dicen lo mismo.
+- [x] Si no hay runtime de subagente, Autopilot degrada a Fast Track o pide confirmacion.
+- [x] Deep Track registra motivo y costo.
+- [x] `DelegationResult` incluye diff, archivos, y resultado de tests.
+- [x] Resultados rechazados quedan registrados en el event log con motivo.
 
 ### Gate de salida
 

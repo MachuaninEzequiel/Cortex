@@ -195,10 +195,10 @@ flowchart TD
 
 ## 11. Checklist Final de Cierre
 
-- [ ] Comando enterprise estable y documentado.
-- [ ] Modo interactivo validado.
-- [ ] Modo no interactivo con presets validado.
-- [ ] Dry-run + JSON summary validados.
-- [ ] Smoke tests de presets e interactivo en verde.
-- [ ] Compatibilidad con setup actual preservada.
-- [ ] Documentación de operación enterprise actualizada.
+- [x] Comando enterprise estable y documentado.
+- [x] Modo interactivo validado.
+- [x] Modo no interactivo con presets validado.
+- [x] Dry-run + JSON summary validados.
+- [x] Smoke tests de presets e interactivo en verde.
+- [x] Compatibilidad con setup actual preservada.
+- [x] Documentación de operación enterprise actualizada.

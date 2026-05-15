@@ -770,22 +770,22 @@ Si hubiera que arrancar ya, este es el primer corte de implementacion recomendad
 - [x] Implementar modelos y validacion
 - [x] Integrar carga basica a CLI
 - [x] Extender `doctor` con awareness enterprise
-- [ ] Diseñar scopes de retrieval
-- [ ] Crear esqueleto de `retrieval_service.py`
+- [x] Diseñar scopes de retrieval (EPIC 2 cerrado)
+- [x] Crear esqueleto de `retrieval_service.py` (EPIC 2)
 
 ### Segundo corte
 
-- [ ] Implementar multi-vault semantic retrieval
-- [ ] Implementar multi-source episodic retrieval
-- [ ] Exponer `cortex search --scope`
-- [ ] Agregar tests iniciales de retrieval enterprise
+- [x] Implementar multi-vault semantic retrieval (EPIC 2)
+- [x] Implementar multi-source episodic retrieval (EPIC 2)
+- [x] Exponer `cortex search --scope` (EPIC 2)
+- [x] Agregar tests iniciales de retrieval enterprise (EPIC 2)
 
 ### Tercer corte
 
-- [ ] Diseñar promotion model
-- [ ] Implementar `promote-knowledge --dry-run`
-- [ ] Generar reporte de promotion candidates
-- [ ] Diseñar enforcement profiles CI
+- [x] Diseñar promotion model (EPIC 3)
+- [x] Implementar `promote-knowledge --dry-run` (EPIC 3)
+- [x] Generar reporte de promotion candidates (EPIC 3)
+- [x] Diseñar enforcement profiles CI (EPIC 4)
 
 ---
 

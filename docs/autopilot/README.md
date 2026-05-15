@@ -1026,11 +1026,11 @@ cortex/ide/adapters/*
 
 ### Checklist
 
-- [ ] Documentar `AutopilotSessionState`.
-- [ ] Documentar `AutopilotEvent`.
-- [ ] Documentar modos `observe`, `assist`, `autopilot`.
-- [ ] Documentar extension points.
-- [ ] Documentar no objetivos.
+- [x] Documentar `AutopilotSessionState`.
+- [x] Documentar `AutopilotEvent`.
+- [x] Documentar modos `observe`, `assist`, `autopilot`.
+- [x] Documentar extension points.
+- [x] Documentar no objetivos.
 
 ### Gate de salida
 
@@ -1089,11 +1089,11 @@ tests/unit/autopilot/test_state_store.py
 
 ### Checklist
 
-- [ ] `AutopilotSessionState` serializa y deserializa.
-- [ ] `StateStore.create_session()` genera un id estable.
-- [ ] `StateStore.append_event()` escribe JSONL.
-- [ ] `StateStore.load()` falla con error claro si no existe.
-- [ ] Tests unitarios cubren new layout y legacy layout.
+- [x] `AutopilotSessionState` serializa y deserializa.
+- [x] `StateStore.create_session()` genera un id estable.
+- [x] `StateStore.append_event()` escribe JSONL.
+- [x] `StateStore.load()` falla con error claro si no existe.
+- [x] Tests unitarios cubren new layout y legacy layout.
 
 ### Gate de salida
 
@@ -1144,11 +1144,11 @@ class AutopilotService:
 
 ### Checklist
 
-- [ ] `start()` no carga ONNX.
-- [ ] `preflight()` puede operar sin user_request y dejar warning.
-- [ ] `checkpoint()` agrega archivos, comandos, tools y resumen.
-- [ ] `finish(auto=True)` genera draft si falta documentacion.
-- [ ] Policies pueden bloquear o degradar modo.
+- [x] `start()` no carga ONNX.
+- [x] `preflight()` puede operar sin user_request y dejar warning.
+- [x] `checkpoint()` agrega archivos, comandos, tools y resumen.
+- [x] `finish(auto=True)` genera draft si falta documentacion.
+- [x] Policies pueden bloquear o degradar modo.
 
 ### Gate de salida
 
@@ -1195,11 +1195,11 @@ cortex autopilot doctor
 
 ### Checklist
 
-- [ ] Todos aceptan `--project-root`.
-- [ ] Todos aceptan `--json` si son consumidos por hooks.
-- [ ] `start --json` devuelve `session_id`.
-- [ ] `finish --auto --json` devuelve path o razon de no-op.
-- [ ] `doctor` no modifica archivos.
+- [x] Todos aceptan `--project-root`.
+- [x] Todos aceptan `--json` si son consumidos por hooks.
+- [x] `start --json` devuelve `session_id`.
+- [x] `finish --auto --json` devuelve path o razon de no-op.
+- [x] `doctor` no modifica archivos.
 
 ### Gate de salida
 
@@ -1238,11 +1238,11 @@ Usar `AgentMemory.save_session_note()` o `SessionService` por la fachada.
 
 ### Checklist
 
-- [ ] Render minimo con titulo, resumen, archivos y eventos.
-- [ ] Render implementacion con cambios y decisiones.
-- [ ] Render docs-only para tareas de documentacion.
-- [ ] `finish()` marca estado `documented`.
-- [ ] `finish()` no duplica session notes si ya existe `session_note_path`.
+- [x] Render minimo con titulo, resumen, archivos y eventos.
+- [x] Render implementacion con cambios y decisiones.
+- [x] Render docs-only para tareas de documentacion.
+- [x] `finish()` marca estado `documented`.
+- [x] `finish()` no duplica session notes si ya existe `session_note_path`.
 
 ### Gate de salida
 
@@ -1288,10 +1288,10 @@ cortex_autopilot_status
 
 ### Checklist
 
-- [ ] Tools aparecen en `list_tools`.
-- [ ] Tools devuelven texto compacto y JSON si conviene.
-- [ ] Errores se registran como eventos.
-- [ ] `cortex_save_session` puede marcar estado si recibe `session_id`.
+- [x] Tools aparecen en `list_tools`.
+- [x] Tools devuelven texto compacto y JSON si conviene.
+- [x] Errores se registran como eventos.
+- [x] `cortex_save_session` puede marcar estado si recibe `session_id`.
 
 ### Gate de salida
 
@@ -1327,10 +1327,10 @@ No cambiar las skills actuales en esta fase salvo referencia opcional.
 
 ### Checklist
 
-- [ ] `using-cortex-autopilot` se instala solo si Autopilot esta habilitado.
-- [ ] El setup normal sin Autopilot queda igual.
-- [ ] `build_all_prompts()` no carga Autopilot por defecto.
-- [ ] Hay una funcion separada `build_autopilot_prompts()`.
+- [x] `using-cortex-autopilot` se instala solo si Autopilot esta habilitado.
+- [x] El setup normal sin Autopilot queda igual.
+- [x] `build_all_prompts()` no carga Autopilot por defecto.
+- [x] Hay una funcion separada `build_autopilot_prompts()`.
 
 ### Gate de salida
 
@@ -1433,14 +1433,14 @@ No copiar:
 
 ### Checklist
 
-- [ ] Cada adapter declara eventos soportados.
-- [ ] Instalacion crea backup antes de modificar config.
-- [ ] Uninstall remueve solo bloques Autopilot.
-- [ ] Windows funciona con wrapper `.cmd` (sin dependencia de bash).
-- [ ] Si falta Python en PATH, falla con error claro.
-- [ ] Hook session-start emite JSON segun contrato 7.4.1.
-- [ ] `platform_detect.py` tiene tests para cada variable de entorno.
-- [ ] Hook session-start incluye contenido de `using-cortex-autopilot.md`.
+- [x] Cada adapter declara eventos soportados.
+- [x] Instalacion crea backup antes de modificar config.
+- [x] Uninstall remueve solo bloques Autopilot.
+- [x] Windows funciona con wrapper `.cmd` (sin dependencia de bash).
+- [x] Si falta Python en PATH, falla con error claro.
+- [x] Hook session-start emite JSON segun contrato 7.4.1.
+- [x] `platform_detect.py` tiene tests para cada variable de entorno.
+- [x] Hook session-start incluye contenido de `using-cortex-autopilot.md`.
 
 ### Gate de salida
 
@@ -1484,11 +1484,11 @@ finish_only
 
 ### Checklist
 
-- [ ] `question_only` no llama embeddings.
-- [ ] `fast_code` limita `max_chars`.
-- [ ] `deep_code` requiere motivo de complejidad.
-- [ ] `finish_only` no hace retrieval pesado.
-- [ ] Estado guarda budget snapshot.
+- [x] `question_only` no llama embeddings.
+- [x] `fast_code` limita `max_chars`.
+- [x] `deep_code` requiere motivo de complejidad.
+- [x] `finish_only` no hace retrieval pesado.
+- [x] Estado guarda budget snapshot.
 
 ### Gate de salida
 
@@ -1541,11 +1541,11 @@ Cualquier resultado de delegacion debe pasar por el protocolo two-stage review d
 
 ### Checklist
 
-- [ ] La skill y el MCP dicen lo mismo.
-- [ ] Si no hay runtime de subagente, Autopilot degrada a Fast Track o pide confirmacion.
-- [ ] Deep Track registra motivo y costo.
-- [ ] `DelegationResult` incluye diff, archivos, y resultado de tests.
-- [ ] Resultados rechazados quedan registrados en el event log con motivo.
+- [x] La skill y el MCP dicen lo mismo.
+- [x] Si no hay runtime de subagente, Autopilot degrada a Fast Track o pide confirmacion.
+- [x] Deep Track registra motivo y costo.
+- [x] `DelegationResult` incluye diff, archivos, y resultado de tests.
+- [x] Resultados rechazados quedan registrados en el event log con motivo.
 
 ### Gate de salida
 
@@ -1727,12 +1727,12 @@ El plugin debe instalar Autopilot, no reemplazar Cortex base.
 
 ### Checklist
 
-- [ ] Manifest incluye metadata clara.
-- [ ] Skills apuntan a carpeta Autopilot.
-- [ ] Hooks usan wrapper Python cross-platform.
-- [ ] Documentar install/uninstall.
-- [ ] Versionar compatibilidad por harness.
-- [ ] Formato compatible con ecosistema Superpowers.
+- [x] Manifest incluye metadata clara.
+- [x] Skills apuntan a carpeta Autopilot.
+- [x] Hooks usan wrapper Python cross-platform.
+- [x] Documentar install/uninstall.
+- [x] Versionar compatibilidad por harness.
+- [x] Formato compatible con ecosistema Superpowers.
 
 ### Gate de salida
 
@@ -1835,17 +1835,17 @@ Resultado:
 
 Autopilot se considera listo para piloto cuando:
 
-- [ ] Existe modulo `cortex.autopilot`.
-- [ ] Existe subcomando `cortex autopilot`.
-- [ ] Estado persistente funciona.
-- [ ] Cierre automatico genera session note segura.
-- [ ] MCP expone tools Autopilot.
-- [ ] Meta-skill se instala opcionalmente.
-- [ ] Al menos un adapter instala hooks.
-- [ ] `doctor` diagnostica instalacion.
-- [ ] Evals cubren pregunta simple, cambio simple y cierre automatico.
-- [ ] Documentacion explica enable, disable, install y uninstall.
-- [ ] El flujo manual anterior sigue funcionando igual.
+- [x] Existe modulo `cortex.autopilot`.
+- [x] Existe subcomando `cortex autopilot`.
+- [x] Estado persistente funciona.
+- [x] Cierre automatico genera session note segura.
+- [x] MCP expone tools Autopilot.
+- [x] Meta-skill se instala opcionalmente.
+- [x] Al menos un adapter instala hooks.
+- [x] `doctor` diagnostica instalacion.
+- [x] Evals cubren pregunta simple, cambio simple y cierre automatico.
+- [x] Documentacion explica enable, disable, install y uninstall.
+- [x] El flujo manual anterior sigue funcionando igual.
 
 ---
 

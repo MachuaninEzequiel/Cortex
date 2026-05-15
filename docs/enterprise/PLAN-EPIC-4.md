@@ -51,15 +51,15 @@ Habilitar una gobernanza enterprise ejecutable desde CI, con tres perfiles:
 
 ## 4. Definition of Done (DoD) — EPIC 4
 
-- [ ] Existe al menos un workflow enterprise oficial (ej. `ci-enterprise-governance.yml`) que corre checks de:
+- [x] Existe al menos un workflow enterprise oficial (ej. `ci-enterprise-governance.yml`) que corre checks de:
   - salud enterprise (`doctor --scope enterprise`)
   - validación e indexado del enterprise vault (`sync-enterprise-vault`)
   - reporte de promotion candidates (`promote-knowledge --dry-run --json`)
-- [ ] Los workflows ejecutan enforcement según `governance.ci_profile` (observability/advisory/enforced).
-- [ ] Se generan artefactos JSON estables consumibles por humanos o herramientas.
-- [ ] `doctor` reporta salud enterprise incluyendo checks específicos de promoción/policy (no solo existencia de vault).
-- [ ] `setup templates` provee templates enterprise (workflows) alineados al modelo.
-- [ ] Tests cubren: render templates + doctor enterprise checks nuevos.
+- [x] Los workflows ejecutan enforcement según `governance.ci_profile` (observability/advisory/enforced).
+- [x] Se generan artefactos JSON estables consumibles por humanos o herramientas.
+- [x] `doctor` reporta salud enterprise incluyendo checks específicos de promoción/policy (no solo existencia de vault).
+- [x] `setup templates` provee templates enterprise (workflows) alineados al modelo.
+- [x] Tests cubren: render templates + doctor enterprise checks nuevos.
 
 ---
 
