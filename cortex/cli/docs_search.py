@@ -20,12 +20,10 @@ from typing import Optional
 
 import typer
 
+from cortex.cli._search_filters import build_enrichment_filters_from_cli
 from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.context_enricher.enricher import ContextEnricher
-from cortex.context_enricher.filters import EnrichmentFilters
 from cortex.context_enricher.presenter import ContextPresenter
-from cortex.documentation.doc_type import DocType
-from cortex.documentation.errors import UnknownDocTypeError
 
 
 def search(
@@ -67,38 +65,25 @@ def search(
     ),
 ) -> None:
     """Search the canonical vault honouring structural filters."""
-    if scope not in {"local", "enterprise", "all"}:
-        typer.echo(f"Invalid --scope value: {scope!r}", err=True)
-        raise typer.Exit(1)
     if output_format not in {"text", "json", "compact"}:
         typer.echo(f"Invalid --format value: {output_format!r}", err=True)
         raise typer.Exit(1)
 
-    # Resolve DocType enums.
-    doc_types_enum: list[DocType] = []
-    for slug in doc_type:
-        try:
-            doc_types_enum.append(DocType(slug))
-        except ValueError as exc:
-            raise typer.BadParameter(f"Unknown --doc-type {slug!r}") from exc
-    exclude_doc_types_enum: list[DocType] = []
-    for slug in exclude_doc_type:
-        try:
-            exclude_doc_types_enum.append(DocType(slug))
-        except ValueError as exc:
-            raise typer.BadParameter(f"Unknown --exclude-doc-type {slug!r}") from exc
-
-    filters = EnrichmentFilters(
-        doc_types=doc_types_enum or None,
-        exclude_doc_types=exclude_doc_types_enum,
-        statuses_allowed=status or None,
-        tags_required=tag,
-        tags_any_of=tag_any,
-        vault_scope=scope,
-        max_age_days=max_age_days,
-        project_ids=project_id or None,
-        strict=strict,
-    )
+    try:
+        filters = build_enrichment_filters_from_cli(
+            doc_type=doc_type,
+            exclude_doc_type=exclude_doc_type,
+            status=status,
+            tag=tag,
+            tag_any=tag_any,
+            scope=scope,
+            max_age_days=max_age_days,
+            project_id=project_id,
+            strict=strict,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
 
     # Build the WorkContext from the query string itself: keywords = query.
     from cortex.models import WorkContext

@@ -81,6 +81,7 @@ class SemanticSource:
         )
 
     def load_records(self, *, include_embeddings: bool = True) -> list[SemanticRecord]:
+        from cortex.documentation.common import parse_frontmatter_lenient
         from cortex.webgraph.style import style_for_doc_type
         records: list[SemanticRecord] = []
         for rel_path, doc in self.reader.iter_documents():
@@ -99,6 +100,19 @@ class SemanticSource:
             origin_project = getattr(doc, "origin_project_id", None)
             if origin_project:
                 metadata["origin_project_id"] = origin_project
+
+            # Surface ADR cross-references (supersedes / superseded_by /
+            # adr_number) so RelationBuilder can emit typed edges. We re-parse
+            # the file frontmatter here because SemanticDocument strips them.
+            abs_path = Path(doc.path)
+            try:
+                fm = parse_frontmatter_lenient(abs_path) or {}
+            except Exception:
+                fm = {}
+            for key in ("adr_number", "supersedes", "superseded_by"):
+                if fm.get(key) is not None:
+                    metadata[key] = fm[key]
+
             records.append(
                 SemanticRecord(
                     node_id=f"semantic:{rel_posix}",
@@ -106,7 +120,7 @@ class SemanticSource:
                     title=doc.title,
                     summary=_normalize_summary(doc.content),
                     rel_path=rel_posix,
-                    abs_path=str(Path(doc.path).resolve()),
+                    abs_path=str(abs_path.resolve()),
                     tags=list(doc.tags),
                     links=list(doc.links),
                     content=doc.content,

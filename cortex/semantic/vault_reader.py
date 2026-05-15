@@ -513,11 +513,27 @@ class VaultReader:
             doc = self._parser.parse(path)
             self._index[relative_path] = doc
 
-            # Drop any prior chunks for this parent so re-indexing is clean.
+            # Drop any prior in-memory chunks for this parent so re-indexing
+            # is clean.
             self._purge_chunks_for_parent(relative_path)
 
             # Chunk the doc (route table decides whether to split).
             chunks = self._chunks_for_doc(relative_path, doc)
+
+            # Item #4 — granular cache invalidation. Drop cached chunk
+            # entries that no longer exist in the re-parsed document, so the
+            # cache reflects the new structure without re-embedding chunks
+            # whose body fingerprint is unchanged.
+            if self._vector_cache is not None:
+                cached_chunks = self._vector_cache.get_chunk_fingerprints(relative_path)
+                if cached_chunks:
+                    current_ids = {c.chunk_id for c in chunks}
+                    stale_ids = [
+                        cid for cid in cached_chunks if cid not in current_ids
+                    ]
+                    if stale_ids:
+                        self._vector_cache.invalidate_chunks(stale_ids)
+
             for ch in chunks:
                 self._chunks[ch.chunk_id] = ch
             if chunks:

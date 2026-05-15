@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -46,7 +47,7 @@ class SessionData(CommonWriteData):
     unverified_claims: list[str] = field(default_factory=list)
     blockers: list[str] = field(default_factory=list)
     suggested_skills: list[str] = field(default_factory=list)
-    cortex_telemetry: dict | None = None
+    cortex_telemetry: dict[str, Any] | None = None
 
 
 @dataclass

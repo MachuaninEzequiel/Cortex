@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cortex.ide.prompts import build_all_prompts, build_cursor_prompts
+from cortex.ide.prompts import build_all_prompts
 from cortex.ide.registry import get_adapter, get_all_adapters, get_supported_ides
 from cortex.workspace.layout import WorkspaceLayout
 
@@ -53,11 +53,11 @@ def inject(
 
     adapter = get_adapter(ide_name)
 
-    # Use Cursor-specific prompts for Cursor IDE
-    if ide_name == "cursor":
-        prompts = build_cursor_prompts(project_root, workspace_layout=layout)
-    else:
-        prompts = build_all_prompts(project_root, workspace_layout=layout)
+    # Cortex builds the same prompt set for every IDE. Cada adapter decide
+    # como materializar (algunos como subagents nativos, otros como guidance
+    # secuencial, otros como skills). El hibrido cursor pre-2.4 con
+    # ``build_cursor_prompts`` se elimino en Fase 4 del plan multi-IDE.
+    prompts = build_all_prompts(project_root, workspace_layout=layout)
 
     print(f"[Cortex IDE] Injecting profiles for {adapter.display_name}...")
     # The Pi adapter is the only one that supports the sync_canonical

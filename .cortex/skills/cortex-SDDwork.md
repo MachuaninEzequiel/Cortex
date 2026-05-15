@@ -58,10 +58,26 @@ Cuando un subagent emite YAML, **antes** de pasarlo al siguiente:
 
 ---
 
-## Herramientas de delegacion (Deep Track)
+## Mecanismos de delegacion (Deep Track) por IDE
 
-- **`cortex_delegate_task`**: `cortex_delegate_task(agent="cortex-code-implementer", task="...")`.
-- Si tu IDE tiene Task tool nativo, usalo. Si falla, usa `cortex_delegate_task` o Fast Track.
+La delegacion a subagentes es responsabilidad NATIVA del IDE (no del MCP
+server de Cortex). Cada IDE materializa la tripartita refinada de forma
+distinta segun lo que soporta:
+
+- **Claude Code**: `Task` tool nativo, `subagent_type: cortex-code-explorer`
+  (o el subagent que corresponda).
+- **opencode**: `@cortex-code-explorer` mention o `Task` tool dentro del
+  agent primario (`mode: subagent` en el subagent definition).
+- **Cursor**: `Task` tool nativo o slash command `/cortex-code-explorer`
+  (Cursor 2.4+).
+- **Codex**: NO tiene subagents personalizados. Ejecuta las 3 fases
+  (explorer / implementer / documenter) **secuencialmente** en una sola
+  sesion del agente unico, guiado por las instrucciones del `AGENTS.md`
+  que el adapter inyecta en el project root.
+
+Si tu IDE NO esta listado o NO soporta delegacion nativa: ejecuta el flujo
+en Fast Track (un solo agente que hace exploracion + implementacion +
+documentacion en secuencia, similar a Codex).
 
 ---
 

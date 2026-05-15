@@ -16,11 +16,10 @@ The package is structured in layered modules:
 - ``templates_engine`` - Jinja2 renderer (Fase 03).
 - ``audit`` - Enterprise audit_trail helper (Fase 03).
 - ``writers`` - Canonical writers, 12 functions (Fase 03 + Fase 04).
-- ``_legacy_shims`` - Backwards-compatible wrappers (Fase 04, removed in Fase 12).
 
-The 3 legacy writers (``write_session_note``, ``write_spec_note``,
-``write_tracked_item_note``) keep their original signatures via
-``_legacy_shims`` while internally delegating to the canonical writers.
+Consumers build the canonical dataclass (``SessionData``, ``SpecData``,
+``HUData``, etc.) from ``cortex.documentation.data`` and pass it directly
+to the matching ``write_*_note`` canonical writer.
 """
 
 from __future__ import annotations
@@ -66,15 +65,6 @@ from cortex.documentation.writers import (
     write_runbook_note,
     write_session_note_canonical,
     write_spec_note_canonical,
-)
-
-# Legacy-shaped wrappers (Fase 04). Re-exported as ``write_session_note``,
-# ``write_spec_note``, ``write_tracked_item_note`` for backwards
-# compatibility with existing consumers.
-from cortex.documentation._legacy_shims import (
-    write_session_note,
-    write_spec_note,
-    write_tracked_item_note,
 )
 
 
@@ -137,10 +127,6 @@ __all__ = [
     "VaultInventory",
     "classify_path",
     "inventory_vault",
-    # Legacy-shaped writers (preserved for backwards compatibility)
-    "write_session_note",
-    "write_spec_note",
-    "write_tracked_item_note",
     # Canonical writers (Fase 03 + Fase 04)
     "write_adr_note",
     "write_decision_note",

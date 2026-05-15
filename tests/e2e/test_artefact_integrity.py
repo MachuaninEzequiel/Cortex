@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import field
 from pathlib import Path
 
 import pytest
@@ -287,6 +286,9 @@ class TestMcpCliAlignment:
         # Tripartita Refinada — handoff & verification (MCP-only por diseño)
         "cortex_validate_handoff": None,
         "cortex_verify_session_claims": None,
+        # Health check (Fase 2 plan multi-IDE — MCP-only por diseño;
+        # los agentes lo invocan como pre-flight, no es un comando humano).
+        "cortex_ping": None,
         # Work items
         "cortex_import_hu": "hu",
         "cortex_get_hu": "hu",
@@ -296,10 +298,9 @@ class TestMcpCliAlignment:
         "cortex_autopilot_checkpoint": "autopilot checkpoint",
         "cortex_autopilot_finish": "autopilot finish",
         "cortex_autopilot_status": "autopilot status",
-        # Delegation (experimental — no CLI por diseño)
-        "cortex_delegate_task": None,
-        "cortex_delegate_batch": None,
-        "cortex_get_task_result": None,
+        # NOTA: cortex_delegate_task / cortex_delegate_batch / cortex_get_task_result
+        # ELIMINADOS en Fase 5 del plan multi-IDE & MCP hardening (2026-05-15).
+        # Ver docs/multi-ide-mcp-hardening/FASE-5-REALIZACION.md.
     }
 
     @pytest.fixture(scope="class")

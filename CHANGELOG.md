@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [0.6.0] — 2026-05-15 — "Multi-IDE & MCP Hardening"
+
+Resuelve el incidente del 2026-05-15 (subagente colgado 14 minutos + MCP desconectandose). 5 fases del plan `docs/multi-ide-mcp-hardening/` ya aplicadas: inventario read-only + decisiones firmadas, MCP defensivo (4 capas), health-check `cortex_ping`, vocabulario canonico de tools, refactor de adapters segun docs oficiales 2026, eliminacion del delegate experimental. **355 tests verdes** al cierre de Fase 5.
+
+### BREAKING — MCP Delegate experimental eliminado (Fase 5)
+
+- **3 tools MCP eliminados de `cortex/mcp/server.py`**: `cortex_delegate_task`, `cortex_delegate_batch`, `cortex_get_task_result`. Estaban hardcoded a `opencode run --agent` via subprocess y devolvian no-op silencioso en cualquier IDE distinto de opencode — el bug exacto que detono el incidente del 2026-05-15.
+- **Metodos privados eliminados**: `_delegate_task`, `_delegate_batch`, `_store_task_result`, `_get_task_result`. Imports huerfanos limpiados.
+- **`cortex_delegate_task` eliminado del vocabulario canonico** (`cortex/ide/canonical_tools.py`).
+- **Skill `.cortex/skills/cortex-SDDwork.md` regenerada** desde el render actualizado (sin mencionar el delegate; describe los mecanismos NATIVOS de delegacion por IDE).
+- **`cortex/agent_guidelines.md` actualizado**: la delegacion es responsabilidad del IDE, no del MCP server.
+
+**Migration:** la delegacion a subagentes ahora es nativa por IDE (Task tool en Claude Code, `mode: subagent` en opencode, Task tool en Cursor 2.4+, secuencial single-agent en Codex). Ver `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md` para detalles por IDE. Si tenias un script externo invocando `cortex_delegate_task` directamente: dejar que el IDE delegue nativamente — los adapters de Fase 4 lo configuran automaticamente.
+
+**Preservado:** el motor `DelegationEngine` + `register_task` / `get_task_result` en `cortex/autopilot/delegation.py`. Es el two-stage review legitimo del autopilot, no parte del delegate experimental.
+
+### Fases anteriores (Fase 0 a Fase 4 — ver docs/multi-ide-mcp-hardening/)
+
+- **Fase 0 (inventario)**: 4 decisiones arquitecturales firmadas (pi no se toca, codex single-agent secuencial, cursor con 3 subagents reales, community/experimental no validados).
+- **Fase 1 (MCP defensivo)**: 4 capas — logging stdio, defensive subprocess (`safe_run`), ThreadPoolExecutor con timeout por tool, ONNX double-check locking. Cleanup del executor en `shutdown()`.
+- **Fase 2 (health-check)**: tool `cortex_ping` con `last_error_seen` rolling buffer (`maxlen=10`, sanitizacion). Latencia <50ms p99.
+- **Fase 3 (canonical tools)**: `cortex/ide/canonical_tools.py` con vocabulario y matriz de traduccion para los 2 IDEs validados (claude_code, opencode).
+- **Fase 4 (adapters)**: claude_code inyecta `tools` traducido; opencode migrado a `permission` (deprecated `tools`); codex rediseno (AGENTS.md root + MCP TOML); cursor rediseno con 3 subagents reales; eliminado hibrido `cortex-SDDwork-cursor`. Pre-flight check de `cortex_ping` inyectado en renders canonicos.
+
+---
+
 ## [0.5.0] — 2026-05-14 — "Tripartita Refinada"
 
 Hardening pass que convierte los contratos entre subagents en artefactos verificables: handoffs estructurados, Verification Gate del documenter, confidence labels en memorias, y materialización completa en los 4 IDEs target. Suite al release: **831 passed, 6 skipped, 0 failed** (+96 vs 0.4.0). Ejecutado en 7 planes (Plan 01-07) bajo el ciclo `docs/agents/plan/` + `docs/agents/implementacion/`.

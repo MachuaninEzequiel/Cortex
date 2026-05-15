@@ -323,8 +323,127 @@ def _split_sections(body: str) -> dict[str, str]:
     return out
 
 
+def _audit_event(actor: str, action: str, reason: str = "") -> dict[str, Any]:
+    return {
+        "actor": actor,
+        "action": action,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "reason": reason or None,
+    }
+
+
+def _write_with_updates(path: Path, fm: dict[str, Any], body: str) -> None:
+    payload = "---\n" + yaml_dump_safe(fm) + "---\n\n" + body
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload, encoding="utf-8")
+
+
+def mark_as_accepted(path: Path, *, reviewer: str, reason: str = "") -> None:
+    """Promote a draft enterprise note to status=accepted (Item #9 deuda residual).
+
+    The note's frontmatter is updated in place; an ``audit_trail`` entry is
+    appended with the reviewer and reason. Raises ``PromotionError`` if the
+    note is not currently in ``status: draft``.
+    """
+    if not path.exists():
+        raise PromotionError(f"note not found: {path}")
+    fm, body = _read_note(path)
+    if not fm:
+        raise PromotionError(f"missing or invalid frontmatter: {path}")
+    current = fm.get("status")
+    if current != "draft":
+        raise PromotionError(
+            f"cannot accept {path}: status is {current!r}, expected 'draft'"
+        )
+    fm["status"] = "accepted"
+    trail = list(fm.get("audit_trail") or [])
+    trail.append(_audit_event(reviewer, "accepted", reason))
+    fm["audit_trail"] = trail
+    _write_with_updates(path, fm, body)
+
+
+def mark_as_rejected(
+    path: Path,
+    *,
+    reviewer: str,
+    reason: str,
+    delete: bool = False,
+) -> Path | None:
+    """Reject a draft enterprise note (Item #9 deuda residual).
+
+    With ``delete=False`` (default), the note is moved into a sibling
+    ``rejected/`` folder with status updated to ``rejected`` and an
+    ``audit_trail`` entry. With ``delete=True``, the file is removed
+    after the audit event is appended to the in-memory copy (no record
+    of the rejection survives — destructive).
+
+    Returns the new path (after move) or ``None`` when ``delete=True``.
+    """
+    if not path.exists():
+        raise PromotionError(f"note not found: {path}")
+    fm, body = _read_note(path)
+    if not fm:
+        raise PromotionError(f"missing or invalid frontmatter: {path}")
+    current = fm.get("status")
+    if current != "draft":
+        raise PromotionError(
+            f"cannot reject {path}: status is {current!r}, expected 'draft'"
+        )
+    fm["status"] = "rejected"
+    trail = list(fm.get("audit_trail") or [])
+    trail.append(_audit_event(reviewer, "rejected", reason))
+    fm["audit_trail"] = trail
+
+    if delete:
+        path.unlink()
+        return None
+
+    rejected_dir = path.parent / "rejected"
+    rejected_dir.mkdir(parents=True, exist_ok=True)
+    target = rejected_dir / path.name
+    _write_with_updates(target, fm, body)
+    path.unlink()
+    return target
+
+
+def list_pending_drafts(
+    vault_root: Path,
+    *,
+    doc_types: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """List notes with ``status: draft`` in ``vault_root`` (Item #9)."""
+    pending: list[dict[str, Any]] = []
+    if not vault_root.exists():
+        return pending
+    for md_path in vault_root.rglob("*.md"):
+        if "rejected" in md_path.relative_to(vault_root).parts:
+            continue
+        try:
+            fm = parse_frontmatter_lenient(md_path) or {}
+        except Exception:
+            continue
+        if fm.get("status") != "draft":
+            continue
+        if doc_types and fm.get("doc_type") not in doc_types:
+            continue
+        pending.append(
+            {
+                "path": str(md_path.relative_to(vault_root)).replace("\\", "/"),
+                "doc_type": fm.get("doc_type"),
+                "title": fm.get("title"),
+                "owner": fm.get("owner"),
+                "team": fm.get("team"),
+                "created_at": fm.get("created_at"),
+            }
+        )
+    return sorted(pending, key=lambda p: (p.get("doc_type") or "", p.get("path") or ""))
+
+
 __all__ = [
     "PromotionError",
     "PromotionResult",
     "promote_note_doctype_aware",
+    "mark_as_accepted",
+    "mark_as_rejected",
+    "list_pending_drafts",
 ]

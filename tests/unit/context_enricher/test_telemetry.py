@@ -324,7 +324,21 @@ def test_enricher_includes_latency_in_event(tmp_path: Path) -> None:
 
 
 def test_session_note_persists_cortex_telemetry_in_frontmatter(tmp_path: Path) -> None:
-    from cortex.documentation import parse_frontmatter_lenient, write_session_note
+    import uuid
+
+    from cortex.documentation import parse_frontmatter_lenient, write_session_note_canonical
+    from cortex.documentation.data import SessionData
+
+    class _PathOnlyVault:
+        def __init__(self, root: Path) -> None:
+            self._root = root
+
+        @property
+        def path(self) -> Path:
+            return self._root
+
+        def index_file(self, relative_path: str) -> bool:
+            return False
 
     telemetry = {
         "enricher_run_id": "abc123def456",
@@ -338,12 +352,15 @@ def test_session_note_persists_cortex_telemetry_in_frontmatter(tmp_path: Path) -
         "enriched_score_p95": 0.71,
         "enricher_latency_ms": 187,
     }
-    path = write_session_note(
-        tmp_path,
+    data = SessionData(
         title="Test telemetry persistence",
+        tags=["session"],
+        status="completed",
+        session_id=uuid.uuid4().hex[:12],
         spec_summary="Verify cortex_telemetry roundtrip",
         cortex_telemetry=telemetry,
     )
+    path = write_session_note_canonical(data, vault=_PathOnlyVault(tmp_path))
     fm = parse_frontmatter_lenient(path)
     assert fm["cortex_telemetry"]["enricher_run_id"] == "abc123def456"
     assert fm["cortex_telemetry"]["context_hit_rate"] == 0.375

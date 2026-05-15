@@ -51,6 +51,7 @@ class RelationBuilder:
         edges: dict[tuple[str, str, str], WebGraphEdge] = {}
         self._add_semantic_wikilinks(edges, semantic_records)
         self._add_semantic_spec_links(edges, semantic_records)
+        self._add_supersedes_edges(edges, semantic_records)
         self._add_cross_source_edges(edges, semantic_records, episodic_records)
         if self.config.enable_semantic_neighbors:
             self._add_semantic_neighbors(edges, semantic_records, episodic_records)
@@ -68,7 +69,8 @@ class RelationBuilder:
     ) -> None:
         if source == target:
             return
-        key = (edge_type, source, target) if edge_type == "wikilink" else (
+        directional = edge_type in {"wikilink", "supersedes", "superseded_by"}
+        key = (edge_type, source, target) if directional else (
             edge_type,
             min(source, target),
             max(source, target),
@@ -133,6 +135,68 @@ class RelationBuilder:
                         edge_type="same_spec_reference",
                         evidence=[f"shared tokens: {', '.join(sorted(list(overlap))[:4])}"],
                         weight=1.2,
+                    )
+
+    def _add_supersedes_edges(
+        self,
+        edges: dict[tuple[str, str, str], WebGraphEdge],
+        semantic_records: list[SemanticRecord],
+    ) -> None:
+        """Emit typed ``supersedes`` / ``superseded_by`` edges from ADR frontmatter.
+
+        Each ADR-like record may declare ``supersedes: [ADR-003]`` or
+        ``superseded_by: ADR-007`` in its frontmatter (propagated via
+        ``metadata`` in ``SemanticSource.load_records``). We resolve the
+        textual reference by ``adr_number`` and, as a fallback, by the path
+        stem so manual cross-links keep working.
+        """
+        adr_by_number: dict[int, str] = {}
+        for record in semantic_records:
+            number = record.metadata.get("adr_number")
+            if isinstance(number, int) and number > 0:
+                adr_by_number[number] = record.node_id
+
+        stem_index: dict[str, str] = {}
+        for record in semantic_records:
+            stem = record.rel_path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            stem_index[stem.lower()] = record.node_id
+
+        def _resolve_target(token: str) -> str | None:
+            ref = token.strip()
+            if not ref:
+                return None
+            upper = ref.upper()
+            if upper.startswith("ADR-"):
+                try:
+                    return adr_by_number.get(int(upper.split("-", 1)[1].split("_", 1)[0]))
+                except (ValueError, IndexError):
+                    pass
+            return stem_index.get(ref.lower())
+
+        for record in semantic_records:
+            for raw in record.metadata.get("supersedes") or []:
+                target_id = _resolve_target(str(raw))
+                if not target_id:
+                    continue
+                self._add_edge(
+                    edges,
+                    source=record.node_id,
+                    target=target_id,
+                    edge_type="supersedes",
+                    evidence=[f"supersedes: {raw}"],
+                    weight=1.5,
+                )
+            raw_sb = record.metadata.get("superseded_by")
+            if raw_sb:
+                target_id = _resolve_target(str(raw_sb))
+                if target_id:
+                    self._add_edge(
+                        edges,
+                        source=record.node_id,
+                        target=target_id,
+                        edge_type="superseded_by",
+                        evidence=[f"superseded_by: {raw_sb}"],
+                        weight=1.4,
                     )
 
     def _add_cross_source_edges(

@@ -8,7 +8,7 @@ Principle. This service owns the entire lifecycle of a Specification:
 validation, vault persistence, selective indexing, and episodic storage.
 
 Depends on:
-- ``cortex.documentation.write_spec_note``  (persistence)
+- ``cortex.documentation.write_spec_note_canonical``  (persistence)
 - ``cortex.semantic.vault_reader.VaultReader``   (semantic indexing)
 - ``cortex.episodic.memory_store.EpisodicMemoryStore`` (episodic memory)
 """
@@ -19,12 +19,32 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cortex.documentation import write_spec_note
+from cortex.documentation import write_spec_note_canonical
+from cortex.documentation.data import SpecData
+from cortex.documentation.writers import VaultLike
 from cortex.models import MemoryEntry
 
 if TYPE_CHECKING:
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.semantic.vault_reader import VaultReader
+
+
+class _PathOnlyVault:
+    """Minimal VaultLike that wraps a bare path for canonical writers.
+
+    SpecService receives ``vault_path`` directly (not a VaultReader) for
+    persistence. Indexing happens separately through ``self._semantic``.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self._root = root
+
+    @property
+    def path(self) -> Path:
+        return self._root
+
+    def index_file(self, relative_path: str) -> bool:
+        return False
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +111,19 @@ class SpecService:
         Returns:
             Path to the newly created spec note file.
         """
-        path = write_spec_note(
-            self._vault_path,
+        final_tags = ["spec"] + list(tags or [])
+        data = SpecData(
             title=title,
-            goal=goal,
-            requirements=requirements or [],
-            files_in_scope=files_in_scope or [],
-            constraints=constraints or [],
-            acceptance_criteria=acceptance_criteria or [],
-            tags=tags or [],
+            tags=final_tags,
+            status="draft",
+            goal=goal or "",
+            requirements=list(requirements or []),
+            files_in_scope=list(files_in_scope or []),
+            constraints=list(constraints or []),
+            acceptance_criteria=list(acceptance_criteria or []),
         )
+        vault: VaultLike = _PathOnlyVault(self._vault_path)
+        path = write_spec_note_canonical(data, vault=vault)
         logger.debug("Spec note written: %s", path)
 
         # SELECTIVE INDEXING — vectorise only this new spec

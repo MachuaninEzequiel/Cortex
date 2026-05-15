@@ -80,7 +80,10 @@ def test_edge_types_cover_canonical_set() -> None:
 def test_legend_contains_all_doc_types() -> None:
     legend = build_legend()
     types_in_legend = {entry["type"] for entry in legend["doc_types"]}
-    assert types_in_legend == {dt.value for dt in DocType}
+    # Legend includes the 12 canonical DocTypes plus synthetic entries
+    # (currently ``episodic`` — Item #6 deuda residual).
+    assert {dt.value for dt in DocType}.issubset(types_in_legend)
+    assert "episodic" in types_in_legend
 
 
 def test_legend_contains_edge_types() -> None:

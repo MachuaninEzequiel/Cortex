@@ -214,7 +214,10 @@ def test_stats_counts_hits_and_misses(tmp_path: Path) -> None:
 
 
 def test_stats_invalidated_counter(tmp_path: Path) -> None:
-    cache = VectorCache(tmp_path / "vectors")
+    # ``auto_compact=False`` keeps the invalidated entries around so the
+    # counter is observable (otherwise auto-compaction at 30% would reclaim
+    # them before stats() is called).
+    cache = VectorCache(tmp_path / "vectors", auto_compact=False)
     for i in range(4):
         cache.put(f"fp{i}", f"c{i}", _rand_vec(i))
     cache.invalidate("fp0")

@@ -71,6 +71,11 @@ class EpisodicSource:
     def load_records(self, *, include_embeddings: bool = True) -> list[EpisodicRecord]:
         records: list[EpisodicRecord] = []
         for entry in self.store.list_entries():
+            metadata = dict(entry.metadata)
+            # Item #6 — surface ``doc_type=episodic`` so style/legend keep
+            # parity with semantic nodes. Already-set values (e.g. promoted
+            # ADR digests) win over the default.
+            metadata.setdefault("doc_type", "episodic")
             records.append(
                 EpisodicRecord(
                     node_id=f"episodic:{entry.id}",
@@ -82,7 +87,7 @@ class EpisodicSource:
                     files=[file.replace("\\", "/") for file in entry.files],
                     timestamp=entry.timestamp.isoformat(),
                     content=entry.content,
-                    metadata=dict(entry.metadata),
+                    metadata=metadata,
                     embedding=self.embedder.embed(entry.content) if include_embeddings else None,
                 )
             )

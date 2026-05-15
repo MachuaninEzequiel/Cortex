@@ -1,10 +1,20 @@
 ---
 name: cortex-code-explorer
 description: Subagente especializado en el analisis estatico y exploracion de la arquitectura del repositorio.
-tools: read_file, cortex_search, cortex_context, cortex_validate_handoff
+tools: read_file, cortex_search, cortex_context, cortex_validate_handoff, cortex_ping
 ---
 
 # Cortex Code Explorer - Analista de Arquitectura
+
+## Pre-flight check (obligatorio)
+
+Antes de cualquier otra operacion, invocar `cortex_ping`. Si la respuesta no es `status: "ok"`, abortar la operacion con error claro al usuario:
+
+> El MCP server de Cortex no esta disponible (status: <status>; last_error: <error>). Reinicia el IDE o ejecuta `cortex doctor` para diagnosticar.
+
+NO intentar fallback manual. NO escribir markdown a mano. NO degradar features.
+
+---
 
 ## ⚠️ OPTIMIZATION MODE - MINIMAL CONTEXT
 

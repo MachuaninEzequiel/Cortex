@@ -43,7 +43,8 @@ Enterprise
 ~~~~~~~~~~
 - ``cortex org-config``         — print the resolved enterprise org config.
 - ``cortex promote-knowledge``  — promote vault docs to the enterprise vault.
-- ``cortex review-knowledge``   — approve/reject promotion candidates.
+- ``cortex review-knowledge``   — sub-app: ``pending / approve / reject / candidate``
+  to triage the enterprise promotion review queue.
 - ``cortex sync-enterprise-vault`` — validate + index the enterprise vault.
 - ``cortex memory-report``      — health + promotion metrics (``--scope``, ``--json``).
 
@@ -101,6 +102,7 @@ from pathlib import Path
 import typer
 import yaml
 
+from cortex.cli.review_knowledge import review_app
 from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
 from cortex.workspace.layout import WorkspaceLayout
@@ -138,10 +140,12 @@ app.add_typer(webgraph_app, name="webgraph")
 
 # Autopilot subcommand (Fase 3)
 from cortex.autopilot.cli import app as autopilot_app
+
 app.add_typer(autopilot_app, name="autopilot")
 
 # Canonical documentation system (Fase 02 of canonical-documentation initiative)
 from cortex.cli.docs_subcommand import app as docs_app
+
 app.add_typer(docs_app, name="docs")
 
 _DEFAULT_CONFIG = {
@@ -430,38 +434,28 @@ def setup_agent(
     ide: str | None = typer.Option(
         None, "--ide", help="IDE to configure (skip prompt)."
     ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Skip prompts (uses safe defaults). Required for CI/scripted setups.",
+    ),
 ) -> None:
     """
     Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
     """
-    import cortex.ide as cortex_ide
+    from cortex.cli._setup_helpers import select_ide_interactive
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
     if git_depth is None:
-        git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
-
-    # IDE selection
-    selected_ide = ide
-    if selected_ide is None:
-        typer.echo("\n🔧 Select IDE to configure:")
-        supported = cortex_ide.get_supported_ides()
-        for i, ide_name in enumerate(supported, 1):
-            typer.echo(f"  {i}. {ide_name}")
-        typer.echo("  0. Skip IDE configuration")
-
-        choice = typer.prompt("\nEnter IDE number or name", default="0")
-
-        if choice == "0":
-            selected_ide = None
-        elif choice.isdigit():
-            idx = int(choice) - 1
-            if 0 <= idx < len(supported):
-                selected_ide = supported[idx]
-        elif choice in supported:
-            selected_ide = choice
+        if non_interactive:
+            git_depth = 50
         else:
-            typer.echo("⚠ Invalid selection, skipping IDE configuration.")
-            selected_ide = None
+            git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
+
+    # Fase 6 plan multi-IDE & MCP hardening: la seleccion de IDE vive en
+    # cortex.cli._setup_helpers para evitar duplicacion entre setup_agent
+    # y setup_full. Respeta --ide explicito y --non-interactive.
+    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
 
     typer.echo("🧠 Cortex — Setting up Agent profile...")
     typer.echo("")
@@ -520,8 +514,15 @@ def setup_full(
     With ``--non-interactive`` plus ``--git-depth N`` (and optional ``--ide X``),
     this command runs end-to-end without prompts. Recommended for adopters
     onboarding fresh repos and for scripted/CI provisioning.
+
+    Sin ``--non-interactive``, prompt-ea por commits de git Y por IDE
+    (usando el mismo helper que ``cortex setup agent``). Esto cierra la
+    asimetria pre-Fase 6 donde ``setup full`` no preguntaba por IDE,
+    obligando al adopter a correr ``setup agent`` despues.
     """
+    from cortex.cli._setup_helpers import select_ide_interactive
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
     if git_depth is None:
         if non_interactive:
             git_depth = 50
@@ -531,13 +532,19 @@ def setup_full(
                 default=50,
                 type=int,
             )
+
+    # Fase 6 plan multi-IDE & MCP hardening: el helper unifica la seleccion
+    # de IDE entre setup_agent y setup_full. Respeta --ide explicito y
+    # --non-interactive sin prompts.
+    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
+
     typer.echo("🧠 Cortex — Setting up Full project (agent + pipeline + webgraph)...")
     typer.echo("")
     orchestrator = SetupOrchestrator()
     summary = orchestrator.run(
         mode=SetupMode.FULL,
         git_depth=git_depth,
-        ide=ide,
+        ide=selected_ide,
         non_interactive=non_interactive,
     )
     typer.echo(format_summary(summary))
@@ -1237,12 +1244,112 @@ def search(
         "--project-id",
         help="Optional source project identifier filter.",
     ),
+    doc_type: list[str] = typer.Option(
+        [],
+        "--doc-type",
+        help="Filter by DocType slug (repeatable). Enables canonical search path.",
+    ),
+    exclude_doc_type: list[str] = typer.Option(
+        [],
+        "--exclude-doc-type",
+        help="Exclude these DocType slugs (repeatable).",
+    ),
+    status: list[str] = typer.Option(
+        [], "--status", help="Only keep items with one of these frontmatter statuses."
+    ),
+    tag: list[str] = typer.Option(
+        [], "--tag", help="Items must contain ALL given tags (repeatable)."
+    ),
+    tag_any: list[str] = typer.Option(
+        [], "--tag-any", help="Items must contain at least one of the given tags."
+    ),
+    max_age_days: int | None = typer.Option(
+        None, "--max-age-days", help="Drop items older than N days."
+    ),
+    strict: bool = typer.Option(
+        False, "--strict", help="Drop items without doc_type when --doc-type is set."
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--format",
+        help="Output format when structural filters are used: text | json | compact.",
+    ),
 ) -> None:
-    """Query both memory layers and print results."""
-    mem = _load_memory()
+    """Query both memory layers and print results.
+
+    Without structural flags this command keeps the legacy RRF-fused output
+    over both episodic and semantic memory. When any of ``--doc-type``,
+    ``--exclude-doc-type``, ``--status``, ``--tag``, ``--tag-any``,
+    ``--max-age-days`` or ``--strict`` is set, results are produced by the
+    ``ContextEnricher`` honouring those structural filters (same engine as
+    ``cortex docs search``).
+    """
     if scope is not None and scope not in {"local", "enterprise", "all"}:
         typer.echo("Invalid --scope value. Use one of: local, enterprise, all.", err=True)
         raise typer.Exit(1)
+
+    from cortex.cli._search_filters import build_enrichment_filters_from_cli, has_any_filter
+
+    structural_mode = has_any_filter(
+        doc_type=doc_type,
+        exclude_doc_type=exclude_doc_type,
+        status=status,
+        tag=tag,
+        tag_any=tag_any,
+        max_age_days=max_age_days,
+        project_id=None,
+        strict=strict,
+        scope="local",
+    )
+
+    if structural_mode:
+        if output_format not in {"text", "json", "compact"}:
+            typer.echo(f"Invalid --format value: {output_format!r}", err=True)
+            raise typer.Exit(1)
+        try:
+            filters = build_enrichment_filters_from_cli(
+                doc_type=doc_type,
+                exclude_doc_type=exclude_doc_type,
+                status=status,
+                tag=tag,
+                tag_any=tag_any,
+                scope=scope or "local",
+                max_age_days=max_age_days,
+                project_id=[project_id] if project_id else None,
+                strict=strict,
+            )
+        except ValueError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        from cortex.context_enricher.config import ContextEnricherConfig
+        from cortex.context_enricher.enricher import ContextEnricher
+        from cortex.context_enricher.presenter import ContextPresenter
+        from cortex.models import WorkContext
+
+        mem = _load_memory()
+        enricher = ContextEnricher(
+            episodic=mem.episodic,
+            semantic=mem.semantic,
+            config=ContextEnricherConfig(),
+        )
+        work = WorkContext(
+            source="manual",
+            changed_files=[],
+            keywords=query.split(),
+            search_queries=[query],
+        )
+        ctx = enricher.enrich(work, top_k=top_k, filters=filters)
+        if output_format == "json":
+            typer.echo(ContextPresenter.to_json(ctx))
+            return
+        if output_format == "compact":
+            typer.echo(ContextPresenter.to_compact_grouped(ctx))
+            return
+        typer.echo(ContextPresenter.to_markdown_grouped(ctx))
+        return
+
+    mem = _load_memory()
     try:
         result = mem.retrieve(
             query,
@@ -1365,52 +1472,7 @@ def promote_knowledge(
         typer.echo(f"  - {r.local_rel_path} -> {r.dest_rel_path}  ({r.origin_id})")
 
 
-@app.command(name="review-knowledge")
-def review_knowledge(
-    selector: str = typer.Argument(..., help="Candidate selector: origin_id or vault-relative path."),
-    approve: bool = typer.Option(
-        True,
-        "--approve/--reject",
-        help="Approve by default. Use --reject to reject a candidate.",
-    ),
-    actor: str | None = typer.Option(
-        None,
-        "--actor",
-        help="Actor name for audit records (default: current OS user).",
-    ),
-    reason: str | None = typer.Option(
-        None,
-        "--reason",
-        help="Optional rationale for approve/reject.",
-    ),
-    project_root: str | None = typer.Option(
-        None,
-        "--project-root",
-        help="Absolute path to the target project root (where .cortex/org.yaml lives).",
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Output raw JSON record."),
-) -> None:
-    """Approve or reject a promotion candidate (review is required by default)."""
-    from cortex.enterprise.knowledge_promotion import KnowledgePromotionService
-
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    actor_name = actor or getpass.getuser()
-    layout = WorkspaceLayout.discover(root)
-    service = KnowledgePromotionService.from_project_root(root, workspace_layout=layout)
-    try:
-        record = service.review(selector=selector, approve=approve, actor=actor_name, reason=reason)
-    except ValueError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
-
-    if json_output:
-        typer.echo(record.model_dump_json(indent=2))
-        return
-
-    typer.echo(f"Recorded review: {record.origin_id}")
-    typer.echo(f"  status: {record.status}")
-    if record.decision:
-        typer.echo(f"  decision: {record.decision.decision} by {record.decision.actor}")
+app.add_typer(review_app, name="review-knowledge")
 
 
 @app.command(name="sync-enterprise-vault")

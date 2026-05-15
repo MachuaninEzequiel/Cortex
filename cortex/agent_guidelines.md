@@ -28,7 +28,7 @@ If a memory tool does not start with `cortex_`, it does not belong to this works
 ## Release 2 Execution Model
 
 - `cortex-sync` prepares context and the spec.
-- `cortex-SDDwork` orchestrates implementation through specialized subagents using `cortex_delegate_batch` / `cortex_delegate_task`.
+- `cortex-SDDwork` orchestrates implementation. Subagent delegation is the IDE's responsibility (Task tool in Claude Code, `mode: subagent` in opencode, sequential single-agent in Codex). The MCP server NO longer exposes a delegate tool — see `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md` section 5.
 - `cortex-documenter` is the mandatory final step.
 
 ## Definition of Done

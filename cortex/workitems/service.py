@@ -7,9 +7,13 @@ Service layer for importing and persisting tracked work items.
 from __future__ import annotations
 
 import re
+from datetime import UTC
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cortex.documentation import write_hu_note
+from cortex.documentation.data import HUData
+from cortex.documentation.writers import VaultLike
 from cortex.models import MemoryEntry
 from cortex.security.paths import resolve_safe
 from cortex.workitems.models import TrackedItem
@@ -18,6 +22,26 @@ from cortex.workitems.providers.base import WorkItemProvider
 if TYPE_CHECKING:
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.semantic.vault_reader import VaultReader
+
+
+class _PathOnlyVault:
+    """Minimal VaultLike that wraps a bare path for canonical writers."""
+
+    def __init__(self, root: Path) -> None:
+        self._root = root
+
+    @property
+    def path(self) -> Path:
+        return self._root
+
+    def index_file(self, relative_path: str) -> bool:
+        return False
+
+
+_STATUS_MAP = {
+    "imported": "backlog",
+    "in_progress": "in-progress",
+}
 
 
 class WorkItemService:
@@ -80,12 +104,30 @@ class WorkItemService:
         return provider_impl
 
     def _write_item_note(self, item: TrackedItem) -> Path:
-        from cortex.documentation import write_tracked_item_note
+        final_tags = ["hu", item.source.value, item.kind.value] + list(item.labels)
+        title = f"{item.id}: {item.title}"
+        legacy_status = item.status or "imported"
+        status = _STATUS_MAP.get(legacy_status, legacy_status)
 
-        return write_tracked_item_note(
-            self._vault_path,
-            item=item,
+        synced_at = item.sync_timestamp
+        if synced_at is not None and synced_at.tzinfo is None:
+            synced_at = synced_at.replace(tzinfo=UTC)
+
+        data = HUData(
+            title=title,
+            tags=final_tags,
+            status=status,
+            external_id=item.id,
+            source=item.source.value,
+            kind=item.kind.value,
+            description=item.description or "",
+            acceptance_criteria=list(item.acceptance_criteria or []),
+            assignee=item.assignee,
+            external_url=item.external_url,
+            synced_at=synced_at,
         )
+        vault: VaultLike = _PathOnlyVault(self._vault_path)
+        return write_hu_note(data, vault=vault)
 
     def _store_episodic(self, item: TrackedItem, rel_path: str) -> MemoryEntry:
         summary = [

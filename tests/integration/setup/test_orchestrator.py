@@ -18,7 +18,6 @@ import pytest
 from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 from cortex.workspace.layout import WorkspaceLayout
 
-
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------

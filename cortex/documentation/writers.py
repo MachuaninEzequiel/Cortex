@@ -12,9 +12,10 @@ Each ``write_X_note`` function follows the exact same shape:
         overwrite: bool = False,
     ) -> Path:
 
-This module covers the 9 *new* types (Fase 03). The 3 legacy writers
-(``write_session_note``, ``write_spec_note``, ``write_hu_note``) are migrated
-in Fase 04.
+This module covers the 9 new types from Fase 03 plus the 3 canonical writers
+for the legacy SESSION / SPEC / HU types added in Fase 04
+(``write_session_note_canonical``, ``write_spec_note_canonical``,
+``write_hu_note``).
 """
 
 from __future__ import annotations
@@ -63,6 +64,7 @@ from cortex.documentation.schemas import (
     SCHEMA_BY_TYPE_ENTERPRISE,
     CommonFrontmatter,
 )
+from cortex.documentation.schemas.base import EnterpriseFrontmatter
 from cortex.documentation.templates_engine import render_template
 
 
@@ -107,7 +109,7 @@ _ADR_NUM_RE = re.compile(r"^ADR-(\d+)", re.IGNORECASE)
 _INC_NUM_RE = re.compile(r"^INC-(\d+)", re.IGNORECASE)
 
 
-def _next_number(folder: Path, regex: re.Pattern) -> int:
+def _next_number(folder: Path, regex: re.Pattern[str]) -> int:
     """Find the next available numeric prefix in ``folder``.
 
     Returns 1 if folder is empty or doesn't exist.
@@ -225,7 +227,9 @@ def _enterprise_fields(data: Any) -> dict[str, Any]:
     }
 
 
-def _type_specific_fields(data: Any, doc_type: DocType, filename_ctx: dict) -> dict[str, Any]:
+def _type_specific_fields(
+    data: Any, doc_type: DocType, filename_ctx: dict[str, Any]
+) -> dict[str, Any]:
     """Extract DocType-specific fields from ``data`` into a frontmatter dict."""
     if doc_type == DocType.ADR:
         return {
@@ -303,10 +307,11 @@ def _build_frontmatter(
     fingerprint: str,
     vault_scope: str,
     actor: str | None,
-    filename_ctx: dict,
+    filename_ctx: dict[str, Any],
 ) -> CommonFrontmatter:
     raw = _common_frontmatter_fields(data, doc_type, fingerprint, vault_scope)
     raw.update(_type_specific_fields(data, doc_type, filename_ctx))
+    schema_cls: type[CommonFrontmatter]
     if vault_scope == "enterprise":
         raw.update(_enterprise_fields(data))
         schema_cls = SCHEMA_BY_TYPE_ENTERPRISE[doc_type]
@@ -319,6 +324,7 @@ def _build_frontmatter(
             f"Frontmatter validation failed for {doc_type.value}: {exc}"
         ) from exc
     if vault_scope == "enterprise":
+        assert isinstance(fm, EnterpriseFrontmatter)
         fm = append_audit_event(fm, actor or "unknown", "created", reason=None)
     return fm
 
