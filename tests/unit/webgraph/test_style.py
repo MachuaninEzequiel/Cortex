@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.routing import resolve_route
 from cortex.webgraph.style import (
@@ -13,7 +11,6 @@ from cortex.webgraph.style import (
     style_for_doc_type,
     style_for_edge,
 )
-
 
 # ---------------------------------------------------------------------------
 # style_for_doc_type

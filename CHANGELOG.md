@@ -1,5 +1,321 @@
 # CHANGELOG
 
+## [Unreleased] — Phase 07: CI plugin (3 levels)
+
+Provider-agnostic CLI to validate pull requests against the matching
+Cortex Session. Three levels, each shippable independently. The only
+schema change is two additive enum entries — no breaking changes.
+
+### Added — Level 1 · Validation gate
+
+- New ``cortex ci`` subapp (``cortex/cli/ci.py``) registered in the
+  main app, with the ``validate-pr`` command.
+- New ``cortex.ci`` module: ``validator``, ``session_matcher``,
+  ``diff_io``, ``result``, ``markdown_formatter``, ``review_session``.
+- ``cortex ci validate-pr`` runs scope cross-check + verification hooks
+  + lifecycle checks against the matching Session + spec. Exit codes
+  ``0/1/2/3`` map to ``pass/warn/blocked/error``.
+- Workflow templates: ``templates/ci/github-actions-cortex-validate.yml``,
+  ``templates/ci/gitlab-ci-cortex-validate.yml``, plus
+  ``templates/ci/README.md`` with adoption tips.
+
+### Added — Level 2 · Sticky PR comment
+
+- ``--format pr-comment`` emits Markdown delimited by the sentinel
+  marker ``<!-- cortex-pr-summary -->`` for ``gh pr comment
+  --edit-last`` deduplication.
+- GitHub Actions template includes the optional PR-comment step.
+- GitLab CI template includes the optional MR-note step.
+
+### Added — Level 3 · Review sessions
+
+- ``CheckpointSource.CI_BOT`` and ``SessionMode.CI_REVIEW`` enum
+  values; ``SessionService.infer_mode`` returns ``CI_REVIEW`` when
+  every checkpoint is ``CI_BOT``.
+- New CLI commands: ``cortex ci open-review-session``,
+  ``cortex ci report-checkpoint``, ``cortex ci close-review-session``.
+- Architectural decision documented in
+  ``docs/architecture/review-sessions.md`` (Opción B chosen).
+- Tests: ``tests/unit/ci/{__init__,test_session_matcher,test_diff_io,
+  test_validator,test_markdown_formatter,test_review_session}.py``
+  (34 cases). All new modules pass ``mypy --strict`` + ``ruff check``.
+
+---
+
+## [Unreleased] — Phase 05: opencode hook adapter
+
+Fourth bundled adapter for the Observed mode. No breaking changes;
+``default_installer()`` simply exposes one more IDE.
+
+### Added
+
+- ``cortex/session/hooks/adapters/opencode.py`` — installs a Cortex
+  block inside ``.opencode/hooks.md`` with sentinel markers
+  (``<!-- >>> cortex-session-hook ... >>> -->``). The block contains a
+  fenced ``sh`` invocation of
+  ``cortex session checkpoint --source ide-hook`` with the standard
+  ``|| true`` failure guard.
+- ``cortex session hooks install --ide opencode`` now works (and
+  ``hooks list`` / ``hooks status`` report it).
+- Tests: ``tests/unit/session/hooks/test_opencode.py`` (14 cases) +
+  three new CLI scenarios in ``test_session_hooks_cli.py``.
+- Research note: ``docs/pluggable-middle/fases/_internal/opencode-hooks-research.md``.
+
+---
+
+## [Unreleased] — Phase 09: SDD Refinement (proposal + design + tasks)
+
+Three independent sub-phases that close the openspec workflow gaps the
+Pluggable Middle audit identified. All additive — no breaking changes.
+
+### Added — Sub-phase 09.A · Proposal step
+
+- ``--proposal-mode`` flag on ``cortex create-spec`` (CLI + MCP). Values:
+  ``optional`` (default), ``required`` (rejects unless
+  ``--proposal-confirmed``), ``skip``.
+- ``cortex-sync`` skill prompt extended with a Step 3.5 (proposal
+  emission + edit/cancel handling) — both the on-disk skill and the
+  renderer in ``cortex/setup/cortex_workspace.py``.
+- ``SpecService.create`` validates ``proposal_mode`` and raises
+  ``ValueError`` when ``required`` mode is missing confirmation.
+- Tests: ``tests/unit/services/test_spec_service_proposal_mode.py`` +
+  ``tests/e2e/test_proposal_flow.py``.
+
+### Added — Sub-phase 09.B · Design step
+
+- New ``cortex-code-designer`` subagent (``.cortex/subagents/`` +
+  ``cortex-pi/.pi/agents/`` + renderer in ``cortex_workspace.py``).
+- New ``DocType.DESIGN`` with ``DesignFrontmatter``,
+  ``DesignDocData``, ``design.md.j2`` template, routing entry under
+  ``vault/designs/<session_id>.md`` and canonical writer
+  ``write_design_note`` (alias ``write_design_note_canonical``).
+- MCP tool ``write_design_note_canonical`` + canonical-tools entry.
+- SDDwork Deep Track now runs **explorer → designer → implementer →
+  wrap-up**. Designer can skip with a minimal note when ``task_type ==
+  "docs-only"``.
+- New ``CheckpointSource.CORTEX_CODE_DESIGNER`` enum value.
+- Tests: ``tests/unit/documentation/test_design_doc.py`` +
+  ``tests/unit/mcp/test_write_design_note_tool.py``.
+
+### Added — Sub-phase 09.C · Tasks granular
+
+- ``TaskStatus`` enum + ``Task`` Pydantic model (id pattern
+  ``T<n>``/``T<n>.<n>...``) and ``SessionRecord.tasks`` field
+  (default ``[]`` — fully backward-compatible with older session
+  YAMLs).
+- ``SessionService.add_task`` / ``update_task_status`` / ``list_tasks``
+  and the ``AgentMemory`` facade methods that mirror them.
+- ``cortex session task list | done | in-progress | skip | block`` CLI
+  subapp.
+- MCP tools ``cortex_session_task_list`` and ``cortex_session_task_update``
+  (the latter doubles as create-or-update when ``description`` is
+  supplied).
+- ``--with-tasks`` flag on ``cortex create-spec`` (adds the
+  ``tasks-required`` tag the SDDwork skill reads).
+- SDDwork prompt addendum on opt-in task decomposition (3–10 tasks
+  typical, naming convention enforced).
+- ``DocumenterPersister`` reports ``tasks: X/Y done (Z skipped)`` in
+  the summary line; ``session.md.j2`` renders a dedicated ``## Tasks``
+  block when the session has any.
+- Tests: ``tests/unit/session/test_tasks.py`` (model + service),
+  ``tests/unit/cli/test_session_task_cli.py``,
+  ``tests/unit/mcp/test_session_task_tools.py``, and new cases in
+  ``tests/unit/documenter/test_persistence.py`` covering the % completion
+  summary.
+
+---
+
+## [Unreleased] — Phase 06: Sessions TUI
+
+Live observability view of the Session primitive with `rich`. No data-
+model changes; only adds CLI commands and a pure render module.
+
+### Added
+
+- **`cortex session watch [ID] [--refresh N]`** — live TUI. Refreshes
+  every `--refresh` seconds (default 1.5, range 0.5–30). Layout adapts
+  to terminal width: 3 columns at ≥ 100 cols, 2 columns at ≥ 70, vertical
+  stack below. Active session panel, checkpoints table, truncated diff
+  preview, verification summary, recent-sessions sidebar.
+- **`cortex session show <ID> --watch`** — alias of the above focused on
+  a specific session.
+- **`cortex/cli/session_tui.py`** — `SessionTuiState` (frozen snapshot),
+  `render_layout(state, max_width, console) → Layout` (pure function),
+  `run_tui(service, project_root, refresh_interval, focus_session_id)`
+  (live loop with `KeyboardInterrupt` handling).
+- **`cortex/cli/_unicode_fallback.py`** — `glyph(name, console=...)` +
+  `supports_unicode(console)` so the TUI degrades to ASCII on legacy
+  Windows consoles (cp1252).
+
+### Notes
+
+- No keyboard interactivity in v1 — Ctrl+C exits cleanly, that's it.
+- Single-threaded polling, mtime-based change detection on
+  `.cortex/sessions/active.txt` and the per-session YAML files. Sidebar
+  refresh throttled to every 10 ticks.
+- Non-TTY invocations exit with an explanatory message instead of
+  rendering into a pipe.
+
+---
+
+## [Unreleased] — Phase 08: Managed Quality Gates
+
+Restores five quality mechanisms that the Phase 03 Autopilot fusion
+removed without porting forward. No data-model changes; no breaking
+changes. Each gate ships independent tests (`tests/unit/services/`,
+`tests/unit/session/test_quality_gates.py`,
+`tests/unit/documenter/test_persistence.py`,
+`tests/unit/context_enricher/test_budget_resolver.py`,
+`tests/unit/documentation/test_session_template_conditional.py`).
+
+### Added
+
+- **Transactional rollback** in
+  `cortex.services.note_service.NoteService.create`: if semantic /
+  episodic indexing fails after the session note has been persisted,
+  the file is unlinked and the exception propagates. Preserves *"file
+  on disk ⇒ file indexed"*.
+- **`cortex_review_checkpoint` MCP tool** + `cortex.session.quality_gates`
+  module: two-stage review (spec compliance + quality) over any
+  checkpoint of an OPEN session. Returns `accept` / `redelegate` /
+  `warn`. Registered in `cortex.ide.canonical_tools` for IDE adapters.
+- **Self-review pass** in `cortex.documenter.persistence.DocumenterPersister`:
+  scans the about-to-persist draft for placeholders, file mentions, and
+  hollow success claims. Informational — surfaces the `auto-draft` tag
+  and `[self-review]` next-step entries; never blocks.
+- **`cortex.context_enricher.budget_resolver`** module:
+  `resolve_budget_profile(task_type, complexity)` maps the detected
+  task profile to a `(top_k, max_chars)` envelope. `cortex_context`
+  accepts an optional `task_type` argument and resizes retrieval
+  accordingly.
+- **Conditional `session.md.j2` template**: same template renders
+  `question-only` / `docs-only` (no *Changes Made* / *Files Touched*),
+  `security` (dedicated *Security Review* section), and `fast-code` /
+  `deep-code` / unspecified (current full layout).
+- **`SessionData.task_type`** field — propagates the detected profile
+  from the spec frontmatter (`raw_frontmatter["task_type"]`) through
+  `NoteService.create(task_type=...)` to the template.
+
+### Changed
+
+- `.cortex/skills/cortex-SDDwork.md` (and its renderer in
+  `cortex/setup/cortex_workspace.py`): Deep Track instructs the
+  orchestrator to invoke `cortex_review_checkpoint` after each subagent
+  checkpoint, and to pass `task_type` when calling `cortex_context`.
+- `cortex.documenter.persistence` no longer reorders / silently drops
+  warnings; `next_steps` carry `[self-review]` entries verbatim.
+
+---
+
+## [Unreleased] — Pluggable Middle Architecture (Phases 00–04)
+
+Five-phase reformulation of the Cortex execution model. The original
+mandatory tripartite flow (`cortex-sync` → `cortex-SDDwork` → `cortex-documenter`)
+becomes a **pluggable middle**: the framework keeps the two endpoints
+fixed (sync produces a spec; documenter persists from a Session) but the
+middle is now one of three modes — Managed, Observed, BYO. See
+`docs/pluggable-middle/ARQUITECTURA-PLUGGABLE-MIDDLE.md` for the full
+design and `docs/pluggable-middle/MIGRATION-FROM-TRIPARTITO.md` for the
+migration guide.
+
+### Added
+
+- **Session primitive** (`cortex.session`): `SessionRecord`,
+  `Checkpoint`, `VerificationHook` + `VerificationHookResult`,
+  `SessionService` (open/checkpoint/close), `SessionStorage` (atomic
+  YAML), `git.py` (HEAD/branch/diff helpers). 100% coverage.
+- **Three operating modes** (inferred at close from checkpoint sources):
+  - `managed` — `cortex-SDDwork` orchestrates with verified checkpoints.
+  - `observed` — user IDE + IDE hooks emit checkpoints automatically.
+  - `byo` — develop with anything, reconstructor synthesizes from diff.
+- **Verification hooks** (now declared in every spec): executable
+  commands the documenter runs to prove the work is done. Runner with
+  output truncation, timeout, exit-code reporting.
+- **Documenter reconstruction** (`cortex.documenter`): 8-step algorithm
+  (load → diff → hooks → scope cross-check → contradictions → handoff
+  synthesis → status decision → persist).
+- **CLI** — Session primitive UX:
+  - `cortex session current | list | show | diff | switch | abandon`
+  - `cortex session checkpoint --source <s> --note ... --artifact ...`
+  - `cortex session hooks list | install --ide <name> | uninstall | status`
+  - `cortex finish-session [SESSION_ID]` (+ `--handoff`, `--abandon`,
+    `--reason`, `--interactive`, `--json`)
+- **MCP tools** (6 canonical session tools + 1 finish):
+  `cortex_session_open`, `cortex_session_checkpoint`,
+  `cortex_session_close`, `cortex_session_status`, `cortex_session_list`,
+  `cortex_finish_session`.
+- **IDE hook adapters** (`cortex.session.hooks`, Phase 03 / T3.6–T3.10):
+  - `claude-code` — `PostToolUse` entry in `.claude/settings.json`.
+  - `cursor` — `.git/hooks/post-commit` (works for VSCode/Cline/Roo too).
+  - `pi` — `cortex-checkpoint` / `cortex-finish` / `cortex-status`
+    recipes in `justfile`.
+  - All adapters: idempotent install/uninstall with sentinel markers,
+    `|| true` guards so a Cortex failure never aborts an IDE operation.
+- **Documenter interactive mode** (Phase 04 / T4.1–T4.7):
+  `cortex finish-session --interactive` renders a draft session note
+  with `rich`, surfaces ADR suggestions one by one, allows editing
+  title/body via `$EDITOR`, and supports approve/edit/handoff/cancel
+  hotkeys. Config field `documenter.default_mode: auto | interactive`.
+- **Doctor** sections added: `[sessions]` (Phase 00), `[autopilot]`
+  policy + IDE hooks (Phase 03), `[pluggable_middle]` health
+  (documenter modules, interactive UX, verification runner, MCP tools
+  registered, Phase 04).
+- **Docs**: `docs/architecture/session-primitive.md` (full reference
+  with §8 IDE hooks), `docs/pluggable-middle/` (architecture,
+  per-phase plans, migration guide, short overview).
+
+### Changed
+
+- `cortex-SDDwork`, `cortex-code-explorer`, `cortex-code-implementer`
+  now emit `cortex_session_checkpoint` calls instead of YAML
+  `AgentHandoff` blocks between subagents.
+- `cortex-documenter` subagent operates by default in
+  **Reconstruction mode** (session_id input).
+- `cortex.autopilot` is now a thin policy + hook layer over
+  `cortex.session.SessionService`. CLI `cortex autopilot ...` and MCP
+  `cortex_autopilot_*` tools preserved as aliases (delegate to the new
+  service); commands `cleanup` and `report` removed (superseded by
+  `cortex session list`).
+- `cortex/services/session_service.py` renamed to `note_service.py`
+  (alias kept with `DeprecationWarning` for one release).
+
+### Deprecated
+
+- `cortex_validate_handoff` MCP tool — kept for the documenter's
+  Legacy YAML mode (single-agent IDEs like Codex). Emits a deprecation
+  warning on every invocation. Removal targeted for the major after
+  Codex (or equivalent) supports `cortex_session_checkpoint` natively.
+- `cortex.handoff.AgentHandoff` — schema preserved for Legacy YAML.
+
+### Removed
+
+- `cortex/autopilot/state_store.py`, `session_builder.py`,
+  `session_writer.py` (Sessions handles persistence; documenter writes
+  notes via `NoteService`).
+- `cortex/autopilot/{context,budget_profiles,context_budget,registry,
+  reporting,delegation,packaging}.py` (consolidated, retired, or no
+  callers).
+- `cortex/autopilot/renderers/` (all 5 renderers — documenter owns
+  session notes now).
+- `cortex/autopilot/policies/{base,default,auto_checkpoint}.py`
+  (replaced by the consolidated `cortex/autopilot/policies.py`).
+- `cortex/autopilot/adapters/` (all 8 legacy IDE adapters — replaced
+  by `cortex/session/hooks/adapters/`).
+- `cortex/autopilot/hooks/` (4 files — replaced by Phase 03 hooks).
+- `cortex autopilot install/uninstall/cleanup/report` CLI commands.
+- `cortex.autopilot.models.{AutopilotSessionState, AutopilotCheckpoint,
+  AutopilotEvent, SessionDraft, AutopilotBudgetSnapshot,
+  HookSessionStartOutput}` (superseded by `cortex.session.models`).
+
+### Fixed
+
+- `cortex/mcp/_subprocess.py:140` `AttributeError: '_R' object has no
+  attribute 'returncode'` (the 3 `TestVerifySessionClaims` tests
+  preexisting from `master` — root cause was an incomplete test double
+  for the new defensive `safe_run` helper).
+
+---
+
 ## [0.6.0] — 2026-05-15 — "Multi-IDE & MCP Hardening"
 
 Resuelve el incidente del 2026-05-15 (subagente colgado 14 minutos + MCP desconectandose). 5 fases del plan `docs/multi-ide-mcp-hardening/` ya aplicadas: inventario read-only + decisiones firmadas, MCP defensivo (4 capas), health-check `cortex_ping`, vocabulario canonico de tools, refactor de adapters segun docs oficiales 2026, eliminacion del delegate experimental. **355 tests verdes** al cierre de Fase 5.

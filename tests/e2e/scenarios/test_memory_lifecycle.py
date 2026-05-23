@@ -4,8 +4,6 @@ from __future__ import annotations
 import pytest
 
 from tests.e2e.helpers import (
-    assert_vault_has_documents,
-    count_chroma_documents,
     run_cortex,
 )
 

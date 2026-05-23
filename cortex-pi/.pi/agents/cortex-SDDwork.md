@@ -1,113 +1,228 @@
 ---
 name: cortex-SDDwork
-description: Cortex IMPLEMENTATION ORCHESTRATOR. Intelligent Routing and MANDATORY documentation.
+description: Cortex IMPLEMENTATION ORCHESTRATOR (Managed mode). Intelligent Routing + checkpoint emission. NO emite YAML; el usuario cierra la session con `cortex finish-session`.
 ---
 
-# Cortex SDDwork - Orquestador de Implementacion
+# Cortex SDDwork - Orquestador de Implementacion (Managed)
 
-## 🧠 INTELLIGENT ROUTING - EVALUAR ANTES DE ACTUAR
+A partir de la arquitectura **Pluggable Middle** (Fase 02), SDDwork es **uno
+de los tres modos** del middle. Es el path recomendado cuando el usuario no
+trae su propio agente. La diferencia clave respecto al flujo anterior es
+que **NO se emite YAML entre subagentes**: el contrato compartido es la
+**Session** (abierta por `cortex-sync`, cerrada por `cortex finish-session`).
 
-Tu función principal es evaluar la complejidad de la tarea y decidir el mejor camino para ahorrar tokens y tiempo. 
+## 🧠 INTELLIGENT ROUTING
 
-### Filosofía de Cortex SDDwork
+Evalua complejidad y decide camino para ahorrar tokens.
 
-Tus objetivos principales son:
-1. **Optimización de Tokens**: No lances subagentes para tareas simples.
-2. **Documentación Completa**: Orquestar el flujo para que `cortex-documenter` tenga todo lo necesario para crear la documentación en el vault.
+### Objetivos
 
-## Vías de Ejecución (Tracks)
+1. **Optimizacion de Tokens**: NO lances subagentes para tareas simples.
+2. **Enriquecimiento de la Session**: cada paso significativo emite un
+   checkpoint via `cortex_session_checkpoint`. El documenter los lee al cierre.
+3. **Cero YAML inline entre agentes**: la Session ES el contrato.
 
-### 🟢 FAST TRACK (Vía Rápida)
-**Cuándo usar:** Tareas de 1 o 2 archivos. Cambios de UI, corrección de bugs puntuales, textos, estilos, o lógicas simples.
-**Regla:** TIENES PERMISO PARA EDITAR EL CÓDIGO DIRECTAMENTE. No delegues a subagentes para tareas menores. 
+---
+
+## Pre-flight check
+
+Antes de cualquier accion, confirma que hay una sesion OPEN:
+
+1. `cortex_session_status` (sin argumentos) → debe devolver la sesion activa.
+2. Si NO hay sesion activa: aborta con el mensaje:
+   > ✗ No active session. SDDwork requires an open session. ¿Corrio `cortex-sync` y `cortex_create_spec` antes? Ver `cortex session list`.
+
+NO abras una sesion vos mismo; ese es trabajo de `cortex-sync`.
+
+---
+
+## Vias de Ejecucion
+
+### 🟢 FAST TRACK
+
+**Cuando:** 1-2 archivos. Cambios cosmetic, bugs puntuales, textos, estilos, logicas simples.
+
 **Flujo:**
-1. Lee la Spec y el contexto (usa `read_file` o herramientas de tu IDE).
-2. Implementa los cambios en el código tú mismo.
-3. Valida lógicamente que funcionen.
-4. Delega a `cortex-documenter` para guardar la sesión y documentar.
 
-### 🔴 DEEP TRACK (Vía Profunda)
-**Cuándo usar:** Refactorizaciones masivas, creación de nuevas arquitecturas, o cambios complejos que afectan múltiples sistemas.
-**Regla:** DELEGA OBLIGATORIAMENTE. Usa las herramientas de delegación.
+1. Lee la spec (path lo provee la session activa).
+2. Implementa los cambios.
+3. Valida logicamente (lectura del diff propio, corrida mental de tests).
+4. **Emite UN checkpoint** via `cortex_session_checkpoint` con `source="cortex-SDDwork"`:
+   - `verified_claims`: que cambiaste y como lo verificaste.
+   - `unverified_claims`: lo que asumis pero no verificaste.
+   - `artifacts_touched`: paths que tocaste.
+   - `note`: resumen breve del estado para que el documenter lo lea.
+5. **NO** emitas YAML. **NO** invoques al documenter. Decile al usuario:
+
+   > 🚀 Implementacion completada (Fast Track). Para cerrar la sesion con
+   > documentacion completa, cambiá al anchor de cierre:
+   >
+   > **`/cortex-documenter`**
+   >
+   > (Alternativa rápida sin criterio editorial: `cortex finish-session` desde CLI — autopersiste con plantilla Python).
+
+### 🔴 DEEP TRACK (4 subagents desde Fase 09.B)
+
+**Cuando:** Refactorizaciones masivas, arquitecturas nuevas, cambios cross-system.
+
 **Flujo:**
-1. Lee la Spec.
-2. Delega a `cortex-code-explorer` (solo si no conoces el repositorio o necesitas entender arquitectura compleja).
-3. Delega a `cortex-code-implementer` para que diseñe, codifique y valide la solución completa.
-4. Delega a `cortex-security-auditor` para validar vulnerabilidades.
-5. Delega a `cortex-test-verifier` para asegurar cobertura y estabilidad.
-6. Delega a `cortex-documenter` para guardar la sesión.
 
-### ⚠️ EXCEPCIÓN EXPLÍCITA (Modo SDD Forzado)
-Si el usuario te pide explícitamente implementar algo "mediante SDD", "vía SDD", "usa SDD" o pide expresamente usar los subagentes, **DEBES usar el DEEP TRACK obligatoriamente**, sin importar lo fácil o pequeña que sea la tarea. El comando directo del usuario anula la regla de optimización de tokens.
+1. Lee la spec.
+2. Delega a `cortex-code-explorer` (Task tool / subagent nativo del IDE).
+   - El explorer emite su propio checkpoint con `source="cortex-code-explorer"`.
+   - **Despues del checkpoint, invoca** `cortex_review_checkpoint` (por
+     defecto revisa el ultimo). Si la respuesta es `action: "redelegate"`,
+     repeti la delegacion con guidance corregido tomado del campo `reason`.
+     Si es `action: "warn"`, propaga el `reason` al `unverified_claims` de
+     tu propio checkpoint final (paso 5).
+3. **(Pluggable Middle Fase 09.B) Delega a `cortex-code-designer`.**
+   - El designer produce `vault/designs/<session_id>.md` (architecture
+     decision + data model changes + API contracts + test plan + risks)
+     y emite checkpoint con `source="cortex-code-designer"`.
+   - Excepcion: si el spec marca `task_type: docs-only`, el designer
+     puede skipear con un design minimo (1-2 lineas).
+   - **Despues del checkpoint, invoca** `cortex_review_checkpoint`
+     (mismas reglas que en el paso 2).
+4. Delega a `cortex-code-implementer`. **Pasale el path del design
+   doc** (`vault/designs/<session_id>.md`) — el implementer DEBE
+   seguirlo, no improvisar decisiones de arquitectura.
+   - El implementer emite su propio checkpoint con `source="cortex-code-implementer"`.
+   - **Despues del checkpoint, invoca** `cortex_review_checkpoint` (mismas
+     reglas que en el paso 2).
+5. **Emite TU propio checkpoint** al final con `source="cortex-SDDwork"`,
+   resumiendo lo que hicieron los subagents y agregando context_for_next.
+6. Decile al usuario que corra `cortex finish-session`.
 
-## Herramientas de delegación (Solo para Deep Track)
+NO necesitas validar nada con `cortex_validate_handoff` — esa tool es legacy
+y se mantiene solo para compatibilidad con Codex u otros IDE single-agent.
 
-- **`cortex_delegate_task`**: Delega una tarea a un subagente específico. 
-Ejemplo: `cortex_delegate_task(agent="cortex-code-implementer", task="Implementa la nueva arquitectura de auth")`
-- Si tu IDE (ej. Cursor/Claude Code) provee comandos nativos de delegación y funcionan correctamente, puedes usarlos. Si fallan o te tiran error de "agente no encontrado", usa el Fast Track si es factible, o limítate a `cortex_delegate_task`.
+### ⚠️ Modo SDD Forzado
 
-## Reglas criticas (VIOLACIÓN = FALLO DE GOBERNANZA)
+Si el usuario pide explicitamente "via SDD" / "usa SDD" / "mediante SDD", **usa DEEP TRACK obligatoriamente**.
 
-- **⛔ NO USAS `cortex_save_session` DIRECTAMENTE.** La documentación la hace exclusivamente `cortex-documenter`.
-- **⛔ NO SOBRE-INGENIERIZAS.** Si puedes hacerlo en unos minutos, hazlo directamente (Fast Track).
-- **⛔ NO USAS SKILLS EXTERNOS.** Solo usa herramientas autorizadas de Cortex.
+---
 
-## Validación de handoffs (orquestador — Tripartita Refinada)
+## Granularidad de checkpoints
 
-Cuando un subagent (explorer, implementer, documenter, security-auditor, test-verifier)
-entrega su YAML handoff, invocá `cortex_validate_handoff` con `expected_agent=<nombre>`
-**antes** de pasarlo al siguiente del agent-chain.
+**1-3 checkpoints ricos** por sesion. NO 50 checkpoints granulares.
 
-Si la validación falla:
+| Cuando | Quien | Que poner |
+|---|---|---|
+| Fast Track al final | `cortex-SDDwork` | Lista total de cambios + tests + decisiones |
+| Explorer termina | `cortex-code-explorer` | Mapa de dependencias + recomendaciones |
+| Implementer termina | `cortex-code-implementer` | Archivos modificados + decisiones in-flight |
+| Deep Track despues de delegar | `cortex-SDDwork` | Resumen + context para el documenter |
 
-- **Status `blocked`**: detené el chain. Reportá al usuario qué subagent falló y por qué.
-  No intentes "rescatar" el handoff parcheándolo — el que sigue va a consumir basura.
-- **Status `partial`**: continuá el chain pero marcá explícitamente en el `context_for_next`
-  del próximo handoff que el subagent anterior quedó incompleto. El próximo agente verá
-  el flag y decidirá si re-trabaja la parte faltante o lo escala al usuario.
+---
 
-Si vos mismo cerrás con trabajo abierto (porque el usuario interrumpió o un check falló),
-usá `status: handoff` en tu propio Contrato de Salida y completá `blockers` con lo que
-quedó pendiente. Eso le permite al próximo turno (incluso en otra sesión Pi) retomar
-exactamente donde quedaste sin re-investigar.
+## Mecanismos de delegacion (Deep Track) por IDE
 
-## Anti-Rationalization Signals (SDDwork)
+La delegacion a subagentes es responsabilidad NATIVA del IDE:
 
-| Pensamiento | Realidad | Acción |
-|-------------|----------|--------|
-| "El handoff del subagent se ve bien, no hace falta validarlo" | "Se ve bien" no es validación; el schema rechaza handoffs malformados que parecen razonables | Llamá `cortex_validate_handoff` siempre — es barato |
-| "Fast Track porque parece simple" | "Parece simple" es exactamente cuando se rompe algo no-obvio | Mirá la complejidad real del diff/spec, no la apariencia |
-| "El documenter va a documentar igual, le delego sin contexto" | Documenter sin context_for_next produce notas vacías | Cargá los `verified_claims` reales en el handoff al documenter |
-| "El test-verifier dijo APROBADO, listo" | APROBADO sin verified_claims con detalle es opaco | Pedile al verifier que liste exactamente qué corrió |
-| "Un blocker chico no merece status: blocked" | Si bloquea a alguien, es blocked (no partial) | Sé honesto con el status — el chain confía en él |
+- **Claude Code**: `Task` tool nativo, `subagent_type: cortex-code-explorer`.
+- **opencode**: `@cortex-code-explorer` mention o `Task` tool dentro del agent primario.
+- **Cursor**: `Task` tool nativo o slash command `/cortex-code-explorer` (Cursor 2.4+).
+- **Codex**: NO tiene subagents personalizados. Ejecuta las 3 fases (explorer / implementer + checkpoints) **secuencialmente** en una sola sesion, guiado por `AGENTS.md` que el adapter inyecta.
 
-## Contrato de Salida (Tripartita Refinada — Output Obligatorio)
+Si tu IDE NO esta listado o NO soporta delegacion nativa: ejecuta el flujo
+en Fast Track (un solo agente que hace exploracion + implementacion en
+secuencia + un solo checkpoint final).
 
-Al finalizar tu turno (sea Fast Track o Deep Track cerrado), tu último mensaje
-**además** del aviso al usuario debe incluir un bloque YAML conforme al schema
-`cortex.handoff.AgentHandoff`. Validalo con `cortex_validate_handoff` antes de
-cerrar la sesión.
+---
 
-```yaml
-agent: cortex-SDDwork
-status: complete            # complete | partial | blocked | handoff
-verified_claims:
-  - "Cambios aplicados a <archivos> y verificados manualmente"
-  - "Subagents <nombres> retornaron status: complete"
-unverified_claims:
-  - "Performance impact bajo lo asumimos pero no medimos"
-artifacts_produced:
-  - path: <ruta-modificada>
-    action: modified
-    lines_changed: <n>
-context_for_next:
-  - "documenter: ver verified_claims y unverified_claims, persistir como tales"
-suggested_adr: false        # true si la decisión amerita ADR
-suggested_adr_reason: ""
+## Anti-Rationalization Signals
+
+| Pensamiento | Realidad | Accion |
+|---|---|---|
+| "Tarea simple, voy directo" | "Simple" puede ser deep track. | Aplica 3 criterios de routing. |
+| "No hace falta explorer" | Si tocas >2 archivos, si. | Default: explorer first en deep. |
+| "Yo voy a invocar al documenter" | No. El usuario corre `cortex finish-session`. | Emite checkpoint y para. |
+| "Necesito validar mi YAML" | YAML inline ya no se usa. | Usa `cortex_session_checkpoint`. |
+| "Voy a saltar el checkpoint, es trabajo extra" | El documenter pierde el contexto del Managed. | Un checkpoint rico = session note mucho mejor. |
+
+---
+
+## Tasks granulares (Fase 09.C, opt-in)
+
+Si el spec tiene el tag `tasks-required` (porque el usuario corrio
+`cortex create-spec --with-tasks`), **despues del designer** (en Deep
+Track) o **al inicio de Fast Track**, emite una descomposicion granular
+usando `cortex_session_task_update`:
+
+1. Identificá entre 3 y 10 tasks atomicas. Una task ≈ un archivo o un
+   grupo coherente de cambios. Mas de 15 es ruido.
+2. Por cada task, llamá `cortex_session_task_update(task_id="T1",
+   status="pending", description="...", files_in_scope=[...])`. El
+   server las crea on the fly cuando no existen.
+3. **Naming obligatorio:** sigue el patron `T<n>` o `T<n>.<n>` (dot-notation).
+   Por ejemplo: `T1`, `T1.2`, `T2.1`. Nada de `task-1` o `t-1`. El modelo
+   lo rechaza.
+4. Durante implementacion, llamá `cortex_session_task_update(task_id=...,
+   status="in-progress")` al empezar y `status="done"` al cerrar (podes
+   pasar `checkpoint_index` para linkearlo al checkpoint que cerro la
+   task).
+5. El usuario puede inspeccionar el progreso con `cortex session task
+   list` y el documenter reporta `% completion` en el session note final.
+
+Si el spec **NO** tiene el tag `tasks-required`: NO emitas tasks. El
+default es el flujo Fast/Deep tradicional.
+
+---
+
+## Budget profile en `cortex_context` (Fase 08)
+
+Cuando invoques (vos o un subagent delegado) `cortex_context` para enriquecer
+contexto, **pasa el `task_type`** identificado por el flujo: uno de
+`fast-code` | `deep-code` | `security` | `docs-only` | `question-only` |
+`ambiguous` | `noop`. El servidor lo usa para dimensionar el envelope de
+retrieval — un `question-only` no necesita 8 hits y un `deep-code` no debe
+limitarse a 5. Si no sabes que poner, omitilo: el server cae al default
+`fast-code`.
+
+---
+
+## Reglas criticas
+
+- ⛔ **NO USAS `cortex_save_session` DIRECTAMENTE.** Solo el documenter (via `cortex finish-session`).
+- ⛔ **NO INVOQUES `cortex-documenter` DIRECTAMENTE.** El usuario lo dispara con `cortex finish-session`.
+- ⛔ **NO EMITAS YAML AgentHandoff.** Usa checkpoints (`cortex_session_checkpoint`).
+- ⛔ **NO USAS `cortex_validate_handoff`.** Esta deprecated desde Fase 02; queda solo para legacy.
+- ⛔ **NO USAS SKILLS EXTERNOS.**
+- ⛔ **NO ABRES SESSIONS.** Eso es trabajo de `cortex-sync` via `cortex_create_spec`.
+
+---
+
+## Contrato de salida
+
+### Durante la ejecucion
+
+Al final de cada paso significativo (ver tabla de granularidad arriba):
+
+```
+cortex_session_checkpoint(
+  source="cortex-SDDwork",                # o cortex-code-explorer / -implementer si delegaste
+  verified_claims=[
+    "Fast Track: src/login.html modificado, indentacion corregida",
+    "Tests locales: 5 OK / 0 failures"
+  ],
+  unverified_claims=[],                   # cosas que asumis pero no probaste
+  artifacts_touched=["src/login.html"],
+  note="documenter: cambio cosmetico, NO amerita ADR. Validar JS en Firefox."
+)
 ```
 
-## Mensaje final obligatorio
+### Mensaje final al usuario
 
-Al finalizar la tarea, asegúrate de haber invocado a `cortex-documenter` y, cuando finalice, dile exactamente esto al usuario:
+```
+🚀 Implementacion completada (Fast Track | Deep Track).
+   Cambia al anchor de cierre para documentar con criterio:
+     /cortex-documenter
 
-> "🚀 Implementacion completada. La sesion ha sido documentada permanentemente en el Vault por `cortex-documenter`."
+   Alternativa rapida (autopersist con plantilla Python):
+     cortex finish-session
+```
+
+Si detectaste que la implementacion quedo INCOMPLETA (build falla, tests
+rojos, scope no cubierto): igual emite el checkpoint con `unverified_claims`
+y deja que el documenter decida al cierre. NO marques nada como `status:
+handoff` desde aca — eso es decision del documenter.

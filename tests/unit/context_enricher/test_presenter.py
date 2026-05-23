@@ -1,7 +1,7 @@
 """Tests for ContextPresenter."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -30,7 +30,7 @@ def sample_context():
             enriched_score=1.2,
             matched_by=["topic_search", "file_search"],
             files_mentioned=["auth.py", "jwt.ts"],
-            date=datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc),
+            date=datetime(2026, 4, 1, 12, 0, tzinfo=UTC),
             tags=["auth", "bugfix"],
         ),
         EnrichedItem(

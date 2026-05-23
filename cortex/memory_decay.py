@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class MemoryDecay:
         now: datetime | None = None,
     ) -> None:
         self.config = config or DecayConfig()
-        self.now = now or datetime.now(timezone.utc)
+        self.now = now or datetime.now(UTC)
 
     def should_decay(self, memory_type: str, tags: list[str]) -> bool:
         """
@@ -144,7 +144,7 @@ class MemoryDecay:
     def get_age_hours(self, timestamp: datetime) -> float:
         """Calculate age in hours."""
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         
         delta = self.now - timestamp
         return delta.total_seconds() / 3600

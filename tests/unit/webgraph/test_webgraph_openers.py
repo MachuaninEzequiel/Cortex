@@ -1,8 +1,11 @@
-import pytest
-from pathlib import Path
-from cortex.webgraph.openers import resolve_safe_vault_path, open_path
-import sys
 import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from cortex.webgraph.openers import open_path, resolve_safe_vault_path
+
 
 def test_resolve_safe_vault_path(tmp_path):
     vault = tmp_path / "vault"

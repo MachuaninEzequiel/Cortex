@@ -5,15 +5,41 @@ from pathlib import Path
 
 from cortex.ide.base import IDEAdapter
 
-# The 3 subagents that exist canonically in `.cortex/subagents/` AND in
-# the Pi bundle. ``sync_canonical_subagents`` keeps the bundle in sync
-# with the canonical directory so that ``inject_profiles`` propagates
-# the latest contracts (Plan 01 Tripartita Refinada changes) to Pi.
-_SHARED_AGENTS = (
+# Pi has no slash-skill distinction — every prompt lives under
+# ``.pi/agents/`` regardless of whether it acts as a top-level anchor
+# (cortex-sync, cortex-SDDwork, cortex-documenter) or as a subagent
+# (cortex-code-*). Two sync lists keep both kinds aligned with their
+# canonical source under ``.cortex/{skills,subagents}/``.
+
+# Subagents — sourced from ``.cortex/subagents/<name>.md``. These are
+# the Deep Track code-* helpers + the legacy documenter subagent (kept
+# for backward compat, marked DEPRECATED).
+_SHARED_SUBAGENTS = (
     "cortex-code-explorer.md",
     "cortex-code-implementer.md",
+    "cortex-code-designer.md",
+)
+
+# Triadic anchors — sourced from ``.cortex/skills/<name>.md``. Phase 09.A+
+# (May 2026): the three anchors land as ``agent`` files in the Pi bundle
+# because Pi has no "skill" concept of its own. Their content is the
+# canonical SKILL file (NOT the legacy subagent for the documenter).
+_SHARED_SKILL_ANCHORS = (
+    "cortex-sync.md",
+    "cortex-SDDwork.md",
     "cortex-documenter.md",
 )
+
+# Legacy: keep the documenter SUBAGENT path also synced (with its
+# DEPRECATED banner) so single-agent Pi flows that already reference the
+# subagent keep working. The skill above is the canonical replacement.
+_SHARED_LEGACY_SUBAGENTS = (
+    "cortex-documenter.md",
+)
+
+# Backward-compat alias for the previous public name. Existing tests
+# patch ``_SHARED_AGENTS`` — keep it pointing at the subagents list.
+_SHARED_AGENTS = _SHARED_SUBAGENTS + _SHARED_LEGACY_SUBAGENTS
 
 
 def _default_pi_bundle_dir() -> Path:
@@ -40,21 +66,31 @@ class PiAdapter(IDEAdapter):
         *,
         bundle_dir: Path | None = None,
     ) -> list[Path]:
-        """Mirror ``.cortex/subagents/`` into ``cortex-pi/.pi/agents/``.
+        """Mirror ``.cortex/{skills,subagents}/`` into ``cortex-pi/.pi/agents/``.
 
-        Pi is the only target IDE that copies its agents from a frozen
-        bundle (``cortex-pi/``) instead of reading the canonical workspace
-        directly. Before ``inject_profiles`` copies that bundle into the
-        project, this method overwrites the 3 shared agents in the bundle
-        with the latest canonical content from the project's
-        ``.cortex/subagents/`` directory.
+        Pi has no slash-skill concept of its own — every prompt is an
+        ``agent`` under ``.pi/agents/``. Phase 09.A+ (May 2026) extends
+        the original sync (which only covered the 3 code-* subagents) to
+        also propagate the **three triadic anchors** (``cortex-sync``,
+        ``cortex-SDDwork``, ``cortex-documenter``) from ``.cortex/skills/``.
+        Without this extension the Pi bundle drifts from the SSoT every
+        time the skills are updated upstream.
 
-        Idempotent. If the canonical directory does not exist (e.g. Pi
+        Sync sources, by priority:
+
+        - ``.cortex/skills/<anchor>.md``     → ``.pi/agents/<anchor>.md`` (anchor)
+        - ``.cortex/subagents/<name>.md``    → ``.pi/agents/<name>.md`` (subagent)
+
+        The ``cortex-documenter.md`` entry comes from the SKILL (canonical
+        closing anchor), NOT from the legacy subagent. The subagent file
+        is irrelevant on Pi — Pi targets the skill content.
+
+        Idempotent. If the canonical directories do not exist (e.g. Pi
         is being injected before any Cortex setup ran), the bundle stays
         untouched and an empty list is returned.
 
         Args:
-            project_root: Project where the canonical subagents live.
+            project_root: Project where the canonical files live.
             bundle_dir:   Override for the Pi bundle root. Tests pass a
                           temporary directory so they do not mutate the
                           repository's real ``cortex-pi/`` bundle.
@@ -65,8 +101,9 @@ class PiAdapter(IDEAdapter):
         from cortex.workspace.layout import WorkspaceLayout
 
         layout = WorkspaceLayout.discover(project_root)
-        canonical_dir = layout.subagents_dir
-        if not canonical_dir.is_dir():
+        skills_dir = layout.skills_dir
+        subagents_dir = layout.subagents_dir
+        if not skills_dir.is_dir() and not subagents_dir.is_dir():
             return []
 
         bundle = bundle_dir if bundle_dir is not None else _default_pi_bundle_dir()
@@ -74,13 +111,28 @@ class PiAdapter(IDEAdapter):
         pi_bundle_agents.mkdir(parents=True, exist_ok=True)
 
         overwritten: list[Path] = []
-        for name in _SHARED_AGENTS:
-            src = canonical_dir / name
-            if not src.exists():
-                continue
-            dst = pi_bundle_agents / name
-            dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-            overwritten.append(dst)
+
+        # Skill anchors override anything in the subagents folder with
+        # the same basename. Sync skills first so the documenter ends up
+        # with the SKILL content (not the legacy DEPRECATED subagent).
+        if skills_dir.is_dir():
+            for name in _SHARED_SKILL_ANCHORS:
+                src = skills_dir / name
+                if not src.exists():
+                    continue
+                dst = pi_bundle_agents / name
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+                overwritten.append(dst)
+
+        if subagents_dir.is_dir():
+            for name in _SHARED_SUBAGENTS:
+                src = subagents_dir / name
+                if not src.exists():
+                    continue
+                dst = pi_bundle_agents / name
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+                overwritten.append(dst)
+
         return overwritten
 
     def inject_profiles(

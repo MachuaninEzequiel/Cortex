@@ -44,7 +44,11 @@ from cortex.ide.base import (
     _deep_merge_dict,
     _generate_autogen_header,
 )
-from cortex.ide.prompts import get_subagent_prompt, strip_markdown_frontmatter
+from cortex.ide.prompts import (
+    get_skill_prompt,
+    get_subagent_prompt,
+    strip_markdown_frontmatter,
+)
 
 # Subagents canonicos de Cortex que se inyectan en Cursor. Coincide con la
 # lista en claude_code y otros adapters validados — el mismo flujo
@@ -58,11 +62,67 @@ _CORTEX_SUBAGENTS: dict[str, dict[str, Any]] = {
         "description": "Deep-track implementation specialist for complex changes.",
         "readonly": False,
     },
+    "cortex-code-designer": {
+        "description": "Produce a design doc between explorer and implementer (Deep Track).",
+        "readonly": False,
+    },
     "cortex-documenter": {
-        "description": "Persist sessions and create Cortex documentation artifacts.",
+        # Kept for backward compat with the legacy Reconstruction flow.
+        # The canonical closing anchor is the /cortex-documenter SLASH SKILL
+        # below (``_CORTEX_SLASH_SKILLS``). The subagent stays accessible
+        # via Cursor's Task tool but the source file carries a DEPRECATED
+        # banner pointing at the skill.
+        "description": "DEPRECATED — use the /cortex-documenter slash skill instead. Legacy Reconstruction persistence.",
         "readonly": False,
     },
 }
+
+
+# Phase 09.A+ / May 2026: Cursor 2.4+ supports slash skills under
+# ``.cursor/skills/<name>/SKILL.md``. The three triadic anchors are
+# installed as project-level skills so the user can invoke
+# ``/cortex-sync``, ``/cortex-SDDwork`` and ``/cortex-documenter``
+# exactly like in Claude Code. Source of truth: ``.cortex/skills/*.md``.
+_CORTEX_SLASH_SKILLS: dict[str, dict[str, str]] = {
+    "cortex-sync": {
+        "skill_name": "cortex-sync",
+        "description": "Create a Cortex spec before any implementation work.",
+        "source_file": "cortex-sync.md",
+    },
+    "cortex-SDDwork": {
+        # Directory must match the skill name; Cursor + Claude both use a
+        # lowercased convention so we keep the canonical casing for the
+        # source file and use ``cortex-sddwork`` for the directory.
+        "skill_name": "cortex-sddwork",
+        "description": "Implement a persisted Cortex spec using the Cortex workflow.",
+        "source_file": "cortex-SDDwork.md",
+    },
+    "cortex-documenter": {
+        "skill_name": "cortex-documenter",
+        "description": "Close a Cortex Session with editorial criterion (anchor de cierre).",
+        "source_file": "cortex-documenter.md",
+    },
+}
+
+
+def _render_cursor_skill(
+    skill_name: str,
+    description: str,
+    autogen_header: str,
+    body: str,
+) -> str:
+    """Render a Cursor 2.4+ skill ``SKILL.md`` file.
+
+    Cursor skills require a YAML frontmatter with ``name`` (lowercase,
+    matching the parent folder) and ``description``. See the Cursor
+    "Agent Skills" docs (May 2026): https://cursor.com/docs/skills.
+    """
+    frontmatter = [
+        f"name: {skill_name}",
+        f"description: {description}",
+    ]
+    fm_block = "\n".join(frontmatter)
+    return f"---\n{fm_block}\n---\n\n<!--\n{autogen_header.strip()}\n-->\n\n{body.strip()}\n"
 
 
 def _render_cursor_subagent(
@@ -110,18 +170,28 @@ class CursorAdapter(IDEAdapter):
         }
 
     def inject_profiles(self, project_root: Path, prompts: dict[str, str] | None = None) -> list[str]:
-        """Inyecta los 3 subagents canonicos en ``.cursor/agents/`` (project-level).
+        """Inyecta los subagents canónicos en ``.cursor/agents/`` y los 3
+        slash skills (anchors triádicos) en ``.cursor/skills/<n>/SKILL.md``.
+
+        Cursor 2.4+ soporta ambos mecanismos:
+        - **Subagents** (en ``.cursor/agents/``) — el agente principal los
+          invoca via Task tool. Mismos archivos canónicos que Claude Code.
+        - **Skills** (en ``.cursor/skills/<name>/SKILL.md``) — el usuario
+          los invoca con ``/`` o el agente los carga dinámicamente. Phase
+          09.A+ (May 2026) instala los 3 anchors triádicos como skills.
 
         ``prompts`` se acepta por uniformidad con el contrato base pero NO
-        se usa: los subagents se leen desde ``.cortex/subagents/*.md`` (la
-        SSoT de Cortex), respetando el principio rector #1.
+        se usa: el contenido se lee desde ``.cortex/{skills,subagents}/*.md``
+        (la SSoT de Cortex), respetando el principio rector #1.
         """
-        del prompts  # leemos directo de la SSoT canonica via get_subagent_prompt
+        del prompts  # leemos directo de la SSoT canonica
 
+        files_written: list[str] = []
+
+        # ── Subagents (.cursor/agents/) ───────────────────────────────────
         agents_dir = project_root / Path(".cursor") / "agents"
         agents_dir.mkdir(parents=True, exist_ok=True)
 
-        files_written: list[str] = []
         for agent_name, spec in _CORTEX_SUBAGENTS.items():
             agent_path = agents_dir / f"{agent_name}.md"
             _backup_file(agent_path)
@@ -145,6 +215,36 @@ class CursorAdapter(IDEAdapter):
                 encoding="utf-8",
             )
             files_written.append(str(agent_path))
+
+        # ── Slash skills (.cursor/skills/) — Phase 09.A+ triadic anchors ──
+        skills_dir = project_root / Path(".cursor") / "skills"
+        skills_dir.mkdir(parents=True, exist_ok=True)
+
+        for source_skill_name, spec in _CORTEX_SLASH_SKILLS.items():
+            skill_dir_name = spec["skill_name"]
+            skill_subdir = skills_dir / skill_dir_name
+            skill_subdir.mkdir(parents=True, exist_ok=True)
+            skill_path = skill_subdir / "SKILL.md"
+            _backup_file(skill_path)
+
+            autogen_header = _generate_autogen_header(
+                sources=[f".cortex/skills/{spec['source_file']}"],
+                ide_name="cursor",
+            )
+            canonical_body = strip_markdown_frontmatter(
+                get_skill_prompt(project_root, source_skill_name)
+            )
+
+            skill_path.write_text(
+                _render_cursor_skill(
+                    skill_name=skill_dir_name,
+                    description=spec["description"],
+                    autogen_header=autogen_header,
+                    body=canonical_body,
+                ),
+                encoding="utf-8",
+            )
+            files_written.append(str(skill_path))
 
         return files_written
 

@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 import os
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -99,27 +99,19 @@ class Embedder:
         result = fn(texts)
         return [[float(x) for x in v] for v in result]
 
-    @lru_cache(maxsize=1)
-    def _get_onnx_fn(self):
-        """Lazy-load chromadb's ONNX embedding function (no PyTorch needed)."""
-        try:
-            from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2  # type: ignore
-            logger.info("Loading ONNX embedding function (ONNXMiniLM_L6_V2)...")
-            return ONNXMiniLM_L6_V2()
-        except ImportError:
-            # Fallback: chromadb >= 0.5 may use a different import path
-            try:
-                from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import (  # type: ignore
-                    ONNXMiniLM_L6_V2,
-                )
-                logger.info("Loading ONNX embedding function (alt path)...")
-                return ONNXMiniLM_L6_V2()
-            except ImportError as e:
-                raise ImportError(
-                    "Could not load the ONNX embedding function from chromadb. "
-                    "Make sure chromadb>=0.5 is installed. "
-                    "Alternatively, switch to backend='local' in your config.yaml."
-                ) from e
+    def _get_onnx_fn(self) -> Any:
+        """Return the process-wide ONNX embedding function.
+
+        Delegates to :class:`cortex.embedders.onnx.OnnxEmbedder` which holds
+        a thread-safe class-level singleton (lock + double-check locking).
+        Sharing the singleton across every ``Embedder`` instance ensures
+        chromadb's ``ONNXMiniLM_L6_V2`` model loads exactly **once per
+        process** regardless of how many adapters/services instantiate
+        their own ``Embedder`` (was: once per instance via ``lru_cache``,
+        which caused 5-8 redundant loads on a cold ``cortex_sync_ticket``).
+        """
+        from cortex.embedders.onnx import OnnxEmbedder
+        return OnnxEmbedder._get_onnx_fn()
 
     # ------------------------------------------------------------------
     # Local Backend (BACKUP — sentence-transformers + PyTorch)

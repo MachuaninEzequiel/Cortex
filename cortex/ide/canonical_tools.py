@@ -55,7 +55,26 @@ CanonicalTool = Literal[
     "cortex_verify_session_claims",
     "cortex_sync_ticket",
     "cortex_create_spec",
+    "cortex_emit_proposal",
+    "cortex_documenter_briefing",
+    "cortex_close_session",
+    "cortex_write_doc",
+    "cortex_self_review_note",
     "cortex_ping",
+    # Pluggable Middle (Phase 00/01) — Session primitive tools.
+    "cortex_session_open",
+    "cortex_session_checkpoint",
+    "cortex_session_close",
+    "cortex_session_status",
+    "cortex_session_list",
+    "cortex_finish_session",
+    # Pluggable Middle (Phase 08 / T8.2) — Managed quality gates.
+    "cortex_review_checkpoint",
+    # Pluggable Middle (Phase 09.B) — Design step (cortex-code-designer).
+    "write_design_note_canonical",
+    # Pluggable Middle (Phase 09.C) — Tasks granulares.
+    "cortex_session_task_list",
+    "cortex_session_task_update",
     # NOTA: ``cortex_delegate_task`` fue eliminado en Fase 5 del plan
     # multi-IDE & MCP hardening (2026-05-15). La delegacion a subagents
     # es responsabilidad nativa del IDE, no del MCP server.
@@ -138,8 +157,74 @@ _TOOL_NAME_BY_IDE: dict[str, dict[str, str | None]] = {
         "claude_code": "mcp__cortex__cortex_create_spec",
         "opencode": None,
     },
+    # Pluggable Middle: Conversational proposal primitive (Phase 09.A+).
+    "cortex_emit_proposal": {
+        "claude_code": "mcp__cortex__cortex_emit_proposal",
+        "opencode": None,
+    },
+    # Pluggable Middle: /cortex-documenter skill plumbing (Phase 09.A+).
+    "cortex_documenter_briefing": {
+        "claude_code": "mcp__cortex__cortex_documenter_briefing",
+        "opencode": None,
+    },
+    "cortex_close_session": {
+        "claude_code": "mcp__cortex__cortex_close_session",
+        "opencode": None,
+    },
+    "cortex_write_doc": {
+        "claude_code": "mcp__cortex__cortex_write_doc",
+        "opencode": None,
+    },
+    "cortex_self_review_note": {
+        "claude_code": "mcp__cortex__cortex_self_review_note",
+        "opencode": None,
+    },
     "cortex_ping": {
         "claude_code": "mcp__cortex__cortex_ping",
+        "opencode": None,
+    },
+    # Pluggable Middle: Session primitive (Phase 00 / 01).
+    "cortex_session_open": {
+        "claude_code": "mcp__cortex__cortex_session_open",
+        "opencode": None,
+    },
+    "cortex_session_checkpoint": {
+        "claude_code": "mcp__cortex__cortex_session_checkpoint",
+        "opencode": None,
+    },
+    "cortex_session_close": {
+        "claude_code": "mcp__cortex__cortex_session_close",
+        "opencode": None,
+    },
+    "cortex_session_status": {
+        "claude_code": "mcp__cortex__cortex_session_status",
+        "opencode": None,
+    },
+    "cortex_session_list": {
+        "claude_code": "mcp__cortex__cortex_session_list",
+        "opencode": None,
+    },
+    "cortex_finish_session": {
+        "claude_code": "mcp__cortex__cortex_finish_session",
+        "opencode": None,
+    },
+    # Pluggable Middle: Managed quality gates (Phase 08 / T8.2).
+    "cortex_review_checkpoint": {
+        "claude_code": "mcp__cortex__cortex_review_checkpoint",
+        "opencode": None,
+    },
+    # Pluggable Middle: Design step (Phase 09.B).
+    "write_design_note_canonical": {
+        "claude_code": "mcp__cortex__write_design_note_canonical",
+        "opencode": None,
+    },
+    # Pluggable Middle: Tasks granulares (Phase 09.C).
+    "cortex_session_task_list": {
+        "claude_code": "mcp__cortex__cortex_session_task_list",
+        "opencode": None,
+    },
+    "cortex_session_task_update": {
+        "claude_code": "mcp__cortex__cortex_session_task_update",
         "opencode": None,
     },
 }

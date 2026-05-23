@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
@@ -22,7 +23,6 @@ from cortex.enterprise.promotion_models import (
 from cortex.runtime_context import slugify
 from cortex.workspace.layout import WorkspaceLayout
 
-
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
@@ -35,7 +35,7 @@ class PromotionPaths:
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _split_frontmatter(raw: str) -> tuple[dict[str, Any], str, bool]:
@@ -145,7 +145,7 @@ class KnowledgePromotionService:
         project_root: Path,
         *,
         workspace_layout: WorkspaceLayout | None = None,
-    ) -> "KnowledgePromotionService":
+    ) -> KnowledgePromotionService:
         """Create a KnowledgePromotionService from a project root.
 
         If a WorkspaceLayout is provided, use it to resolve paths.

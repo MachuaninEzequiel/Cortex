@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Ezequiel Adrián Machuanin" />
+    <title>Cortex — Plan de adopción ejecutivo</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #ffffff;
+        --bg-soft: #f5f7fa;
+        --bg-card: #fafbfc;
+
+        --border: #e2e5ea;
+        --border-2: #cfd4dc;
+        --rule: #1a1a1a;
+
+        --text: #111213;
+        --text-mut: #4a4d54;
+        --text-dim: #8a8e95;
+        --text-soft: #6a6e75;
+
+        --blue: #2d4a6b;
+        --blue-soft: #eef2f7;
+        --blue-line: #6b8aaa;
+
+        --max-w: 820px;
+
+        --sans:
+          system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+          Helvetica, Arial, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings:
+          "kern" 1,
+          "tnum" 1;
+      }
+
+      .wrap {
+        max-width: var(--max-w);
+        padding: 0 32px;
+        margin: 0 auto;
+      }
+
+      a {
+        color: var(--text);
+        text-decoration: none;
+        border-bottom: 1px solid var(--border-2);
+        transition: border-color 0.2s;
+      }
+      a:hover {
+        border-color: var(--blue);
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        background: var(--bg-soft);
+        padding: 1px 6px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      /* =====================================================
+     PORTADA — coincide con download.png
+     ===================================================== */
+      .cover {
+        min-height: 100vh;
+        padding: 56px 0 56px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .cover-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .cover-header .brand {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: var(--text);
+      }
+      .cover-header .doc-tag {
+        font-size: 12px;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        color: var(--text-soft);
+      }
+
+      .cover-center {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 80px 0 60px;
+      }
+      .cover-center h1 {
+        font-family: var(--sans);
+        font-size: clamp(48px, 7.5vw, 84px);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.025em;
+        color: var(--text);
+        margin: 0 0 18px;
+      }
+      .cover-center .sub {
+        font-size: 18px;
+        font-weight: 400;
+        color: var(--text-dim);
+        margin: 0 0 36px;
+        letter-spacing: 0;
+      }
+      .cover-center .sub .dot {
+        margin: 0 8px;
+        color: var(--text-dim);
+      }
+
+      .cover-center .tagline {
+        font-style: italic;
+        font-size: 15px;
+        color: var(--text-mut);
+        line-height: 1.55;
+        margin: 0;
+        max-width: 560px;
+      }
+
+      .cover-meta {
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        padding: 26px 0;
+      }
+      .meta-block {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px 28px;
+        margin: 0;
+      }
+      .meta-block dt {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin: 0;
+        padding-top: 2px;
+      }
+      .meta-block dd {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .meta-block dd a {
+        color: var(--text);
+        border-bottom: 1px dotted var(--border-2);
+        font-weight: 600;
+      }
+      .meta-block dd a:hover {
+        border-color: var(--blue);
+      }
+
+      /* =====================================================
+     CUERPO
+     ===================================================== */
+      .content {
+        padding-top: 64px;
+      }
+
+      .hero-quote {
+        margin: 0 0 56px;
+        font-size: 22px;
+        line-height: 1.45;
+        font-style: italic;
+        color: var(--text);
+        max-width: 640px;
+        padding-left: 18px;
+        border-left: 3px solid var(--blue-line);
+      }
+      .hero-quote em {
+        font-style: italic;
+      }
+
+      section {
+        padding: 8px 0 36px;
+      }
+
+      h2 {
+        font-family: var(--sans);
+        font-size: 26px;
+        line-height: 1.25;
+        font-weight: 700;
+        letter-spacing: -0.012em;
+        margin: 44px 0 18px;
+        color: var(--text);
+      }
+      h2 .num {
+        color: var(--text-dim);
+        font-weight: 400;
+        margin-right: 14px;
+      }
+
+      h3 {
+        font-family: var(--sans);
+        font-size: 18px;
+        font-weight: 600;
+        margin: 28px 0 10px;
+        color: var(--text);
+      }
+
+      p {
+        margin: 0 0 14px;
+        color: var(--text);
+        max-width: 68ch;
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      ul,
+      ol {
+        margin: 0 0 18px;
+        padding-left: 26px;
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.65;
+      }
+      li {
+        margin-bottom: 10px;
+        max-width: 66ch;
+      }
+
+      p strong,
+      li strong,
+      td strong {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      /* Citas internas */
+      blockquote {
+        margin: 26px 0;
+        padding: 16px 22px;
+        border-left: 3px solid var(--blue-line);
+        background: var(--blue-soft);
+        color: var(--text);
+        font-style: italic;
+        font-size: 15px;
+        line-height: 1.6;
+        border-radius: 0 3px 3px 0;
+      }
+      blockquote p {
+        margin: 0;
+        color: var(--text);
+        font-size: 15px;
+      }
+
+      /* Tablas */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 22px 0 26px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        border: 1px solid var(--border-2);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      thead tr {
+        background: var(--blue-soft);
+      }
+      th {
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-mut);
+        padding: 12px 14px;
+        border-bottom: 2px solid var(--rule);
+        border-right: 1px solid var(--border-2);
+      }
+      th:last-child {
+        border-right: none;
+      }
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        vertical-align: top;
+        color: var(--text);
+      }
+      td:last-child {
+        border-right: none;
+      }
+      tbody tr:nth-child(even) {
+        background: #fafbfc;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td strong,
+      td b {
+        font-weight: 600;
+      }
+
+      /* Lista con flechas dentro de celdas (Superficie que usa) */
+      .surface-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .surface-list li {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 6px;
+        max-width: none;
+        line-height: 1.5;
+        font-size: 13.5px;
+      }
+      .surface-list li:last-child {
+        margin-bottom: 0;
+      }
+      .surface-list li::before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--blue);
+        font-weight: 600;
+      }
+
+      hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 48px 0 8px;
+      }
+
+      /* =====================================================
+     CIERRE — mismo estilo que la portada
+     ===================================================== */
+      .closing {
+        margin-top: 64px;
+        padding: 26px 0;
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+      }
+
+      /* =====================================================
+     IMPRESIÓN / PDF
+     ===================================================== */
+      @page {
+        size: A4;
+        margin: 22mm 20mm 20mm 20mm;
+
+        @bottom-left {
+          content: "Plan de adopción";
+          font-family:
+            system-ui,
+            -apple-system,
+            "Segoe UI",
+            Roboto,
+            "Helvetica Neue",
+            Helvetica,
+            Arial,
+            sans-serif;
+          font-size: 8pt;
+          color: #8a8e95;
+          letter-spacing: 0.04em;
+          vertical-align: top;
+          padding-top: 6mm;
+        }
+        @bottom-right {
+          content: "Cortex";
+          font-family:
+            system-ui,
+            -apple-system,
+            "Segoe UI",
+            Roboto,
+            "Helvetica Neue",
+            Helvetica,
+            Arial,
+            sans-serif;
+          font-size: 8pt;
+          color: #8a8e95;
+          letter-spacing: 0.04em;
+          vertical-align: top;
+          padding-top: 6mm;
+        }
+      }
+
+      @page :first {
+        @bottom-left {
+          content: "";
+        }
+        @bottom-right {
+          content: "";
+        }
+      }
+
+      @media print {
+        body {
+          font-size: 11pt;
+          line-height: 1.5;
+          background: #fff;
+        }
+        .wrap {
+          padding: 0;
+          max-width: 100%;
+        }
+
+        .cover {
+          min-height: 0;
+          height: calc(297mm - 44mm);
+          padding: 0;
+          page-break-after: always;
+        }
+        .cover-header {
+          padding-bottom: 10pt;
+        }
+        .cover-header .brand {
+          font-size: 10pt;
+        }
+        .cover-header .doc-tag {
+          font-size: 9pt;
+        }
+        .cover-center {
+          padding: 50pt 0 40pt;
+        }
+        .cover-center h1 {
+          font-size: 54pt;
+        }
+        .cover-center .sub {
+          font-size: 13pt;
+          margin-bottom: 28pt;
+        }
+        .cover-center .tagline {
+          font-size: 11pt;
+        }
+        .cover-meta {
+          padding: 18pt 0;
+        }
+        .meta-block dt {
+          font-size: 8pt;
+        }
+        .meta-block dd {
+          font-size: 10.5pt;
+        }
+
+        .content {
+          padding-top: 0;
+        }
+        .hero-quote {
+          font-size: 14pt;
+          margin-bottom: 28pt;
+        }
+
+        h2 {
+          font-size: 16pt;
+          margin-top: 24pt;
+          page-break-after: avoid;
+        }
+        h3 {
+          font-size: 12pt;
+          page-break-after: avoid;
+        }
+        blockquote {
+          page-break-inside: avoid;
+          font-size: 10.5pt;
+        }
+        table {
+          page-break-inside: avoid;
+          font-size: 9.5pt;
+        }
+        tr,
+        td,
+        th {
+          page-break-inside: avoid;
+        }
+
+        .closing {
+          page-break-inside: avoid;
+        }
+        a {
+          color: var(--text);
+          border-bottom: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="cover">
+        <div class="cover-header">
+          <span class="brand">CORTEX</span>
+          <span class="doc-tag"
+            >PLAN DE ADOPCION &middot; 2026 &middot; VERSION EJECUTIVA</span
+          >
+        </div>
+
+        <div class="cover-center">
+          <h1>Plan de Adopción</h1>
+          <p class="sub">Cortex<span class="dot">·</span>Edición 2026</p>
+          <p class="tagline">
+            Cortex: Documentación como framework de gobernanza enterprise.<br />Harness
+            controlado y trazable.
+          </p>
+        </div>
+
+        <div class="cover-meta">
+          <dl class="meta-block">
+            <dt>Autor</dt>
+            <dd>Ezequiel Adrián Machuanin</dd>
+            <dt>Fecha</dt>
+            <dd>Mayo de 2026</dd>
+            <dt>Lugar</dt>
+            <dd>Chaco, Argentina</dd>
+          </dl>
+        </div>
+      </header>
+
+      <main class="content">
+        <blockquote class="hero-quote">
+          Tu equipo ya usa inteligencia artificial. La pregunta no es si la
+          adoptás. La pregunta es quién la gobierna.
+        </blockquote>
+
+        <section>
+          <h2><span class="num">1.</span>Tesis y producto</h2>
+
+          <p>
+            El código dejó de escribirse mayoritariamente a mano: equipos chicos
+            publican volúmenes de PRs que antes requerían oficinas enteras. Pero
+            un porcentaje grande de ese código tiene problemas para llegar a
+            producción — no porque los modelos sean malos, sino porque alrededor
+            del modelo no hay nada: no hay memoria que sobreviva entre sesiones,
+            no hay reglas que rijan qué se decide y lo peor de todo, es que no
+            hay registro auditable de qué hizo cada agente.
+          </p>
+
+          <p>
+            La industria nombró esa capa que rodea al modelo: agent harness.
+            <code>Agente = Modelo + Harness</code>. Los IDEs mas utilizados
+            implementan harnesses personales (uno por sesión, uno por
+            developer). Lo que ninguno ofrece es lo que aparece cuando ese
+            developer deja de ser uno y pasa a ser un equipo: memoria
+            persistente, governance declarativa, reglas uniformes cross-IDE.
+          </p>
+
+          <blockquote>
+            <p>
+              Cortex es el framework de gobernanza que se conecta a los
+              harnesses personales existentes — Claude Code, Cursor, Codex,
+              Opencode y Pi — y les añade todo lo que un harness per-session
+              personal no puede ofrecer.
+            </p>
+          </blockquote>
+        </section>
+
+        <section>
+          <h2><span class="num">2.</span>Cómo está compuesto Cortex</h2>
+
+          <p>
+            Antes de entrar en mercado y estado actual conviene fijar el modelo
+            mental. Cortex esta dividido en capas, y cada una resuelve uno de
+            los huecos que un harness personal no cubre:
+          </p>
+
+          <ul>
+            <li>
+              <strong>El vault</strong> — el corazón. Un directorio
+              (<code>vault/</code>) en tu repositorio con archivos planos en
+              Markdown que contienen el conocimiento canónico del proyecto,
+              organizado en 13 <em>doc types</em> formalizados (ADR, decision,
+              spec, runbook, incident, postmortem, etc.). Sin base de datos
+              propietaria, sin servicio externo: si mañana te bajás de Cortex,
+              el conocimiento ya está en tu repo y se queda con vos.
+            </li>
+            <li>
+              <strong>El servidor MCP</strong> — el cerebro. Un proceso local
+              que corre junto a tu IDE y expone ~30 herramientas al agente:
+              cargar memoria histórica al abrir un ticket, indexar el vault,
+              ejecutar verification-hooks, persistir sesiones, consultar
+              relaciones del webgraph y demas herramietas.
+            </li>
+            <li>
+              <strong>Los comandos <code>/cortex-*</code></strong> — la
+              superficie. Lo que el developer escribe con <code>/</code> en su
+              IDE. Tres principales en cadena: <code>/cortex-sync</code> carga
+              contexto al abrir trabajo, un middle pluggable ejecuta la tarea
+              con ese contexto, y <code>/cortex-documenter</code> persiste
+              decisiones y resultados al cerrar.
+            </li>
+            <li>
+              <strong>El vault enterprise</strong> — la escala organizacional.
+              Cuando se sale del proyecto, los vaults individuales se federan
+              en un vault corporativo: el conocimiento crítico de negocio
+              (decisiones de arquitectura recurrentes, criterios de compliance,
+              runbooks operativos, lecciones aprendidas de incidents) atraviesa
+              los proyectos. Cada agente que un developer arranca en cualquier
+              proyecto <strong>no parte de cero</strong>, no actúa como un LLM
+              genérico — arranca con el contexto de negocio acumulado de la
+              organización y deja de ser un asistente de código para pasar a
+              ser un actor de negocio más. Es la diferencia entre tener IA en
+              el equipo y tener IA gobernada por el equipo.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2><span class="num">3.</span>Mercado, modelo y estado actual</h2>
+
+          <p>
+            <strong>Cliente ideal:</strong> Software factories y fintech
+            pequeñas y medianas (PyMEs). El trigger de adopción es siempre el
+            mismo: la industria entera detectó que cada developer usa la IA de
+            forma distinta y los resultados son incoherentes o bien ya ocurrió
+            algo no auditable que no se puede explicar.
+          </p>
+
+          <p>
+            <strong>Modelo de negocio:</strong> El framework es y va a seguir
+            siendo gratuito al 100%. La monetización futura (2027 en adelante)
+            viene por consultoría de implantación en empresas medianas/grandes:
+            diseño del <code>org.yaml</code> corporativo, integración con stacks
+            legacy, training, etc. Este camino permite construir comunidad y
+            producto sin presión de monetización prematura.
+          </p>
+
+          <p>
+            <strong>Estado actual mediados de mayo de 2026</strong> — la
+            composición importa más que la magnitud:
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Frente</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Producto</td>
+                <td>
+                  MVP cierra en ~1 semana. Las tres capas operativas sobre los 5
+                  IDEs validados (Claude Code, Cursor, Codex, Opencode, Pi); ~30
+                  tools MCP expuestas; governance enforcement por timestamp
+                  activo; ONNX singleton estable.
+                </td>
+              </tr>
+              <tr>
+                <td>Adopters</td>
+                <td>
+                  1 equipo de proyecto final confirmado usando Cortex como marco
+                  metodológico completo. 2 equipos adicionales acordados. 2
+                  acercamientos industriales con reunión formal en ~1 semana
+                  (startup del sector + freelance senior que destinará un
+                  proyecto entero al uso intensivo).
+                </td>
+              </tr>
+              <tr>
+                <td>Comunidad</td>
+                <td>
+                  Estrellas creciendo orgánicamente en GitHub; adopción
+                  individual para uso personal.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <p>
+              Los adopters confirmados están dispuestos a destinar proyectos
+              enteros al uso intensivo de Cortex a cambio de feedback. Eso es
+              exactamente el insumo que un framework joven necesita para
+              madurar: usuarios comprometidos, no casuales.
+            </p>
+          </blockquote>
+        </section>
+
+        <section>
+          <h2><span class="num">4.</span>Tres puestos, tres superficies</h2>
+
+          <p>
+            Cortex es un framework de gobernanza de documentación y conocimiento
+            generado en la era de la IA. Las capacidades del framework se
+            exponen distintas según el rol del usuario en la organización:
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Rol</th>
+                <th>Superficie que usa</th>
+                <th>Qué obtiene</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Developer</td>
+                <td>
+                  <ul class="surface-list">
+                    <li><code>/cortex-sync</code></li>
+                    <li><code>/cortex-SDDwork</code> (pluggable)</li>
+                    <li><code>/cortex-documenter</code></li>
+                  </ul>
+                </td>
+                <td>
+                  Memoria histórica del proyecto cargada automáticamente al
+                  abrir un ticket; propuesta interactiva antes de codear;
+                  documentación con criterio editorial al cierre;
+                  verification-hooks ejecutables que prueban objetivamente que
+                  el trabajo está hecho.
+                </td>
+              </tr>
+              <tr>
+                <td>DevOps</td>
+                <td>
+                  <ul class="surface-list">
+                    <li>Cortex CI plugin</li>
+                    <li>Plantillas GitHub Actions / GitLab CI</li>
+                    <li>Review sessions</li>
+                  </ul>
+                </td>
+                <td>
+                  Cada PR se valida contra la spec que lo originó (scope drift
+                  detection, hooks declarativos ejecutados). El servidor CI deja
+                  comentarios sticky con el resultado; review sessions
+                  persistidas con <code>mode=ci-review</code> para auditoría
+                  posterior.
+                </td>
+              </tr>
+              <tr>
+                <td>Analista funcional</td>
+                <td>
+                  <ul class="surface-list">
+                    <li>Cortex Webgraph</li>
+                    <li>Snapshot navegable del vault</li>
+                    <li>Memoria episódica vinculada por semántica y co-ocurrencia</li>
+                  </ul>
+                </td>
+                <td>
+                  Vista de grafo de cómo se conectan las decisiones, specs, ADRs
+                  y sessions del proyecto entero. Permite responder preguntas
+                  tipo
+                  <em
+                    >"¿cuáles fueron las decisiones que llevaron a este
+                    componente?"</em
+                  >
+                  sin tener que leer commits.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            Los tres comparten la misma memoria subyacente — el vault canónico +
+            la base episódica. Lo que cambia es la lente. Esa unificación es lo
+            que hace que la información generada por developers sea
+            inmediatamente útil para devops y analistas funcionales, sin trabajo
+            manual de exportación.
+          </p>
+        </section>
+
+        <section>
+          <h2><span class="num">5.</span>La economía del contexto</h2>
+
+          <p>
+            Hay un argumento económico que justifica Cortex por sí solo, incluso
+            en la versión gratuita: mejor contexto → menos errores → menos
+            tokens consumidos a largo plazo.
+          </p>
+
+          <p>
+            Un agente sin memoria persistente redescubre el proyecto en cada
+            sesión: re-lee los mismos archivos, repregunta las mismas decisiones
+            y repite errores ya cometidos al lado. Cada redescubrimiento cuesta
+            tokens. A escala de equipo, esos tokens son una línea visible en la
+            factura mensual de IA.
+          </p>
+
+          <p>Cortex ataca esa ineficiencia de tres formas:</p>
+
+          <ol>
+            <li>
+              <strong>Recuperación dirigida con Reciprocal Rank Fusion</strong>
+              — el agente es inyectado con contexto histórico relevante al abrir
+              el ticket (<code>cortex_sync_ticket</code>), no exploración a
+              ciegas. Menos lecturas redundantes, menos tokens.
+            </li>
+            <li>
+              <strong>Memoria episódica + semántica vectorizadas</strong> —
+              embeddings ONNX locales (sin costo de API), índice persistente,
+              recuperación por similitud en milisegundos.
+            </li>
+            <li>
+              <strong>Datos históricos conectados</strong> — el webgraph
+              relaciona decisiones, specs y resultados. Una decisión de
+              arquitectura tomada en el Proyecto A se vuelve consultable como
+              evidencia al iniciar el Proyecto B, sin necesidad de re-explorar
+              el problema desde cero.
+            </li>
+          </ol>
+
+          <p>
+            A esto se le suma algo indispensable: La trazabilidad. Cada decisión
+            queda persistida en su <code>doc_type</code> canónico, vectorizada y
+            conectada. Nada se reconstruye sin pensar en el futuro.
+          </p>
+        </section>
+
+        <section>
+          <h2><span class="num">6.</span>Roadmap</h2>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Horizonte</th>
+                <th>Hito principal</th>
+                <th>Cómo se mide</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  ~1 semana<br /><span
+                    style="color: var(--text-dim); font-size: 11px"
+                    >hoy → fin de mayo 2026</span
+                  >
+                </td>
+                <td>
+                  Cierre de MVP. Modelo triádico completo, los 5 IDEs validados
+                  en proyectos reales, los 13 doc types operativos cross-IDE,
+                  ONNX singleton estable.
+                </td>
+                <td>
+                  El MVP cierra cuando los +3 equipos que estan desarrollando su
+                  proyecto final puedan instalar Cortex en su proyecto y
+                  utilizarlo de forma asistida, brindando feedback constante.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  3 meses<br /><span
+                    style="color: var(--text-dim); font-size: 11px"
+                    >jun – ago 2026</span
+                  >
+                </td>
+                <td>Consolidar y validar el MVP con adopters de confianza.</td>
+                <td>
+                  Cortex instalado en las dos empresas ya en conversación
+                  (startup del sector + freelance senior), y agregar un par más
+                  del mismo tamaño y nivel de confianza. El objetivo no es
+                  escalar sino estabilizar el framework con feedback cercano.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  3 a 6 meses<br /><span
+                    style="color: var(--text-dim); font-size: 11px"
+                    >sep 2026 – feb 2027</span
+                  >
+                </td>
+                <td>Primera ampliación a empresas con métodos consolidados.</td>
+                <td>
+                  Implementación en empresas con equipos más consolidados,
+                  procesos internos definidos y posible historial técnico
+                  previo, para observar cómo el framework responde ante
+                  estructuras menos flexibles que las de las pymes iniciales.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2><span class="num">7.</span>Qué busco</h2>
+
+          <p>
+            Para crecer, Cortex necesita tres cosas concretas a mediano plazo:
+          </p>
+
+          <ol>
+            <li>
+              <strong>Adopters serios</strong> — equipos técnicos dispuestos a
+              probar Cortex en un proyecto real (no sandbox) y dar feedback
+              honesto. A cambio: acceso gratuito perpetuo, influencia directa en
+              el roadmap, reconocimiento público como adopter fundacional,
+              soporte directo del founder.
+            </li>
+            <li>
+              <strong>Inversores ángel estratégicos</strong> (no financieros) —
+              personas con red de contactos y experiencia en go-to-market de
+              developer tools, no capital.
+            </li>
+          </ol>
+
+          <p>
+            No busco capital de riesgo en esta etapa. Una ronda hoy presionaría
+            al producto a optimizar por crecimiento antes de que la base técnica
+            esté estabilizada, y el framework necesita justamente lo contrario:
+            tiempo para asentarse con adopters cercanos antes de escalar.
+          </p>
+        </section>
+
+        <footer class="closing">
+          <dl class="meta-block">
+            <dt>Contacto</dt>
+            <dd>
+              <a
+                href="https://www.linkedin.com/in/ezequiel-machuanin-535531218/"
+                >Ezequiel Adrián Machuanin</a
+              >
+            </dd>
+            <dt>Email</dt>
+            <dd>
+              <a href="mailto:ezequieladrianmachuanin@gmail.com"
+                >ezequieladrianmachuanin@gmail.com</a
+              >
+            </dd>
+            <dt>Repositorio</dt>
+            <dd>
+              <a href="https://github.com/MachuaninEzequiel/Cortex"
+                >github.com/MachuaninEzequiel/Cortex</a
+              >
+            </dd>
+          </dl>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

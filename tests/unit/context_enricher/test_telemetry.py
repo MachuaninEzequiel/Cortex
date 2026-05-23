@@ -7,14 +7,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from cortex.context_enricher.telemetry import (
     PersistentObserver,
     detect_citations,
 )
 from cortex.models import EnrichedContext, EnrichedItem, WorkContext
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

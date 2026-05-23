@@ -47,6 +47,4 @@ def render_template(template_name: str, data: dict[str, Any]) -> str:
         template = _env.get_template(template_name)
         return template.render(**data)
     except TemplateError as exc:
-        raise TemplateRenderError(
-            f"Failed to render {template_name}: {exc}"
-        ) from exc
+        raise TemplateRenderError(f"Failed to render {template_name}: {exc}") from exc

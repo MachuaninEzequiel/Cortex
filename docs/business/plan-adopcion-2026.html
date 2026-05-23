@@ -1,0 +1,1763 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Ezequiel Adrián Machuanin" />
+    <title>Cortex · El control plane de governance para IA</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #0b0c0e;
+        --bg-elev: #131418;
+        --bg-card: #16181c;
+        --border: #23252b;
+        --border-2: #2c2f36;
+        --text: #e4e6ea;
+        --text-mut: #9a9da5;
+        --text-dim: #61646c;
+
+        /* sober palette */
+        --blue: #7796b5; /* sync */
+        --blue-bg: #1a2433;
+        --violet: #8e85b0; /* middle */
+        --violet-bg: #221f31;
+        --teal: #6fa49a; /* documenter */
+        --teal-bg: #18272a;
+        --gold: #b3a070; /* vault */
+        --gold-bg: #2b2618;
+        --slate: #8993a3; /* webgraph / accent neutro */
+        --slate-bg: #1a1d23;
+
+        --max-w: 1100px;
+        --radius: 10px;
+        --radius-sm: 6px;
+        --font:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings:
+          "tnum" 1,
+          "ss01" 1;
+      }
+      a {
+        color: var(--text);
+        text-decoration: none;
+        border-bottom: 1px solid var(--border-2);
+        transition: border-color 0.2s;
+      }
+      a:hover {
+        border-color: var(--slate);
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: #101115;
+        padding: 1px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: var(--max-w);
+        padding: 0 28px;
+        margin: 0 auto;
+      }
+      section {
+        padding: 88px 0;
+        border-top: 1px solid var(--border);
+      }
+      section:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--slate);
+        margin: 0 0 18px;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        line-height: 1.1;
+        margin: 0 0 22px;
+        letter-spacing: -0.022em;
+        font-weight: 650;
+        color: var(--text);
+      }
+      h1 {
+        font-size: clamp(44px, 7vw, 76px);
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      h2 {
+        font-size: clamp(30px, 4vw, 46px);
+        line-height: 1.1;
+      }
+      h3 {
+        font-size: 22px;
+        letter-spacing: -0.015em;
+      }
+      h4 {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+      p {
+        margin: 0 0 14px;
+        color: var(--text-mut);
+        max-width: 68ch;
+        font-size: 17px;
+        line-height: 1.55;
+      }
+      p strong,
+      li strong {
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      /* big text helpers */
+      .xl {
+        font-size: 22px;
+        line-height: 1.4;
+        color: var(--text);
+        max-width: 720px;
+      }
+      .lead {
+        font-size: 20px;
+        line-height: 1.45;
+        color: var(--text);
+        max-width: 700px;
+      }
+
+      /* Concept highlight — reusable across the page.
+     Replaces <strong> in places where we want the eye to STOP, not just notice. */
+      .accent-grad {
+        background: linear-gradient(135deg, var(--blue) 10%, var(--teal) 90%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-family: var(--font);
+        font-weight: 700;
+        font-size: 1.08em;
+        letter-spacing: -0.012em;
+      }
+      /* Triadic strip — mini visual under the hero title */
+      .triadic-strip {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin: 28px 0 8px;
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--text-mut);
+      }
+      .triadic-strip .pill {
+        padding: 8px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--border-2);
+        background: var(--bg-elev);
+        transition:
+          border-color 0.2s,
+          color 0.2s;
+      }
+      .triadic-strip .pill.blue {
+        color: var(--blue);
+        border-color: rgba(119, 150, 181, 0.45);
+      }
+      .triadic-strip .pill.violet {
+        color: var(--violet);
+        border-color: rgba(142, 133, 176, 0.45);
+      }
+      .triadic-strip .pill.teal {
+        color: var(--teal);
+        border-color: rgba(111, 164, 154, 0.45);
+      }
+      .triadic-strip .pill:hover {
+        background: var(--bg-card);
+      }
+      .triadic-strip .link {
+        flex: 0 0 24px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--border-2) 30%,
+          var(--border-2) 70%,
+          transparent
+        );
+        position: relative;
+      }
+      .triadic-strip .link::after {
+        content: "";
+        position: absolute;
+        right: -2px;
+        top: -3px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid var(--border-2);
+        border-top: 3.5px solid transparent;
+        border-bottom: 3.5px solid transparent;
+      }
+      @media (max-width: 620px) {
+        .triadic-strip {
+          font-size: 12.5px;
+          gap: 8px;
+        }
+        .triadic-strip .link {
+          flex-basis: 16px;
+        }
+      }
+
+      /* Bullets */
+      ul.bullets {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      ul.bullets li {
+        padding-left: 36px;
+        position: relative;
+        font-size: 17px;
+        line-height: 1.5;
+        color: var(--text-mut);
+        max-width: 64ch;
+      }
+      ul.bullets li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 11px;
+        width: 18px;
+        height: 1px;
+        background: var(--slate);
+      }
+      ul.bullets li strong {
+        color: var(--text);
+      }
+
+      /* Nav */
+      nav.top {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(11, 12, 14, 0.88);
+        backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        border-bottom: 1px solid var(--border);
+      }
+      nav.top .inner {
+        max-width: var(--max-w);
+        margin: 0 auto;
+        padding: 16px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      nav.top .brand {
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 0.01em;
+        border-bottom: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+      }
+      nav.top .brand:hover {
+        border-bottom: 0;
+      }
+      nav.top .brand .mark {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        background: linear-gradient(135deg, var(--blue), var(--teal));
+        transform: rotate(45deg);
+      }
+      nav.top ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        gap: 24px;
+      }
+      nav.top ul a {
+        color: var(--text-mut);
+        font-size: 13px;
+        border-bottom: 0;
+      }
+      nav.top ul a:hover {
+        color: var(--text);
+        border-bottom: 0;
+      }
+      @media (max-width: 800px) {
+        nav.top ul {
+          display: none;
+        }
+      }
+
+      /* Hero */
+      .hero {
+        padding: 110px 0 80px;
+        animation: fade-up 0.7s ease both;
+      }
+      @keyframes fade-up {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hero {
+          animation: none;
+        }
+      }
+
+      .hero .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 14px;
+        border: 1px solid var(--border-2);
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--text-mut);
+        letter-spacing: 0.05em;
+      }
+      .hero .tag .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 0 rgba(111, 164, 154, 0.5);
+        animation: pulse-soft 2.4s infinite;
+      }
+      @keyframes pulse-soft {
+        0% {
+          box-shadow: 0 0 0 0 rgba(111, 164, 154, 0.5);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(111, 164, 154, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(111, 164, 154, 0);
+        }
+      }
+      .hero h1 {
+        margin-top: 28px;
+        max-width: 940px;
+        line-height: 1.18;
+        font-size: clamp(26px, 3.6vw, 40px);
+        font-weight: 600;
+        letter-spacing: -0.018em;
+        color: var(--text);
+      }
+      .hero h1 .grad {
+        background: linear-gradient(135deg, var(--blue) 10%, var(--teal) 90%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-style: italic;
+        font-weight: 700;
+        /* Las dos palabras destacadas conservan el tamaño "hero" original;
+       el resto del título queda en tamaño secundario. El contraste
+       (~2.2×) es lo que hace que el ojo aterrice primero en ellas. */
+        font-size: clamp(56px, 8.5vw, 92px);
+        line-height: 0.98;
+        letter-spacing: -0.035em;
+        display: inline-block;
+        vertical-align: -0.04em;
+      }
+      .hero .lede {
+        font-size: clamp(20px, 2.2vw, 25px);
+        color: var(--text);
+        max-width: 760px;
+        margin: 26px 0 28px;
+        line-height: 1.4;
+        font-weight: 400;
+      }
+      .hero .lede strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .hero .ctas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 32px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 7px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--border-2);
+        background: transparent;
+        color: var(--text);
+        border-bottom: 1px solid var(--border-2);
+        transition:
+          border-color 0.2s,
+          background 0.2s,
+          transform 0.15s;
+      }
+      .btn:hover {
+        border-color: var(--slate);
+        background: var(--bg-elev);
+        transform: translateY(-1px);
+      }
+      .btn.primary {
+        background: var(--text);
+        color: var(--bg);
+        border-color: var(--text);
+      }
+      .btn.primary:hover {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: var(--text);
+      }
+
+      /* Stats — extra big numbers */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        margin-top: 56px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      @media (max-width: 760px) {
+        .stats {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .stat {
+        padding: 26px 24px;
+        background: var(--bg);
+      }
+      .stat .num {
+        font-size: clamp(40px, 4.5vw, 56px);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .num .unit {
+        font-size: 0.55em;
+        color: var(--text-dim);
+        margin-left: 4px;
+        font-weight: 500;
+      }
+      .stat .lbl {
+        font-size: 13px;
+        color: var(--text-dim);
+        margin-top: 10px;
+        line-height: 1.45;
+      }
+
+      /* Cards */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      @media (max-width: 820px) {
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 620px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        transition:
+          border-color 0.2s,
+          transform 0.2s;
+      }
+      .card:hover {
+        border-color: var(--border-2);
+        transform: translateY(-2px);
+      }
+      .card h3 {
+        margin-bottom: 10px;
+        font-size: 20px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--text-mut);
+        font-size: 15.5px;
+      }
+      .card .kicker {
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--slate);
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+      .card.tint-blue {
+        background:
+          linear-gradient(
+            180deg,
+            rgba(119, 150, 181, 0.06) 0%,
+            transparent 100%
+          ),
+          var(--bg-card);
+        border-color: rgba(119, 150, 181, 0.25);
+      }
+      .card.tint-violet {
+        background:
+          linear-gradient(
+            180deg,
+            rgba(142, 133, 176, 0.06) 0%,
+            transparent 100%
+          ),
+          var(--bg-card);
+        border-color: rgba(142, 133, 176, 0.25);
+      }
+      .card.tint-teal {
+        background:
+          linear-gradient(
+            180deg,
+            rgba(111, 164, 154, 0.06) 0%,
+            transparent 100%
+          ),
+          var(--bg-card);
+        border-color: rgba(111, 164, 154, 0.25);
+      }
+      .card.tint-gold {
+        background:
+          linear-gradient(
+            180deg,
+            rgba(179, 160, 112, 0.06) 0%,
+            transparent 100%
+          ),
+          var(--bg-card);
+        border-color: rgba(179, 160, 112, 0.25);
+      }
+      .card.tint-blue .kicker {
+        color: var(--blue);
+      }
+      .card.tint-violet .kicker {
+        color: var(--violet);
+      }
+      .card.tint-teal .kicker {
+        color: var(--teal);
+      }
+      .card.tint-gold .kicker {
+        color: var(--gold);
+      }
+
+      /* Pullquote */
+      .pullquote {
+        border-left: 3px solid var(--slate);
+        padding: 18px 26px;
+        font-size: 21px;
+        color: var(--text);
+        max-width: 760px;
+        line-height: 1.45;
+        margin: 24px 0;
+      }
+      .pullquote strong {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      /* Tables */
+      .tbl-wrap {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--bg-card);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 15px;
+      }
+      th,
+      td {
+        padding: 16px 22px;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--border);
+        line-height: 1.55;
+      }
+      th {
+        background: var(--bg-elev);
+        color: var(--text-dim);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      td strong {
+        color: var(--text);
+        font-weight: 650;
+      }
+      td {
+        color: var(--text-mut);
+      }
+
+      /* IDE pills */
+      .ide-strip {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .ide {
+        padding: 7px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border-2);
+        color: var(--text);
+        font-size: 13.5px;
+        font-family: var(--mono);
+        background: var(--bg-elev);
+        transition: border-color 0.2s;
+      }
+      .ide:hover {
+        border-color: var(--slate);
+      }
+
+      /* DIAGRAM (big one) */
+      .diagram-wrap {
+        margin-top: 36px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background:
+          radial-gradient(
+            800px 400px at 50% 0%,
+            rgba(119, 150, 181, 0.04),
+            transparent 70%
+          ),
+          var(--bg-card);
+        overflow-x: auto;
+      }
+      .diagram-wrap svg {
+        display: block;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 1080px;
+        height: auto;
+      }
+      .diagram-wrap .caption {
+        margin-top: 14px;
+        font-size: 14px;
+        color: var(--text-dim);
+        text-align: center;
+        max-width: 760px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.55;
+      }
+
+      /* Animations inside SVG */
+      .flow-dash {
+        stroke-dasharray: 6 4;
+        animation: flow 1.8s linear infinite;
+      }
+      @keyframes flow {
+        to {
+          stroke-dashoffset: -20;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .flow-dash {
+          animation: none;
+        }
+      }
+      .node-pulse {
+        animation: node-pulse 3s ease-in-out infinite;
+        transform-origin: center;
+        transform-box: fill-box;
+      }
+      @keyframes node-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .node-pulse {
+          animation: none;
+        }
+      }
+
+      /* Roadmap timeline */
+      .timeline {
+        margin-top: 32px;
+      }
+      .lane {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 30px;
+        padding: 26px 0;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.2s;
+      }
+      .lane:hover {
+        background: rgba(255, 255, 255, 0.005);
+      }
+      .lane:last-child {
+        border-bottom: 0;
+      }
+      .lane .horizon {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .lane .horizon strong {
+        color: var(--text);
+        display: block;
+        font-size: 16px;
+        font-family: var(--font);
+        margin-bottom: 4px;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+      .lane .obj {
+        color: var(--text);
+        font-size: 22px;
+        font-weight: 650;
+        margin: 0 0 10px;
+        line-height: 1.25;
+        letter-spacing: -0.015em;
+      }
+      .lane .desc {
+        color: var(--text-mut);
+        font-size: 15.5px;
+        line-height: 1.55;
+      }
+      @media (max-width: 720px) {
+        .lane {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+      }
+
+      /* Need list */
+      ol.needs {
+        counter-reset: needs;
+        list-style: none;
+        padding: 0;
+        margin: 28px 0 0;
+      }
+      ol.needs li {
+        counter-increment: needs;
+        padding: 24px 0 24px 72px;
+        position: relative;
+        border-top: 1px solid var(--border);
+        color: var(--text-mut);
+        font-size: 16px;
+        line-height: 1.55;
+      }
+      ol.needs li:first-child {
+        border-top: 0;
+        padding-top: 6px;
+      }
+      ol.needs li:first-child::before {
+        top: 5px;
+      }
+      ol.needs li::before {
+        content: counter(needs, decimal-leading-zero);
+        position: absolute;
+        left: 0;
+        top: 23px;
+        font-family: var(--mono);
+        font-size: 24px;
+        color: var(--slate);
+        letter-spacing: 0.02em;
+        font-weight: 600;
+      }
+      ol.needs li strong {
+        color: var(--text);
+        display: block;
+        font-size: 18px;
+        margin-bottom: 6px;
+      }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 56px 0 64px;
+        color: var(--text-dim);
+        font-size: 13px;
+      }
+      footer .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      footer .row a {
+        color: var(--text-mut);
+      }
+      footer .brand-mark {
+        color: var(--text);
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top">
+      <div class="inner">
+        <a class="brand" href="#"><span class="mark"></span>Cortex</a>
+        <ul>
+          <li><a href="#tesis">Tesis</a></li>
+          <li><a href="#superficies">Superficies</a></li>
+          <li><a href="#estado">Estado</a></li>
+          <li><a href="#contexto">Contexto</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+          <li><a href="#busco">Buscamos</a></li>
+          <li><a href="#contacto">Contacto</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="wrap">
+        <h1>
+          <span class="grad">Documentación</span> como framework de gobernanza
+          enterprise.<br />
+          <span class="grad">Harness</span> controlado y trazable.
+        </h1>
+
+        <!-- Mini visual del modelo triádico, anuncia visualmente la arquitectura -->
+        <div class="triadic-strip" aria-hidden="true">
+          <span class="pill blue">/cortex-sync</span>
+          <span class="link"></span>
+          <span class="pill violet">middle pluggable</span>
+          <span class="link"></span>
+          <span class="pill teal">/cortex-documenter</span>
+        </div>
+
+        <p class="lede">
+          Cortex aplica
+          <span class="accent-grad">harness engineering</span> sobre el stack de
+          desarrollo personal que tu equipo ya usa, sumando dos anchors
+          obligatorios al inicio y al cierre, y libertad total en el medio.
+          <span class="accent-grad">Memoria auditable</span> y
+          <span class="accent-grad">trazable</span> que sobrevive sin lock-in
+        </p>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="num">5</div>
+            <div class="lbl">IDEs soportados</div>
+          </div>
+          <div class="stat">
+            <div class="num">30<span class="unit">+</span></div>
+            <div class="lbl">Tools MCP con governance</div>
+          </div>
+          <div class="stat">
+            <div class="num">13</div>
+            <div class="lbl">Tipos de documento canónicos</div>
+          </div>
+          <div class="stat">
+            <div class="num">1<span class="unit">sem</span></div>
+            <div class="lbl">Para cierre de MVP</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================ 1. TESIS Y PRODUCTO -->
+    <section id="tesis">
+      <div class="wrap">
+        <p class="eyebrow">01 · Tesis</p>
+        <h2>El harness es lo que sostiene al agente en producción.</h2>
+
+        <p class="xl" style="margin-bottom: 28px">
+          Hoy, mucho código escrito con IA tiene problemas para llegar a
+          producción. No por los modelos — sino porque
+          <span class="accent-grad">alrededor del modelo no hay nada</span>.
+        </p>
+
+        <ul class="bullets">
+          <li><strong>No hay memoria</strong> que sobreviva entre sesiones.</li>
+          <li>
+            <strong>No hay reglas</strong> uniformes que rijan qué se decide y
+            cómo.
+          </li>
+          <li>
+            <strong>No hay registro</strong> auditable de qué hizo cada agente.
+          </li>
+        </ul>
+
+        <div class="pullquote" style="margin-top: 40px">
+          Cortex es el <span class="accent-grad">control plane</span> que se
+          enchufa sobre tu IDE actual y le añade lo que un harness per-session
+          no puede tener.
+        </div>
+
+        <div class="ide-strip" style="margin-top: 20px">
+          <span class="ide">Claude Code</span>
+          <span class="ide">Cursor</span>
+          <span class="ide">Codex</span>
+          <span class="ide">Opencode</span>
+          <span class="ide">Pi</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 2. SUPERFICIES + DIAGRAMA -->
+    <section id="superficies">
+      <div class="wrap">
+        <p class="eyebrow">02 · Tres puestos · Tres superficies</p>
+        <h2>Una misma memoria. Tres lentes.</h2>
+
+        <p class="xl">
+          Cortex se expone
+          <span class="accent-grad">distinto según el rol</span>. Pero todos
+          consumen la misma memoria subyacente.
+        </p>
+
+        <div class="grid-3" style="margin-top: 36px">
+          <div class="card tint-blue">
+            <div class="kicker">Developer</div>
+            <h3>Cortex Agents</h3>
+            <p>
+              Tres comandos <code>/</code> en cualquier IDE. Memoria histórica
+              cargada al abrir el ticket. Documentación con criterio editorial
+              al cierre.
+            </p>
+          </div>
+          <div class="card tint-violet">
+            <div class="kicker">DevOps / Tech lead</div>
+            <h3>CI Pipeline</h3>
+            <p>
+              Cada PR validado contra la spec que lo originó. Scope drift
+              detection, hooks ejecutables, comentarios sticky en el PR.
+            </p>
+          </div>
+          <div class="card tint-teal">
+            <div class="kicker">Analista / Arquitecto</div>
+            <h3>Webgraph</h3>
+            <p>
+              Snapshot navegable del vault entero. Decisiones, specs y sesiones
+              conectadas como un grafo de la memoria organizacional.
+            </p>
+          </div>
+        </div>
+
+        <!-- ============== UNIFIED ARCHITECTURE DIAGRAM ============== -->
+        <div class="diagram-wrap" style="margin-top: 44px">
+          <svg
+            viewBox="0 0 1080 820"
+            xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="Cortex: vault enterprise como capa de gobernanza, tres anchors del pipeline, vault del proyecto y webgraph"
+          >
+            <defs>
+              <style>
+                .e-outer {
+                  fill: none;
+                  stroke: #2c2f36;
+                  stroke-width: 1;
+                  stroke-dasharray: 3 5;
+                }
+                .e-label {
+                  fill: #61646c;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11.5px;
+                  font-weight: 600;
+                  letter-spacing: 0.18em;
+                  text-transform: uppercase;
+                }
+
+                .anchor-blue {
+                  fill: #1a2433;
+                  stroke: #7796b5;
+                  stroke-width: 1.4;
+                }
+                .anchor-violet {
+                  fill: #221f31;
+                  stroke: #8e85b0;
+                  stroke-width: 1.4;
+                }
+                .anchor-teal {
+                  fill: #18272a;
+                  stroke: #6fa49a;
+                  stroke-width: 1.4;
+                }
+
+                .vault-card {
+                  fill: #2b2618;
+                  stroke: #b3a070;
+                  stroke-width: 1.4;
+                }
+                .vault-ent-card {
+                  fill: #2b2618;
+                  stroke: #b3a070;
+                  stroke-width: 2.4;
+                }
+                .web-card {
+                  fill: #1a1d23;
+                  stroke: #8993a3;
+                  stroke-width: 1.4;
+                }
+
+                .h-blue {
+                  fill: #7796b5;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.16em;
+                  text-transform: uppercase;
+                }
+                .h-violet {
+                  fill: #8e85b0;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.16em;
+                  text-transform: uppercase;
+                }
+                .h-teal {
+                  fill: #6fa49a;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.16em;
+                  text-transform: uppercase;
+                }
+                .h-gold {
+                  fill: #b3a070;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.16em;
+                  text-transform: uppercase;
+                }
+                .h-slate {
+                  fill: #8993a3;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11px;
+                  font-weight: 700;
+                  letter-spacing: 0.16em;
+                  text-transform: uppercase;
+                }
+
+                .t-name {
+                  fill: #e4e6ea;
+                  font-family: ui-monospace, Menlo, monospace;
+                  font-size: 22px;
+                  font-weight: 600;
+                }
+                .t-name-l {
+                  fill: #e4e6ea;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 26px;
+                  font-weight: 700;
+                  letter-spacing: -0.015em;
+                }
+                .t-tag {
+                  fill: #9a9da5;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 14px;
+                  font-weight: 500;
+                }
+
+                .flow {
+                  stroke: #8993a3;
+                  stroke-width: 2;
+                  fill: none;
+                }
+                .feedback {
+                  stroke: #6fa49a;
+                  stroke-width: 1.6;
+                  fill: none;
+                  opacity: 0.7;
+                }
+
+                .web-node-blue {
+                  fill: #1a2433;
+                  stroke: #7796b5;
+                  stroke-width: 1.3;
+                }
+                .web-node-violet {
+                  fill: #221f31;
+                  stroke: #8e85b0;
+                  stroke-width: 1.3;
+                }
+                .web-node-teal {
+                  fill: #18272a;
+                  stroke: #6fa49a;
+                  stroke-width: 1.3;
+                }
+                .web-node-gold {
+                  fill: #2b2618;
+                  stroke: #b3a070;
+                  stroke-width: 1.3;
+                }
+                .web-edge {
+                  stroke: #3b3e46;
+                  stroke-width: 1;
+                  fill: none;
+                }
+                .web-edge-strong {
+                  stroke: #5d6068;
+                  stroke-width: 1.3;
+                  fill: none;
+                }
+                .web-lbl {
+                  fill: #e4e6ea;
+                  font-family: ui-sans-serif, system-ui, sans-serif;
+                  font-size: 11.5px;
+                  font-weight: 600;
+                }
+              </style>
+              <marker
+                id="arrow-flow"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 Z" fill="#8993a3" />
+              </marker>
+              <marker
+                id="arrow-feedback"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 Z" fill="#6fa49a" />
+              </marker>
+            </defs>
+
+            <!-- VAULT ENTERPRISE — capa de gobernanza, banner superior -->
+            <rect
+              x="20"
+              y="10"
+              width="1040"
+              height="72"
+              rx="10"
+              class="vault-ent-card"
+            />
+            <text x="540" y="34" text-anchor="middle" class="h-gold">
+              Vault enterprise · capa de gobernanza organizacional
+            </text>
+            <text
+              x="540"
+              y="58"
+              text-anchor="middle"
+              class="t-name-l"
+              style="font-size: 18px"
+            >
+              Memoria de negocio compartida entre proyectos
+            </text>
+
+            <!-- CI / Governance Pipeline envelope (scope del proyecto) -->
+            <rect
+              x="20"
+              y="112"
+              width="1040"
+              height="700"
+              rx="14"
+              class="e-outer"
+            />
+            <text x="1040" y="104" text-anchor="end" class="e-label">
+              CI / Governance Pipeline · scope del proyecto
+            </text>
+
+            <!-- Top row: 3 anchors -->
+            <!-- sync -->
+            <rect
+              x="60"
+              y="142"
+              width="280"
+              height="160"
+              rx="10"
+              class="anchor-blue"
+            />
+            <text x="200" y="180" text-anchor="middle" class="h-blue">
+              Anchor de inicio
+            </text>
+            <text x="200" y="222" text-anchor="middle" class="t-name">
+              /cortex-sync
+            </text>
+            <text x="200" y="262" text-anchor="middle" class="t-tag">
+              Abre la sesión.
+            </text>
+            <text x="200" y="282" text-anchor="middle" class="t-tag">
+              Carga memoria histórica.
+            </text>
+
+            <!-- middle -->
+            <rect
+              x="400"
+              y="142"
+              width="280"
+              height="160"
+              rx="10"
+              class="anchor-violet"
+            />
+            <text x="540" y="180" text-anchor="middle" class="h-violet">
+              Middle · pluggable
+            </text>
+            <text x="540" y="212" text-anchor="middle" class="t-name">
+              Tres opciones
+            </text>
+            <text x="540" y="237" text-anchor="middle" class="t-name">
+              -elegís vos-
+            </text>
+            <text x="540" y="262" text-anchor="middle" class="t-tag">
+              SDDwork · code-* · BYO
+            </text>
+            <text x="540" y="282" text-anchor="middle" class="t-tag">
+              Acá ocurre el trabajo.
+            </text>
+
+            <!-- documenter -->
+            <rect
+              x="740"
+              y="142"
+              width="280"
+              height="160"
+              rx="10"
+              class="anchor-teal"
+            />
+            <text x="880" y="180" text-anchor="middle" class="h-teal">
+              Anchor de cierre
+            </text>
+            <text x="880" y="222" text-anchor="middle" class="t-name">
+              /cortex-documenter
+            </text>
+            <text x="880" y="262" text-anchor="middle" class="t-tag">
+              Escribe con criterio.
+            </text>
+            <text x="880" y="282" text-anchor="middle" class="t-tag">
+              Persiste en el vault.
+            </text>
+
+            <!-- Arrows: sync → middle → documenter -->
+            <line
+              x1="340"
+              y1="222"
+              x2="400"
+              y2="222"
+              class="flow flow-dash"
+              marker-end="url(#arrow-flow)"
+            />
+            <line
+              x1="680"
+              y1="222"
+              x2="740"
+              y2="222"
+              class="flow flow-dash"
+              marker-end="url(#arrow-flow)"
+            />
+
+            <!-- documenter → vault del proyecto -->
+            <line
+              x1="880"
+              y1="302"
+              x2="880"
+              y2="352"
+              class="flow"
+              marker-end="url(#arrow-flow)"
+            />
+
+            <!-- Vault del proyecto -->
+            <rect
+              x="350"
+              y="352"
+              width="680"
+              height="90"
+              rx="10"
+              class="vault-card"
+            />
+            <text x="690" y="380" text-anchor="middle" class="h-gold">
+              Vault del proyecto
+            </text>
+            <text
+              x="690"
+              y="408"
+              text-anchor="middle"
+              class="t-name-l"
+              style="font-size: 20px"
+            >
+              Documentación persistida
+            </text>
+            <text x="690" y="430" text-anchor="middle" class="t-tag">
+              13 tipos · indexada · vectorizada con ONNX local
+            </text>
+
+            <!-- vault del proyecto → webgraph -->
+            <line
+              x1="690"
+              y1="442"
+              x2="690"
+              y2="492"
+              class="flow"
+              marker-end="url(#arrow-flow)"
+            />
+
+            <!-- Webgraph card -->
+            <rect
+              x="60"
+              y="492"
+              width="970"
+              height="298"
+              rx="10"
+              class="web-card"
+            />
+            <text x="540" y="522" text-anchor="middle" class="h-slate">
+              Webgraph · vista navegable de la memoria conectada
+            </text>
+
+            <!-- Webgraph edges -->
+            <line x1="200" y1="622" x2="340" y2="592" class="web-edge-strong" />
+            <line x1="340" y1="592" x2="480" y2="622" class="web-edge-strong" />
+            <line x1="340" y1="592" x2="340" y2="692" class="web-edge" />
+            <line x1="200" y1="622" x2="340" y2="692" class="web-edge" />
+            <line x1="480" y1="622" x2="620" y2="592" class="web-edge-strong" />
+            <line x1="480" y1="622" x2="480" y2="702" class="web-edge-strong" />
+            <line x1="340" y1="692" x2="480" y2="702" class="web-edge" />
+            <line x1="480" y1="702" x2="620" y2="692" class="web-edge-strong" />
+            <line x1="620" y1="592" x2="760" y2="622" class="web-edge" />
+            <line x1="620" y1="692" x2="760" y2="712" class="web-edge" />
+            <line x1="620" y1="592" x2="620" y2="692" class="web-edge" />
+            <line x1="760" y1="622" x2="900" y2="592" class="web-edge" />
+            <line x1="760" y1="712" x2="900" y2="692" class="web-edge-strong" />
+            <line x1="760" y1="622" x2="760" y2="712" class="web-edge" />
+
+            <!-- Webgraph nodes -->
+            <g class="node-pulse" style="animation-delay: 0s">
+              <circle cx="200" cy="622" r="22" class="web-node-blue" />
+              <text x="200" y="626" text-anchor="middle" class="web-lbl">
+                Spec
+              </text>
+            </g>
+            <g>
+              <circle cx="340" cy="592" r="22" class="web-node-violet" />
+              <text x="340" y="596" text-anchor="middle" class="web-lbl">
+                Design
+              </text>
+            </g>
+            <g>
+              <circle cx="340" cy="692" r="22" class="web-node-teal" />
+              <text x="340" y="696" text-anchor="middle" class="web-lbl">
+                Session
+              </text>
+            </g>
+            <g class="node-pulse" style="animation-delay: 0.6s">
+              <circle cx="480" cy="622" r="22" class="web-node-gold" />
+              <text x="480" y="626" text-anchor="middle" class="web-lbl">
+                ADR
+              </text>
+            </g>
+            <g>
+              <circle cx="480" cy="702" r="22" class="web-node-teal" />
+              <text x="480" y="706" text-anchor="middle" class="web-lbl">
+                Session
+              </text>
+            </g>
+            <g>
+              <circle cx="620" cy="592" r="22" class="web-node-violet" />
+              <text x="620" y="596" text-anchor="middle" class="web-lbl">
+                Decision
+              </text>
+            </g>
+            <g>
+              <circle cx="620" cy="692" r="22" class="web-node-blue" />
+              <text x="620" y="696" text-anchor="middle" class="web-lbl">
+                Runbook
+              </text>
+            </g>
+            <g class="node-pulse" style="animation-delay: 1.2s">
+              <circle cx="760" cy="622" r="22" class="web-node-gold" />
+              <text x="760" y="626" text-anchor="middle" class="web-lbl">
+                ADR
+              </text>
+            </g>
+            <g>
+              <circle cx="760" cy="712" r="22" class="web-node-violet" />
+              <text x="760" y="716" text-anchor="middle" class="web-lbl">
+                Incident
+              </text>
+            </g>
+            <g>
+              <circle cx="900" cy="592" r="22" class="web-node-blue" />
+              <text x="900" y="596" text-anchor="middle" class="web-lbl">
+                Spec
+              </text>
+            </g>
+            <g>
+              <circle cx="900" cy="692" r="22" class="web-node-teal" />
+              <text x="900" y="696" text-anchor="middle" class="web-lbl">
+                Session
+              </text>
+            </g>
+
+            <!-- Vault enterprise → /cortex-sync (gobierna y enriquece) -->
+            <line
+              x1="200"
+              y1="82"
+              x2="200"
+              y2="142"
+              class="feedback flow-dash"
+              marker-end="url(#arrow-feedback)"
+            />
+            <text
+              x="222"
+              y="118"
+              class="t-tag"
+              style="font-size: 11px; fill: #6fa49a"
+            >
+              enriquece
+            </text>
+
+            <!-- Vault enterprise → webgraph (alimenta la memoria conectada) -->
+            <path
+              d="M 1040 46 C 1080 46, 1080 622, 1040 622"
+              class="flow flow-dash"
+              marker-end="url(#arrow-flow)"
+            />
+            <text
+              x="1062"
+              y="336"
+              text-anchor="middle"
+              class="t-tag"
+              transform="rotate(90, 1062, 336)"
+              style="font-size: 11px"
+            >
+              alimenta
+            </text>
+
+            <!-- Vault del proyecto → /cortex-sync (feedback loop, enriquece el contexto) -->
+            <path
+              d="M 350 397 C 30 397, 30 222, 60 222"
+              class="feedback flow-dash"
+              marker-end="url(#arrow-feedback)"
+            />
+            <text
+              x="30"
+              y="310"
+              text-anchor="middle"
+              class="t-tag"
+              transform="rotate(-90, 30, 310)"
+              style="font-size: 12px; fill: #6fa49a"
+            >
+              enriquece el contexto
+            </text>
+          </svg>
+          <p class="caption">
+            El vault del proyecto persiste cada sesión; el vault enterprise
+            gobierna el conocimiento organizacional. Ambos alimentan el webgraph
+            y enriquecen el próximo <code>/cortex-sync</code> — la memoria deja
+            de perderse entre tickets, proyectos y equipos.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 3. MERCADO + MODELO + ESTADO -->
+    <section id="estado">
+      <div class="wrap">
+        <p class="eyebrow">03 · Mercado · Modelo · Estado</p>
+        <h2>A quién, cómo y dónde estamos hoy.</h2>
+
+        <div class="grid-3" style="margin-top: 36px">
+          <div class="card tint-blue">
+            <div class="kicker">A quién</div>
+            <h3>Pymes técnicas, 5–15 personas.</h3>
+            <p>Software factories y fintech en Argentina como cabecera.</p>
+          </div>
+          <div class="card tint-violet">
+            <div class="kicker">Cómo</div>
+            <h3>Open-core, gratis, sin lock-in.</h3>
+            <p>
+              Monetización futura por consultoría enterprise (2027+). Cero
+              capital de riesgo hoy.
+            </p>
+          </div>
+          <div class="card tint-teal">
+            <div class="kicker">Estado</div>
+            <h3>MVP cierra en ~1 semana.</h3>
+            <p>3 adopters confirmados o en pipeline. Cinco IDEs validados.</p>
+          </div>
+        </div>
+
+        <p class="lead" style="margin-top: 36px">
+          Los adopters confirmados están dispuestos a destinar
+          <span class="accent-grad">proyectos enteros</span>
+          al uso intensivo de Cortex a cambio de feedback. La composición
+          importa más que la magnitud: usuarios comprometidos, no casuales.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ 4. ECONOMÍA DEL CONTEXTO -->
+    <section id="contexto">
+      <div class="wrap">
+        <p class="eyebrow">04 · Economía del contexto</p>
+        <h2>Mejor contexto. Menos errores. Menos tokens.</h2>
+
+        <p class="lead" style="margin-bottom: 32px">
+          Un agente sin memoria re-descubre el proyecto en cada sesión. Cada
+          re-descubrimiento <span class="accent-grad">cuesta tokens</span> — y a
+          escala de equipo, esos tokens se ven en la factura.
+        </p>
+
+        <div class="grid-3">
+          <div class="card tint-blue">
+            <div class="kicker">Mecanismo 01</div>
+            <h3>Recuperación dirigida</h3>
+            <p>
+              Contexto histórico relevante al abrir el ticket, no exploración a
+              ciegas.
+            </p>
+          </div>
+          <div class="card tint-violet">
+            <div class="kicker">Mecanismo 02</div>
+            <h3>Memoria local vectorizada</h3>
+            <p>
+              Embeddings ONNX sin costo de API. Indexado una vez, consultado
+              siempre.
+            </p>
+          </div>
+          <div class="card tint-teal">
+            <div class="kicker">Mecanismo 03</div>
+            <h3>Datos conectados</h3>
+            <p>
+              Decisiones del Proyecto A consultables como evidencia al iniciar
+              el Proyecto B.
+            </p>
+          </div>
+        </div>
+
+        <div class="pullquote" style="margin-top: 36px">
+          A esto se suma <span class="accent-grad">trazabilidad</span>: cada
+          decisión queda registrada y conectada. El compliance officer no
+          reconstruye desde cero meses después — el registro existe y es
+          auditable.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 5. ROADMAP -->
+    <section id="roadmap">
+      <div class="wrap">
+        <p class="eyebrow">05 · Roadmap</p>
+        <h2>Tres horizontes. Criterios concretos.</h2>
+
+        <div class="timeline">
+          <div class="lane">
+            <div class="horizon">
+              <strong>~1 semana</strong>
+              hoy → fin de mayo
+            </div>
+            <div>
+              <p class="obj">Cierre de MVP.</p>
+              <p class="desc">
+                Modelo triádico completo, los 5 IDEs validados en proyectos
+                reales, ONNX singleton estable. Cierra cuando los target
+                adopters puedan instalar Cortex sin asistencia directa del
+                founder.
+              </p>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="horizon">
+              <strong>3 meses</strong>
+              jun – ago 2026
+            </div>
+            <div>
+              <p class="obj">Consolidar con adopters de confianza.</p>
+              <p class="desc">
+                Cortex instalado en las dos empresas ya en conversación, más un
+                par de adopters similares en tamaño y nivel de confianza. El
+                objetivo no es escalar — es estabilizar el framework con
+                feedback cercano.
+              </p>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="horizon">
+              <strong>3 a 6 meses</strong>
+              sep 2026 – feb 2027
+            </div>
+            <div>
+              <p class="obj">Empresas con métodos consolidados.</p>
+              <p class="desc">
+                Implementación en equipos más establecidos, con procesos
+                definidos e historial técnico previo, para observar cómo
+                responde el framework ante estructuras menos flexibles.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 6. QUÉ BUSCAMOS -->
+    <section id="busco">
+      <div class="wrap">
+        <p class="eyebrow">06 · Qué busco</p>
+        <h2>Para crecer, Cortex necesita tres cosas.</h2>
+
+        <ol class="needs">
+          <li>
+            <strong>Adopters serios.</strong>
+            Equipos técnicos dispuestos a probar Cortex en un proyecto real. A
+            cambio: acceso gratuito perpetuo, influencia directa en el roadmap,
+            soporte directo del founder.
+          </li>
+          <li>
+            <strong>Compliance officers o seguridad.</strong>
+            Para validar que el <code>org.yaml</code> cubre los controles que
+            realmente piden los auditores.
+          </li>
+          <li>
+            <strong>Inversores ángel estratégicos.</strong>
+            Personas con red de contactos y experiencia en go-to-market de
+            developer tools — no capital.
+          </li>
+        </ol>
+
+        <p class="lead" style="margin-top: 36px">
+          <span class="accent-grad">No se busca capital de riesgo.</span> Una
+          ronda hoy presionaría al producto a optimizar por crecimiento antes de
+          que la base técnica esté estabilizada.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ 7. CONTACTO -->
+    <section id="contacto">
+      <div class="wrap">
+        <p class="eyebrow">07 · Contacto</p>
+        <h2><span class="accent-grad">Conversemos.</span></h2>
+
+        <p style="margin-bottom: 24px; margin-top: 36px">
+          Si algo de lo anterior resuena — adopción, validación, o simplemente
+          curiosidad técnica — cualquiera de estos canales sirve.
+        </p>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap">
+          <a
+            class="btn primary"
+            href="mailto:ezequieladrianmachuanin@gmail.com"
+          >
+            ezequieladrianmachuanin@gmail.com
+          </a>
+          <a
+            class="btn"
+            href="https://www.linkedin.com/in/ezequiel-machuanin-535531218/"
+            target="_blank"
+            rel="noopener"
+          >
+            LinkedIn
+          </a>
+          <a
+            class="btn"
+            href="https://github.com/MachuaninEzequiel/Cortex"
+            target="_blank"
+            rel="noopener"
+          >
+            github.com/MachuaninEzequiel/Cortex
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <div class="row">
+          <div>
+            <div class="brand-mark">Cortex</div>
+            <div>Plan de adopción · 2026 · versión ejecutiva</div>
+          </div>
+          <div>
+            <a href="mailto:ezequieladrianmachuanin@gmail.com"
+              >ezequieladrianmachuanin@gmail.com</a
+            >
+            &nbsp;·&nbsp;
+            <a
+              href="https://github.com/MachuaninEzequiel/Cortex"
+              target="_blank"
+              rel="noopener"
+              >github.com/MachuaninEzequiel/Cortex</a
+            >
+          </div>
+        </div>
+        <div style="margin-top: 18px; color: var(--text-dim); font-size: 12px">
+          Ezequiel Adrián Machuanin · Argentina · Mayo 2026.
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

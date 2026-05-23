@@ -1,8 +1,6 @@
 """Tests for cortex.autopilot.detectors."""
 from __future__ import annotations
 
-import pytest
-
 from cortex.autopilot.detectors.ambiguous import AmbiguousRequestDetector
 from cortex.autopilot.detectors.base import resolve_detectors
 from cortex.autopilot.detectors.default import (
@@ -13,7 +11,7 @@ from cortex.autopilot.detectors.default import (
     QuestionOnlyDetector,
     SecuritySensitiveDetector,
 )
-from cortex.autopilot.models import DetectionRequest, DetectionResult
+from cortex.autopilot.models import DetectionRequest
 
 
 class TestAmbiguousRequestDetector:

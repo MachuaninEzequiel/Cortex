@@ -20,7 +20,7 @@ from cortex.setup.detector import ProjectContext
 # config.yaml template
 # ---------------------------------------------------------------------------
 
-def render_config_yaml(ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None) -> str:
+def render_config_yaml(ctx: ProjectContext, *, layout: WorkspaceLayout | None = None) -> str:
     """Render config.yaml with project-aware defaults.
 
     When a ``WorkspaceLayout`` is provided, relative paths are
@@ -32,7 +32,6 @@ def render_config_yaml(ctx: ProjectContext, *, layout: "WorkspaceLayout | None" 
       - ``persist_dir: .memory/chroma``  (repo_root / .memory / chroma)
       - ``vault_path: vault``            (repo_root / vault)
     """
-    from cortex.workspace.layout import WorkspaceLayout
 
     # Determine relative paths based on layout mode
     if layout is not None and layout.is_new_layout:
@@ -126,7 +125,7 @@ This vault stores durable organization-level knowledge for `{project_name}`.
 # ---------------------------------------------------------------------------
 
 def render_ci_pull_request(
-    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+    ctx: ProjectContext, *, layout: WorkspaceLayout | None = None
 ) -> str:
     """Render the PR validation workflow with Cortex integration.
 
@@ -525,7 +524,7 @@ jobs:
 
 
 def render_ci_feature(
-    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+    ctx: ProjectContext, *, layout: WorkspaceLayout | None = None
 ) -> str:
     """Render the feature branch CI workflow.
 
@@ -631,7 +630,7 @@ jobs:
 
 
 def render_cd_deploy(
-    ctx: ProjectContext, *, layout: "WorkspaceLayout | None" = None
+    ctx: ProjectContext, *, layout: WorkspaceLayout | None = None
 ) -> str:
     """Render the CD deployment workflow with Cortex integration.
 
@@ -1201,7 +1200,7 @@ esac
 # Helper functions for project-aware commands
 # ---------------------------------------------------------------------------
 
-def _get_memory_cache_path(layout: "WorkspaceLayout | None") -> str:
+def _get_memory_cache_path(layout: WorkspaceLayout | None) -> str:
     """Return the relative path to cache Cortex episodic memory in CI.
 
     Layout-aware: in new layout the episodic store lives at

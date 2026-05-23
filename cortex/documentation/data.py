@@ -13,7 +13,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from cortex.session.models import VerificationHook
 
 
 @dataclass
@@ -48,6 +51,22 @@ class SessionData(CommonWriteData):
     blockers: list[str] = field(default_factory=list)
     suggested_skills: list[str] = field(default_factory=list)
     cortex_telemetry: dict[str, Any] | None = None
+    # Pluggable Middle (Phase 08 / T8.5): detected task type, used by
+    # ``session.md.j2`` to conditionally include / omit body sections.
+    # Empty string means unspecified — the template falls back to the
+    # full layout.
+    task_type: str = ""
+    # Pluggable Middle (Phase 09.C): granular task summary surfaced in
+    # the session note. Empty list → no task section rendered.
+    tasks: list[dict[str, Any]] = field(default_factory=list)
+    tasks_total: int = 0
+    tasks_done: int = 0
+    tasks_skipped: int = 0
+    # Pluggable Middle (Phase 09.A+, May 2026): True when the source
+    # session was opened without a usable git repository. The template
+    # renders a prominent notice and downstream tooling treats the diff
+    # section as unavailable.
+    gitless: bool = False
 
 
 @dataclass
@@ -68,6 +87,34 @@ class SpecData(CommonWriteData):
     files_in_scope: list[str] = field(default_factory=list)
     constraints: list[str] = field(default_factory=list)
     acceptance_criteria: list[str] = field(default_factory=list)
+    # Pluggable Middle (Phase 01 / T1.1): executable commands that prove the
+    # spec is done. At least one is expected for new specs; legacy specs
+    # without hooks load with a warning and skip verification.
+    verification_hooks: list[VerificationHook] = field(default_factory=list)
+
+
+@dataclass
+class DesignDocData(CommonWriteData):
+    """Pluggable Middle Phase 09.B input for ``write_design_note``.
+
+    Written by ``cortex-code-designer`` after the explorer and before
+    the implementer step in Deep Track. The four content lists capture
+    the canonical decisions an implementer needs to follow without
+    improvising.
+    """
+
+    # Default to ``draft`` so a designer that omits ``status`` still
+    # writes a recognisable in-flight document; the ``_default_status``
+    # helper in writers.py would otherwise pick alphabetically (yielding
+    # ``approved``, which is semantically wrong for a fresh design).
+    status: str = "draft"
+    session_id: str = ""
+    spec_path: str = ""
+    architecture_decision: str = ""
+    data_model_changes: list[str] = field(default_factory=list)
+    api_contracts: list[str] = field(default_factory=list)
+    test_plan: list[str] = field(default_factory=list)
+    risks: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -119,7 +166,9 @@ class PostmortemData(CommonWriteData):
 
 @dataclass
 class RunbookData(CommonWriteData):
-    runbook_kind: str = "operational"  # deploy | rollback | incident-response | data-migration | operational
+    runbook_kind: str = (
+        "operational"  # deploy | rollback | incident-response | data-migration | operational
+    )
     description: str = ""
     prerequisites: list[str] = field(default_factory=list)
     procedure: list[str] = field(default_factory=list)

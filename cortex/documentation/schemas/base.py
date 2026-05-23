@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -54,9 +53,7 @@ class CommonFrontmatter(BaseModel):
     @classmethod
     def _validate_vault_scope(cls, v: str) -> str:
         if v not in _VAULT_SCOPES:
-            raise ValueError(
-                f"vault_scope must be one of {sorted(_VAULT_SCOPES)}, got {v!r}"
-            )
+            raise ValueError(f"vault_scope must be one of {sorted(_VAULT_SCOPES)}, got {v!r}")
         return v
 
     @model_validator(mode="after")
@@ -110,17 +107,14 @@ class EnterpriseFrontmatter(CommonFrontmatter):
     @classmethod
     def _validate_classification(cls, v: str) -> str:
         if v not in _CLASSIFICATIONS:
-            raise ValueError(
-                f"classification must be one of {sorted(_CLASSIFICATIONS)}, got {v!r}"
-            )
+            raise ValueError(f"classification must be one of {sorted(_CLASSIFICATIONS)}, got {v!r}")
         return v
 
     @model_validator(mode="after")
     def _validate_enterprise_scope(self) -> EnterpriseFrontmatter:
         if self.vault_scope != "enterprise":
             raise ValueError(
-                "EnterpriseFrontmatter requires vault_scope='enterprise', "
-                f"got {self.vault_scope!r}"
+                f"EnterpriseFrontmatter requires vault_scope='enterprise', got {self.vault_scope!r}"
             )
         return self
 

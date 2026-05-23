@@ -14,7 +14,6 @@ import yaml
 
 from cortex.workspace.layout import WorkspaceLayout, _find_git_root
 
-
 # ────────────────────────────────────────────────────────────────────
 # Fixtures
 # ────────────────────────────────────────────────────────────────────
@@ -177,6 +176,9 @@ class TestNewLayoutPaths:
     def test_subagents_dir(self, layout, new_layout_project):
         assert layout.subagents_dir == new_layout_project["cortex"] / "subagents"
 
+    def test_sessions_dir(self, layout, new_layout_project):
+        assert layout.sessions_dir == new_layout_project["cortex"] / "sessions"
+
     def test_agent_guidelines_path(self, layout, new_layout_project):
         assert layout.agent_guidelines_path == new_layout_project["cortex"] / "AGENT.md"
 
@@ -222,7 +224,7 @@ class TestNewLayoutPaths:
         """Ensure no path produces .cortex/.cortex/..."""
         for attr in [
             "config_path", "vault_path", "enterprise_vault_path",
-            "episodic_memory_path", "skills_dir", "org_config_path",
+            "episodic_memory_path", "skills_dir", "sessions_dir", "org_config_path",
             "promotion_records_path", "webgraph_dir", "scripts_dir",
         ]:
             path_str = str(getattr(layout, attr))
@@ -260,6 +262,9 @@ class TestLegacyLayoutPaths:
 
     def test_skills_dir_legacy(self, layout, legacy_layout_project):
         assert layout.skills_dir == legacy_layout_project["cortex"] / "skills"
+
+    def test_sessions_dir_legacy(self, layout, legacy_layout_project):
+        assert layout.sessions_dir == legacy_layout_project["cortex"] / "sessions"
 
     def test_workspace_root_is_repo_root_legacy(self, layout, legacy_layout_project):
         assert layout.workspace_root == legacy_layout_project["repo"]

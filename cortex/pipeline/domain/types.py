@@ -10,7 +10,7 @@ No I/O, no side effects — safe to use anywhere.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum, auto
 from typing import Any
 
@@ -69,7 +69,7 @@ class StageResult:
     artifacts:   dict[str, Any]             = field(default_factory=dict)
     duration_ms: int                        = 0
     timestamp:   datetime                   = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
     @property
@@ -115,8 +115,8 @@ class PipelineReport:
     Produced by ``PipelineOrchestrator.run()`` after all stages complete.
     """
     results:    list[StageResult]
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    ended_at:   datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    ended_at:   datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def passed(self) -> bool:

@@ -1,79 +1,59 @@
-"""cortex.autopilot.models — Domain models for the Autopilot module."""
+"""cortex.autopilot.models — Domain models for detectors and policies.
+
+Phase 03 deleted the parallel session-lifecycle models that used to live
+here (``AutopilotSessionState``, ``AutopilotCheckpoint``, ``AutopilotEvent``,
+``SessionDraft``, ``AutopilotBudgetSnapshot``, ``HookSessionStartOutput``).
+Their roles are now played by :mod:`cortex.session.models`
+(``SessionRecord``, ``Checkpoint``) and the documenter's session-note
+writers.
+
+What remains here is the **decision-layer vocabulary**: the structured
+inputs/outputs of the detector and policy primitives that still belong to
+the Autopilot module.
+
+Phase 04 cleanup completed the deletion of ``HookSessionStartOutput`` —
+the legacy ``cortex/autopilot/hooks/`` scripts and adapters that consumed
+it have been retired in favour of ``cortex/session/hooks/``.
+"""
+
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel, Field
-import uuid
 
-
-class AutopilotBudgetSnapshot(BaseModel):
-    chars_injected: int = 0
-    items_retrieved: int = 0
-    embeddings_used: bool = False
-    subagents_spawned: int = 0
-    deep_track_reason: str | None = None
-
-
-class AutopilotCheckpoint(BaseModel):
-    timestamp: datetime
-    summary: str
-    files_at_checkpoint: list[str] = []
-    verified: bool = False
-
-
-class AutopilotSessionState(BaseModel):
-    schema_version: int = 1
-    session_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
-    project_root: str
-    workspace_root: str
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-    status: Literal[
-        "started",
-        "preflight_done",
-        "implementation_seen",
-        "documented",
-        "finished",
-        "failed",
-        "handoff",  # Tripartita Refinada: sesión cerró con TODOs/blockers
-    ] = "started"
-    mode: Literal["observe", "assist", "autopilot"] = "assist"
-    user_request: str | None = None
-    title_hint: str | None = None
-    detected_task_type: str | None = None
-    complexity: Literal["none", "fast", "deep"] = "none"
-    spec_path: str | None = None
-    session_note_path: str | None = None
-    changed_files: list[str] = []
-    commands_seen: list[str] = []
-    tools_seen: list[str] = []
-    checkpoints: list[AutopilotCheckpoint] = []
-    budget: AutopilotBudgetSnapshot = Field(
-        default_factory=AutopilotBudgetSnapshot
-    )
-    warnings: list[str] = []
-
-
-class AutopilotEvent(BaseModel):
-    timestamp: datetime = Field(default_factory=datetime.now)
-    session_id: str
-    event_type: str  # "start", "preflight", "checkpoint", "finish", etc.
-    source: Literal["cli", "mcp", "hook", "agent", "detector", "policy"]
-    payload: dict[str, Any] = {}
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DetectionRequest(BaseModel):
+    """Input to the detector pipeline.
+
+    ``session_state`` was historically an ``AutopilotSessionState``; the new
+    pipeline does not consult any session state during preflight (detection
+    is a pure function of the user request + changed files), so the field
+    is now optional and untyped.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     user_request: str | None = None
-    changed_files: list[str] = []
+    changed_files: list[str] = Field(default_factory=list)
     git_diff_stat: str | None = None
-    session_state: AutopilotSessionState | None = None
+    # Free-form metadata bag for custom detectors.
+    session_state: Any | None = None
 
 
 class DetectionResult(BaseModel):
+    """Output of ``resolve_detectors``."""
+
+    model_config = ConfigDict(extra="forbid")
+
     task_type: Literal[
-        "question-only", "docs-only", "fast-code",
-        "deep-code", "security", "ambiguous", "noop"
+        "question-only",
+        "docs-only",
+        "fast-code",
+        "deep-code",
+        "security",
+        "ambiguous",
+        "noop",
     ]
     confidence: float = 0.0
     reason: str = ""
@@ -81,38 +61,24 @@ class DetectionResult(BaseModel):
 
 
 class PolicyDecision(BaseModel):
+    """Legacy Pydantic model preserved for tests still using the old protocol.
+
+    The new ``cortex.autopilot.policies.EnforcementResult`` is what
+    :class:`cortex.autopilot.policies.PolicyEnforcer` returns. This model
+    sticks around so detector tests (which build PolicyDecision in
+    fixtures) keep compiling during the Phase 03 transition.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     allowed: bool
     reason: str
     action: Literal["proceed", "warn", "degrade", "block"] = "proceed"
     degrade_to: Literal["observe", "assist", "fast"] | None = None
 
 
-class SessionDraft(BaseModel):
-    title: str
-    body: str
-    confidence: Literal["high", "medium", "auto-draft"] = "medium"
-    warnings: list[str] = []
-    source_events: int = 0
-    # Tripartita Refinada (Plan 01 §6): set by the Verification Gate when
-    # claims are cross-checked against the diff. None means the gate did
-    # not run (e.g. pre-0.5.0 sessions).
-    confidence_level: Literal["verified", "asserted", "contradicted"] | None = None
-
-
-class HookSessionStartOutput(BaseModel):
-    session_id: str
-    mode: Literal["observe", "assist", "autopilot"]
-    bootstrap_content: str
-    budget_profile: str
-    available_tools: list[str] = []
-    cortex_version: str = ""
-
-
-class DelegationResult(BaseModel):
-    task_id: str
-    status: Literal["completed", "failed", "rejected"]
-    diff_summary: str = ""
-    files_changed: list[str] = []
-    tests_passed: bool | None = None
-    spec_path: str | None = None
-    rejection_reason: str | None = None
+__all__ = [
+    "DetectionRequest",
+    "DetectionResult",
+    "PolicyDecision",
+]

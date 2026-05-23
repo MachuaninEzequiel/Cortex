@@ -37,3 +37,22 @@
 {% else %}
 (none)
 {% endif %}
+
+## Verification Hooks
+
+Commands that objectively prove the work is done. Run by
+`cortex finish-session` (Pluggable Middle, Phase 01).
+
+{% if verification_hooks %}
+{% for h in verification_hooks %}
+### {{ h.name }}{% if not h.required %} *(optional)*{% endif %}
+
+```bash
+{{ h.command }}
+```
+
+Success: {{ h.success_criteria }} · Timeout: {{ h.timeout_seconds }}s
+{% endfor %}
+{% else %}
+*(none declared — legacy spec; finish-session will skip verification)*
+{% endif %}

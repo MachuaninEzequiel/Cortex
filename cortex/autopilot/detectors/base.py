@@ -1,4 +1,5 @@
 """cortex.autopilot.detectors.base — Detector protocol and resolution logic."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -11,8 +12,7 @@ class AutopilotDetector(Protocol):
 
     name: str
 
-    def detect(self, request: DetectionRequest) -> DetectionResult:
-        ...
+    def detect(self, request: DetectionRequest) -> DetectionResult: ...
 
 
 # Complexity ranking for tie-breaking (higher = more conservative)
@@ -49,15 +49,21 @@ def resolve_detectors(
         # or a synthetic noop if every detector failed.
         if results:
             return max(results, key=lambda dr: dr[1].confidence)[1]
-        return DetectionResult(task_type="noop", confidence=0.0, reason="No detectors returned results")
+        return DetectionResult(
+            task_type="noop", confidence=0.0, reason="No detectors returned results"
+        )
 
     # Step 3 — security override
-    security = [(d, r) for d, r in candidates if d.name == "security_sensitive" and r.confidence > 0.5]
+    security = [
+        (d, r) for d, r in candidates if d.name == "security_sensitive" and r.confidence > 0.5
+    ]
     if security:
         return security[0][1]
 
     # Step 4 — ambiguous override (blocks before anything else)
-    ambiguous = [(d, r) for d, r in candidates if d.name == "ambiguous_request" and r.confidence > 0.6]
+    ambiguous = [
+        (d, r) for d, r in candidates if d.name == "ambiguous_request" and r.confidence > 0.6
+    ]
     if ambiguous:
         return ambiguous[0][1]
 

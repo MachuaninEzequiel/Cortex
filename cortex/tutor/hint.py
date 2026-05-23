@@ -10,14 +10,13 @@ and legacy layouts work correctly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
 
 from cortex.workspace.layout import WorkspaceLayout
-
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -63,7 +62,7 @@ class ProjectState:
     has_mcp_config: bool = False
 
     @classmethod
-    def detect(cls, project_root: Path) -> "ProjectState":
+    def detect(cls, project_root: Path) -> ProjectState:
         """Inspect the filesystem at project_root and build state.
 
         Uses WorkspaceLayout to resolve paths so both new and legacy

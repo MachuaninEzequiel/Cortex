@@ -10,8 +10,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-import pytest
-
 from cortex.context_enricher.presenter import ContextPresenter
 from cortex.models import EnrichedContext, EnrichedItem, WorkContext
 

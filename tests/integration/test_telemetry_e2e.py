@@ -11,11 +11,10 @@ session body -> record citations -> aggregate.
 
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-
-import pytest
 
 from cortex.context_enricher.enricher import ContextEnricher
 from cortex.context_enricher.telemetry import (
@@ -23,8 +22,6 @@ from cortex.context_enricher.telemetry import (
     detect_citations,
     make_observer,
 )
-import uuid
-
 from cortex.documentation import parse_frontmatter_lenient, write_session_note_canonical
 from cortex.documentation.data import SessionData
 from cortex.models import EnrichedContext, EnrichedItem, WorkContext

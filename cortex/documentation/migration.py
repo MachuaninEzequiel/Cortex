@@ -19,9 +19,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
-
-import yaml
+from typing import Any
 
 from cortex.documentation.backup import create_backup
 from cortex.documentation.common import (
@@ -37,38 +35,77 @@ logger = logging.getLogger(__name__)
 
 # Fields the canonical schema produces by itself. Legacy keys outside this
 # set are preserved under ``legacy_<name>``.
-_CANONICAL_TOP_LEVEL = frozenset({
-    "schema_version", "doc_type", "title", "created_at", "updated_at",
-    "tags", "status", "links", "vault_scope", "fingerprint",
-    "owner", "team", "classification", "retention_days", "audit_trail",
-})
+_CANONICAL_TOP_LEVEL = frozenset(
+    {
+        "schema_version",
+        "doc_type",
+        "title",
+        "created_at",
+        "updated_at",
+        "tags",
+        "status",
+        "links",
+        "vault_scope",
+        "fingerprint",
+        "owner",
+        "team",
+        "classification",
+        "retention_days",
+        "audit_trail",
+    }
+)
 
 # Fields we know how to map from legacy notes onto the canonical schema.
 _LEGACY_MAPPED = frozenset({"date", "title", "tags", "status"})
 
 # Type-specific extras we explicitly preserve (do not legacy-prefix them).
-_TYPE_SPECIFIC_FIELDS = frozenset({
-    # ADR / Decision
-    "adr_number", "supersedes", "superseded_by", "alternatives_considered",
-    "acceptance_criteria_met", "reversible_within_days",
-    # Incident / Postmortem
-    "incident_number", "severity", "opened_at", "closed_at",
-    "affected_services", "root_cause_postmortem", "incident_path",
-    # Runbook
-    "runbook_kind", "applies_to", "estimated_duration_minutes",
-    "last_verified_at",
-    # Architecture
-    "related_adrs",
-    # Changelog
-    "version", "release_date",
-    # HU
-    "external_id", "source", "kind", "assignee", "external_url", "synced_at",
-    # Session / Handoff
-    "session_id", "pr", "branch", "commit", "cortex_telemetry",
-    "parent_session_id",
-    # Glossary
-    "term", "domain", "related_terms",
-})
+_TYPE_SPECIFIC_FIELDS = frozenset(
+    {
+        # ADR / Decision
+        "adr_number",
+        "supersedes",
+        "superseded_by",
+        "alternatives_considered",
+        "acceptance_criteria_met",
+        "reversible_within_days",
+        # Incident / Postmortem
+        "incident_number",
+        "severity",
+        "opened_at",
+        "closed_at",
+        "affected_services",
+        "root_cause_postmortem",
+        "incident_path",
+        # Runbook
+        "runbook_kind",
+        "applies_to",
+        "estimated_duration_minutes",
+        "last_verified_at",
+        # Architecture
+        "related_adrs",
+        # Changelog
+        "version",
+        "release_date",
+        # HU
+        "external_id",
+        "source",
+        "kind",
+        "assignee",
+        "external_url",
+        "synced_at",
+        # Session / Handoff
+        "session_id",
+        "pr",
+        "branch",
+        "commit",
+        "cortex_telemetry",
+        "parent_session_id",
+        # Glossary
+        "term",
+        "domain",
+        "related_terms",
+    }
+)
 
 _ADR_NUMBER_RE = re.compile(r"^ADR-(\d+)", re.IGNORECASE)
 _INC_NUMBER_RE = re.compile(r"^INC-(\d+)", re.IGNORECASE)
@@ -152,8 +189,11 @@ def migrate_vault(
         result.total_scanned += 1
         try:
             diff = _compute_diff(
-                md, vault_path,
-                force=force, preserve_legacy=preserve_legacy, now=now,
+                md,
+                vault_path,
+                force=force,
+                preserve_legacy=preserve_legacy,
+                now=now,
             )
         except Exception as exc:  # pragma: no cover - defensive
             diff = NoteDiff(path=md, action="error", reason=str(exc))
@@ -204,10 +244,12 @@ def validate_vault(vault_path: Path) -> dict[str, Any]:
             out["valid"] += 1
         except (SchemaValidationError, UnknownDocTypeError) as exc:
             out["invalid"] += 1
-            out["issues"].append({
-                "path": str(md.relative_to(vault_path)),
-                "error": str(exc),
-            })
+            out["issues"].append(
+                {
+                    "path": str(md.relative_to(vault_path)),
+                    "error": str(exc),
+                }
+            )
     out["no_frontmatter"] = max(out["total"] - out["valid"] - out["invalid"], 0)
     return out
 
@@ -253,11 +295,18 @@ def _compute_diff(
 ) -> NoteDiff:
     legacy_fm = parse_frontmatter_lenient(md_path)
 
-    if not force and legacy_fm.get("schema_version") == 1 and isinstance(
-        legacy_fm.get("doc_type"), str,
+    if (
+        not force
+        and legacy_fm.get("schema_version") == 1
+        and isinstance(
+            legacy_fm.get("doc_type"),
+            str,
+        )
     ):
         return NoteDiff(
-            path=md_path, action="skip", legacy_fm=legacy_fm,
+            path=md_path,
+            action="skip",
+            legacy_fm=legacy_fm,
             reason="schema_version=1 already present",
         )
 
@@ -265,23 +314,34 @@ def _compute_diff(
         relative = md_path.relative_to(vault_root)
     except ValueError:
         return NoteDiff(
-            path=md_path, action="unclassifiable",
+            path=md_path,
+            action="unclassifiable",
             reason="path outside vault root",
         )
 
     inferred = doc_type_from_path(relative)
     if inferred is None:
         return NoteDiff(
-            path=md_path, action="unclassifiable", legacy_fm=legacy_fm,
+            path=md_path,
+            action="unclassifiable",
+            legacy_fm=legacy_fm,
             reason=f"unable to infer doc_type from path {relative.as_posix()!r}",
         )
 
     new_fm = _build_new_frontmatter(
-        md_path, legacy_fm, inferred, vault_root, preserve_legacy, now,
+        md_path,
+        legacy_fm,
+        inferred,
+        vault_root,
+        preserve_legacy,
+        now,
     )
     return NoteDiff(
-        path=md_path, action="migrate", doc_type=inferred,
-        legacy_fm=legacy_fm, new_fm=new_fm,
+        path=md_path,
+        action="migrate",
+        doc_type=inferred,
+        legacy_fm=legacy_fm,
+        new_fm=new_fm,
     )
 
 
@@ -330,7 +390,8 @@ def _apply_diff(diff: NoteDiff) -> None:
     body = _read_body(diff.path)
     new_yaml = yaml_dump_safe(diff.new_fm)
     diff.path.write_text(
-        "---\n" + new_yaml + "---\n\n" + body, encoding="utf-8",
+        "---\n" + new_yaml + "---\n\n" + body,
+        encoding="utf-8",
     )
 
 
@@ -398,7 +459,9 @@ def _extract_wiki_links(body: str) -> list[str]:
 
 
 def _type_specific_for(
-    doc_type: DocType, md_path: Path, legacy: dict[str, Any],
+    doc_type: DocType,
+    md_path: Path,
+    legacy: dict[str, Any],
 ) -> dict[str, Any]:
     """Compute the minimum type-specific fields required by each schema."""
     stem = md_path.stem
@@ -416,7 +479,9 @@ def _type_specific_for(
         return {
             "incident_number": int(m.group(1)) if m else int(legacy.get("incident_number") or 1),
             "severity": legacy.get("severity") or "medium",
-            "opened_at": _resolve_datetime(legacy.get("opened_at") or legacy.get("date"), md_path, datetime.now(UTC)).isoformat(),
+            "opened_at": _resolve_datetime(
+                legacy.get("opened_at") or legacy.get("date"), md_path, datetime.now(UTC)
+            ).isoformat(),
             "closed_at": legacy.get("closed_at"),
             "affected_services": list(legacy.get("affected_services") or []),
             "root_cause_postmortem": legacy.get("root_cause_postmortem"),
@@ -458,8 +523,11 @@ def _type_specific_for(
         }
     if doc_type is DocType.GLOSSARY:
         term = legacy.get("term") or stem.replace("-", " ").title()
-        return {"term": term, "domain": legacy.get("domain"),
-                "related_terms": list(legacy.get("related_terms") or [])}
+        return {
+            "term": term,
+            "domain": legacy.get("domain"),
+            "related_terms": list(legacy.get("related_terms") or []),
+        }
     if doc_type is DocType.CHANGELOG:
         return {
             "version": legacy.get("version") or stem,

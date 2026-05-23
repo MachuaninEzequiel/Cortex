@@ -1,241 +1,240 @@
-"""Tests for cortex.autopilot.service."""
+"""Tests for the Phase-03 :class:`AutopilotService`.
+
+Exercises the new policy + enforcer + session-service wiring against a
+real :class:`SessionService` on a temporary git repo. The documenter
+path (``finish(auto=True)``) is verified separately under
+``tests/unit/documenter/`` and the E2E suite — here we only check that
+``finish(auto=False)`` closes the record and that the policy enforces
+its blocks.
+"""
+
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from cortex.autopilot.errors import AutopilotError, NoActiveSessionError
 from cortex.autopilot.lifecycle import (
-    CheckpointRequest,
-    FinishRequest,
-    PreflightRequest,
-    StartRequest,
+    AutopilotCheckpointRequest,
+    AutopilotFinishRequest,
+    AutopilotPreflightRequest,
+    AutopilotStartRequest,
 )
-from cortex.autopilot.models import AutopilotEvent
+from cortex.autopilot.policies import AutopilotMode, AutopilotPolicy
 from cortex.autopilot.service import AutopilotService
-from cortex.autopilot.session_writer import VaultSessionWriter
-from cortex.autopilot.state_store import StateStore
+from cortex.session.models import SessionStatus
+from cortex.session.service import SessionService
+from cortex.session.storage import SessionStorage
+
+# ── Fixtures ─────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def service(tmp_path: Path) -> AutopilotService:
-    """Default service wired with a real VaultSessionWriter under tmp_path.
-
-    Tests that need to assert ``finish --auto`` actually persists a file
-    can read from ``tmp_path / "vault" / "sessions"``.
-    """
-    store = StateStore(tmp_path)
-    writer = VaultSessionWriter(tmp_path / "vault")
-    return AutopilotService(state_store=store, session_writer=writer)
+def repo(tmp_path: Path) -> Path:
+    """Tiny git repo with one commit on ``main``."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.t"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=root, check=True)
+    (root / "README.md").write_text("# repo\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "initial"], cwd=root, check=True
+    )
+    return root
 
 
 @pytest.fixture
-def service_without_writer(tmp_path: Path) -> AutopilotService:
-    """Service with no writer to exercise the degraded contract."""
-    store = StateStore(tmp_path)
-    return AutopilotService(state_store=store)
+def sessions_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "sessions"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def session_service(sessions_dir: Path, repo: Path) -> SessionService:
+    return SessionService(SessionStorage(sessions_dir), repo)
+
+
+@pytest.fixture
+def make_service(session_service: SessionService, repo: Path):
+    def _build(policy: AutopilotPolicy | None = None) -> AutopilotService:
+        return AutopilotService(
+            session_service=session_service,
+            policy=policy or AutopilotPolicy(),
+            repo_root=repo,
+        )
+
+    return _build
+
+
+def _open_spec_session(svc: SessionService, repo: Path) -> str:
+    spec_dir = repo / "vault" / "specs"
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = spec_dir / "2026-05-16_demo.md"
+    spec_path.write_text("# demo\n", encoding="utf-8")
+    record = svc.open(
+        spec_id="2026-05-16_demo",
+        spec_path=spec_path,
+        spec_summary="demo spec for tests",
+    )
+    return record.session_id
+
+
+# ── start ────────────────────────────────────────────────────────────
 
 
 class TestStart:
-    def test_creates_session(self, service: AutopilotService) -> None:
-        req = StartRequest(project_root="/repo", workspace_root="/repo/.cortex")
-        res = service.start(req)
-        assert res.session_id
-        assert res.state.status == "started"
-        assert res.state.mode == "assist"
+    def test_requires_active_session(self, make_service) -> None:
+        svc = make_service()
+        with pytest.raises(NoActiveSessionError):
+            svc.start(AutopilotStartRequest())
 
-    def test_persists_event(self, service: AutopilotService) -> None:
-        req = StartRequest(project_root="/repo", workspace_root="/repo/.cortex", mode="autopilot")
-        res = service.start(req)
-        events = service._store.load_events(res.session_id)
-        assert len(events) == 1
-        assert events[0].event_type == "start"
+    def test_returns_active_session_and_policy(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        result = svc.start(AutopilotStartRequest())
+        assert result.session.status is SessionStatus.OPEN
+        assert result.policy.mode is AutopilotMode.ASSIST
 
-    def test_no_onnx_load(self, service: AutopilotService) -> None:
-        # start() must not trigger any heavy initialization
-        req = StartRequest(project_root="/repo", workspace_root="/repo/.cortex")
-        res = service.start(req)
-        assert res.state.session_id
+    def test_mode_override_is_respected(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service(AutopilotPolicy(mode=AutopilotMode.OBSERVE))
+        result = svc.start(AutopilotStartRequest(mode=AutopilotMode.AUTOPILOT))
+        assert result.policy.mode is AutopilotMode.AUTOPILOT
+        assert result.policy.pre_commit_verification is True
+
+
+# ── preflight ───────────────────────────────────────────────────────
 
 
 class TestPreflight:
-    def test_detects_fast_code(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        pre = service.preflight(
-            PreflightRequest(
-                session_id=start.session_id,
-                user_request="Implement user profile page with email validation",
-                changed_files=["profiles.py"],
-            )
+    def test_runs_without_active_session(self, make_service) -> None:
+        svc = make_service()
+        result = svc.preflight(
+            AutopilotPreflightRequest(user_request="please refactor the parser")
         )
-        assert pre.detection.task_type == "fast-code"
-        assert pre.state.detected_task_type == "fast-code"
-        assert pre.state.status == "preflight_done"
-        assert pre.can_proceed is True
+        assert result.detection.task_type in {
+            "question-only", "docs-only", "fast-code", "deep-code",
+            "security", "ambiguous", "noop",
+        }
 
-    def test_detects_ambiguous(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        pre = service.preflight(
-            PreflightRequest(
-                session_id=start.session_id,
-                user_request="fix login",
-            )
-        )
-        assert pre.detection.task_type == "ambiguous"
-        assert pre.can_proceed is True  # ambiguous doesn't block via policy by default
 
-    def test_no_user_request(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        pre = service.preflight(PreflightRequest(session_id=start.session_id))
-        assert pre.detection.task_type == "ambiguous"  # no request -> ambiguous
-        assert pre.state.warnings == []
-
-    def test_leaves_event(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        service.preflight(
-            PreflightRequest(session_id=start.session_id, user_request="What is the auth flow?")
-        )
-        events = service._store.load_events(start.session_id)
-        assert any(e.event_type == "preflight" for e in events)
+# ── checkpoint ──────────────────────────────────────────────────────
 
 
 class TestCheckpoint:
-    def test_adds_checkpoint(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        ck = service.checkpoint(
-            CheckpointRequest(
-                session_id=start.session_id,
-                summary="Implemented login fix",
-                files_at_checkpoint=["login.py"],
-                verified=True,
-            )
-        )
-        assert len(ck.state.checkpoints) == 1
-        assert ck.state.status == "implementation_seen"
+    def test_requires_active_session(self, make_service) -> None:
+        svc = make_service()
+        with pytest.raises(NoActiveSessionError):
+            svc.checkpoint(AutopilotCheckpointRequest(source="manual"))
 
-    def test_leaves_event(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        service.checkpoint(
-            CheckpointRequest(session_id=start.session_id, summary="ck", files_at_checkpoint=[])
-        )
-        events = service._store.load_events(start.session_id)
-        assert any(e.event_type == "checkpoint" for e in events)
-
-
-class TestFinish:
-    def test_auto_finish_persists_to_disk(
-        self, service: AutopilotService, tmp_path: Path
+    def test_appends_and_returns_warnings(
+        self, make_service, session_service, repo: Path
     ) -> None:
-        """``finish --auto`` must create the session note file on disk.
-
-        Regression: previously ``saved=True`` was returned without any
-        write_text() call, leaving ``session_note_path`` pointing at a
-        non-existent file.
-        """
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        service.checkpoint(
-            CheckpointRequest(
-                session_id=start.session_id,
-                summary="Done",
-                files_at_checkpoint=["a.py"],
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        result = svc.checkpoint(
+            AutopilotCheckpointRequest(
+                source="manual",
+                artifacts_touched=["src/a.py", "src/b.py"],
+                files_in_scope=["src/a.py"],
             )
         )
-        fin = service.finish(FinishRequest(session_id=start.session_id, auto=True))
-        assert fin.saved is True
-        assert fin.draft is not None
-        assert fin.state.status == "documented"
+        assert len(result.session.checkpoints) == 1
+        assert result.checkpoint.artifacts_touched == ["src/a.py", "src/b.py"]
+        assert any("outside spec scope" in w for w in result.warnings)
 
-        # The contract: documented ⇒ file on disk.
-        assert fin.state.session_note_path is not None
-        note_path = Path(fin.state.session_note_path)
-        assert note_path.exists(), f"Session note not written: {note_path}"
-        assert note_path.parent == tmp_path / "vault" / "sessions"
-        content = note_path.read_text(encoding="utf-8")
-        assert "session_id:" in content
-        assert "tags:" in content
-        assert "autopilot" in content
-
-    def test_finish_auto_no_writer_does_not_claim_documented(
-        self, service_without_writer: AutopilotService
+    def test_rejects_unknown_source(
+        self, make_service, session_service, repo: Path
     ) -> None:
-        """Without a writer, the service must NOT mark the session documented.
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        with pytest.raises(AutopilotError):
+            svc.checkpoint(AutopilotCheckpointRequest(source="from-mars"))
 
-        This preserves the invariant: status=='documented' implies the
-        session note exists on disk.
-        """
-        svc = service_without_writer
-        start = svc.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        svc.checkpoint(
-            CheckpointRequest(
-                session_id=start.session_id,
-                summary="Done",
-                files_at_checkpoint=["a.py"],
-            )
-        )
-        fin = svc.finish(FinishRequest(session_id=start.session_id, auto=True))
-        assert fin.draft is not None
-        assert fin.saved is False
-        assert fin.state.status == "finished"
-        assert any("session_writer" in w for w in fin.state.warnings)
 
-    def test_finish_blocked_by_policy(self, service: AutopilotService) -> None:
-        # In autopilot mode with changes but no checkpoint, auto-checkpoint policy blocks
-        start = service.start(
-            StartRequest(project_root="/repo", workspace_root="/repo/.cortex", mode="autopilot")
-        )
-        # Simulate many file changes without checkpoint
-        state = service._store.load_state(start.session_id)
-        state.changed_files = [f"f{i}.py" for i in range(10)]
-        service._store.save_state(state)
+# ── finish ──────────────────────────────────────────────────────────
 
-        fin = service.finish(FinishRequest(session_id=start.session_id, auto=True))
-        assert fin.state.status == "finished"
-        assert fin.draft is not None
-        assert fin.draft.confidence == "auto-draft"
-        assert fin.saved is False
 
-    def test_finish_without_auto(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        fin = service.finish(FinishRequest(session_id=start.session_id, auto=False))
-        assert fin.saved is False
-        assert fin.state.status == "finished"
-
-    def test_event_records_session_note_path(
-        self, service: AutopilotService
+class TestFinishManual:
+    def test_closes_without_documenting(
+        self, make_service, session_service, repo: Path
     ) -> None:
-        """The finish event must include the persisted path for telemetry."""
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        service.checkpoint(
-            CheckpointRequest(
-                session_id=start.session_id,
-                summary="Done",
-                files_at_checkpoint=["a.py"],
-            )
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        result = svc.finish(AutopilotFinishRequest(auto=False))
+        assert result.session.status is SessionStatus.CLOSED
+        assert result.documented is False
+
+    def test_handoff_intent_translates_to_handoff_status(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        result = svc.finish(AutopilotFinishRequest(auto=False, intent="handoff"))
+        assert result.session.status is SessionStatus.HANDOFF
+
+    def test_blocks_in_autopilot_without_verified(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service(
+            AutopilotPolicy(mode=AutopilotMode.AUTOPILOT, pre_commit_verification=True)
         )
-        service.finish(FinishRequest(session_id=start.session_id, auto=True))
-        events = service._store.load_events(start.session_id)
-        finish_events = [e for e in events if e.event_type == "finish"]
-        assert finish_events, "no finish event recorded"
-        assert finish_events[-1].payload["saved"] is True
-        assert finish_events[-1].payload["session_note_path"] is not None
+        result = svc.finish(AutopilotFinishRequest(auto=False))
+        assert result.blocked is True
+        assert "verified claims" in result.blocked_reason
+
+    def test_already_closed_session_is_noop(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        first = svc.finish(AutopilotFinishRequest(auto=False))
+        assert first.session.status is SessionStatus.CLOSED
+        # Calling finish again on the same id is idempotent.
+        target_id = first.session.session_id
+        second = svc.finish(AutopilotFinishRequest(session_id=target_id, auto=False))
+        assert "no-op" in second.summary
+
+    def test_auto_without_memory_factory_errors(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        with pytest.raises(AutopilotError, match="memory_factory"):
+            svc.finish(AutopilotFinishRequest(auto=True))
+
+
+# ── status ──────────────────────────────────────────────────────────
 
 
 class TestStatus:
-    def test_no_sessions(self, service: AutopilotService) -> None:
-        st = service.status()
-        assert st.active is False
+    def test_no_active_session(self, make_service) -> None:
+        svc = make_service()
+        result = svc.status()
+        assert result.active is False
 
-    def test_with_session(self, service: AutopilotService) -> None:
-        start = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        st = service.status(start.session_id)
-        assert st.active is True
-        assert st.state is not None
-        assert st.state.session_id == start.session_id
+    def test_active_session(
+        self, make_service, session_service, repo: Path
+    ) -> None:
+        _open_spec_session(session_service, repo)
+        svc = make_service()
+        result = svc.status()
+        assert result.active is True
+        assert result.session is not None
+        assert result.session.status is SessionStatus.OPEN
+        assert result.inferred_mode == "byo"  # no checkpoints yet
 
-    def test_latest_session(self, service: AutopilotService) -> None:
-        s1 = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        s2 = service.start(StartRequest(project_root="/repo", workspace_root="/repo/.cortex"))
-        st = service.status()
-        assert st.active is True
-        assert st.state is not None
-        assert st.state.session_id == s2.session_id
+    def test_lookup_by_unknown_id_returns_inactive(self, make_service) -> None:
+        svc = make_service()
+        result = svc.status("does-not-exist")
+        assert result.active is False

@@ -59,7 +59,7 @@ class JiraProvider(WorkItemProvider):
         return self._to_tracked_item(issue)
 
     def _request_json(self, path: str) -> dict[str, Any]:
-        token = base64.b64encode(f"{self._email}:{self._api_token}".encode("utf-8")).decode("ascii")
+        token = base64.b64encode(f"{self._email}:{self._api_token}".encode()).decode("ascii")
         request = urllib.request.Request(
             f"{self._base_url}{path}",
             headers={

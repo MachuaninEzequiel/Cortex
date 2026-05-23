@@ -54,7 +54,7 @@ class PRService:
         vault_path: str | Path,
         episodic: EpisodicMemoryStore,
         context_metadata: dict[str, str] | None = None,
-        semantic: "VaultReader | None" = None,
+        semantic: VaultReader | None = None,
     ) -> None:
         self._vault_path = Path(vault_path)
         self._episodic = episodic

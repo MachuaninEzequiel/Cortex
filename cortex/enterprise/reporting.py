@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -15,7 +15,7 @@ ReportingScope = Literal["local", "enterprise", "all"]
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class PromotionEventSummary(BaseModel):
@@ -59,7 +59,7 @@ class EnterpriseReportingService:
         self._layout = workspace_layout or WorkspaceLayout.discover(project_root)
 
     @staticmethod
-    def from_project_root(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> "EnterpriseReportingService":
+    def from_project_root(project_root: Path, *, workspace_layout: WorkspaceLayout | None = None) -> EnterpriseReportingService:
         return EnterpriseReportingService(project_root, workspace_layout=workspace_layout)
 
     def build_memory_report(self, *, scope: ReportingScope = "all") -> MemoryReportPayload:

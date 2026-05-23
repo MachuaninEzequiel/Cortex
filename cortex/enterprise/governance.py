@@ -18,8 +18,6 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Iterable
-
 from cortex.enterprise.models import EnterpriseOrgConfig
 
 # Built-in pseudo-team that gets access to everything.

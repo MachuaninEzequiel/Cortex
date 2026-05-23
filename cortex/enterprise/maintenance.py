@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import logging
 import shutil
-from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cortex.documentation.common import parse_frontmatter_lenient

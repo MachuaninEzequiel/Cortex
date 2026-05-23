@@ -28,6 +28,10 @@ from cortex.documentation.schemas.decision import (
     DecisionFrontmatter,
     DecisionFrontmatterEnterprise,
 )
+from cortex.documentation.schemas.design import (
+    DesignFrontmatter,
+    DesignFrontmatterEnterprise,
+)
 from cortex.documentation.schemas.glossary import (
     GlossaryFrontmatter,
     GlossaryFrontmatterEnterprise,
@@ -59,7 +63,6 @@ from cortex.documentation.schemas.spec import (
     SpecFrontmatterEnterprise,
 )
 
-
 SCHEMA_BY_TYPE: dict[DocType, type[CommonFrontmatter]] = {
     DocType.SESSION: SessionFrontmatter,
     DocType.HANDOFF: HandoffFrontmatter,
@@ -73,6 +76,7 @@ SCHEMA_BY_TYPE: dict[DocType, type[CommonFrontmatter]] = {
     DocType.CHANGELOG: ChangelogFrontmatter,
     DocType.HU: HUFrontmatter,
     DocType.GLOSSARY: GlossaryFrontmatter,
+    DocType.DESIGN: DesignFrontmatter,
 }
 
 SCHEMA_BY_TYPE_ENTERPRISE: dict[DocType, type[EnterpriseFrontmatter]] = {
@@ -88,6 +92,7 @@ SCHEMA_BY_TYPE_ENTERPRISE: dict[DocType, type[EnterpriseFrontmatter]] = {
     DocType.CHANGELOG: ChangelogFrontmatterEnterprise,
     DocType.HU: HUFrontmatterEnterprise,
     DocType.GLOSSARY: GlossaryFrontmatterEnterprise,
+    DocType.DESIGN: DesignFrontmatterEnterprise,
 }
 
 
@@ -106,6 +111,8 @@ __all__ = [
     "CortexTelemetry",
     "DecisionFrontmatter",
     "DecisionFrontmatterEnterprise",
+    "DesignFrontmatter",
+    "DesignFrontmatterEnterprise",
     "GlossaryFrontmatter",
     "GlossaryFrontmatterEnterprise",
     "HUFrontmatter",

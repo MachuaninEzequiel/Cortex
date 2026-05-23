@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from cortex.pipeline.domain.context import PipelineContext
@@ -71,7 +71,7 @@ class PipelineOrchestrator:
         Returns:
             PipelineReport with all results.
         """
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         results: list[StageResult] = []
         aborted = False
 
@@ -112,7 +112,7 @@ class PipelineOrchestrator:
                 )
                 aborted = True
 
-        ended_at = datetime.now(timezone.utc)
+        ended_at = datetime.now(UTC)
         report = PipelineReport(
             results=results,
             started_at=started_at,

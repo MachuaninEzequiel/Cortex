@@ -15,10 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from cortex.semantic.vault_reader import VaultReader
-
 
 _FILLER_HEAD = "general framework discussion " * 200  # > 600 words
 _RELEVANT_TAIL = (

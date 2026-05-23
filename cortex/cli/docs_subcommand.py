@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -22,15 +20,23 @@ app = typer.Typer(help="Canonical documentation system commands.")
 
 # Vector cache operations live under ``cortex docs vectorization`` (Fase 06).
 from cortex.cli.docs_vectorization import app as _vec_app
+
 app.add_typer(_vec_app, name="vectorization")
 
 # Migration / validate / restore (Fase 11).
 from cortex.cli.docs_migrate import (
     list_backups_cmd as _list_backups_cmd,
+)
+from cortex.cli.docs_migrate import (
     migrate as _migrate_cmd,
+)
+from cortex.cli.docs_migrate import (
     restore as _restore_cmd,
+)
+from cortex.cli.docs_migrate import (
     validate as _validate_cmd,
 )
+
 app.command(name="migrate")(_migrate_cmd)
 app.command(name="validate")(_validate_cmd)
 app.command(name="restore")(_restore_cmd)
@@ -38,6 +44,7 @@ app.command(name="list-backups")(_list_backups_cmd)
 
 # Structural search with EnrichmentFilters (Fase 13 backlog).
 from cortex.cli.docs_search import search as _search_cmd
+
 app.command(name="search")(_search_cmd)
 
 
@@ -70,7 +77,7 @@ def _spec_to_serializable(spec) -> dict:
 
 @app.command("routing-table")
 def routing_table(
-    doc_type: Optional[str] = typer.Option(
+    doc_type: str | None = typer.Option(
         None, "--doc-type", help="Filter by DocType slug (e.g. 'adr')."
     ),
     json_output: bool = typer.Option(

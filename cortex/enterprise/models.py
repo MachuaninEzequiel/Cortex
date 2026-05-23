@@ -22,7 +22,7 @@ class OrganizationConfig(BaseModel):
     profile: OrgProfile = "small-company"
 
     @model_validator(mode="after")
-    def _normalize_slug(self) -> "OrganizationConfig":
+    def _normalize_slug(self) -> OrganizationConfig:
         self.slug = slugify(self.slug or self.name, fallback="organization")
         return self
 
@@ -40,7 +40,7 @@ class MemoryConfig(BaseModel):
     retrieval_enterprise_weight: float = Field(default=1.0, gt=0)
 
     @model_validator(mode="after")
-    def _validate_paths(self) -> "MemoryConfig":
+    def _validate_paths(self) -> MemoryConfig:
         if self.enterprise_semantic_enabled and not self.enterprise_vault_path.strip():
             raise ValueError("memory.enterprise_vault_path is required when enterprise_semantic_enabled=true")
         if self.enterprise_episodic_enabled and not self.enterprise_memory_path.strip():
@@ -128,7 +128,7 @@ class EnterpriseOrgConfig(BaseModel):
     retention_defaults: RetentionPolicy = Field(default_factory=RetentionPolicy)
 
     @model_validator(mode="after")
-    def _validate_cross_section_rules(self) -> "EnterpriseOrgConfig":
+    def _validate_cross_section_rules(self) -> EnterpriseOrgConfig:
         if self.promotion.enabled and not self.memory.enterprise_semantic_enabled:
             raise ValueError(
                 "promotion.enabled requires memory.enterprise_semantic_enabled=true so promoted knowledge has a target"

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from cortex.documentation.common import parse_frontmatter_lenient
 
-
 # Map of subfolder name -> inferred doc_type slug.
 # Lives here (string-valued) so this module can be imported without the
 # ``doc_type`` module (which is introduced in Fase 01).
@@ -76,6 +75,7 @@ def classify_path(path: Path, vault_root: Path) -> str | None:
 
     # Lazy import to keep this module independent of Fase 01 at import time.
     from cortex.documentation.doc_type import infer_doc_type_from_path
+
     dt = infer_doc_type_from_path(rel)
     return dt.value if dt else None
 

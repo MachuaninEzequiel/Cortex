@@ -27,6 +27,16 @@ def test_ensure_cortex_workspace_skips_existing_files(tmp_path: Path) -> None:
     assert sync_path.read_text(encoding="utf-8") == "custom"
 
 
+def test_setup_creates_sessions_dir_with_gitkeep(tmp_path: Path) -> None:
+    """Phase 00 / T0.11: ``cortex setup agent`` must seed ``.cortex/sessions/``."""
+    result = ensure_cortex_workspace(tmp_path)
+
+    assert ".cortex/sessions/.gitkeep" in result["created"]
+    sessions_dir = tmp_path / ".cortex" / "sessions"
+    assert sessions_dir.is_dir()
+    assert (sessions_dir / ".gitkeep").is_file()
+
+
 def test_release2_workspace_prompts_require_sync_and_track_routing() -> None:
     files = workspace_file_map()
 

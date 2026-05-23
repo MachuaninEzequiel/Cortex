@@ -174,7 +174,7 @@ class TutorEngine:
         while True:
             self._render_menu()
             try:
-                choice = input("  Elegí un tema (1-{}) o 'q' para salir: ".format(len(self.topics)))
+                choice = input(f"  Elegí un tema (1-{len(self.topics)}) o 'q' para salir: ")
             except (EOFError, KeyboardInterrupt):
                 self.console.print()
                 break
@@ -214,7 +214,7 @@ class TutorEngine:
     # -- Factory ------------------------------------------------------------
 
     @classmethod
-    def default(cls) -> "TutorEngine":
+    def default(cls) -> TutorEngine:
         """Create an engine pre-loaded with all built-in topics."""
         from cortex.tutor.topics import get_all_topics
 

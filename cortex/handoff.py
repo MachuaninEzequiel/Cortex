@@ -1,7 +1,22 @@
-"""cortex.handoff — Structured agent handoff schema.
+"""cortex.handoff — Structured agent handoff schema (Legacy YAML contract).
 
-Replaces prose handoffs between subagents with verifiable YAML contracts.
-Validated by the ``cortex_validate_handoff`` MCP tool (Plan 02 §1).
+Originally introduced as the canonical contract between Cortex agents
+(``cortex-sync`` → ``cortex-SDDwork`` → subagents → ``cortex-documenter``).
+
+.. deprecated:: Phase 02 (Pluggable Middle)
+    The schema is preserved but **deprecated**. The canonical inter-agent
+    state is now :class:`cortex.session.SessionRecord` enriched via the
+    ``cortex_session_checkpoint`` MCP tool (or ``cortex session
+    checkpoint`` from the CLI). Legacy YAML mode of the documenter still
+    consumes this schema for single-agent IDEs (e.g. Codex) that cannot
+    emit Session checkpoints inline.
+
+    **Phase 04 decision:** keep the schema and the Legacy YAML code path
+    in place. Removing them is a major-version breaking change reserved
+    for when Codex (or equivalent) ships native session-aware support.
+
+    For new code: do NOT depend on this module. Read / write the Session
+    via ``cortex.session.SessionService``.
 
 The schema is intentionally permissive on optional fields and strict on the
 two anchors (``agent`` and ``status``) so that a downstream consumer can
@@ -27,7 +42,6 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Sub-models
@@ -105,7 +119,7 @@ class AgentHandoff(BaseModel):
         )
 
     @classmethod
-    def from_yaml(cls, text: str) -> "AgentHandoff":
+    def from_yaml(cls, text: str) -> AgentHandoff:
         """Parse and validate a YAML handoff.
 
         Raises ``pydantic.ValidationError`` if the schema is violated,

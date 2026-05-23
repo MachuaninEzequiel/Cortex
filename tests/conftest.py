@@ -167,6 +167,7 @@ def new_workspace(tmp_path):
     memory/, etc.  Git root marker is created at repo root.
     """
     import yaml
+
     from cortex.workspace.layout import WorkspaceLayout
 
     repo = tmp_path / "project"

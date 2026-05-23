@@ -33,7 +33,7 @@ Usage
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -99,7 +99,7 @@ class DocGenerator:
         name = re.sub(r"[^\w\s-]", "", title.lower().strip())
         name = re.sub(r"[\s]+", "-", name)
         name = name[:80]
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         return f"{today}_{name}.md" if name else f"{today}.md"
 
     def _render(self, template: str, **kwargs: str) -> str:
@@ -119,7 +119,7 @@ class DocGenerator:
         content = self._render(
             _TEMPLATE_SESSION,
             title=ctx.title,
-            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            date=datetime.now(UTC).strftime("%Y-%m-%d"),
             pr_number=str(ctx.pr_number),
             author=ctx.author,
             source_branch=ctx.source_branch,

@@ -18,8 +18,8 @@ Routing decides whether a document is chunked at all (``chunking_enabled``,
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 from cortex.documentation.common import slugify
 from cortex.documentation.doc_type import DocType
@@ -193,7 +193,7 @@ def _make_chunk(
 
 def _split_with_pattern(
     content: str,
-    pattern: "re.Pattern[str]",
+    pattern: re.Pattern[str],
     fallback_title: str,
     doc_type: DocType,
     tags: tuple[str, ...],
@@ -280,7 +280,7 @@ def _split_paragraphs(
     return chunks
 
 
-def _combined_h2_h3() -> "re.Pattern[str]":
+def _combined_h2_h3() -> re.Pattern[str]:
     """Pattern matching both H2 and H3 headers."""
     return re.compile(r"^(?:##|###)\s+(.+?)\s*$", re.MULTILINE)
 

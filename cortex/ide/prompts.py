@@ -93,16 +93,21 @@ def build_all_prompts(project_root: Path, *, workspace_layout: WorkspaceLayout |
     """Build the full set of Cortex prompts for injection.
 
     Returns a dict with at least:
-        - 'cortex-sync': The pre-flight analysis prompt
-        - 'cortex-SDDwork': The implementation orchestrator prompt
+        - 'cortex-sync':       The pre-flight analysis prompt (anchor inicio)
+        - 'cortex-SDDwork':    The implementation orchestrator prompt (middle)
+        - 'cortex-documenter': The closing-anchor prompt (Phase 09.A+ / May 2026)
 
-    These are read directly from the workspace skills files.
+    These are read directly from the workspace skills files. The three
+    skills together form the triadic-anchor model: ``/cortex-sync``
+    opens every Session, the middle is pluggable (SDDwork / code-* /
+    BYO), and ``/cortex-documenter`` closes the Session with editorial
+    criterion. See ``docs/architecture/triadic-agents.md``.
     """
     layout = workspace_layout or WorkspaceLayout.discover(project_root)
     prompts: dict[str, str] = {}
 
-    # Core skills (always injected)
-    for skill_name in ("cortex-sync", "cortex-SDDwork"):
+    # Core skills (always injected) — the three triadic anchors.
+    for skill_name in ("cortex-sync", "cortex-SDDwork", "cortex-documenter"):
         prompts[skill_name] = get_skill_prompt(project_root, skill_name, workspace_layout=layout)
 
     return prompts

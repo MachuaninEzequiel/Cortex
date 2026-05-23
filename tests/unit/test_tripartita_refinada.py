@@ -14,7 +14,6 @@ from cortex.doc_generator import _meets_adr_criteria
 from cortex.models import MemoryEntry, PRContext
 from cortex.workspace.layout import WorkspaceLayout
 
-
 # ---------------------------------------------------------------------------
 # §2 ADR 3 criteria filter
 # ---------------------------------------------------------------------------
@@ -107,45 +106,22 @@ class TestContextMdPath:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(
+    reason=(
+        "Phase 03 retired IndexingSessionWriter + AutopilotSessionState. "
+        "The equivalent 'handoff' tagging now lives in "
+        "cortex.documenter.persistence — its own tests cover the contract."
+    )
+)
 class TestHandoffTag:
     def test_session_writer_tags_include_handoff_when_state_is_handoff(self) -> None:
-        from cortex.autopilot.models import AutopilotSessionState, SessionDraft
-        from cortex.autopilot.session_writer import IndexingSessionWriter
-
-        state = AutopilotSessionState(
-            project_root="/repo",
-            workspace_root="/repo/.cortex",
-            status="handoff",
-        )
-        draft = SessionDraft(title="t", body="b", confidence="medium")
-
-        tags = IndexingSessionWriter._build_tags(draft, state)
-        assert "handoff" in tags
-        assert "session" in tags
-        assert "autopilot" in tags
+        pass
 
     def test_session_writer_tags_do_not_include_handoff_when_documented(self) -> None:
-        from cortex.autopilot.models import AutopilotSessionState, SessionDraft
-        from cortex.autopilot.session_writer import IndexingSessionWriter
-
-        state = AutopilotSessionState(
-            project_root="/repo",
-            workspace_root="/repo/.cortex",
-            status="documented",
-        )
-        draft = SessionDraft(title="t", body="b", confidence="medium")
-
-        tags = IndexingSessionWriter._build_tags(draft, state)
-        assert "handoff" not in tags
+        pass
 
     def test_build_tags_backwards_compat_without_state(self) -> None:
-        """Calling _build_tags(draft) without state must still work."""
-        from cortex.autopilot.models import SessionDraft
-        from cortex.autopilot.session_writer import IndexingSessionWriter
-
-        draft = SessionDraft(title="t", body="b", confidence="medium")
-        tags = IndexingSessionWriter._build_tags(draft)
-        assert tags == ["session", "autopilot"]
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -175,18 +151,18 @@ class TestMemoryEntryConfidence:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(
+    reason=(
+        "Phase 03 retired SessionDraft. The equivalent confidence semantics "
+        "live in MemoryEntry.confidence — covered by TestMemoryEntryConfidence above."
+    )
+)
 class TestSessionDraftConfidenceLevel:
     def test_default_confidence_level_is_none(self) -> None:
-        from cortex.autopilot.models import SessionDraft
-
-        draft = SessionDraft(title="t", body="b")
-        assert draft.confidence_level is None
+        pass
 
     def test_session_draft_accepts_confidence_level(self) -> None:
-        from cortex.autopilot.models import SessionDraft
-
-        draft = SessionDraft(title="t", body="b", confidence_level="verified")
-        assert draft.confidence_level == "verified"
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -194,13 +170,13 @@ class TestSessionDraftConfidenceLevel:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(
+    reason=(
+        "Phase 03 retired AutopilotSessionState. The HANDOFF status is now "
+        "enforced by SessionStatus.HANDOFF in cortex.session.models — covered "
+        "by tests/unit/session/test_models.py."
+    )
+)
 class TestSessionStateHandoffStatus:
     def test_status_handoff_accepted(self) -> None:
-        from cortex.autopilot.models import AutopilotSessionState
-
-        state = AutopilotSessionState(
-            project_root="/repo",
-            workspace_root="/repo/.cortex",
-            status="handoff",
-        )
-        assert state.status == "handoff"
+        pass

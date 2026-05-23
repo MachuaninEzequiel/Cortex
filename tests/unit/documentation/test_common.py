@@ -16,7 +16,6 @@ from cortex.documentation.common import (
     yaml_load_safe,
 )
 
-
 # --- slugify ----------------------------------------------------------------
 
 

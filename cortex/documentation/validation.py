@@ -7,13 +7,11 @@ based on ``doc_type`` and ``vault_scope``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import ValidationError
 
 from cortex.documentation.common import (
-    parse_frontmatter_lenient,
     split_frontmatter_and_body,
     yaml_load_safe,
 )
@@ -53,9 +51,7 @@ def validate_frontmatter(yaml_str: str) -> CommonFrontmatter:
 
     raw_doc_type = raw["doc_type"]
     if not isinstance(raw_doc_type, str):
-        raise SchemaValidationError(
-            f"doc_type must be a string, got {type(raw_doc_type).__name__}"
-        )
+        raise SchemaValidationError(f"doc_type must be a string, got {type(raw_doc_type).__name__}")
     try:
         doc_type = DocType(raw_doc_type)
     except ValueError as e:
@@ -67,9 +63,7 @@ def validate_frontmatter(yaml_str: str) -> CommonFrontmatter:
     elif scope == "local":
         schema_cls = SCHEMA_BY_TYPE[doc_type]
     else:
-        raise SchemaValidationError(
-            f"vault_scope must be 'local' or 'enterprise', got {scope!r}"
-        )
+        raise SchemaValidationError(f"vault_scope must be 'local' or 'enterprise', got {scope!r}")
 
     try:
         return schema_cls.model_validate(raw)

@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from cortex.ide.prompts import build_all_prompts, build_autopilot_prompts
 from cortex.setup.cortex_workspace import (
     _autopilot_skills_dir,

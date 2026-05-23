@@ -354,6 +354,8 @@ class TestVerifySessionClaims:
                     "+    handoff = AgentHandoff.from_yaml(text)\n"
                     "+    handoff.validate()\n"
                 )
+                stderr = ""
+                returncode = 0
             return _R()
 
         monkeypatch.setattr(subprocess, "run", fake_run)
@@ -370,6 +372,8 @@ class TestVerifySessionClaims:
         def fake_run(cmd, **kwargs):  # noqa: ANN001
             class _R:
                 stdout = "diff --git a/README.md b/README.md\n+typo fix\n"
+                stderr = ""
+                returncode = 0
             return _R()
 
         monkeypatch.setattr(subprocess, "run", fake_run)
@@ -386,6 +390,8 @@ class TestVerifySessionClaims:
         def fake_run(cmd, **kwargs):  # noqa: ANN001
             class _R:
                 stdout = ""
+                stderr = ""
+                returncode = 0
             return _R()
 
         monkeypatch.setattr(subprocess, "run", fake_run)

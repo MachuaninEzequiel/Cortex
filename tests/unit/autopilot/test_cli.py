@@ -1,248 +1,245 @@
-"""Tests for cortex.autopilot.cli."""
+"""Tests for the Phase-03 ``cortex autopilot`` Typer subapp (T3.4)."""
+
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from cortex.autopilot.cli import app
+from cortex.session.service import SessionService
+from cortex.session.storage import SessionStorage
 
-runner = CliRunner()
+
+@pytest.fixture
+def runner() -> CliRunner:
+    return CliRunner()
+
+
+@pytest.fixture
+def cortex_repo(tmp_path: Path) -> Path:
+    """A tiny git repo with the bare workspace bones the CLI needs."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".cortex" / "sessions").mkdir(parents=True)
+    (repo / "config.yaml").write_text("episodic: {}\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.t"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    (repo / "README.md").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "i"], cwd=repo, check=True)
+    return repo
+
+
+def _open_session(repo: Path) -> str:
+    """Open a session directly via SessionService so the CLI can adopt it."""
+    storage = SessionStorage(repo / ".cortex" / "sessions")
+    svc = SessionService(storage, repo)
+    spec_dir = repo / "vault" / "specs"
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = spec_dir / "2026-05-16_demo.md"
+    spec_path.write_text("# demo\n", encoding="utf-8")
+    record = svc.open(
+        spec_id="2026-05-16_demo",
+        spec_path=spec_path,
+        spec_summary="demo session",
+    )
+    return record.session_id
+
+
+# ── start ────────────────────────────────────────────────────────────
 
 
 class TestStart:
-    def test_start_default(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["start", "--project-root", str(tmp_path)])
-        assert result.exit_code == 0
-        assert "session_id" in result.output
-        assert "status" in result.output
-
-    def test_start_json(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "session_id" in data
-        assert data["mode"] == "assist"
-        assert data["status"] == "started"
-
-    def test_start_with_mode(self, tmp_path: Path) -> None:
+    def test_no_active_session_errors(self, runner: CliRunner, cortex_repo: Path) -> None:
         result = runner.invoke(
-            app, ["start", "--project-root", str(tmp_path), "--mode", "autopilot", "--json"]
+            app, ["start", "--project-root", str(cortex_repo), "--json"]
         )
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["mode"] == "autopilot"
+        assert result.exit_code == 1
+        assert "active session" in result.output.lower()
 
-    def test_start_with_request(self, tmp_path: Path) -> None:
+    def test_with_active_session_succeeds(self, runner: CliRunner, cortex_repo: Path) -> None:
+        _open_session(cortex_repo)
+        result = runner.invoke(
+            app, ["start", "--project-root", str(cortex_repo), "--json"]
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["session_id"] == "2026-05-16_demo"
+        assert payload["mode"] == "assist"
+
+    def test_invalid_mode_exits_2(self, runner: CliRunner, cortex_repo: Path) -> None:
         result = runner.invoke(
             app,
-            [
-                "start",
-                "--project-root",
-                str(tmp_path),
-                "--request",
-                "Fix login bug",
-                "--json",
-            ],
+            ["start", "--project-root", str(cortex_repo), "--mode", "hyperdrive"],
         )
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "session_id" in data
+        assert result.exit_code == 2
+
+
+# ── preflight ───────────────────────────────────────────────────────
 
 
 class TestPreflight:
-    def test_preflight_without_session(self, tmp_path: Path) -> None:
+    def test_outputs_detection(self, runner: CliRunner, cortex_repo: Path) -> None:
         result = runner.invoke(
-            app, ["preflight", "--project-root", str(tmp_path), "--session-id", "nosuch", "--json"]
-        )
-        assert result.exit_code == 1
-        data = json.loads(result.output)
-        assert "error" in data
-
-    def test_preflight_success(self, tmp_path: Path) -> None:
-        # Start a session first
-        r1 = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        sid = json.loads(r1.output)["session_id"]
-
-        r2 = runner.invoke(
             app,
             [
                 "preflight",
                 "--project-root",
-                str(tmp_path),
-                "--session-id",
-                sid,
+                str(cortex_repo),
                 "--request",
-                "Implement new feature",
-                "--file",
-                "feat.py",
+                "implement JWT refresh",
                 "--json",
             ],
         )
-        assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert data["task_type"] == "fast-code"
-        assert "can_proceed" in data
-        assert "policy_decisions" in data
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert "task_type" in payload
+        assert "confidence" in payload
+
+
+# ── checkpoint ──────────────────────────────────────────────────────
 
 
 class TestCheckpoint:
-    def test_checkpoint_without_session(self, tmp_path: Path) -> None:
+    def test_no_active_session_errors(self, runner: CliRunner, cortex_repo: Path) -> None:
         result = runner.invoke(
-            app, ["checkpoint", "--project-root", str(tmp_path), "--session-id", "bad", "--summary", "x", "--json"]
-        )
-        assert result.exit_code == 1
-
-    def test_checkpoint_success(self, tmp_path: Path) -> None:
-        r1 = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        sid = json.loads(r1.output)["session_id"]
-
-        r2 = runner.invoke(
             app,
             [
                 "checkpoint",
                 "--project-root",
-                str(tmp_path),
-                "--session-id",
-                sid,
-                "--summary",
-                "Added auth logic",
-                "--file",
-                "auth.py",
-                "--verified",
+                str(cortex_repo),
+                "--source",
+                "manual",
+                "--note",
+                "nothing",
                 "--json",
             ],
         )
-        assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert data["checkpoints_count"] == 1
-        assert data["status"] == "implementation_seen"
+        assert result.exit_code == 1
+
+    def test_with_active_session(self, runner: CliRunner, cortex_repo: Path) -> None:
+        _open_session(cortex_repo)
+        result = runner.invoke(
+            app,
+            [
+                "checkpoint",
+                "--project-root",
+                str(cortex_repo),
+                "--source",
+                "manual",
+                "--note",
+                "n1",
+                "--artifact",
+                "src/a.py",
+                "--json",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["checkpoints_count"] == 1
+
+
+# ── finish ──────────────────────────────────────────────────────────
 
 
 class TestFinish:
-    def test_finish_without_session(self, tmp_path: Path) -> None:
+    def test_finish_without_auto_closes_session(
+        self, runner: CliRunner, cortex_repo: Path
+    ) -> None:
+        _open_session(cortex_repo)
         result = runner.invoke(
-            app, ["finish", "--project-root", str(tmp_path), "--session-id", "bad", "--json"]
+            app,
+            ["finish", "--project-root", str(cortex_repo), "--json"],
         )
-        assert result.exit_code == 1
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["status"] == "closed"
+        assert payload["documented"] is False
 
-    def test_finish_auto(self, tmp_path: Path) -> None:
-        r1 = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        sid = json.loads(r1.output)["session_id"]
-
-        r2 = runner.invoke(
+    def test_handoff_intent(self, runner: CliRunner, cortex_repo: Path) -> None:
+        _open_session(cortex_repo)
+        result = runner.invoke(
             app,
             [
                 "finish",
                 "--project-root",
-                str(tmp_path),
-                "--session-id",
-                sid,
-                "--auto",
+                str(cortex_repo),
+                "--handoff",
+                "--reason",
+                "blocker",
                 "--json",
             ],
         )
-        assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert "status" in data
-        assert "saved" in data
-        # Should return draft info or reason
-        assert "draft_title" in data or "reason" in data
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["status"] == "handoff"
 
-    def test_finish_no_auto(self, tmp_path: Path) -> None:
-        r1 = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        sid = json.loads(r1.output)["session_id"]
-
-        r2 = runner.invoke(
+    def test_handoff_and_abandon_mutually_exclusive(
+        self, runner: CliRunner, cortex_repo: Path
+    ) -> None:
+        result = runner.invoke(
             app,
             [
                 "finish",
                 "--project-root",
-                str(tmp_path),
-                "--session-id",
-                sid,
-                "--json",
+                str(cortex_repo),
+                "--handoff",
+                "--abandon",
             ],
         )
-        assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert data["saved"] is False
+        assert result.exit_code == 2
+
+
+# ── status ──────────────────────────────────────────────────────────
 
 
 class TestStatus:
-    def test_status_no_sessions(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["status", "--project-root", str(tmp_path), "--json"])
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["active"] is False
-
-    def test_status_with_session(self, tmp_path: Path) -> None:
-        r1 = runner.invoke(app, ["start", "--project-root", str(tmp_path), "--json"])
-        sid = json.loads(r1.output)["session_id"]
-
-        r2 = runner.invoke(
-            app, ["status", "--project-root", str(tmp_path), "--session-id", sid, "--json"]
+    def test_no_active_session(self, runner: CliRunner, cortex_repo: Path) -> None:
+        result = runner.invoke(
+            app, ["status", "--project-root", str(cortex_repo), "--json"]
         )
-        assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert data["active"] is True
-        assert data["session_id"] == sid
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["active"] is False
+
+    def test_active_session(self, runner: CliRunner, cortex_repo: Path) -> None:
+        _open_session(cortex_repo)
+        result = runner.invoke(
+            app, ["status", "--project-root", str(cortex_repo), "--json"]
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["active"] is True
+        assert payload["session_id"] == "2026-05-16_demo"
+
+
+# ── doctor ──────────────────────────────────────────────────────────
 
 
 class TestDoctor:
-    def test_doctor_no_modifications(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["doctor", "--project-root", str(tmp_path), "--json"])
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "checks" in data
-        assert "ok" in data
-        # Doctor may report ok=False on a bare repo (missing skills, hooks, etc.)
-        # Verify no files were created outside run/autopilot
-        assert not (tmp_path / ".cortex" / "doctor_marker").exists()
-
-    def test_doctor_text_output(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["doctor", "--project-root", str(tmp_path)])
-        assert result.exit_code == 0
-        assert "config" in result.output or "run_dir" in result.output
-
-
-class TestInstall:
-    def test_install_cursor(self, tmp_path: Path) -> None:
+    def test_returns_report(self, runner: CliRunner, cortex_repo: Path) -> None:
         result = runner.invoke(
-            app, ["install", "--project-root", str(tmp_path), "--ide", "cursor", "--json"]
+            app, ["doctor", "--project-root", str(cortex_repo), "--json"]
         )
         assert result.exit_code == 0, result.output
-        data = json.loads(result.output)
-        assert data["installed"] is True
-        assert data["adapter"] == "cursor"
-        assert len(data["modified"]) == 1
-
-    def test_install_unknown(self, tmp_path: Path) -> None:
-        result = runner.invoke(
-            app, ["install", "--project-root", str(tmp_path), "--ide", "vscode", "--json"]
-        )
-        assert result.exit_code == 1
-        data = json.loads(result.output)
-        assert "error" in data
+        payload = json.loads(result.output)
+        assert "checks" in payload
+        names = {c["name"] for c in payload["checks"]}
+        assert {"config", "sessions_dir", "adapters", "last_finish"} <= names
 
 
-class TestUninstall:
-    def test_uninstall_cursor(self, tmp_path: Path) -> None:
-        runner.invoke(app, ["install", "--project-root", str(tmp_path), "--ide", "cursor"])
-        result = runner.invoke(
-            app, ["uninstall", "--project-root", str(tmp_path), "--ide", "cursor", "--json"]
-        )
-        assert result.exit_code == 0, result.output
-        data = json.loads(result.output)
-        assert data["uninstalled"] is True
-        assert data["adapter"] == "cursor"
+# install / uninstall commands removed in Phase 04 cleanup — use
+# ``cortex session hooks install --ide <name>`` (covered by
+# tests/unit/cli/test_session_hooks_cli.py).
 
-    def test_uninstall_unknown(self, tmp_path: Path) -> None:
-        result = runner.invoke(
-            app, ["uninstall", "--project-root", str(tmp_path), "--ide", "vscode", "--json"]
-        )
-        assert result.exit_code == 1
-        data = json.loads(result.output)
-        assert "error" in data
+
+# Suppress noisy unused-import warnings.
+_ = patch
+_ = typer

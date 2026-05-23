@@ -7,7 +7,11 @@ from pathlib import Path
 
 from cortex.runtime_context import slugify
 from cortex.webgraph.config import WebGraphConfig
-from cortex.webgraph.federation import WorkspaceProject, default_workspace_file, write_workspace_file
+from cortex.webgraph.federation import (
+    WorkspaceProject,
+    default_workspace_file,
+    write_workspace_file,
+)
 from cortex.workspace.layout import WorkspaceLayout
 
 

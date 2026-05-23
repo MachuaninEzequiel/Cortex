@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ class WebGraphSnapshot(BaseModel):
     version: str = "2.0"
     fingerprint: str
     generated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        default_factory=lambda: datetime.now(UTC).isoformat(),
     )
     mode: WebGraphMode = "hybrid"
     stats: WebGraphStats

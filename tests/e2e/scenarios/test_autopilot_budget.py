@@ -11,11 +11,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from cortex.autopilot.cli import app
-from cortex.autopilot.context_budget import BUDGET_PROFILES, get_budget_profile, profile_for_task_type
+from cortex.autopilot.context_budget import (
+    BUDGET_PROFILES,
+    get_budget_profile,
+    profile_for_task_type,
+)
 
 runner = CliRunner()
 

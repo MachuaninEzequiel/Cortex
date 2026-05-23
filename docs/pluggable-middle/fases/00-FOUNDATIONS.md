@@ -770,25 +770,37 @@ Al cerrar la Fase 00, queda disponible para la Fase 01:
 
 Marcá ✅ cada tarea al cerrarla. Si interrumpís, este es el ancla para retomar.
 
-- [ ] T0.1 — Schema y modelos Pydantic
-- [ ] T0.2 — Storage atómico
-- [ ] T0.3 — Errores de dominio
-- [ ] T0.4 — Servicio de sesión
-- [ ] T0.5 — Integración con WorkspaceLayout
-- [ ] T0.6 — Integración con `cortex create-spec`
-- [ ] T0.7 — MCP tools
-- [ ] T0.8 — CLI subcommands
-- [ ] T0.9 — Doctor section
-- [ ] T0.10 — Renombrar session_service → note_service
-- [ ] T0.11 — Setup integration
-- [ ] T0.12 — Documentación pública
-- [ ] **Completion Verification Commands** (§6) — TODOS pasaron
-- [ ] Tabla de progreso en `../README.md` actualizada con ✅
-- [ ] Commit final hecho
+- [x] T0.1 — Schema y modelos Pydantic ✅
+- [x] T0.2 — Storage atómico ✅
+- [x] T0.3 — Errores de dominio ✅
+- [x] T0.4 — Servicio de sesión ✅
+- [x] T0.5 — Integración con WorkspaceLayout ✅
+- [x] T0.6 — Integración con `cortex create-spec` ✅
+- [x] T0.7 — MCP tools ✅
+- [x] T0.8 — CLI subcommands ✅
+- [x] T0.9 — Doctor section ✅
+- [x] T0.10 — Renombrar session_service → note_service ✅
+- [x] T0.11 — Setup integration ✅
+- [x] T0.12 — Documentación pública ✅
+- [x] **Completion Verification Commands** (§6) — todos pasaron ✅
+- [x] Tabla de progreso en `../README.md` actualizada con ✅
+- [ ] Commit final hecho (pendiente — esperando autorización del usuario)
 
 **Notas durante la ejecución:**
 
-> Espacio reservado para que el agente registre decisiones puntuales, blockers encontrados, desviaciones del plan. Si una decisión cambia algo del plan, anotala acá y mencionala en el commit message.
+- **Coverage del módulo `cortex.session`: 100%** (353 stmts, 0 missed; 106 tests).
+  - Cierre del gap del 99% original: las 3 líneas que faltaban eran
+    (a) `git.py:37` — `GitError` cuando `git` no está en PATH (cubierto mockeando `subprocess.run` con `FileNotFoundError`);
+    (b) `git.py:48` — `GitError` cuando `rev-parse HEAD` devuelve un SHA malformado (cubierto monkeypatch del wrapper interno `_run`);
+    (c) `service.py:105` — happy path de `set_active` (faltaba un test positivo; sólo había tests de los dos error paths).
+    Los tres son ahora tests explícitos en `test_git.py::TestGitErrors` y `test_service.py::TestActive`.
+- **mypy `--strict` limpio** sobre todo `cortex/session/`.
+- **ruff check + format limpios** sobre todo lo nuevo.
+- **No regresiones**: 1584 tests pasan en `tests/unit/`. Las 6 failures restantes son **pre-existentes en master**, verificado por `git stash` antes de empezar. Files involved: `cortex/mcp/_subprocess.py` (bug `_R.returncode`), `cortex/webgraph/server.py` (Flask not installed locally), `tests/unit/security/test_paths.py` (symlink permission en Windows).
+- **Decisión de naming** (T0.10): la primitiva nueva mantiene `SessionService` en `cortex.session.service`; la clase vieja (notas markdown) pasó a `NoteService` en `cortex.services.note_service`. El import `cortex.services.session_service` sobrevive como alias deprecated con `DeprecationWarning`.
+- **Mode inference** (T0.4): regla final implementada — `0 checkpoints → BYO`; solo fuentes Cortex (sync/SDDwork/explorer/implementer) → `MANAGED`; cualquier otra cosa (IDE hook, user-skill, manual, o mix) → `OBSERVED`.
+- **WorkspaceLayout** (T0.5): el plan sugería rechazar `sessions_dir` en legacy. Decidí mantenerlo en `repo_root/.cortex/sessions/` en ambos layouts por consistencia con `skills_dir`/`subagents_dir`. El comentario del plan parecía contradictorio; la solución sigue la convención del proyecto y no rompe nada.
+- **MCP server / mypy strict en core.py**: pre-existing `cortex/core.py` no es strict-typed. Mis facade methods nuevos sí lo son (anotaciones completas). El proyecto NO requiere strict global en core.py (pyproject `strict = false` excepto `cortex.documentation`).
 
 ---
 

@@ -282,6 +282,7 @@ class TestMcpCliAlignment:
         # Workflow (governance-guarded)
         "cortex_sync_ticket": None,  # no tiene CLI directa — paso 1 obligatorio del MCP
         "cortex_create_spec": "create-spec",
+        "cortex_emit_proposal": None,  # Phase 09.A+ — MCP-only; conversational pause primitive
         "cortex_save_session": "save-session",
         # Tripartita Refinada — handoff & verification (MCP-only por diseño)
         "cortex_validate_handoff": None,
@@ -298,6 +299,27 @@ class TestMcpCliAlignment:
         "cortex_autopilot_checkpoint": "autopilot checkpoint",
         "cortex_autopilot_finish": "autopilot finish",
         "cortex_autopilot_status": "autopilot status",
+        # Pluggable Middle (Phase 00) — Session primitive sub-CLI bajo `cortex session ...`.
+        "cortex_session_open": "session open",
+        "cortex_session_checkpoint": "session checkpoint",
+        "cortex_session_close": "session close",
+        "cortex_session_status": "session status",
+        "cortex_session_list": "session list",
+        "cortex_finish_session": "finish-session",
+        # Pluggable Middle (Phase 08) — Quality gates (MCP-only by design;
+        # invoked by SDDwork after each subagent checkpoint).
+        "cortex_review_checkpoint": None,
+        # Pluggable Middle (Phase 09.C) — Granular tasks sub-CLI.
+        "cortex_session_task_list": "session task list",
+        "cortex_session_task_update": "session task update",
+        # Pluggable Middle (Phase 09.A+ / May 2026) — /cortex-documenter
+        # skill plumbing. All MCP-only by design: they are the skill's
+        # tools, not human CLI commands. CLI users have `cortex finish-session`
+        # (auto-persist) which covers the same ground without an LLM.
+        "cortex_documenter_briefing": None,
+        "cortex_close_session": None,
+        "cortex_write_doc": None,
+        "cortex_self_review_note": None,
         # NOTA: cortex_delegate_task / cortex_delegate_batch / cortex_get_task_result
         # ELIMINADOS en Fase 5 del plan multi-IDE & MCP hardening (2026-05-15).
         # Ver docs/multi-ide-mcp-hardening/FASE-5-REALIZACION.md.

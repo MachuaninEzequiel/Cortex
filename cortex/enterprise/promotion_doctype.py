@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -41,7 +41,6 @@ from cortex.documentation.errors import RoutingError
 from cortex.documentation.routing import RouteSpec, resolve_route
 from cortex.enterprise.governance import (
     ADMIN_TEAM,
-    GovernancePermissionError,
     assert_can_promote,
 )
 from cortex.enterprise.models import EnterpriseOrgConfig

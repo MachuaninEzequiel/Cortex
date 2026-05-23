@@ -87,6 +87,11 @@ _MCP_TOOLS_PARAMETRIZED = [
     "cortex_verify_session_claims",
     "cortex_sync_ticket",
     "cortex_create_spec",
+    "cortex_emit_proposal",
+    "cortex_documenter_briefing",
+    "cortex_close_session",
+    "cortex_write_doc",
+    "cortex_self_review_note",
     "cortex_ping",
     # cortex_delegate_task ELIMINADO en Fase 5 del plan multi-IDE.
 ]

@@ -31,6 +31,7 @@ from pydantic import ValidationError
 from cortex.documentation.audit import append_audit_event
 from cortex.documentation.common import (
     compute_fingerprint,
+    parse_frontmatter_lenient,
     slugify,
     yaml_dump_safe,
 )
@@ -39,6 +40,7 @@ from cortex.documentation.data import (
     ArchitectureData,
     ChangelogData,
     DecisionData,
+    DesignDocData,
     GlossaryEntryData,
     HandoffData,
     HUData,
@@ -55,7 +57,6 @@ from cortex.documentation.errors import (
 )
 from cortex.documentation.routing import (
     RouteSpec,
-    render_filename,
     resolve_route,
     resolve_target_path,
 )
@@ -66,7 +67,6 @@ from cortex.documentation.schemas import (
 )
 from cortex.documentation.schemas.base import EnterpriseFrontmatter
 from cortex.documentation.templates_engine import render_template
-
 
 # ---------------------------------------------------------------------------
 # Vault protocol (duck-typed).
@@ -146,9 +146,7 @@ def _require_enterprise_fields(data: Any, vault_scope: str) -> None:
     if not getattr(data, "team", None):
         missing.append("team")
     if missing:
-        raise SchemaValidationError(
-            f"Enterprise scope requires fields: {missing}"
-        )
+        raise SchemaValidationError(f"Enterprise scope requires fields: {missing}")
 
 
 def _build_filename_context(
@@ -180,14 +178,17 @@ def _build_filename_context(
         pass
     elif doc_type == DocType.SESSION:
         ctx["session_id"] = data.session_id
+    elif doc_type == DocType.DESIGN:
+        # Designs are anchored on the session that produced them so the
+        # filename mirrors ``<session_id>.md`` (predictable, easy to
+        # cross-reference from the session note).
+        ctx["session_id"] = data.session_id
     elif doc_type == DocType.SPEC:
         # date + slug only (already set)
         pass
     elif doc_type == DocType.HU:
         ctx = {"external_id": data.external_id}
-    elif doc_type == DocType.RUNBOOK:
-        ctx = {"slug": title_slug}
-    elif doc_type == DocType.ARCHITECTURE:
+    elif doc_type == DocType.RUNBOOK or doc_type == DocType.ARCHITECTURE:
         ctx = {"slug": title_slug}
     elif doc_type == DocType.CHANGELOG:
         ctx = {"version": data.version}
@@ -296,8 +297,30 @@ def _type_specific_fields(
             "cortex_telemetry": data.cortex_telemetry,
         }
     if doc_type == DocType.SPEC:
-        # No type-specific fields beyond the common frontmatter.
-        return {}
+        # Pluggable Middle (Phase 01 / T1.1): the documenter's reconstruction
+        # module reads these back from the frontmatter via
+        # ``cortex.documenter.spec_loader.load_spec``. Body-only fields
+        # (rendered by the template) are duplicated here for machine
+        # parsing.
+        hooks_raw = getattr(data, "verification_hooks", None) or []
+        return {
+            "goal": getattr(data, "goal", "") or "",
+            "files_in_scope": list(getattr(data, "files_in_scope", []) or []),
+            "constraints": list(getattr(data, "constraints", []) or []),
+            "acceptance_criteria": list(getattr(data, "acceptance_criteria", []) or []),
+            "verification_hooks": [
+                h.model_dump(mode="json") if hasattr(h, "model_dump") else dict(h)
+                for h in hooks_raw
+            ],
+        }
+    if doc_type == DocType.DESIGN:
+        # Pluggable Middle Phase 09.B: design docs carry a back-pointer
+        # to the session + spec they describe. The four content lists
+        # live in the body and are duplicated here for machine parsing.
+        return {
+            "session_id": getattr(data, "session_id", "") or "",
+            "spec_path": getattr(data, "spec_path", "") or "",
+        }
     return {}
 
 
@@ -342,7 +365,21 @@ def _write_note(
     overwrite: bool,
 ) -> None:
     if path.exists() and not overwrite:
-        raise DuplicateDocumentError(f"Document already exists: {path}")
+        # Idempotency by fingerprint: if the on-disk note already has the
+        # exact body we'd write (same SHA-256 fingerprint), treat the call as
+        # a no-op success. This makes ``cortex_create_spec`` safe against
+        # client-side retries — e.g. an MCP client that timed out while the
+        # server was still completing the original write would otherwise see
+        # the next attempt fail with ``DuplicateDocumentError`` even though
+        # the previous one succeeded. See
+        # ``docs/incidents/2026-05-22_appfutbol-mcp-duplicate-loop/``.
+        existing_fm = parse_frontmatter_lenient(path)
+        if existing_fm.get("fingerprint") == fm.fingerprint:
+            return
+        raise DuplicateDocumentError(
+            f"Document already exists with different content: {path}. "
+            f"Pass overwrite=True to replace, or choose a different title."
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     yaml_str = _frontmatter_to_yaml(fm)
     full_md = "---\n" + yaml_str + "---\n\n" + body
@@ -377,9 +414,7 @@ def _write_canonical(
     enforce_local_scope: bool = False,
 ) -> Path:
     if enforce_local_scope and vault_scope != "local":
-        raise SchemaValidationError(
-            f"{doc_type.value} is local-only; vault_scope must be 'local'"
-        )
+        raise SchemaValidationError(f"{doc_type.value} is local-only; vault_scope must be 'local'")
     if not getattr(data, "title", None):
         raise SchemaValidationError(f"{doc_type.value} requires a title")
     _require_enterprise_fields(data, vault_scope)
@@ -393,13 +428,9 @@ def _write_canonical(
     fingerprint = compute_fingerprint(body)
 
     filename_ctx = _build_filename_context(data, doc_type, vault)
-    fm = _build_frontmatter(
-        data, doc_type, fingerprint, vault_scope, actor, filename_ctx
-    )
+    fm = _build_frontmatter(data, doc_type, fingerprint, vault_scope, actor, filename_ctx)
 
-    target = resolve_target_path(
-        route, filename_ctx, vault.path, vault_scope, project_id
-    )
+    target = resolve_target_path(route, filename_ctx, vault.path, vault_scope, project_id)
 
     _write_note(target, fm, body, vault, overwrite)
     return target
@@ -421,9 +452,13 @@ def write_adr_note(
 ) -> Path:
     """Persist an ADR note canonically."""
     return _write_canonical(
-        data, DocType.ADR,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.ADR,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -438,9 +473,13 @@ def write_decision_note(
 ) -> Path:
     """Persist a non-ADR DECISION note canonically."""
     return _write_canonical(
-        data, DocType.DECISION,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.DECISION,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -455,9 +494,13 @@ def write_incident_note(
 ) -> Path:
     """Persist an INCIDENT note canonically."""
     return _write_canonical(
-        data, DocType.INCIDENT,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.INCIDENT,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -476,9 +519,13 @@ def write_postmortem_note(
     if data.incident_number <= 0:
         raise SchemaValidationError("postmortem requires incident_number >= 1")
     return _write_canonical(
-        data, DocType.POSTMORTEM,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.POSTMORTEM,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -493,9 +540,13 @@ def write_runbook_note(
 ) -> Path:
     """Persist a RUNBOOK note canonically."""
     return _write_canonical(
-        data, DocType.RUNBOOK,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.RUNBOOK,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -510,9 +561,13 @@ def write_architecture_note(
 ) -> Path:
     """Persist an ARCHITECTURE note canonically."""
     return _write_canonical(
-        data, DocType.ARCHITECTURE,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.ARCHITECTURE,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -529,9 +584,13 @@ def write_changelog_note(
     if not data.version:
         raise SchemaValidationError("changelog requires version")
     return _write_canonical(
-        data, DocType.CHANGELOG,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.CHANGELOG,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -551,9 +610,13 @@ def write_handoff_note(
     if not data.parent_session_id:
         raise SchemaValidationError("handoff requires parent_session_id")
     return _write_canonical(
-        data, DocType.HANDOFF,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.HANDOFF,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
         enforce_local_scope=True,
     )
 
@@ -576,9 +639,13 @@ def write_glossary_entry(
     if not data.title:
         data.title = data.term
     return _write_canonical(
-        data, DocType.GLOSSARY,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.GLOSSARY,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -600,9 +667,13 @@ def write_session_note_canonical(
     if not data.session_id:
         raise SchemaValidationError("session requires session_id")
     return _write_canonical(
-        data, DocType.SESSION,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.SESSION,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -617,9 +688,13 @@ def write_spec_note_canonical(
 ) -> Path:
     """Persist a SPEC note canonically (Fase 04 canonical writer)."""
     return _write_canonical(
-        data, DocType.SPEC,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.SPEC,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
 
 
@@ -638,10 +713,56 @@ def write_hu_note(
     if not data.source:
         raise SchemaValidationError("hu requires source")
     return _write_canonical(
-        data, DocType.HU,
-        vault=vault, vault_scope=vault_scope,
-        project_id=project_id, actor=actor, overwrite=overwrite,
+        data,
+        DocType.HU,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
     )
+
+
+def write_design_note(
+    data: DesignDocData,
+    *,
+    vault: VaultLike,
+    vault_scope: str = "local",
+    project_id: str | None = None,
+    actor: str | None = None,
+    overwrite: bool = False,
+) -> Path:
+    """Persist a DESIGN note canonically (Pluggable Middle Phase 09.B).
+
+    Used by ``cortex-code-designer`` (and the documenter, when it
+    re-emits a superseded design). Local-only — design docs are not
+    promotable to enterprise scope; if the design is worth promoting it
+    should be normalised into an ADR or ARCHITECTURE note first.
+    """
+    if not data.session_id:
+        raise SchemaValidationError("design requires session_id")
+    if not data.spec_path:
+        raise SchemaValidationError("design requires spec_path")
+    if not data.title:
+        # Designs always carry a human-readable title; fall back to the
+        # session id when the agent omitted it.
+        data.title = f"Design for {data.session_id}"
+    return _write_canonical(
+        data,
+        DocType.DESIGN,
+        vault=vault,
+        vault_scope=vault_scope,
+        project_id=project_id,
+        actor=actor,
+        overwrite=overwrite,
+        enforce_local_scope=True,
+    )
+
+
+# ``write_design_note_canonical`` mirrors the naming of
+# ``write_session_note_canonical`` / ``write_spec_note_canonical`` so the
+# MCP tool registry can expose a uniform vocabulary.
+write_design_note_canonical = write_design_note
 
 
 __all__ = [
@@ -659,4 +780,7 @@ __all__ = [
     "write_session_note_canonical",
     "write_spec_note_canonical",
     "write_hu_note",
+    # Pluggable Middle Phase 09.B:
+    "write_design_note",
+    "write_design_note_canonical",
 ]

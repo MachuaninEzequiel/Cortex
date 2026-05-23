@@ -1,43 +1,46 @@
 """cortex.autopilot.mcp_tools — MCP tool wrappers for Autopilot.
 
-All tools delegate to ``AutopilotService``.  No business logic is duplicated.
+Phase 03 refactor: every tool delegates to the new :class:`AutopilotService`.
+Tool signatures are kept identical to the legacy version so existing MCP
+consumers (Claude Code, custom skills) don't observe a breaking change in
+the output schema beyond the natural shift from JSONL state files to
+``SessionRecord`` shape.
+
+Tools:
+    cortex_autopilot_start      — adopt active session.
+    cortex_autopilot_preflight  — dry-run the detector pipeline.
+    cortex_autopilot_checkpoint — append a checkpoint.
+    cortex_autopilot_finish     — close the session (``auto=True`` →
+                                  documenter pipeline).
+    cortex_autopilot_status     — describe the active session.
+
+T3.5 will polish the human-readable formatting; this module ensures the
+tools stay invokable end-to-end after the Phase 03 fusion.
 """
+
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
-from cortex.autopilot.errors import AutopilotError, SessionNotFoundError
+from cortex.autopilot.errors import AutopilotError, NoActiveSessionError
 from cortex.autopilot.lifecycle import (
-    CheckpointRequest,
-    FinishRequest,
-    PreflightRequest,
-    StartRequest,
+    AutopilotCheckpointRequest,
+    AutopilotFinishRequest,
+    AutopilotPreflightRequest,
+    AutopilotStartRequest,
 )
+from cortex.autopilot.policies import AutopilotMode
 from cortex.autopilot.service import AutopilotService
+from cortex.session.errors import SessionNotFound
 
 
 class AutopilotMCPTools:
-    """Thin MCP adapters for the Autopilot lifecycle.
-
-    Each method receives the raw *arguments* dict from the MCP layer,
-    validates required fields, delegates to ``AutopilotService``, and
-    returns a compact human-readable string.
-    """
+    """Thin MCP adapters for the Autopilot lifecycle."""
 
     def __init__(self, service: AutopilotService) -> None:
         self._svc = service
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _req(arguments: dict[str, Any], key: str) -> Any:
-        """Return *key* from *arguments* or raise ValueError."""
-        if key not in arguments or arguments[key] is None:
-            raise ValueError(f"Missing required argument: {key}")
-        return arguments[key]
+    # ── Helpers ──────────────────────────────────────────────────
 
     @staticmethod
     def _opt(arguments: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -50,139 +53,129 @@ class AutopilotMCPTools:
             return []
         return [str(v) for v in val if v is not None]
 
-    # ------------------------------------------------------------------
-    # start
-    # ------------------------------------------------------------------
+    @staticmethod
+    def _parse_mode(raw: str | None) -> AutopilotMode | None:
+        if raw is None:
+            return None
+        try:
+            return AutopilotMode(raw)
+        except ValueError as exc:
+            valid = ", ".join(m.value for m in AutopilotMode)
+            raise AutopilotError(f"unknown mode {raw!r}; valid: {valid}") from exc
+
+    # ── start ────────────────────────────────────────────────────
+
     def start(self, arguments: dict[str, Any]) -> str:
         try:
-            result = self._svc.start(
-                StartRequest(
-                    project_root=self._req(arguments, "project_root"),
-                    workspace_root=self._req(arguments, "workspace_root"),
-                    mode=self._opt(arguments, "mode", "assist"),
-                    user_request=self._opt(arguments, "user_request"),
-                    title_hint=self._opt(arguments, "title_hint"),
-                )
-            )
-            return (
-                f"Session started: {result.session_id}\n"
-                f"Mode: {result.state.mode} | Status: {result.state.status}"
-            )
+            mode = self._parse_mode(self._opt(arguments, "mode"))
+            result = self._svc.start(AutopilotStartRequest(mode=mode))
+            lines = [
+                f"Session adopted: {result.session.session_id}",
+                f"Mode: {result.policy.mode.value} | Status: {result.session.status.value}",
+            ]
+            if result.warnings:
+                lines.append("Warnings: " + "; ".join(result.warnings))
+            return "\n".join(lines)
         except Exception as exc:
             return _format_error("cortex_autopilot_start", exc)
 
-    # ------------------------------------------------------------------
-    # preflight
-    # ------------------------------------------------------------------
+    # ── preflight ────────────────────────────────────────────────
+
     def preflight(self, arguments: dict[str, Any]) -> str:
         try:
             result = self._svc.preflight(
-                PreflightRequest(
-                    session_id=self._req(arguments, "session_id"),
+                AutopilotPreflightRequest(
                     user_request=self._opt(arguments, "user_request"),
                     changed_files=self._str_list(arguments, "changed_files"),
                     git_diff_stat=self._opt(arguments, "git_diff_stat"),
                 )
             )
-            lines = [
-                f"Preflight: {result.detection.task_type} (confidence={result.detection.confidence:.2f})",
-                f"Can proceed: {result.can_proceed}",
-            ]
-            if result.detection.reason:
-                lines.append(f"Reason: {result.detection.reason}")
-            worst = next(
-                (d for d in result.policy_decisions if d.action in ("block", "degrade")),
-                None,
+            d = result.detection
+            return (
+                f"Preflight (dry-run): {d.task_type} "
+                f"(confidence={d.confidence:.2f}, complexity={d.suggested_complexity})\n"
+                f"Reason: {d.reason}"
             )
-            if worst:
-                lines.append(f"Policy: {worst.action} — {worst.reason}")
-            return "\n".join(lines)
         except Exception as exc:
             return _format_error("cortex_autopilot_preflight", exc)
 
-    # ------------------------------------------------------------------
-    # checkpoint
-    # ------------------------------------------------------------------
+    # ── checkpoint ───────────────────────────────────────────────
+
     def checkpoint(self, arguments: dict[str, Any]) -> str:
         try:
+            files_in_scope = self._str_list(arguments, "files_in_scope") or None
             result = self._svc.checkpoint(
-                CheckpointRequest(
-                    session_id=self._req(arguments, "session_id"),
-                    summary=self._req(arguments, "summary"),
-                    files_at_checkpoint=self._str_list(arguments, "files_at_checkpoint"),
-                    verified=self._opt(arguments, "verified", False),
-                )
-            )
-            return (
-                f"Checkpoint recorded for {result.state.session_id}\n"
-                f"Total checkpoints: {len(result.state.checkpoints)} | "
-                f"Status: {result.state.status}"
-            )
-        except Exception as exc:
-            return _format_error("cortex_autopilot_checkpoint", exc)
-
-    # ------------------------------------------------------------------
-    # finish
-    # ------------------------------------------------------------------
-    def finish(self, arguments: dict[str, Any]) -> str:
-        try:
-            result = self._svc.finish(
-                FinishRequest(
-                    session_id=self._req(arguments, "session_id"),
-                    auto=self._opt(arguments, "auto", False),
+                AutopilotCheckpointRequest(
+                    source=str(self._opt(arguments, "source", "manual")),
+                    verified_claims=self._str_list(arguments, "verified_claims"),
+                    unverified_claims=self._str_list(arguments, "unverified_claims"),
+                    artifacts_touched=self._str_list(arguments, "artifacts_touched"),
+                    note=str(self._opt(arguments, "note", "")),
+                    files_in_scope=files_in_scope,
                 )
             )
             lines = [
-                f"Finish: {result.state.session_id}",
-                f"Status: {result.state.status} | Saved: {result.saved}",
+                f"Checkpoint recorded for {result.session.session_id}",
+                f"Total checkpoints: {len(result.session.checkpoints)} | "
+                f"Status: {result.session.status.value}",
             ]
-            if result.saved and result.state.session_note_path:
-                # Surface the persisted-and-indexed path so the calling IDE
-                # can show / open the session note directly.
-                lines.append(f"Note: {result.state.session_note_path}")
-            if result.draft:
-                lines.append(f"Draft: {result.draft.title} ({result.draft.confidence})")
-                if result.draft.warnings:
-                    lines.append(f"Warnings: {'; '.join(result.draft.warnings)}")
-            if result.state.warnings:
-                lines.append(f"State warnings: {'; '.join(result.state.warnings)}")
+            if result.warnings:
+                lines.append("Warnings: " + "; ".join(result.warnings))
+            return "\n".join(lines)
+        except Exception as exc:
+            return _format_error("cortex_autopilot_checkpoint", exc)
+
+    # ── finish ───────────────────────────────────────────────────
+
+    def finish(self, arguments: dict[str, Any]) -> str:
+        try:
+            result = self._svc.finish(
+                AutopilotFinishRequest(
+                    session_id=self._opt(arguments, "session_id"),
+                    auto=bool(self._opt(arguments, "auto", False)),
+                    intent=str(self._opt(arguments, "intent", "closed")),
+                    reason=str(self._opt(arguments, "reason", "")),
+                )
+            )
+            if result.blocked:
+                return f"Finish blocked by policy: {result.blocked_reason}"
+            lines = [
+                f"Finish: {result.session.session_id}",
+                f"Status: {result.session.status.value} | Documented: {result.documented}",
+            ]
+            if result.session_note_path:
+                lines.append(f"Note: {result.session_note_path}")
+            if result.warnings:
+                lines.append("Warnings: " + "; ".join(result.warnings))
             return "\n".join(lines)
         except Exception as exc:
             return _format_error("cortex_autopilot_finish", exc)
 
-    # ------------------------------------------------------------------
-    # status
-    # ------------------------------------------------------------------
+    # ── status ───────────────────────────────────────────────────
+
     def status(self, arguments: dict[str, Any]) -> str:
         try:
             result = self._svc.status(self._opt(arguments, "session_id"))
-            if not result.active:
+            if not result.active or result.session is None:
                 return "No active Autopilot session found."
-            assert result.state is not None
+            session = result.session
             return (
-                f"Session: {result.state.session_id}\n"
-                f"Status: {result.state.status} | Mode: {result.state.mode}\n"
-                f"Task: {result.state.detected_task_type or 'none'} | "
-                f"Complexity: {result.state.complexity}\n"
-                f"Events: {result.event_count} | "
-                f"Warnings: {len(result.state.warnings)}"
+                f"Session: {session.session_id}\n"
+                f"Status: {session.status.value} | "
+                f"Mode: {result.policy.mode.value if result.policy else 'unknown'}\n"
+                f"Inferred mode: {result.inferred_mode}\n"
+                f"Checkpoints: {result.checkpoint_count} | "
+                f"Branch: {session.start_branch}"
             )
         except Exception as exc:
             return _format_error("cortex_autopilot_status", exc)
 
 
 def _format_error(tool_name: str, exc: Exception) -> str:
-    """Return a compact error string for MCP consumers."""
-    if isinstance(exc, SessionNotFoundError):
+    if isinstance(exc, NoActiveSessionError):
+        return f"Error ({tool_name}): {exc}"
+    if isinstance(exc, SessionNotFound):
         return f"Error ({tool_name}): Session not found — {exc}"
     if isinstance(exc, AutopilotError):
         return f"Error ({tool_name}): {exc}"
     return f"Error ({tool_name}): {type(exc).__name__}: {exc}"
-
-
-def _safe_call(tool_name: str, fn: Any, arguments: dict[str, Any]) -> str:
-    """Call *fn* with *arguments*, catching Autopilot exceptions."""
-    try:
-        return fn(arguments)
-    except Exception as exc:
-        return _format_error(tool_name, exc)
