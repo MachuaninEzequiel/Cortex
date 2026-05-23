@@ -110,9 +110,12 @@ def test_smoke_codex(project_with_canonical: Path):
     agents_md = project_with_canonical / "AGENTS.md"
     assert agents_md.exists()
     body = agents_md.read_text(encoding="utf-8")
-    # Marcadores de Tripartita Refinada en single-agent flow (Fase 4.4)
+    # Phase 09.A+ / May 2026: triadic-anchor model rendered as inline
+    # Phase 1/2/3 sequence (Codex is single-agent).
     assert "Phase 1" in body and "Phase 2" in body and "Phase 3" in body
-    assert "single-agent sequence" in body
+    assert "single-agent sequential" in body
+    assert "/cortex-sync" in body
+    assert "/cortex-documenter" in body
     assert "cortex_ping" in body  # pre-flight check (Fase 2)
 
     # MCP config en TOML

@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
 import yaml
 
 from cortex.documentation.migration import (
-    MigrationResult,
     format_report,
     migrate_vault,
     validate_vault,

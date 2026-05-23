@@ -48,29 +48,77 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 
 ---
 
-## El Modelo de Ejecución Tripartito
+## Modelo de Ejecución: Pluggable Middle
 
-### 1. `Cortex-sync` (El Analista / SPECsWriter)
+Cortex envuelve tu workflow en tres puntos: **sync** (antes), **middle**
+(durante) y **documenter** (después). El "middle" es **pluggable** — admite
+tres modos según cómo quieras (o puedas) trabajar.
 
-Recupera contexto histórico del Vault y de la memoria episódica para refinar los requisitos.
+### 1. `cortex-sync` — El Analista
 
-- **Output**: Especificación Técnica (`create-spec`) validada antes de tocar código.
-- Análisis de memorias previas, detección de patrones, identificación de riesgos.
+Recupera contexto histórico del Vault y de la memoria episódica para
+refinar los requisitos. Produce una `Spec` con `verification_hooks`
+ejecutables (comandos que prueban objetivamente que el trabajo está hecho).
+**Abre la Session automáticamente** al persistir el spec.
 
-### 2. `Cortex-SDDwork` (El Orquestador)
+### 2. Middle (Pluggable)
 
-Coordina la implementación con **Intelligent Routing**:
+| Modo | Quién hace el trabajo | Cuándo usarlo |
+|---|---|---|
+| 🟢 **Managed** | `cortex-SDDwork` + subagents (Fast/Deep Track) | Sin tooling propio o querés disciplina forzada. |
+| 🟡 **Observed** | Tu agente / skills + IDE hooks | Tenés tus skills/agentes preferidos; Cortex observa los checkpoints. |
+| 🔵 **BYO** | Lo que sea (manual, otro agente, vibe coding) | Máxima libertad; Cortex reconstruye desde el diff observable. |
 
-- **Fast Track** 🟢: Tareas simples (1-2 archivos) → implementación directa + validación.
-- **Deep Track** 🔴: Tareas complejas → Explorer → Implementer → Security → Test.
+En los tres modos, cada paso significativo del middle puede emitir un
+**checkpoint** en la Session vía `cortex_session_checkpoint`. El contrato
+inter-agente es la **Session**, no YAML inline.
 
+**IDE hooks para el modo Observed (Fase 03):**
+
+| IDE | Soporte | Mecanismo | Comando |
+|---|---|---|---|
+| Claude Code | ✓ Nativo | Hook `PostToolUse` en `.claude/settings.json` | `cortex session hooks install --ide claude-code` |
+| Cursor / VSCode / Cline | ✓ Vía git | `.git/hooks/post-commit` (independiente del IDE) | `cortex session hooks install --ide cursor` |
+| opencode | ✓ Nativo (Fase 05) | Bloque markdown en `.opencode/hooks.md` | `cortex session hooks install --ide opencode` |
+| Pi Coding Agent | ✓ Nativo | Recipes en `justfile` | `cortex session hooks install --ide pi` |
+| Codex | ❌ Sin hooks | — (modo BYO con `cortex finish-session` manual) | — |
+| opencode | ⏳ Roadmap | — | — |
+
+Inspeccionar/desinstalar:
+
+```bash
+cortex session hooks list           # tabla con estado de cada IDE
+cortex session hooks status         # idem (formato detallado)
+cortex session hooks uninstall --ide cursor
 ```
-Especificación → [Fast Track | Deep Track] → SecuritySubAgent → TestSubAgent → [Loop]
-```
 
-### 3. `Cortex-documenter` (El Guardián)
+Los hooks emiten checkpoints con `source=ide-hook`. Si Cortex no está
+disponible o falla, el hook **no aborta** la operación del IDE
+(garantizado por `|| true` en los scripts shell y por `try/except` en
+los hooks JSON nativos).
 
-Paso final **obligatorio**. Persiste decisiones, cambios, TODOs y métricas en el Vault via `save-session`.
+### 3. `cortex-documenter` — El Guardián
+
+Paso final via `cortex finish-session` (CLI) o `cortex_finish_session`
+(MCP). Reconstruye el contexto desde la Session: carga el spec, computa
+`git diff`, ejecuta los verification hooks, detecta scope drift, evalúa
+candidatos ADR, y persiste el session note + ADRs. Cierra la Session como
+`CLOSED` o `HANDOFF` según los resultados.
+
+**Dos modos de documenter** (Fase 04):
+- **`auto` (default)** — corre la pipeline completa sin pedir nada.
+  `cortex finish-session` la usa por default.
+- **`interactive`** — renderiza el draft + ADRs sugeridos en consola,
+  permite editar título/cuerpo via `$EDITOR`, aprobar/rechazar ADRs
+  uno por uno, o forzar HANDOFF / cancelar. Activarlo:
+  - flag CLI: `cortex finish-session --interactive`.
+  - default per-proyecto: `documenter.default_mode: interactive` en
+    `.cortex/config.yaml`.
+
+> Ver `docs/pluggable-middle/` para la arquitectura completa.
+> Ver `docs/pluggable-middle/MIGRATION-FROM-TRIPARTITO.md` para usuarios
+> que vienen del modelo tripartito anterior.
+> Ver `docs/architecture/session-primitive.md` para la primitiva Session.
 
 ---
 
@@ -78,7 +126,7 @@ Paso final **obligatorio**. Persiste decisiones, cambios, TODOs y métricas en e
 
 ###  Cortex Autopilot
 
-Autopilot es una capa autónoma **opt-in** que activa, observa y cierra el ciclo Cortex sin que el usuario tenga que operar manualmente el flujo tripartito.
+Autopilot es una capa autónoma **opt-in** que aplica políticas (warnings, blocks, auto-checkpoints) sobre la primitiva `cortex.session` sin que el usuario tenga que orquestar manualmente el flujo Pluggable Middle. Desde Fase 03 de Pluggable Middle es un wrapper delgado: la API CLI se mantiene como atajo.
 
 ```bash
 cortex autopilot start --mode assist    # Iniciar sesión
@@ -192,6 +240,32 @@ cortex webgraph export    # Exporta snapshot del grafo
 | `cortex install-skills` | Inyecta habilidades Obsidian. |
 | `cortex mcp-server` | Inicia servidor MCP para IDEs. |
 | `cortex agent-guidelines` | Muestra guidelines del agente. |
+
+### Comandos Sessions (Pluggable Middle)
+
+La **Session** es la primitiva que ancla el ciclo de vida de un desarrollo
+(desde `create-spec` hasta `finish-session`). Visibles vía CLI para
+inspeccionar, listar o recuperar manualmente. Ver
+[`docs/architecture/session-primitive.md`](docs/architecture/session-primitive.md)
+y [`docs/pluggable-middle/`](docs/pluggable-middle/) para el diseño completo.
+
+| Comando | Descripción |
+| --- | --- |
+| `cortex session current` | Id de la sesión activa (o `(no active session)`). |
+| `cortex session list` | Lista sesiones (`--status open\|closed\|handoff\|abandoned`, `--json`). |
+| `cortex session show [ID]` | Detalle completo de una sesión (default: la activa). Pasa `--watch` para abrir la TUI en vivo focalizada en esa sesión (Fase 06). |
+| `cortex session watch [ID] [--refresh N]` | **TUI viva** (Fase 06): refresca cada `N` segundos (default 1.5, rango 0.5–30) la sesión activa o la indicada. Muestra checkpoints recientes, diff preview, verification status y sidebar de sesiones recientes. `Ctrl+C` para salir. |
+| `cortex session diff [ID]` | `git diff start_commit..HEAD` de la sesión. |
+| `cortex session task list \| done \| in-progress \| skip \| block` | **Tasks granulares** (Fase 09.C, opt-in). Lista o muta el status de las tasks atómicas que SDDwork emitió tras `cortex create-spec --with-tasks`. |
+| `cortex session switch <ID>` | Cambia la sesión activa (la nueva debe estar OPEN). |
+| `cortex session abandon <ID> --reason X` | Cierra como `abandoned` sin generar session note. |
+| `cortex session checkpoint --source <s> --note "..." [--verified-claim X] [--artifact path]` | Appendea un checkpoint a la sesión activa. Es el comando que invocan los IDE hooks (Fase 03). |
+| `cortex session hooks list \| status \| install --ide <name> \| uninstall --ide <name>` | Gestiona hooks IDE para el modo Observed. Adapters: `claude-code`, `cursor` (vía git post-commit), `pi`. |
+| `cortex finish-session [ID]` | **Cierra una sesión**: reconstruye el contexto desde el diff, corre los verification hooks del spec, persiste session note + ADRs. Flags: `--handoff --reason X`, `--abandon --reason X`, `--interactive` (UI guiada, Fase 04), `--no-interactive` (override), `--json`. |
+
+> Las sesiones se crean automáticamente al ejecutar `cortex create-spec`.
+> En Fase 01 se agrega `cortex finish-session` para cerrarlas vía
+> documenter.
 
 ### Comandos Autopilot
 

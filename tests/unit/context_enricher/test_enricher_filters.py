@@ -47,7 +47,7 @@ def _patch_search(enricher: ContextEnricher, items: list[EnrichedItem]) -> None:
 
 def _item_to_unified(item: EnrichedItem):
     """Wrap an EnrichedItem as a minimal UnifiedHit so the enricher can ingest it."""
-    from cortex.models import UnifiedHit, SemanticDocument
+    from cortex.models import SemanticDocument, UnifiedHit
     return UnifiedHit(
         source=item.source,  # type: ignore[arg-type]
         score=item.score,

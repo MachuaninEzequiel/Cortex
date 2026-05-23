@@ -17,7 +17,6 @@ from cortex.documentation.routing import (
     routes_by_subfolder,
 )
 
-
 # --- Table integrity -------------------------------------------------------
 
 
@@ -26,8 +25,9 @@ def test_all_doc_types_in_routing_table() -> None:
     assert missing == [], f"Missing routes: {missing}"
 
 
-def test_routing_table_has_exactly_12_entries() -> None:
-    assert len(DOC_TYPE_ROUTING) == 12
+def test_routing_table_has_exactly_13_entries() -> None:
+    # Pluggable Middle Phase 09.B added ``design``; total: 12 + 1.
+    assert len(DOC_TYPE_ROUTING) == 13
 
 
 def test_each_route_has_consistent_doc_type() -> None:
@@ -210,9 +210,10 @@ def test_resolve_target_path_invalid_scope_raises() -> None:
 # --- list_all_routes / routes_by_subfolder ---------------------------------
 
 
-def test_list_all_routes_returns_12() -> None:
+def test_list_all_routes_returns_13() -> None:
+    # Pluggable Middle Phase 09.B added ``design``.
     routes = list_all_routes()
-    assert len(routes) == 12
+    assert len(routes) == 13
 
 
 def test_routes_by_subfolder_groups_decisions() -> None:

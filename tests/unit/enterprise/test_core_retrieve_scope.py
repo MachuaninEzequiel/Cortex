@@ -60,7 +60,7 @@ def test_agent_memory_retrieve_enterprise_scope_requires_org_config(tmp_path: Pa
     monkeypatch.setattr("cortex.core.VaultReader", _DummyVaultReader)
     monkeypatch.setattr("cortex.core.HybridSearch", _DummyHybridSearch)
     monkeypatch.setattr("cortex.core.SpecService", _DummyService)
-    monkeypatch.setattr("cortex.core.SessionService", _DummyService)
+    monkeypatch.setattr("cortex.core.NoteService", _DummyService)
     monkeypatch.setattr("cortex.core.PRService", _DummyService)
 
     memory = AgentMemory(config_path=tmp_path / "config.yaml")
@@ -82,7 +82,7 @@ def test_agent_memory_retrieve_local_scope_uses_hybrid_search(tmp_path: Path, mo
     monkeypatch.setattr("cortex.core.VaultReader", _DummyVaultReader)
     monkeypatch.setattr("cortex.core.HybridSearch", _Hybrid)
     monkeypatch.setattr("cortex.core.SpecService", _DummyService)
-    monkeypatch.setattr("cortex.core.SessionService", _DummyService)
+    monkeypatch.setattr("cortex.core.NoteService", _DummyService)
     monkeypatch.setattr("cortex.core.PRService", _DummyService)
 
     memory = AgentMemory(config_path=tmp_path / "config.yaml")
@@ -138,7 +138,7 @@ def test_agent_memory_retrieve_uses_org_default_scope_when_none(tmp_path: Path, 
     monkeypatch.setattr("cortex.core.VaultReader", _DummyVaultReader)
     monkeypatch.setattr("cortex.core.HybridSearch", _DummyHybridSearch)
     monkeypatch.setattr("cortex.core.SpecService", _DummyService)
-    monkeypatch.setattr("cortex.core.SessionService", _DummyService)
+    monkeypatch.setattr("cortex.core.NoteService", _DummyService)
     monkeypatch.setattr("cortex.core.PRService", _DummyService)
     monkeypatch.setattr("cortex.core.EnterpriseRetrievalService", _EnterpriseService)
 

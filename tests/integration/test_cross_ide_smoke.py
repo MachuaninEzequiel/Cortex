@@ -136,8 +136,13 @@ def test_smoke_inject_codex(tmp_path: Path) -> None:
     assert agents_md.exists(), "AGENTS.md (project root) missing"
     text = agents_md.read_text(encoding="utf-8", errors="ignore")
     assert "Cortex Workflow for Codex" in text
-    assert "cortex_validate_handoff" in text
-    assert "cortex_verify_session_claims" in text
+    # Phase 09.A+ / May 2026: the AGENTS.md now describes the triadic
+    # anchors and mentions the new documenter MCP tools.
+    assert "/cortex-sync" in text
+    assert "/cortex-documenter" in text
+    assert "cortex_documenter_briefing" in text
+    assert "cortex_write_doc" in text
+    assert "cortex_close_session" in text
     assert "cortex_ping" in text  # pre-flight check (Fase 2)
 
     # MCP config en TOML

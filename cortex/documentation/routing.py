@@ -75,7 +75,12 @@ DOC_TYPE_ROUTING: dict[DocType, RouteSpec] = {
     DocType.SESSION: RouteSpec(
         doc_type=DocType.SESSION,
         subfolder="sessions",
-        filename_template="{date}_{session_id}_{slug}.md",
+        # ``session_id`` already follows the ``YYYY-MM-DD_<slug>`` convention,
+        # so prefixing with ``{date}_`` duplicates the date in the filename.
+        # Keep ``session_id`` (canonical lineage) + ``slug`` (note title) to
+        # distinguish multiple notes about the same session lineage.
+        # See docs/incidents/2026-05-22_appfutbol-mcp-duplicate-loop/.
+        filename_template="{session_id}_{slug}.md",
         template_path=TEMPLATES_DIR / "session.md.j2",
         writer=None,  # Fase 04 migrates the legacy writer here
         indexer="auto",
@@ -316,6 +321,26 @@ DOC_TYPE_ROUTING: dict[DocType, RouteSpec] = {
         webgraph_color="#cccc66",
         webgraph_shape="ellipse",
     ),
+    DocType.DESIGN: RouteSpec(
+        doc_type=DocType.DESIGN,
+        subfolder="designs",
+        filename_template="{session_id}.md",
+        template_path=TEMPLATES_DIR / "design.md.j2",
+        writer=None,  # Pluggable Middle Phase 09.B fills in at writer level.
+        indexer="auto",
+        promotable=False,
+        enterprise_subfolder=None,
+        retrieval_boost_per_intent={
+            "design": 2.5,
+            "architecture": 1.8,
+            "decision": 1.5,
+        },
+        chunking_enabled=True,
+        chunking_min_words=500,
+        chunking_boundary="h2",
+        webgraph_color="#66aaee",
+        webgraph_shape="rectangle",
+    ),
 }
 
 
@@ -352,9 +377,7 @@ def render_filename(spec: RouteSpec, context: dict[str, Any]) -> str:
     try:
         return spec.filename_template.format(**context)
     except (KeyError, ValueError) as e:  # ValueError raised by format spec errors
-        raise RoutingError(
-            f"Failed to render filename for {spec.doc_type.value}: {e}"
-        ) from e
+        raise RoutingError(f"Failed to render filename for {spec.doc_type.value}: {e}") from e
 
 
 def resolve_target_path(
@@ -376,20 +399,14 @@ def resolve_target_path(
     """
     if vault_scope == "enterprise":
         if not spec.enterprise_subfolder:
-            raise RoutingError(
-                f"{spec.doc_type.value} is not promotable (no enterprise_subfolder)"
-            )
+            raise RoutingError(f"{spec.doc_type.value} is not promotable (no enterprise_subfolder)")
         if "{project_id}" in spec.enterprise_subfolder and not project_id:
-            raise RoutingError(
-                f"project_id required for enterprise scope of {spec.doc_type.value}"
-            )
+            raise RoutingError(f"project_id required for enterprise scope of {spec.doc_type.value}")
         subfolder = spec.enterprise_subfolder.format(project_id=project_id or "")
     elif vault_scope == "local":
         subfolder = spec.subfolder
     else:
-        raise RoutingError(
-            f"vault_scope must be 'local' or 'enterprise', got {vault_scope!r}"
-        )
+        raise RoutingError(f"vault_scope must be 'local' or 'enterprise', got {vault_scope!r}")
 
     filename = render_filename(spec, context)
     return vault_root / subfolder / filename

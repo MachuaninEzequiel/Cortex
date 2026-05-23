@@ -610,18 +610,31 @@ Al cerrar Fase 02:
 
 ## 8. Progress Log
 
-- [ ] T2.1 — Rescribir skill `cortex-SDDwork.md`
-- [ ] T2.2 — Rescribir subagent `cortex-code-explorer.md`
-- [ ] T2.3 — Rescribir subagent `cortex-code-implementer.md`
-- [ ] T2.4 — Actualizar subagent `cortex-documenter.md` (modo enriquecido)
-- [ ] T2.5 — Actualizar `agent_guidelines.md`
-- [ ] T2.6 — Tests E2E del modo Managed
-- [ ] T2.7 — Tests de no-regresión BYO siguen pasando
-- [ ] T2.8 — `cortex_validate_handoff` deprecated
-- [ ] T2.9 — Documentación pública
-- [ ] Completion Verification Commands pasan
-- [ ] Tabla en `../README.md` actualizada con ✅
-- [ ] Commit final
+- [x] T2.1 — Rescribir skill `cortex-SDDwork.md` ✅
+- [x] T2.2 — Rescribir subagent `cortex-code-explorer.md` ✅
+- [x] T2.3 — Rescribir subagent `cortex-code-implementer.md` ✅
+- [x] T2.4 — Actualizar subagent `cortex-documenter.md` (modo enriquecido) ✅
+- [x] T2.5 — Actualizar `agent_guidelines.md` ✅
+- [x] T2.6 — Tests E2E del modo Managed ✅
+- [x] T2.7 — Tests de no-regresión BYO siguen pasando ✅
+- [x] T2.8 — `cortex_validate_handoff` deprecated ✅
+- [x] T2.9 — Documentación pública ✅
+- [x] Completion Verification Commands pasan ✅
+- [x] Tabla en `../README.md` actualizada con ✅
+- [ ] Commit final (pendiente — esperando autorización del usuario)
+
+**Notas durante la ejecución:**
+
+- **Cambios en disciplina de prompts**: SDDwork ahora emite checkpoints en lugar de YAML; explorer e implementer hacen lo mismo. Todos referencian `cortex_session_checkpoint` y el flujo "user corre `cortex finish-session`". Las anti-rationalization tables se mantuvieron pero ajustadas al nuevo contrato.
+- **Hash drift de subagent renderers**: el test `test_canonical_subagent_files_in_disk_match_renders` compara hashes entre `.cortex/subagents/*.md` y `render_subagent_*()`. Cada cambio se aplica DOS veces (archivo + renderer). Inicialmente tuve un trailing `"""` en los archivos por copy-paste del template Python — eliminé y volvió a alinearse.
+- **Tools frontmatter**: explorer e implementer ahora declaran `cortex_session_checkpoint, cortex_session_status` en lugar de `cortex_validate_handoff`. `cortex_validate_handoff` no se elimina del vocabulario canónico (sigue siendo válido para Legacy YAML mode).
+- **Deprecation de `cortex_validate_handoff`**: agregué `logger.warning(...)` en el handler MCP + docstring en `cortex/handoff.py` aclarando que es Legacy YAML contract. La signature/comportamiento no cambia.
+- **`agent_guidelines.md` reescrito completamente**: documenta los 3 modos del middle, la Session como contrato inter-agente, y la nueva DoD (finish-session + Session CLOSED/HANDOFF).
+- **`agent_guidelines_work.md`** se mantiene como deprecated stub redirigiendo a guidelines principal.
+- **E2E managed tests** (4 escenarios): Fast Track + UN checkpoint, Deep Track + 3 checkpoints (explorer/implementer/SDDwork), failing hook → HANDOFF aun con checkpoint, checkpoint sin sesión activa → error. Todos validan que `mode=MANAGED` se infiere correctamente.
+- **Persistencia de checkpoint notes en session note**: el persister mapea `Checkpoint.note` a `key_decisions` del NoteService. Ya estaba implementado en Fase 01 pero esta es la primera fase que lo ejercita de verdad con múltiples checkpoints.
+- **Decisión de implementación**: en lugar de invocar la MCP tool `cortex_session_checkpoint` desde tests (requeriría MCP server corriendo), los tests usan `SessionService.checkpoint()` directamente. Equivalente funcionalmente; los unit tests de MCP en Fase 00 cubren la layer MCP.
+- **No regresiones**: BYO flow (Fase 01) sigue verde sin tocar el código. Los hash tests del IDE adapter siguen verdes después de actualizar 3 subagents + skill.
 
 ---
 

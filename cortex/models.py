@@ -6,7 +6,7 @@ Shared Pydantic models used across the cortex package.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
@@ -45,7 +45,7 @@ class MemoryEntry(BaseModel):
     memory_type: str = "general"
     tags: list[str] = Field(default_factory=list)
     files: list[str] = Field(default_factory=list)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
     confidence: Literal["verified", "asserted", "contradicted"] | None = None
 

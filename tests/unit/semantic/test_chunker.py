@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from cortex.documentation.doc_type import DocType
 from cortex.semantic.chunker import Chunk, chunk_document
-
 
 # ---------------------------------------------------------------------------
 # Short docs -> single chunk

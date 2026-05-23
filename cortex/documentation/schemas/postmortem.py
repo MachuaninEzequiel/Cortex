@@ -12,9 +12,7 @@ _SEVERITIES = frozenset({"low", "medium", "high", "critical"})
 
 def _validate_severity(v: str) -> str:
     if v not in _SEVERITIES:
-        raise ValueError(
-            f"severity must be one of {sorted(_SEVERITIES)}, got {v!r}"
-        )
+        raise ValueError(f"severity must be one of {sorted(_SEVERITIES)}, got {v!r}")
     return v
 
 

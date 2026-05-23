@@ -31,12 +31,12 @@ from cortex.setup.templates import (
     render_ci_pull_request,
     render_config_yaml,
     render_context_md,
-    render_workspace_yaml,
     render_decisions_md,
-    render_enterprise_vault_readme,
     render_enterprise_runbook_md,
+    render_enterprise_vault_readme,
     render_git_vault_policy_md,
     render_runbooks_md,
+    render_workspace_yaml,
 )
 from cortex.workspace.layout import WorkspaceLayout
 

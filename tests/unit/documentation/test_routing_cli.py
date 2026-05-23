@@ -16,7 +16,7 @@ def test_cli_routing_table_prints_all() -> None:
     assert result.exit_code == 0
     # Header row.
     assert "DocType" in result.stdout
-    # All 12 types should appear.
+    # All 13 types should appear (Phase 09.B added ``design``).
     for slug in (
         "session",
         "handoff",
@@ -30,6 +30,7 @@ def test_cli_routing_table_prints_all() -> None:
         "changelog",
         "hu",
         "glossary",
+        "design",
     ):
         assert slug in result.stdout
 
@@ -48,7 +49,8 @@ def test_cli_routing_table_json_full_is_a_list() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert isinstance(payload, list)
-    assert len(payload) == 12
+    # Pluggable Middle Phase 09.B added ``design`` (13 types total).
+    assert len(payload) == 13
 
 
 def test_cli_routing_table_invalid_doc_type_fails() -> None:

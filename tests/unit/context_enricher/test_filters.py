@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 from cortex.context_enricher.filters import EnrichmentFilters, apply_filters
 from cortex.documentation.doc_type import DocType
 from cortex.models import EnrichedItem

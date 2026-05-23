@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cortex.context_enricher.presenter import ContextPresenter
 from cortex.models import EnrichedContext, EnrichedItem, WorkContext
 

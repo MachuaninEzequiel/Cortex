@@ -74,8 +74,10 @@ class ClaudeCodeAdapter(IDEAdapter):
             sources=[
                 ".cortex/skills/cortex-sync.md",
                 ".cortex/skills/cortex-SDDwork.md",
+                ".cortex/skills/cortex-documenter.md",
                 ".cortex/subagents/cortex-code-explorer.md",
                 ".cortex/subagents/cortex-code-implementer.md",
+                ".cortex/subagents/cortex-code-designer.md",
                 ".cortex/subagents/cortex-documenter.md",
             ],
             ide_name="claude_code",
@@ -91,19 +93,50 @@ class ClaudeCodeAdapter(IDEAdapter):
                     header.strip(),
                     "-->",
                     "",
-                    "# Cortex Workflow",
+                    "# Cortex Workflow — Triadic Anchors (Phase 09.A+ / May 2026)",
                     "",
-                    "- Use `/cortex-sync` before implementation to gather context and persist a spec.",
-                    "- Use `/cortex-sddwork` to implement the persisted spec with Cortex routing rules.",
-                    "- Delegate deep analysis to `cortex-code-explorer`, complex implementation to `cortex-code-implementer`, and final session persistence to `cortex-documenter`.",
-                    "- Never call `cortex_create_spec` before `cortex_sync_ticket`.",
+                    "Cortex se ejecuta con TRES skills invocables con `/`. El medio es",
+                    "pluggable; los anchors de inicio y cierre son **obligatorios**.",
                     "",
-                    "## Tripartita Refinada — verifiable contracts",
+                    "1. **`/cortex-sync`** (anchor inicio, obligatorio) — carga contexto",
+                    "   histórico via ONNX/RRF, emite propuesta interactiva, persiste la",
+                    "   spec en el vault, abre la Session.",
+                    "2. **Middle (pluggable)** — uno de los siguientes:",
+                    "   - **`/cortex-SDDwork`** (Managed): Fast Track edits directos o Deep",
+                    "     Track con delegación a los subagents canónicos.",
+                    "   - Subagents directos via Task tool: `cortex-code-explorer`,",
+                    "     `cortex-code-designer`, `cortex-code-implementer` (Deep Track).",
+                    "   - **BYO**: trabajás manualmente o con cualquier otro agente. Cortex",
+                    "     reconstruye desde el diff al cierre.",
+                    "3. **`/cortex-documenter`** (anchor cierre, obligatorio) — invoca",
+                    "   `cortex_documenter_briefing`, decide qué doc types persistir",
+                    "   (session / handoff / adr / decision / runbook / etc.), escribe la",
+                    "   nota a mano con criterio editorial, llama `cortex_self_review_note`,",
+                    "   persiste vía `cortex_write_doc` y cierra con `cortex_close_session`.",
                     "",
-                    "- The `cortex-documenter` MUST pass the **Verification Gate** before invoking `cortex_save_session`. Use `cortex_verify_session_claims` to cross-check claims against the actual git diff and label each memory with the resulting `confidence` (verified / asserted / contradicted).",
-                    "- Every handoff between subagents MUST be a YAML block validated by `cortex_validate_handoff` against the `AgentHandoff` schema. Free-prose handoffs are not acceptable — the next agent in the chain consumes the structured fields.",
-                    "- Status `handoff` is a first-class outcome — if a verification check fails or the work is partial, close the session with `status: handoff` (NOT `completed`) so the next agent knows there is open work to verify.",
-                    "- If you encounter a domain term you do not recognize, check `CONTEXT.md` first (if it exists) before inventing a new one. Update `CONTEXT.md` via the `cortex-documenter` when a term becomes canonical.",
+                    "## Hard rules",
+                    "",
+                    "- NUNCA llames `cortex_create_spec` antes de `cortex_sync_ticket` (el MCP",
+                    "  server rechaza con violación de gobernanza).",
+                    "- NUNCA omitas `/cortex-documenter` al final — sin el cierre con criterio",
+                    "  editorial, la sesión queda con documentación de baja señal y la memoria",
+                    "  organizacional se erosiona.",
+                    "- El status `handoff` es un outcome de primera clase. Si los verification",
+                    "  hooks fallan o quedan archivos unimplemented, cerrar como `handoff`",
+                    "  (NO `closed`) para que el próximo `/cortex-sync` lo priorice.",
+                    "- Si `CONTEXT.md` existe, los términos del dominio son canónicos.",
+                    "  `/cortex-documenter` puede agregar nuevos términos vía `cortex_write_doc`",
+                    "  con `doc_type=glossary`.",
+                    "",
+                    "## Subagents canónicos (Task tool)",
+                    "",
+                    "Disponibles para que `/cortex-SDDwork` delegue trabajo en Deep Track:",
+                    "",
+                    "- `cortex-code-explorer` — análisis de arquitectura read-only.",
+                    "- `cortex-code-designer` — produce design doc antes de implementar.",
+                    "- `cortex-code-implementer` — implementa siguiendo el design doc.",
+                    "- `cortex-documenter` (DEPRECATED) — solo para compatibilidad con flujos",
+                    "  antiguos; el flujo canónico de cierre es `/cortex-documenter`.",
                 ]
             )
             + "\n",
@@ -111,19 +144,32 @@ class ClaudeCodeAdapter(IDEAdapter):
         )
         files_written.append(str(claude_md_path))
 
+        # Phase 09.A+ / May 2026: the three triadic anchors are installed
+        # as slash-invocable skills. ``cortex-documenter`` joins ``cortex-sync``
+        # and ``cortex-sddwork`` as the third skill. The legacy subagent
+        # under ``.claude/agents/cortex-documenter.md`` is kept for backward
+        # compat (see ``agent_specs`` below) but flagged as deprecated.
         skill_specs = {
             "cortex-sync": (
                 "cortex-sync",
                 "Create a Cortex spec before any implementation work.",
+                ".cortex/skills/cortex-sync.md",
                 strip_markdown_frontmatter(prompts.get("cortex-sync", "")),
             ),
             "cortex-sddwork": (
                 "cortex-sddwork",
                 "Implement a persisted Cortex spec using the Cortex workflow.",
+                ".cortex/skills/cortex-SDDwork.md",
                 strip_markdown_frontmatter(prompts.get("cortex-SDDwork", "")),
             ),
+            "cortex-documenter": (
+                "cortex-documenter",
+                "Close a Cortex Session with editorial criterion (anchor de cierre).",
+                ".cortex/skills/cortex-documenter.md",
+                strip_markdown_frontmatter(prompts.get("cortex-documenter", "")),
+            ),
         }
-        for directory_name, (skill_name, description, body) in skill_specs.items():
+        for directory_name, (skill_name, description, source_path, body) in skill_specs.items():
             skill_dir = skills_dir / directory_name
             skill_dir.mkdir(parents=True, exist_ok=True)
             skill_path = skill_dir / "SKILL.md"
@@ -135,7 +181,7 @@ class ClaudeCodeAdapter(IDEAdapter):
                         f"description: {description}",
                     ],
                     _generate_autogen_header(
-                        sources=[f".cortex/skills/{'cortex-SDDwork.md' if directory_name == 'cortex-sddwork' else 'cortex-sync.md'}"],
+                        sources=[source_path],
                         ide_name="claude_code",
                     ),
                     body,
@@ -147,7 +193,13 @@ class ClaudeCodeAdapter(IDEAdapter):
         agent_specs = {
             "cortex-code-explorer": "Read-only architecture analysis for complex changes.",
             "cortex-code-implementer": "Deep-track implementation specialist for complex changes.",
-            "cortex-documenter": "Persist sessions and create Cortex documentation artifacts.",
+            # Phase 09.A+ / May 2026: kept for backward compat with the
+            # legacy Reconstruction flow. New code closes Sessions via the
+            # /cortex-documenter SLASH SKILL above; the subagent path is
+            # only used by single-agent IDEs (Codex, Pi) that don't have
+            # slash dispatch. The subagent's source file already carries
+            # the DEPRECATED banner.
+            "cortex-documenter": "DEPRECATED — use /cortex-documenter skill instead. Persist sessions via the legacy Reconstruction flow.",
         }
         for agent_name, description in agent_specs.items():
             agent_path = agents_dir / f"{agent_name}.md"
@@ -160,7 +212,12 @@ class ClaudeCodeAdapter(IDEAdapter):
             canonical_md = get_subagent_prompt(project_root, agent_name)
             canonical_frontmatter, canonical_body = split_markdown_frontmatter(canonical_md)
             canonical_tools = _parse_canonical_tools(canonical_frontmatter)
-            translated_tools = translate_list(canonical_tools, "claude_code")
+            # ``_parse_canonical_tools`` returns ``list[str]`` (we cannot
+            # narrow the literal at parse time). ``translate_list`` raises
+            # ``UnknownCanonicalToolError`` for unknown tools, so the
+            # runtime contract is enforced; the type-ignore here only
+            # silences the static literal-vs-str mismatch.
+            translated_tools = translate_list(canonical_tools, "claude_code")  # type: ignore[arg-type]
 
             frontmatter_lines = [
                 f"name: {agent_name}",

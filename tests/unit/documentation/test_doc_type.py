@@ -16,12 +16,12 @@ from cortex.documentation.doc_type import (
 )
 from cortex.documentation.errors import UnknownDocTypeError
 
-
 # --- Enum integrity --------------------------------------------------------
 
 
-def test_doc_type_enum_has_exactly_12_values() -> None:
-    assert len(list(DocType)) == 12
+def test_doc_type_enum_has_exactly_13_values() -> None:
+    # Pluggable Middle Phase 09.B added ``design``; total: 12 + 1.
+    assert len(list(DocType)) == 13
 
 
 def test_all_doc_types_have_string_value() -> None:
@@ -110,8 +110,9 @@ def test_valid_statuses_has_entry_for_each_doc_type() -> None:
 # --- Helpers ---------------------------------------------------------------
 
 
-def test_all_doc_types_returns_12() -> None:
-    assert len(all_doc_types()) == 12
+def test_all_doc_types_returns_13() -> None:
+    # Pluggable Middle Phase 09.B added ``design``.
+    assert len(all_doc_types()) == 13
 
 
 def test_promotable_doc_types_excludes_handoff_and_hu() -> None:

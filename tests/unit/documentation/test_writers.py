@@ -12,15 +12,12 @@ Test pattern per writer:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from cortex.documentation.common import (
     parse_frontmatter_lenient,
-    split_frontmatter_and_body,
 )
 from cortex.documentation.data import (
     ADRData,
@@ -48,7 +45,6 @@ from cortex.documentation.writers import (
     write_postmortem_note,
     write_runbook_note,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fake vault.

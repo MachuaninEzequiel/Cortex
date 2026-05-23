@@ -8,7 +8,6 @@ tests address the 9 defensive lines flagged in Fase 03/04 REALIZACION.md.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 

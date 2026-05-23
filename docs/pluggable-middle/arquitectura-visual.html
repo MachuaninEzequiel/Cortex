@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cortex · Pluggable Middle Architecture · Vista Visual</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-card: #151b23;
+    --bg-card-2: #1a2330;
+    --border: #2d3748;
+    --border-soft: #1f2937;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-dim: #6b7280;
+
+    --sync: #60a5fa;
+    --session: #a78bfa;
+    --documenter: #f472b6;
+    --memory: #94a3b8;
+
+    --managed: #4ade80;
+    --observed: #fbbf24;
+    --byo: #38bdf8;
+
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header { padding: 60px 24px 40px; text-align: center; border-bottom: 1px solid var(--border-soft); }
+  header h1 { font-size: 38px; margin: 0 0 12px; font-weight: 800; letter-spacing: -0.02em; }
+  header h1 .accent { background: linear-gradient(135deg, var(--sync), var(--session), var(--documenter)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .subtitle { color: var(--text-muted); font-size: 17px; margin: 0; }
+  header .meta { color: var(--text-dim); font-size: 13px; margin-top: 14px; font-family: ui-monospace, monospace; }
+
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    padding: 28px 24px; max-width: 1100px; margin: 0 auto;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  nav.toc a {
+    color: var(--text-muted); text-decoration: none; font-size: 13px;
+    padding: 6px 12px; border: 1px solid var(--border-soft); border-radius: 999px;
+    transition: all 0.15s;
+  }
+  nav.toc a:hover { color: var(--text); border-color: var(--cyan); }
+
+  section { margin: 80px 0; }
+  section > h2 {
+    font-size: 26px; margin: 0 0 8px; font-weight: 700;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  section > h2 .num {
+    color: var(--text-dim); font-family: ui-monospace, monospace; font-size: 18px;
+  }
+  section > .lead { color: var(--text-muted); margin: 0 0 36px; max-width: 780px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 20px 0 28px; font-size: 13px; }
+  .legend .item { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+  .legend .swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
+  .svg-wrap {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px;
+    overflow-x: auto;
+  }
+  .svg-wrap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  .mode-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; position: relative; overflow: hidden;
+  }
+  .mode-card.managed { border-color: var(--managed); }
+  .mode-card.observed { border-color: var(--observed); }
+  .mode-card.byo { border-color: var(--byo); }
+  .mode-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .mode-card.managed::before { background: var(--managed); }
+  .mode-card.observed::before { background: var(--observed); }
+  .mode-card.byo::before { background: var(--byo); }
+
+  .mode-card h3 { margin: 0 0 4px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+  .mode-card .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .mode-card.managed .pill { background: rgba(74, 222, 128, 0.15); color: var(--managed); }
+  .mode-card.observed .pill { background: rgba(251, 191, 36, 0.15); color: var(--observed); }
+  .mode-card.byo .pill { background: rgba(56, 189, 248, 0.15); color: var(--byo); }
+  .mode-card .subhead { color: var(--text-dim); font-size: 12px; margin-bottom: 14px; font-family: ui-monospace, monospace; }
+  .mode-card dl { margin: 0; }
+  .mode-card dt { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; }
+  .mode-card dd { margin: 4px 0 0; font-size: 14px; }
+
+  .step-list { display: flex; flex-direction: column; gap: 12px; counter-reset: stepc; }
+  .step {
+    display: grid; grid-template-columns: 56px 1fr; gap: 16px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .step .num-cell {
+    background: var(--bg-card-2); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 18px;
+    color: var(--cyan);
+  }
+  .step h4 { margin: 0 0 4px; font-size: 16px; }
+  .step p { margin: 0; color: var(--text-muted); font-size: 13.5px; }
+  .step code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(--bg); padding: 2px 6px; border-radius: 4px; color: var(--text); }
+
+  table.changes {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  table.changes th, table.changes td {
+    padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-soft);
+    font-size: 13.5px; vertical-align: top;
+  }
+  table.changes th { color: var(--text-dim); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; font-weight: 600; background: var(--bg-card-2); }
+  table.changes td:first-child { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--cyan); }
+  table.changes td:nth-child(2) { color: var(--text-muted); }
+  table.changes tr:last-child td { border-bottom: none; }
+
+  .phase-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+  }
+  @media (max-width: 900px) { .phase-grid { grid-template-columns: 1fr; } }
+  .phase {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; position: relative;
+  }
+  .phase .ph-num {
+    font-family: ui-monospace, monospace; color: var(--text-dim); font-size: 12px; letter-spacing: 0.06em;
+  }
+  .phase h4 { margin: 4px 0 8px; font-size: 14px; line-height: 1.4; }
+  .phase .ph-out { color: var(--text-muted); font-size: 12px; margin: 0 0 10px; }
+  .phase .ph-effort { font-family: ui-monospace, monospace; font-size: 11px; color: var(--cyan); }
+  .phase.p0 { border-top: 3px solid var(--sync); }
+  .phase.p1 { border-top: 3px solid var(--byo); }
+  .phase.p2 { border-top: 3px solid var(--managed); }
+  .phase.p3 { border-top: 3px solid var(--observed); }
+  .phase.p4 { border-top: 3px solid var(--documenter); }
+
+  .invariant {
+    background: var(--bg-card); border-left: 3px solid var(--cyan); border-radius: 6px;
+    padding: 14px 18px; margin-bottom: 12px;
+  }
+  .invariant strong { color: var(--cyan); }
+
+  footer {
+    text-align: center; color: var(--text-dim); font-size: 12px; padding: 40px 24px;
+    border-top: 1px solid var(--border-soft); margin-top: 80px;
+  }
+  footer a { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cortex <span class="accent">Pluggable Middle</span></h1>
+  <p class="subtitle">Arquitectura nueva · Vista visual</p>
+  <p class="meta">docs/pluggable-middle/ARQUITECTURA-PLUGGABLE-MIDDLE.md · v1.0</p>
+</header>
+
+<nav class="toc">
+  <a href="#principio">Principio</a>
+  <a href="#global">Vista global</a>
+  <a href="#modos">Los 3 modos</a>
+  <a href="#lifecycle">Lifecycle</a>
+  <a href="#flow">Flujo end-to-end</a>
+  <a href="#algoritmo">Algoritmo</a>
+  <a href="#documenter">Documenter</a>
+  <a href="#cambios">Cambios</a>
+  <a href="#roadmap">Roadmap</a>
+</nav>
+
+<div class="container">
+
+<!-- ============================================== -->
+<!-- PRINCIPIO RECTOR -->
+<!-- ============================================== -->
+<section id="principio">
+  <h2><span class="num">01</span> El principio rector</h2>
+  <p class="lead">Cortex deja de imponer un protocolo y pasa a envolver un workflow. Observa entrada (spec) y salida (estado verificable del repo) sin requerir cooperación del middle.</p>
+
+  <div class="invariant"><strong>1. La spec es el contrato.</strong> Lo que el sync produce es la fuente de verdad sobre qué se va a hacer.</div>
+  <div class="invariant"><strong>2. El diff es el resultado.</strong> El estado verificable del repo (diff + tests + commits) es la fuente de verdad sobre qué se hizo.</div>
+  <div class="invariant"><strong>3. El medio es opaco.</strong> Cortex no necesita saber cómo se produjo el diff. Solo necesita comparar diff vs spec.</div>
+</section>
+
+<!-- ============================================== -->
+<!-- VISTA GLOBAL -->
+<!-- ============================================== -->
+<section id="global">
+  <h2><span class="num">02</span> Vista global de la arquitectura</h2>
+  <p class="lead">Sync y Documenter son las dos puntas obligatorias. El middle es pluggable. La Session es el contenedor que ancla todo el ciclo.</p>
+
+  <div class="legend">
+    <div class="item"><span class="swatch" style="background: var(--sync)"></span> Sync (analista)</div>
+    <div class="item"><span class="swatch" style="background: var(--session)"></span> Session (primitiva)</div>
+    <div class="item"><span class="swatch" style="background: var(--documenter)"></span> Documenter (guardián)</div>
+    <div class="item"><span class="swatch" style="background: var(--memory)"></span> Memoria híbrida</div>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#8b949e"/>
+        </marker>
+      </defs>
+
+      <!-- USER -->
+      <g>
+        <rect x="375" y="20" width="150" height="44" rx="22" fill="#1f2937" stroke="#4b5563"/>
+        <text x="450" y="48" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="600">USUARIO</text>
+      </g>
+
+      <!-- Arrow from user to sync -->
+      <path d="M 450 64 L 450 100" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- SYNC -->
+      <g>
+        <rect x="50" y="110" width="200" height="90" rx="12" fill="#1e293b" stroke="#60a5fa" stroke-width="2"/>
+        <text x="150" y="138" text-anchor="middle" fill="#60a5fa" font-size="15" font-weight="700">cortex-sync</text>
+        <text x="150" y="160" text-anchor="middle" fill="#cbd5e1" font-size="11">El analista</text>
+        <text x="150" y="180" text-anchor="middle" fill="#94a3b8" font-size="11">Spec + verification hooks</text>
+        <text x="150" y="194" text-anchor="middle" fill="#94a3b8" font-size="11">Abre la Session</text>
+      </g>
+
+      <!-- MIDDLE (Pluggable) -->
+      <g>
+        <rect x="350" y="110" width="200" height="90" rx="12" fill="#1a2330" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="450" y="138" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="700">*** MIDDLE ***</text>
+        <text x="450" y="158" text-anchor="middle" fill="#cbd5e1" font-size="11">PLUGGABLE</text>
+        <text x="395" y="183" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">Managed</text>
+        <text x="450" y="183" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">·</text>
+        <text x="450" y="183" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">Observed</text>
+        <text x="505" y="183" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">·</text>
+        <text x="510" y="183" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="600">BYO</text>
+      </g>
+
+      <!-- DOCUMENTER -->
+      <g>
+        <rect x="650" y="110" width="200" height="90" rx="12" fill="#1e293b" stroke="#f472b6" stroke-width="2"/>
+        <text x="750" y="138" text-anchor="middle" fill="#f472b6" font-size="15" font-weight="700">cortex-documenter</text>
+        <text x="750" y="160" text-anchor="middle" fill="#cbd5e1" font-size="11">El guardián</text>
+        <text x="750" y="180" text-anchor="middle" fill="#94a3b8" font-size="11">Reconstruye + persiste</text>
+        <text x="750" y="194" text-anchor="middle" fill="#94a3b8" font-size="11">Cierra la Session</text>
+      </g>
+
+      <!-- Arrows between sync/middle/documenter -->
+      <path d="M 250 155 L 350 155" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+      <path d="M 550 155 L 650 155" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- SESSION (central, below middle) -->
+      <g>
+        <rect x="225" y="250" width="450" height="120" rx="14" fill="#1e1b4b" stroke="#a78bfa" stroke-width="2.5"/>
+        <text x="450" y="278" text-anchor="middle" fill="#a78bfa" font-size="16" font-weight="700">SESSION (primitiva)</text>
+        <text x="450" y="300" text-anchor="middle" fill="#cbd5e1" font-size="11">.cortex/sessions/&lt;id&gt;.yaml</text>
+        <line x1="260" y1="312" x2="640" y2="312" stroke="#3b3661" stroke-width="1"/>
+        <text x="265" y="332" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• spec_id</text>
+        <text x="380" y="332" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• start_commit</text>
+        <text x="520" y="332" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• status</text>
+        <text x="265" y="352" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• mode</text>
+        <text x="380" y="352" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• checkpoints[]</text>
+        <text x="520" y="352" fill="#94a3b8" font-size="11" font-family="ui-monospace,monospace">• verification[]</text>
+      </g>
+
+      <!-- Arrows sync→session, middle→session, session→documenter -->
+      <path d="M 150 200 L 150 290 L 225 290" stroke="#60a5fa" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+      <text x="155" y="245" fill="#60a5fa" font-size="10" font-style="italic">abre</text>
+
+      <path d="M 450 200 L 450 250" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="460" y="228" fill="#a78bfa" font-size="10" font-style="italic">checkpoints</text>
+
+      <path d="M 675 290 L 750 290 L 750 200" stroke="#f472b6" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+      <text x="700" y="280" fill="#f472b6" font-size="10" font-style="italic">cierra</text>
+
+      <!-- MEMORY -->
+      <g>
+        <rect x="225" y="420" width="450" height="70" rx="10" fill="#1f2937" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="450" y="446" text-anchor="middle" fill="#cbd5e1" font-size="14" font-weight="600">MEMORIA HÍBRIDA RRF</text>
+        <text x="450" y="466" text-anchor="middle" fill="#94a3b8" font-size="11">episódica · semántica · enterprise</text>
+        <text x="450" y="481" text-anchor="middle" fill="#6b7280" font-size="10">ChromaDB + ONNX + Vault Markdown</text>
+      </g>
+
+      <!-- sync feeds memory (lateral path, no cross) -->
+      <path d="M 150 200 L 150 455 L 225 455" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#arr)"/>
+      <!-- documenter feeds memory (lateral path, no cross) -->
+      <path d="M 750 200 L 750 455 L 675 455" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- LOS 3 MODOS -->
+<!-- ============================================== -->
+<section id="modos">
+  <h2><span class="num">03</span> Los tres modos de operación</h2>
+  <p class="lead">La calidad degrada con gracia. No se rompe.</p>
+
+  <div class="grid-3">
+    <div class="mode-card managed">
+      <h3>🟢 Managed <span class="pill">DISCIPLINA MAX</span></h3>
+      <div class="subhead">middle = cortex-SDDwork</div>
+      <dl>
+        <dt>Contrato disponible</dt>
+        <dd>Spec + diff + <strong>checkpoints estructurados</strong></dd>
+        <dt>Calidad session note</dt>
+        <dd>Máxima — claims verificados + contexto explícito</dd>
+        <dt>Para quién</dt>
+        <dd>Usuarios sin tooling propio, o que quieren disciplina forzada</dd>
+        <dt>Fricción</dt>
+        <dd>Alta (curva de aprendizaje del SDDwork)</dd>
+      </dl>
+    </div>
+
+    <div class="mode-card observed">
+      <h3>🟡 Observed <span class="pill">BALANCE</span></h3>
+      <div class="subhead">middle = agente del usuario + hooks</div>
+      <dl>
+        <dt>Contrato disponible</dt>
+        <dd>Spec + diff + <strong>checkpoints parciales</strong></dd>
+        <dt>Calidad session note</dt>
+        <dd>Alta — diff cross-checked con eventos del IDE</dd>
+        <dt>Para quién</dt>
+        <dd>Cursor + Composer, Claude Code con skills custom, Pi</dd>
+        <dt>Fricción</dt>
+        <dd>Baja (instalás hook una vez, listo)</dd>
+      </dl>
+    </div>
+
+    <div class="mode-card byo">
+      <h3>🔵 BYO <span class="pill">LIBERTAD MAX</span></h3>
+      <div class="subhead">middle = lo que sea</div>
+      <dl>
+        <dt>Contrato disponible</dt>
+        <dd>Spec + diff (<strong>cero checkpoints</strong>)</dd>
+        <dt>Calidad session note</dt>
+        <dd>Buena — todo reconstruido desde diff observable</dd>
+        <dt>Para quién</dt>
+        <dd>Cualquiera. Vibe coding, manual, otro agente</dd>
+        <dt>Fricción</dt>
+        <dd>Mínima (solo `create-spec` y `finish-session`)</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- LIFECYCLE -->
+<!-- ============================================== -->
+<section id="lifecycle">
+  <h2><span class="num">04</span> Session lifecycle</h2>
+  <p class="lead">La Session vive desde que sync crea el spec hasta que finish-session la cierra. Estados claros, sin ambigüedad.</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#8b949e"/>
+        </marker>
+        <marker id="arrGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#22c55e"/>
+        </marker>
+        <marker id="arrAmber" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#f59e0b"/>
+        </marker>
+        <marker id="arrRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#ef4444"/>
+        </marker>
+        <marker id="arrPurple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#a78bfa"/>
+        </marker>
+      </defs>
+
+      <!-- TRIGGER: create-spec -->
+      <g>
+        <rect x="320" y="20" width="260" height="48" rx="24" fill="#1e293b" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="450" y="42" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="600">cortex create-spec</text>
+        <text x="450" y="58" text-anchor="middle" fill="#94a3b8" font-size="10">(abre Session automáticamente)</text>
+      </g>
+
+      <!-- → OPEN -->
+      <path d="M 450 68 L 450 110" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrPurple)"/>
+
+      <g>
+        <rect x="350" y="115" width="200" height="60" rx="10" fill="#1e1b4b" stroke="#a78bfa" stroke-width="2.5"/>
+        <text x="450" y="142" text-anchor="middle" fill="#a78bfa" font-size="18" font-weight="700">OPEN</text>
+        <text x="450" y="162" text-anchor="middle" fill="#94a3b8" font-size="11">desarrollo activo</text>
+      </g>
+
+      <!-- Self-loop: checkpoint -->
+      <path d="M 550 130 Q 640 130 640 145 Q 640 175 555 165" stroke="#06b6d4" stroke-width="1.5" fill="none" marker-end="url(#arr2)"/>
+      <text x="660" y="150" fill="#06b6d4" font-size="11" font-style="italic">checkpoint (N veces)</text>
+
+      <!-- 3 outgoing transitions -->
+      <!-- to CLOSED (left, green) -->
+      <path d="M 380 175 L 200 235" stroke="#22c55e" stroke-width="1.8" marker-end="url(#arrGreen)" fill="none"/>
+      <text x="210" y="210" fill="#22c55e" font-size="11" font-weight="600">finish ✓</text>
+
+      <!-- to HANDOFF (middle, amber) -->
+      <path d="M 450 175 L 450 235" stroke="#f59e0b" stroke-width="1.8" marker-end="url(#arrAmber)" fill="none"/>
+      <text x="460" y="210" fill="#f59e0b" font-size="11" font-weight="600">finish --handoff</text>
+
+      <!-- to ABANDONED (right, red) -->
+      <path d="M 520 175 L 700 235" stroke="#ef4444" stroke-width="1.8" marker-end="url(#arrRed)" fill="none"/>
+      <text x="610" y="210" fill="#ef4444" font-size="11" font-weight="600">abandon</text>
+
+      <!-- CLOSED -->
+      <g>
+        <rect x="100" y="240" width="200" height="60" rx="10" fill="#14271c" stroke="#22c55e" stroke-width="2"/>
+        <text x="200" y="266" text-anchor="middle" fill="#22c55e" font-size="16" font-weight="700">CLOSED</text>
+        <text x="200" y="286" text-anchor="middle" fill="#94a3b8" font-size="11">trabajo completo, verificado</text>
+      </g>
+
+      <!-- HANDOFF -->
+      <g>
+        <rect x="350" y="240" width="200" height="60" rx="10" fill="#291f0e" stroke="#f59e0b" stroke-width="2"/>
+        <text x="450" y="266" text-anchor="middle" fill="#f59e0b" font-size="16" font-weight="700">HANDOFF</text>
+        <text x="450" y="286" text-anchor="middle" fill="#94a3b8" font-size="11">trabajo parcial / blockers</text>
+      </g>
+
+      <!-- ABANDONED -->
+      <g>
+        <rect x="600" y="240" width="200" height="60" rx="10" fill="#2a1417" stroke="#ef4444" stroke-width="2"/>
+        <text x="700" y="266" text-anchor="middle" fill="#ef4444" font-size="16" font-weight="700">ABANDONED</text>
+        <text x="700" y="286" text-anchor="middle" fill="#94a3b8" font-size="11">se desestima, sin doc</text>
+      </g>
+
+      <!-- terminal note -->
+      <text x="450" y="345" text-anchor="middle" fill="#6b7280" font-size="11" font-style="italic">Una vez fuera de OPEN, la session es read-only. La memoria queda indexada.</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- FLOW END-TO-END -->
+<!-- ============================================== -->
+<section id="flow">
+  <h2><span class="num">05</span> Flujo end-to-end (los 3 modos en un solo diagrama)</h2>
+  <p class="lead">El usuario elige el camino del medio. Sync abre, los 3 caminos convergen en finish-session, documenter cierra.</p>
+
+  <div class="legend">
+    <div class="item"><span class="swatch" style="background: var(--managed)"></span> Managed</div>
+    <div class="item"><span class="swatch" style="background: var(--observed)"></span> Observed</div>
+    <div class="item"><span class="swatch" style="background: var(--byo)"></span> BYO</div>
+  </div>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 980 700" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrFlow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#8b949e"/>
+        </marker>
+        <marker id="arrFlowG" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#4ade80"/>
+        </marker>
+        <marker id="arrFlowY" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#fbbf24"/>
+        </marker>
+        <marker id="arrFlowB" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#38bdf8"/>
+        </marker>
+      </defs>
+
+      <!-- USER -->
+      <rect x="380" y="20" width="220" height="44" rx="22" fill="#1f2937" stroke="#4b5563"/>
+      <text x="490" y="48" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="600">Usuario describe la tarea</text>
+
+      <!-- arrow -->
+      <path d="M 490 64 L 490 100" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrFlow)"/>
+
+      <!-- SYNC -->
+      <rect x="350" y="105" width="280" height="80" rx="10" fill="#1e293b" stroke="#60a5fa" stroke-width="2"/>
+      <text x="490" y="132" text-anchor="middle" fill="#60a5fa" font-size="15" font-weight="700">cortex-sync</text>
+      <text x="490" y="152" text-anchor="middle" fill="#cbd5e1" font-size="11">create-spec + verification_hooks</text>
+      <text x="490" y="170" text-anchor="middle" fill="#cbd5e1" font-size="11">abre Session</text>
+
+      <!-- arrow to decision -->
+      <path d="M 490 185 L 490 215" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrFlow)"/>
+
+      <!-- DECISION DIAMOND -->
+      <polygon points="490,220 620,290 490,360 360,290" fill="#1a2330" stroke="#a78bfa" stroke-width="2"/>
+      <text x="490" y="285" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">¿Modo?</text>
+      <text x="490" y="305" text-anchor="middle" fill="#94a3b8" font-size="10">elige el usuario</text>
+
+      <!-- THREE PATHS to middle -->
+      <!-- Managed (left) -->
+      <path d="M 360 290 L 165 290" stroke="#4ade80" stroke-width="2" marker-end="url(#arrFlowG)" fill="none"/>
+      <text x="240" y="280" fill="#4ade80" font-size="11" font-weight="600">Managed</text>
+
+      <!-- Observed (down) -->
+      <path d="M 490 360 L 490 405" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrFlowY)" fill="none"/>
+      <text x="500" y="385" fill="#fbbf24" font-size="11" font-weight="600">Observed</text>
+
+      <!-- BYO (right) -->
+      <path d="M 620 290 L 815 290" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrFlowB)" fill="none"/>
+      <text x="710" y="280" fill="#38bdf8" font-size="11" font-weight="600">BYO</text>
+
+      <!-- MANAGED block -->
+      <rect x="30" y="260" width="135" height="80" rx="8" fill="#14271c" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="97" y="285" text-anchor="middle" fill="#4ade80" font-size="13" font-weight="700">cortex-SDDwork</text>
+      <text x="97" y="305" text-anchor="middle" fill="#cbd5e1" font-size="10">Fast / Deep Track</text>
+      <text x="97" y="322" text-anchor="middle" fill="#94a3b8" font-size="10">checkpoints</text>
+
+      <!-- OBSERVED block -->
+      <rect x="370" y="410" width="240" height="80" rx="8" fill="#291f0e" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="490" y="435" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">Agente del usuario</text>
+      <text x="490" y="455" text-anchor="middle" fill="#cbd5e1" font-size="10">(Cursor, Claude Code, Pi…)</text>
+      <text x="490" y="473" text-anchor="middle" fill="#94a3b8" font-size="10">+ IDE hooks emiten checkpoints</text>
+
+      <!-- BYO block -->
+      <rect x="815" y="260" width="135" height="80" rx="8" fill="#0e2233" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="882" y="285" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="700">Lo que sea</text>
+      <text x="882" y="305" text-anchor="middle" fill="#cbd5e1" font-size="10">otro agente / manual</text>
+      <text x="882" y="322" text-anchor="middle" fill="#94a3b8" font-size="10">sin checkpoints</text>
+
+      <!-- All three converge to finish-session -->
+      <!-- Managed → finish -->
+      <path d="M 97 340 L 97 545 L 380 545" stroke="#4ade80" stroke-width="1.5" fill="none" marker-end="url(#arrFlowG)"/>
+      <!-- Observed → finish -->
+      <path d="M 490 490 L 490 530" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrFlowY)"/>
+      <!-- BYO → finish -->
+      <path d="M 882 340 L 882 545 L 600 545" stroke="#38bdf8" stroke-width="1.5" fill="none" marker-end="url(#arrFlowB)"/>
+
+      <!-- FINISH-SESSION -->
+      <rect x="380" y="535" width="220" height="50" rx="25" fill="#1e1b4b" stroke="#a78bfa" stroke-width="2.5"/>
+      <text x="490" y="566" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700">cortex finish-session</text>
+
+      <!-- arrow to documenter -->
+      <path d="M 490 585 L 490 615" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrFlow)"/>
+
+      <!-- DOCUMENTER -->
+      <rect x="350" y="620" width="280" height="65" rx="10" fill="#2a1a26" stroke="#f472b6" stroke-width="2"/>
+      <text x="490" y="647" text-anchor="middle" fill="#f472b6" font-size="14" font-weight="700">cortex-documenter</text>
+      <text x="490" y="665" text-anchor="middle" fill="#cbd5e1" font-size="11">reconstruye · verifica · persiste · cierra Session</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- ALGORITMO 8 PASOS -->
+<!-- ============================================== -->
+<section id="algoritmo">
+  <h2><span class="num">06</span> Algoritmo de reconstrucción (8 pasos)</h2>
+  <p class="lead">Cómo el documenter sintetiza todo desde una Session, sin necesidad de YAML cooperativo del middle.</p>
+
+  <div class="step-list">
+    <div class="step">
+      <div class="num-cell">1</div>
+      <div>
+        <h4>Cargar contexto</h4>
+        <p><code>session = read(.cortex/sessions/&lt;id&gt;.yaml)</code> · <code>spec = read(session.spec_path)</code> · <code>checkpoints = session.checkpoints</code> (puede estar vacío en BYO)</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">2</div>
+      <div>
+        <h4>Computar diff observable</h4>
+        <p><code>diff = git diff session.start_commit..HEAD</code> · <code>files_touched = parse_diff(diff)</code> · <code>end_commit = git rev-parse HEAD</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">3</div>
+      <div>
+        <h4>Ejecutar verification hooks</h4>
+        <p>Para cada hook del spec: ejecutar con timeout, capturar exit code + output. Guardar <code>VerificationHookResult</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">4</div>
+      <div>
+        <h4>Cross-check contra spec</h4>
+        <p><code>in_scope</code> · <code>out_of_scope</code> (scope drift) · <code>unimplemented</code> (estaba en spec, no se tocó)</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">5</div>
+      <div>
+        <h4>Detectar contradicciones (memoria)</h4>
+        <p>Buscar en memoria semántica decisiones previas que choquen con el diff actual. Marcar conflictos.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">6</div>
+      <div>
+        <h4>Construir AgentHandoff sintético</h4>
+        <p><code>verified_claims</code> (del diff/tests) · <code>unverified_claims</code> (criterios sin probar) · <code>artifacts_produced</code> · <code>suggested_adr</code> (criterios 3/3)</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">7</div>
+      <div>
+        <h4>Decidir status sugerido</h4>
+        <p>Todos los hooks required pasan + nada unimplemented → <code style="color:#22c55e">CLOSED</code>. Algún hook required falla o queda trabajo → <code style="color:#f59e0b">HANDOFF</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num-cell">8</div>
+      <div>
+        <h4>Persistir y cerrar</h4>
+        <p>Si auto: <code>write_session_note</code> + <code>write_adrs</code> + <code>update CONTEXT.md</code> + <code>index memory</code> + <code>session_close</code>. Si interactive: mostrar draft, esperar [A/E/H/C].</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- DOCUMENTER AUTO vs INTERACTIVE -->
+<!-- ============================================== -->
+<section id="documenter">
+  <h2><span class="num">07</span> Documenter: Auto vs Interactive</h2>
+  <p class="lead">El algoritmo es el mismo. Cambia solo lo que pasa al final: persistir directo o pedir confirmación al usuario.</p>
+
+  <div class="svg-wrap">
+    <svg viewBox="0 0 900 440" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrD" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#8b949e"/>
+        </marker>
+      </defs>
+
+      <!-- Trigger -->
+      <rect x="335" y="20" width="230" height="46" rx="23" fill="#1e1b4b" stroke="#a78bfa" stroke-width="2"/>
+      <text x="450" y="49" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700">cortex finish-session</text>
+
+      <path d="M 450 66 L 450 100" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrD)"/>
+
+      <!-- Reconstruction (shared) -->
+      <rect x="270" y="105" width="360" height="60" rx="10" fill="#1a2330" stroke="#06b6d4" stroke-width="1.5"/>
+      <text x="450" y="132" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="700">Algoritmo (pasos 1-6)</text>
+      <text x="450" y="152" text-anchor="middle" fill="#94a3b8" font-size="11">cargar · diff · hooks · cross-check · contradic · handoff sintético</text>
+
+      <!-- Split into two paths -->
+      <path d="M 380 165 L 220 220" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrD)" fill="none"/>
+      <path d="M 520 165 L 680 220" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrD)" fill="none"/>
+
+      <!-- AUTO MODE (left) -->
+      <rect x="60" y="225" width="320" height="170" rx="10" fill="#0f1a14" stroke="#22c55e" stroke-width="2"/>
+      <text x="220" y="252" text-anchor="middle" fill="#22c55e" font-size="15" font-weight="700">AUTO MODE</text>
+      <text x="220" y="270" text-anchor="middle" fill="#94a3b8" font-size="10">(default)</text>
+
+      <line x1="80" y1="284" x2="360" y2="284" stroke="#1a3326"/>
+
+      <text x="80" y="305" fill="#cbd5e1" font-size="12">→ persiste session note directo</text>
+      <text x="80" y="325" fill="#cbd5e1" font-size="12">→ crea ADRs sugeridos (todos)</text>
+      <text x="80" y="345" fill="#cbd5e1" font-size="12">→ actualiza CONTEXT.md</text>
+      <text x="80" y="365" fill="#cbd5e1" font-size="12">→ indexa en memoria</text>
+      <text x="80" y="385" fill="#cbd5e1" font-size="12">→ cierra Session</text>
+
+      <!-- INTERACTIVE MODE (right) -->
+      <rect x="520" y="225" width="320" height="170" rx="10" fill="#1f1a0d" stroke="#f59e0b" stroke-width="2"/>
+      <text x="680" y="252" text-anchor="middle" fill="#f59e0b" font-size="15" font-weight="700">INTERACTIVE MODE</text>
+      <text x="680" y="270" text-anchor="middle" fill="#94a3b8" font-size="10">--interactive</text>
+
+      <line x1="540" y1="284" x2="820" y2="284" stroke="#3a2c14"/>
+
+      <text x="540" y="305" fill="#cbd5e1" font-size="12">→ muestra draft del session note</text>
+      <text x="540" y="325" fill="#cbd5e1" font-size="12">→ muestra ADRs con criterios 3/3</text>
+      <text x="540" y="345" fill="#cbd5e1" font-size="12">→ muestra discrepancias + scope drift</text>
+      <text x="540" y="365" fill="#cbd5e1" font-size="12">→ usuario: [A]probar · [E]ditar ·</text>
+      <text x="540" y="385" fill="#cbd5e1" font-size="12">            [H]andoff · [C]ancelar</text>
+
+      <!-- Converge to closed -->
+      <path d="M 220 395 L 220 415 L 450 415" stroke="#8b949e" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+      <path d="M 680 395 L 680 415 L 450 415" stroke="#8b949e" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+      <text x="450" y="430" text-anchor="middle" fill="#6b7280" font-size="11" font-style="italic">→ Session cerrada · Memoria indexada</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ============================================== -->
+<!-- CAMBIOS POR PIEZA -->
+<!-- ============================================== -->
+<section id="cambios">
+  <h2><span class="num">08</span> Cambios por componente</h2>
+  <p class="lead">Resumen de qué cambia y dónde. Esfuerzo: XS / S / M / L.</p>
+
+  <table class="changes">
+    <thead>
+      <tr><th>Pieza</th><th>Cambio</th><th>Esfuerzo</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>cortex-sync (skill)</td>
+        <td>Agrega verification_hooks; abre Session; ofrece 3 caminos al final</td>
+        <td><strong style="color:var(--green)">S</strong></td>
+      </tr>
+      <tr>
+        <td>cortex-SDDwork (skill)</td>
+        <td>Pierde estatus obligatorio; escribe checkpoints en vez de YAML inline</td>
+        <td><strong style="color:var(--amber)">M</strong></td>
+      </tr>
+      <tr>
+        <td>cortex-documenter (subagent)</td>
+        <td>Modo reconstrucción (autónomo) + modo interactivo</td>
+        <td><strong style="color:var(--red)">L</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/session/ (NUEVO)</td>
+        <td>Módulo nuevo: SessionRecord, lifecycle, persistencia atómica</td>
+        <td><strong style="color:var(--amber)">M</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/mcp/server.py</td>
+        <td>+ 5 tools (session_open/checkpoint/close/status/list) + finish_session</td>
+        <td><strong style="color:var(--amber)">M</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/services/spec_service.py</td>
+        <td>Valida verification_hooks; abre Session al persistir spec</td>
+        <td><strong style="color:var(--green)">S</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/services/session_service.py</td>
+        <td>Renombrar a note_service.py (alias deprecated por compat)</td>
+        <td><strong style="color:var(--green)">S</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/cli/</td>
+        <td>Subcommand cortex session (current/list/show/diff/switch/abandon/hooks/close)</td>
+        <td><strong style="color:var(--green)">S</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/autopilot/</td>
+        <td>Refactor: thin layer sobre Sessions + policies + hooks IDE</td>
+        <td><strong style="color:var(--red)">L</strong></td>
+      </tr>
+      <tr>
+        <td>cortex/handoff.py</td>
+        <td>Mantiene schema, deja de ser contrato principal (deprecation soft)</td>
+        <td><strong style="color:var(--green)">XS</strong></td>
+      </tr>
+      <tr>
+        <td>Templates (spec.md.j2)</td>
+        <td>Spec template incluye sección verification_hooks</td>
+        <td><strong style="color:var(--green)">XS</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================== -->
+<!-- ROADMAP -->
+<!-- ============================================== -->
+<section id="roadmap">
+  <h2><span class="num">09</span> Roadmap de implementación (5 fases)</h2>
+  <p class="lead">Fase 1 ya entrega el 70% del valor. El resto consolida y pule.</p>
+
+  <div class="phase-grid">
+    <div class="phase p0">
+      <div class="ph-num">FASE 00</div>
+      <h4>Foundations</h4>
+      <p class="ph-out">Session primitive · MCP tools · CLI base · doctor · setup integration</p>
+      <p class="ph-effort">~1 semana</p>
+    </div>
+    <div class="phase p1">
+      <div class="ph-num">FASE 01</div>
+      <h4>Documenter Reconstruction <span style="color:var(--cyan)">★</span></h4>
+      <p class="ph-out">BYO mode funcional · verification hooks runner · finish-session · algoritmo 8 pasos</p>
+      <p class="ph-effort">~2 semanas</p>
+    </div>
+    <div class="phase p2">
+      <div class="ph-num">FASE 02</div>
+      <h4>SDDwork Migration</h4>
+      <p class="ph-out">Managed unificado · subagents emiten checkpoints · YAML inline deprecated</p>
+      <p class="ph-effort">~1 semana</p>
+    </div>
+    <div class="phase p3">
+      <div class="ph-num">FASE 03</div>
+      <h4>Autopilot Fusion + Observed</h4>
+      <p class="ph-out">Autopilot reescrito sobre Sessions · hooks IDE (Claude Code · Cursor · Pi)</p>
+      <p class="ph-effort">~2 semanas</p>
+    </div>
+    <div class="phase p4">
+      <div class="ph-num">FASE 04</div>
+      <h4>Interactive + Polish</h4>
+      <p class="ph-out">Modo interactive · doctor completo · migration guide · validación final</p>
+      <p class="ph-effort">~1 semana</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  Cortex · Pluggable Middle Architecture · Documento maestro:
+  <a href="ARQUITECTURA-PLUGGABLE-MIDDLE.md">ARQUITECTURA-PLUGGABLE-MIDDLE.md</a>
+</footer>
+
+</body>
+</html>

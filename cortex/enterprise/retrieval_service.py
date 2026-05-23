@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cortex.enterprise.models import EnterpriseOrgConfig, RetrievalScope
-from cortex.enterprise.sources import EpisodicSource, MultiEpisodicReader, MultiVaultReader, VaultSource
+from cortex.enterprise.sources import (
+    EpisodicSource,
+    MultiEpisodicReader,
+    MultiVaultReader,
+    VaultSource,
+)
 from cortex.models import EpisodicHit, RetrievalResult, SemanticDocument, UnifiedHit
 
 _RRF_K = 60
@@ -159,9 +164,7 @@ class EnterpriseRetrievalService:
                     "origin_persist_dir": hit.origin_persist_dir,
                 },
             )
-            if existing is None:
-                unified_map[key] = candidate
-            elif existing.metadata.get("scope") != "enterprise" and hit.origin_scope == "enterprise":
+            if existing is None or existing.metadata.get("scope") != "enterprise" and hit.origin_scope == "enterprise":
                 unified_map[key] = candidate
 
         for rank, doc in enumerate(semantic_hits, start=1):
@@ -180,9 +183,7 @@ class EnterpriseRetrievalService:
                     "origin_persist_dir": doc.origin_persist_dir,
                 },
             )
-            if existing is None:
-                unified_map[key] = candidate
-            elif existing.metadata.get("scope") != "enterprise" and doc.origin_scope == "enterprise":
+            if existing is None or existing.metadata.get("scope") != "enterprise" and doc.origin_scope == "enterprise":
                 unified_map[key] = candidate
 
         ranked_keys = sorted(scores, key=lambda key: scores[key], reverse=True)

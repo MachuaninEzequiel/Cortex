@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -322,9 +322,9 @@ class EpisodicMemoryStore:
             try:
                 timestamp = datetime.fromisoformat(ts_str)
             except (ValueError, TypeError):
-                timestamp = datetime.now(timezone.utc)
+                timestamp = datetime.now(UTC)
         else:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
         metadata: dict[str, Any] = {}
         metadata_json = meta.get("metadata_json")
@@ -432,10 +432,10 @@ class EpisodicMemoryStore:
         frequency_boost = min(0.3, max(entity_count - 1, 0) * 0.1)
 
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             timestamp = entry.timestamp
             if timestamp.tzinfo is None:
-                timestamp = timestamp.replace(tzinfo=timezone.utc)
+                timestamp = timestamp.replace(tzinfo=UTC)
             hours_old = (now - timestamp).total_seconds() / 3600
             if hours_old < 24:
                 recency_boost = 0.2

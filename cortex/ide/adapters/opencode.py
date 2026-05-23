@@ -46,8 +46,12 @@ class OpenCodeAdapter(IDEAdapter):
         files_written = []
 
         header = _generate_autogen_header(
-            sources=[".cortex/skills/cortex-sync.md", ".cortex/skills/cortex-SDDwork.md"],
-            ide_name="opencode"
+            sources=[
+                ".cortex/skills/cortex-sync.md",
+                ".cortex/skills/cortex-SDDwork.md",
+                ".cortex/skills/cortex-documenter.md",
+            ],
+            ide_name="opencode",
         )
 
         # Write core skills with header
@@ -92,6 +96,11 @@ class OpenCodeAdapter(IDEAdapter):
         #    se conecta al MCP server. Declararlas en frontmatter es invalido
         #    (el campo solo acepta nombres nativos de opencode: read, edit,
         #    bash, task, etc.).
+        # Phase 09.A+ / May 2026: the three triadic anchors as primary
+        # profiles. cortex-documenter (closing anchor) is allowed to write
+        # (it persists vault notes via cortex_write_doc) but never runs
+        # bash and never delegates to other agents — its scope is purely
+        # documentation.
         cortex_profiles = {
             "cortex-sync": {
                 "mode": "primary",
@@ -114,6 +123,18 @@ class OpenCodeAdapter(IDEAdapter):
                     "edit": "allow",
                     "bash": "ask",
                     "task": "allow",
+                },
+            },
+            "cortex-documenter": {
+                "mode": "primary",
+                "description": "CLOSING ANCHOR: Editorial documentation + Session close (Phase 09.A+).",
+                "prompt": f"{{file:{skills_dir / 'cortex-documenter.md'}}}",
+                "permission": {
+                    "read": "allow",
+                    "write": "allow",
+                    "edit": "allow",
+                    "bash": "deny",
+                    "task": "deny",
                 },
             },
         }

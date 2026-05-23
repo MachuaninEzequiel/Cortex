@@ -1,7 +1,25 @@
+{% if gitless %}
+## ⚠ Gitless Session
+
+This session was opened in a workspace without a usable git repository.
+The documenter was unable to compute a git diff at close time, so the
+"Changes Made" and "Files Touched" sections below are reconstructed
+**exclusively from agent checkpoints**. A checkpoint can claim a touch
+the agent did not actually perform — there's no objective ground truth
+to cross-check.
+
+To restore full documenter fidelity in future sessions, run:
+
+```
+git init && git add -A && git commit -m "initial"
+```
+
+{% endif %}
 ## Original Specification
 
 {{ spec_summary or "(none)" }}
 
+{% if task_type not in ["question-only", "docs-only"] %}
 ## Changes Made
 
 {% if changes_made %}
@@ -20,6 +38,7 @@
 (none)
 {% endif %}
 
+{% endif %}
 ## Key Decisions
 
 {% if key_decisions %}
@@ -38,13 +57,26 @@
 (none)
 {% endif %}
 
+{% if task_type == "security" %}
+## ⚠ Security Review
+
 {% if verified_state %}
+{% for v in verified_state %}- ✓ {{ v }}
+{% endfor %}
+{% endif %}
+{% if unverified_claims %}
+{% for c in unverified_claims %}- ⏸ {{ c }} (unverified)
+{% endfor %}
+{% endif %}
+
+{% endif %}
+{% if verified_state and task_type != "security" %}
 ## Verified State
 
 {% for v in verified_state %}- {{ v }}
 {% endfor %}
 {% endif %}
-{% if unverified_claims %}
+{% if unverified_claims and task_type != "security" %}
 
 ## Unverified Claims
 
@@ -56,6 +88,13 @@
 ## Blockers
 
 {% for b in blockers %}- {{ b }}
+{% endfor %}
+{% endif %}
+{% if tasks %}
+
+## Tasks ({{ tasks_done }}/{{ tasks_total }} completed{% if tasks_skipped %}, {{ tasks_skipped }} skipped{% endif %})
+
+{% for task in tasks %}- {{ task.id }} — {{ task.description }} `[{{ task.status }}]`
 {% endfor %}
 {% endif %}
 {% if suggested_skills %}

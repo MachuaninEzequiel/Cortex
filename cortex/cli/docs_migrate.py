@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from cortex.documentation.backup import (
-    create_backup,
     list_backups,
     restore_backup,
 )
@@ -27,17 +25,17 @@ def _main() -> None:
     """Vault migration tools (Fase 11)."""
 
 
-def _default_vault(project_root: Optional[str]) -> Path:
+def _default_vault(project_root: str | None) -> Path:
     root = Path(project_root).resolve() if project_root else Path.cwd().resolve()
     return root / "vault"
 
 
 @app.command()
 def migrate(
-    project_root: Optional[str] = typer.Option(
+    project_root: str | None = typer.Option(
         None, "--project-root", help="Project root (defaults to cwd).",
     ),
-    path: Optional[Path] = typer.Option(
+    path: Path | None = typer.Option(
         None, "--path", help="Subpath inside vault/ to migrate (default: all).",
     ),
     apply: bool = typer.Option(
@@ -46,7 +44,7 @@ def migrate(
     force: bool = typer.Option(
         False, "--force", help="Re-migrate notes already at schema_version=1.",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", help="Write the report to this file.",
     ),
     no_backup: bool = typer.Option(
@@ -93,7 +91,7 @@ def migrate(
 
 @app.command()
 def validate(
-    project_root: Optional[str] = typer.Option(
+    project_root: str | None = typer.Option(
         None, "--project-root", help="Project root (defaults to cwd).",
     ),
     all_files: bool = typer.Option(
@@ -123,10 +121,10 @@ def validate(
 @app.command()
 def restore(
     backup: str = typer.Option(..., "--backup", help="Backup file or timestamp."),
-    target: Optional[Path] = typer.Option(
+    target: Path | None = typer.Option(
         None, "--target", help="Where to restore (default: vault parent).",
     ),
-    project_root: Optional[str] = typer.Option(
+    project_root: str | None = typer.Option(
         None, "--project-root", help="Project root.",
     ),
 ) -> None:
@@ -147,7 +145,7 @@ def restore(
 
 @app.command(name="list-backups")
 def list_backups_cmd(
-    project_root: Optional[str] = typer.Option(
+    project_root: str | None = typer.Option(
         None, "--project-root", help="Project root.",
     ),
 ) -> None:

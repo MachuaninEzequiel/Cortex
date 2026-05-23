@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 
 PromotionStatus = Literal["draft", "candidate", "reviewed", "promoted", "rejected"]
 PromotionDecisionType = Literal["approve", "reject"]
@@ -33,7 +32,7 @@ class PromotionDecision(BaseModel):
     decision: PromotionDecisionType
     actor: str
     decided_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     reason: str | None = None
 
@@ -41,7 +40,7 @@ class PromotionDecision(BaseModel):
 class PromotionRecordEvent(BaseModel):
     event: Literal["candidate", "reviewed", "promoted", "rejected"]
     at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     actor: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -62,14 +61,14 @@ class PromotionRecord(BaseModel):
     fingerprint: str
     status: PromotionStatus
     created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     updated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     decision: PromotionDecision | None = None
     events: list[PromotionRecordEvent] = Field(default_factory=list)
 
     def touch(self) -> None:
-        self.updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.updated_at = datetime.now(UTC).isoformat(timespec="seconds")
 

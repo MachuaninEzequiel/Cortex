@@ -1,92 +1,124 @@
-"""cortex.autopilot.cli — Headless CLI for the Autopilot module.
+"""cortex.autopilot.cli — Typer subapp for ``cortex autopilot ...`` commands.
 
-This is the only connection between the historic CLI and Autopilot.
-All business logic delegates to ``AutopilotService``.
+Phase 03 refactor: every command delegates to the new
+:class:`AutopilotService`, which itself is a thin layer over the canonical
+:class:`cortex.session.service.SessionService`.
+
+Commands kept (UX continuity for users who already know them):
+    start         — adopt the active session under a chosen mode.
+    preflight     — dry-run the detector pipeline (no state mutation).
+    checkpoint    — append a checkpoint to the active session.
+    finish        — close the active session; ``--auto`` runs the documenter.
+    status        — describe the active or named session.
+    doctor        — run the Autopilot diagnostic checks.
+    install       — install an IDE hook (delegates to legacy adapters
+                    until T3.6 ships the new ``cortex session hooks`` flow).
+    uninstall     — inverse of ``install``.
+
+Commands removed (Phase 03 §11.3 + §11.4):
+    cleanup       — JSONL events no longer exist; sessions live in
+                    ``.cortex/sessions/`` and are managed by
+                    ``cortex session``.
+    report        — fully covered by ``cortex session list``.
 """
+
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import typer
 
-from cortex.workspace.layout import WorkspaceLayout
-from cortex.autopilot.errors import AutopilotError, SessionNotFoundError
+from cortex.autopilot.errors import AutopilotError, NoActiveSessionError
 from cortex.autopilot.lifecycle import (
-    CheckpointRequest,
-    FinishRequest,
-    PreflightRequest,
-    StartRequest,
+    AutopilotCheckpointRequest,
+    AutopilotFinishRequest,
+    AutopilotPreflightRequest,
+    AutopilotStartRequest,
 )
-from cortex.autopilot.packaging import install_plugin, uninstall_plugin
+from cortex.autopilot.policies import AutopilotMode
 from cortex.autopilot.service import AutopilotService
-from cortex.autopilot.state_store import StateStore
+from cortex.session.errors import SessionNotFound
 
 app = typer.Typer(
     name="autopilot",
-    help="Cortex Autopilot — autonomous workflow layer.",
+    help="Cortex Autopilot — policy + hooks layer over Sessions.",
     add_completion=False,
 )
 
 
+# ── Helpers ──────────────────────────────────────────────────────────
+
+
+def _resolve_root(project_root: str | None) -> Path:
+    return Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+
+
 def _resolve_service(project_root: str | None) -> AutopilotService:
-    """Discover workspace layout and build an ``AutopilotService``."""
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    return AutopilotService.from_project_root(root)
+    return AutopilotService.from_project_root(_resolve_root(project_root))
 
 
-def _output(data: dict[str, object], json_mode: bool) -> None:
+def _emit(payload: dict[str, object], json_mode: bool) -> None:
     if json_mode:
-        typer.echo(json.dumps(data, indent=2, default=str))
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+    for key, value in payload.items():
+        typer.echo(f"{key}: {value}")
+
+
+def _parse_mode(raw: str | None) -> AutopilotMode | None:
+    if raw is None:
+        return None
+    try:
+        return AutopilotMode(raw)
+    except ValueError as exc:
+        valid = ", ".join(m.value for m in AutopilotMode)
+        typer.echo(f"Invalid --mode {raw!r}; valid: {valid}", err=True)
+        raise typer.Exit(2) from exc
+
+
+def _abort_no_session(exc: AutopilotError, json_mode: bool) -> None:
+    msg = str(exc)
+    if json_mode:
+        typer.echo(json.dumps({"error": msg}), err=True)
     else:
-        for key, value in data.items():
-            typer.echo(f"{key}: {value}")
+        typer.echo(f"✗ {msg}", err=True)
+    raise typer.Exit(1)
 
 
-# ---------------------------------------------------------------------------
-# start
-# ---------------------------------------------------------------------------
+# ── start ────────────────────────────────────────────────────────────
+
+
 @app.command()
 def start(
+    mode: str = typer.Option("assist", "--mode", help="Mode: observe, assist, autopilot."),
     project_root: str | None = typer.Option(
         None, "--project-root", help="Absolute path to the project root."
     ),
-    mode: str = typer.Option("assist", "--mode", help="Mode: observe, assist, autopilot."),
-    request: str | None = typer.Option(None, "--request", help="User request text."),
-    title_hint: str | None = typer.Option(None, "--title-hint", help="Short title hint."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Start a new Autopilot session."""
+    """Adopt the active session under the requested mode and surface warnings."""
+    parsed_mode = _parse_mode(mode)
     svc = _resolve_service(project_root)
-    root = svc._store.root.parent.parent  # workspace_root -> repo_root (best effort)
-    # Better: resolve from layout
-    layout = WorkspaceLayout.discover(Path(project_root) if project_root else Path.cwd())
-
-    result = svc.start(
-        StartRequest(
-            project_root=str(layout.repo_root),
-            workspace_root=str(layout.workspace_root),
-            mode=mode,
-            user_request=request,
-            title_hint=title_hint,
-        )
-    )
-
-    payload = {
-        "session_id": result.session_id,
-        "status": result.state.status,
-        "mode": result.state.mode,
+    try:
+        result = svc.start(AutopilotStartRequest(mode=parsed_mode))
+    except NoActiveSessionError as exc:
+        _abort_no_session(exc, json_output)
+        return
+    payload: dict[str, object] = {
+        "session_id": result.session.session_id,
+        "mode": result.policy.mode.value,
+        "status": result.session.status.value,
+        "warnings": result.warnings,
     }
-    _output(payload, json_output)
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# preflight
-# ---------------------------------------------------------------------------
+# ── preflight (dry-run de detectors) ─────────────────────────────────
+
+
 @app.command()
 def preflight(
-    session_id: str = typer.Option(..., "--session-id", help="Session ID."),
     request: str | None = typer.Option(None, "--request", help="User request text."),
     changed_files: list[str] = typer.Option([], "--file", help="Changed file (repeatable)."),
     project_root: str | None = typer.Option(
@@ -94,117 +126,159 @@ def preflight(
     ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Run preflight detection for a session."""
+    """Run the detector pipeline as a dry-run; do not touch any session state."""
     svc = _resolve_service(project_root)
-    try:
-        result = svc.preflight(
-            PreflightRequest(
-                session_id=session_id,
-                user_request=request,
-                changed_files=changed_files,
-            )
+    result = svc.preflight(
+        AutopilotPreflightRequest(
+            user_request=request,
+            changed_files=changed_files,
         )
-    except SessionNotFoundError as exc:
-        if json_output:
-            typer.echo(json.dumps({"error": str(exc)}), err=True)
-        else:
-            typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    payload = {
-        "session_id": session_id,
+    )
+    payload: dict[str, object] = {
         "task_type": result.detection.task_type,
         "confidence": result.detection.confidence,
-        "can_proceed": result.can_proceed,
-        "policy_decisions": [
-            {"allowed": d.allowed, "action": d.action, "reason": d.reason}
-            for d in result.policy_decisions
-        ],
+        "reason": result.detection.reason,
+        "suggested_complexity": result.detection.suggested_complexity,
     }
-    _output(payload, json_output)
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# checkpoint
-# ---------------------------------------------------------------------------
+# ── checkpoint ───────────────────────────────────────────────────────
+
+
 @app.command()
 def checkpoint(
-    session_id: str = typer.Option(..., "--session-id", help="Session ID."),
-    summary: str = typer.Option(..., "--summary", help="Checkpoint summary."),
-    files: list[str] = typer.Option([], "--file", help="Files at this checkpoint (repeatable)."),
-    verified: bool = typer.Option(False, "--verified", help="Whether the checkpoint is verified."),
+    source: str = typer.Option(
+        "manual", "--source", help="CheckpointSource value (e.g. manual, cortex-SDDwork)."
+    ),
+    note: str = typer.Option("", "--note", help="Free-form note for the next step."),
+    verified_claim: list[str] = typer.Option(
+        [], "--verified-claim", help="A verified claim (repeatable)."
+    ),
+    unverified_claim: list[str] = typer.Option(
+        [], "--unverified-claim", help="A claim not yet verified (repeatable)."
+    ),
+    artifact: list[str] = typer.Option(
+        [], "--artifact", help="Artifact path touched (repeatable)."
+    ),
+    files_in_scope: list[str] = typer.Option(
+        [],
+        "--in-scope",
+        help="Spec scope path (repeatable); enables out-of-scope warning.",
+    ),
     project_root: str | None = typer.Option(
         None, "--project-root", help="Absolute path to the project root."
     ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Record a checkpoint for a session."""
+    """Append a checkpoint to the active session."""
     svc = _resolve_service(project_root)
     try:
         result = svc.checkpoint(
-            CheckpointRequest(
-                session_id=session_id,
-                summary=summary,
-                files_at_checkpoint=files,
-                verified=verified,
+            AutopilotCheckpointRequest(
+                source=source,
+                verified_claims=verified_claim,
+                unverified_claims=unverified_claim,
+                artifacts_touched=artifact,
+                note=note,
+                files_in_scope=files_in_scope or None,
             )
         )
-    except SessionNotFoundError as exc:
-        if json_output:
-            typer.echo(json.dumps({"error": str(exc)}), err=True)
-        else:
-            typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    payload = {
-        "session_id": session_id,
-        "status": result.state.status,
-        "checkpoints_count": len(result.state.checkpoints),
+    except NoActiveSessionError as exc:
+        _abort_no_session(exc, json_output)
+        return
+    except AutopilotError as exc:
+        _abort_no_session(exc, json_output)
+        return
+    payload: dict[str, object] = {
+        "session_id": result.session.session_id,
+        "checkpoints_count": len(result.session.checkpoints),
+        "warnings": result.warnings,
     }
-    _output(payload, json_output)
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# finish
-# ---------------------------------------------------------------------------
+# ── finish ──────────────────────────────────────────────────────────
+
+
 @app.command()
 def finish(
-    session_id: str = typer.Option(..., "--session-id", help="Session ID."),
-    auto: bool = typer.Option(False, "--auto", help="Auto-generate draft if missing data."),
+    auto: bool = typer.Option(
+        False,
+        "--auto",
+        help="Invoke the documenter pipeline (reconstruct, verify, persist).",
+    ),
+    handoff: bool = typer.Option(False, "--handoff", help="Force the session to close as HANDOFF."),
+    abandon: bool = typer.Option(
+        False, "--abandon", help="Force the session to close as ABANDONED."
+    ),
+    reason: str = typer.Option("", "--reason", help="Reason recorded when --handoff or --abandon."),
+    session_id: str | None = typer.Option(
+        None, "--session-id", help="Explicit session id (default: active)."
+    ),
     project_root: str | None = typer.Option(
         None, "--project-root", help="Absolute path to the project root."
     ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Finish a session and optionally persist a session note."""
+    """Close the active session — ``--auto`` runs the canonical documenter."""
+    if handoff and abandon:
+        typer.echo("--handoff and --abandon are mutually exclusive.", err=True)
+        raise typer.Exit(2)
+    intent = "closed"
+    if handoff:
+        intent = "handoff"
+    if abandon:
+        intent = "abandoned"
     svc = _resolve_service(project_root)
     try:
-        result = svc.finish(FinishRequest(session_id=session_id, auto=auto))
-    except SessionNotFoundError as exc:
+        result = svc.finish(
+            AutopilotFinishRequest(
+                session_id=session_id,
+                auto=auto,
+                intent=intent,
+                reason=reason,
+            )
+        )
+    except NoActiveSessionError as exc:
+        _abort_no_session(exc, json_output)
+        return
+    except AutopilotError as exc:
+        _abort_no_session(exc, json_output)
+        return
+    if result.blocked:
         if json_output:
-            typer.echo(json.dumps({"error": str(exc)}), err=True)
+            typer.echo(
+                json.dumps(
+                    {
+                        "blocked": True,
+                        "reason": result.blocked_reason,
+                        "warnings": result.warnings,
+                    }
+                ),
+                err=True,
+            )
         else:
-            typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(1) from exc
+            typer.echo(f"✗ blocked by policy: {result.blocked_reason}", err=True)
+        raise typer.Exit(1)
 
     payload: dict[str, object] = {
-        "session_id": session_id,
-        "status": result.state.status,
-        "saved": result.saved,
+        "session_id": result.session.session_id,
+        "status": result.session.status.value,
+        "documented": result.documented,
+        "summary": result.summary,
+        "warnings": result.warnings,
     }
-    if result.draft:
-        payload["draft_title"] = result.draft.title
-        payload["draft_confidence"] = result.draft.confidence
-        payload["draft_warnings"] = result.draft.warnings
-    else:
-        payload["reason"] = "No draft generated"
-
-    _output(payload, json_output)
+    if result.session_note_path:
+        payload["session_note_path"] = result.session_note_path
+    if result.adrs_created:
+        payload["adrs_created"] = result.adrs_created
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# status
-# ---------------------------------------------------------------------------
+# ── status ───────────────────────────────────────────────────────────
+
+
 @app.command()
 def status(
     session_id: str | None = typer.Option(None, "--session-id", help="Session ID (optional)."),
@@ -213,32 +287,43 @@ def status(
     ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON."),
 ) -> None:
-    """Show the current Autopilot status."""
+    """Show the active or named session."""
     svc = _resolve_service(project_root)
-    result = svc.status(session_id)
+    try:
+        result = svc.status(session_id)
+    except SessionNotFound as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc)}), err=True)
+        else:
+            typer.echo(f"✗ {exc}", err=True)
+        raise typer.Exit(1) from exc
 
-    if not result.active:
-        payload: dict[str, object] = {"active": False, "message": "No active session found"}
-        _output(payload, json_output)
+    if not result.active or result.session is None:
+        payload: dict[str, object] = {
+            "active": False,
+            "policy_mode": result.policy.mode.value if result.policy else None,
+        }
+        _emit(payload, json_output)
         return
 
-    assert result.state is not None
+    session = result.session
     payload = {
         "active": True,
-        "session_id": result.state.session_id,
-        "status": result.state.status,
-        "mode": result.state.mode,
-        "detected_task_type": result.state.detected_task_type,
-        "complexity": result.state.complexity,
-        "event_count": result.event_count,
-        "warnings": result.state.warnings,
+        "session_id": session.session_id,
+        "status": session.status.value,
+        "mode": result.policy.mode.value if result.policy else None,
+        "inferred_mode": result.inferred_mode,
+        "checkpoint_count": result.checkpoint_count,
+        "start_commit": session.start_commit[:12],
+        "start_branch": session.start_branch,
+        "spec_path": str(session.spec_path),
     }
-    _output(payload, json_output)
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# doctor
-# ---------------------------------------------------------------------------
+# ── doctor ───────────────────────────────────────────────────────────
+
+
 @app.command()
 def doctor(
     project_root: str | None = typer.Option(
@@ -249,17 +334,10 @@ def doctor(
     """Diagnose the Autopilot installation and state. (Read-only)"""
     from cortex.autopilot.doctor import run_diagnosis
 
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
+    root = _resolve_root(project_root)
     report = run_diagnosis(root)
-
     checks = [
-        {
-            "name": c.name,
-            "ok": c.ok,
-            "detail": c.detail,
-            "action": c.action,
-        }
-        for c in report.checks
+        {"name": c.name, "ok": c.ok, "detail": c.detail, "action": c.action} for c in report.checks
     ]
     payload: dict[str, object] = {
         "project_root": str(root),
@@ -267,126 +345,10 @@ def doctor(
         "checks": checks,
         "warnings": report.warnings,
     }
-    _output(payload, json_output)
+    _emit(payload, json_output)
 
 
-# ---------------------------------------------------------------------------
-# report
-# ---------------------------------------------------------------------------
-@app.command()
-def report(
-    project_root: str | None = typer.Option(
-        None, "--project-root", help="Absolute path to the project root."
-    ),
-    last: int = typer.Option(10, "--last", help="Number of recent sessions to report."),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-) -> None:
-    """Generate a report of recent Autopilot sessions."""
-    from cortex.autopilot.reporting import generate_report
-
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    sessions = generate_report(root, last_n=last)
-
-    payload: dict[str, object] = {
-        "project_root": str(root),
-        "sessions": [
-            {
-                "session_id": s.session_id,
-                "status": s.status,
-                "mode": s.mode,
-                "task_type": s.task_type,
-                "complexity": s.complexity,
-                "checkpoints": s.checkpoints,
-                "events": s.events,
-                "chars_injected": s.chars_injected,
-                "items_retrieved": s.items_retrieved,
-                "warnings": s.warnings,
-            }
-            for s in sessions
-        ],
-    }
-    _output(payload, json_output)
-
-
-# ---------------------------------------------------------------------------
-# cleanup
-# ---------------------------------------------------------------------------
-@app.command()
-def cleanup(
-    project_root: str | None = typer.Option(
-        None, "--project-root", help="Absolute path to the project root."
-    ),
-    older_than: int = typer.Option(30, "--older-than", help="Archive event JSONL files older than N days."),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-) -> None:
-    """Archive old Autopilot event JSONL files."""
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    layout = WorkspaceLayout.discover(root)
-    store = StateStore(layout.workspace_root)
-    result = store.cleanup(older_than_days=older_than)
-    payload: dict[str, object] = {
-        "project_root": str(root),
-        "archived": result["archived"],
-        "removed": result["removed"],
-    }
-    _output(payload, json_output)
-
-
-# ---------------------------------------------------------------------------
-# install
-# ---------------------------------------------------------------------------
-@app.command()
-def install(
-    ide: str = typer.Option(..., "--ide", help="IDE adapter to install."),
-    project_root: str | None = typer.Option(
-        None, "--project-root", help="Absolute path to the project root."
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-) -> None:
-    """Install the Autopilot hook for a specific IDE."""
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    try:
-        modified = install_plugin(root, ide)
-    except KeyError as exc:
-        if json_output:
-            typer.echo(json.dumps({"error": str(exc)}), err=True)
-        else:
-            typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    payload: dict[str, object] = {
-        "installed": True,
-        "adapter": ide,
-        "modified": [str(p) for p in modified],
-    }
-    _output(payload, json_output)
-
-
-# ---------------------------------------------------------------------------
-# uninstall
-# ---------------------------------------------------------------------------
-@app.command()
-def uninstall(
-    ide: str = typer.Option(..., "--ide", help="IDE adapter to uninstall."),
-    project_root: str | None = typer.Option(
-        None, "--project-root", help="Absolute path to the project root."
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-) -> None:
-    """Uninstall the Autopilot hook for a specific IDE."""
-    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
-    try:
-        modified = uninstall_plugin(root, ide)
-    except KeyError as exc:
-        if json_output:
-            typer.echo(json.dumps({"error": str(exc)}), err=True)
-        else:
-            typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    payload: dict[str, object] = {
-        "uninstalled": True,
-        "adapter": ide,
-        "modified": [str(p) for p in modified],
-    }
-    _output(payload, json_output)
+# ── install / uninstall ─────────────────────────────────────────────
+# Removed in Fase 04 cleanup. Use ``cortex session hooks install --ide <name>``
+# and ``cortex session hooks uninstall --ide <name>`` — see
+# ``cortex/cli/session.py`` (Phase 03 / T3.10).

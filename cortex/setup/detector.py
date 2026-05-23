@@ -64,7 +64,7 @@ class ProjectContext:
     ci: CIInfo = field(default_factory=CIInfo)
     env: EnvInfo = field(default_factory=EnvInfo)
     root: Path = field(default_factory=Path.cwd)
-    layout: "WorkspaceLayout | None" = None
+    layout: WorkspaceLayout | None = None
 
     @property
     def project_type(self) -> str:

@@ -128,9 +128,10 @@ def test_is_ide_validated_raises_on_unknown() -> None:
 def test_codex_adapter_inject_profiles(tmp_path: Path) -> None:
     """Codex no soporta subagents personalizados (Decision 2 firmada
     2026-05-15, ver docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md
-    seccion 4). El adapter inyecta SOLO ``AGENTS.md`` en project root con
-    el flujo tripartito secuencial. NO genera ``.codex/agents/*.md`` ni
-    ``.codex/skills/*.md`` (Codex los ignora segun docs oficiales)."""
+    seccion 4). Phase 09.A+ / May 2026: el AGENTS.md describe el flujo
+    triádico (sync / middle / documenter) como secuencia single-agent.
+    NO genera ``.codex/agents/*.md`` ni ``.codex/skills/*.md`` (Codex
+    los ignora segun docs oficiales)."""
     project_root = tmp_path / "project"
     project_root.mkdir()
 
@@ -142,9 +143,12 @@ def test_codex_adapter_inject_profiles(tmp_path: Path) -> None:
     assert agents_md.exists()
     body = agents_md.read_text(encoding="utf-8")
     assert "Cortex Workflow for Codex" in body
-    assert "single-agent sequence" in body
+    assert "single-agent sequential" in body
     assert "cortex_create_spec" in body
     assert "cortex_sync_ticket" in body
+    # Triadic anchors mentioned by name (Phase 09.A+).
+    assert "/cortex-sync" in body
+    assert "/cortex-documenter" in body
 
     # NO se debe generar .codex/agents/ ni .codex/skills/
     assert not (project_root / ".codex" / "agents").exists()
@@ -170,8 +174,10 @@ class TestCodexTripartitaRefinada:
     oficiales).
     """
 
-    def test_agents_md_mentions_verification_gate(self, tmp_path: Path) -> None:
-        """AGENTS.md en project root debe mencionar todos los gates."""
+    def test_agents_md_mentions_phase09_documenter_tools(self, tmp_path: Path) -> None:
+        """Phase 09.A+ / May 2026: AGENTS.md must surface the new
+        documenter MCP tools so the single Codex agent knows how to run
+        the closing anchor inline."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         adapter = get_adapter("codex")
@@ -179,25 +185,32 @@ class TestCodexTripartitaRefinada:
 
         # AGENTS.md va al PROJECT ROOT, no .codex/.
         agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
-        assert "Verification Gate" in agents_md
-        assert "cortex_validate_handoff" in agents_md
-        assert "cortex_verify_session_claims" in agents_md
-        assert "AgentHandoff" in agents_md
-        assert "status: handoff" in agents_md.lower() or "`handoff`" in agents_md
+        assert "cortex_documenter_briefing" in agents_md
+        assert "cortex_write_doc" in agents_md
+        assert "cortex_close_session" in agents_md
+        assert "cortex_self_review_note" in agents_md
+        # Handoff is a first-class outcome — the previous text said this
+        # too, the rewrite kept it.
+        assert "`handoff`" in agents_md
         assert "CONTEXT.md" in agents_md
         assert "no native `Task`" in agents_md
 
-    def test_agents_md_describes_sequential_tripartite_flow(self, tmp_path: Path) -> None:
-        """AGENTS.md describe las 3 fases tripartitas como SECUENCIA,
-        no como subagents paralelos (Codex no los soporta)."""
+    def test_agents_md_describes_triadic_flow(self, tmp_path: Path) -> None:
+        """Phase 09.A+ / May 2026: AGENTS.md describes the three
+        triadic anchors (opening / middle / closing) executed
+        sequentially within a single Codex agent."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         adapter = get_adapter("codex")
         adapter.inject_profiles(project_root, prompts={})
 
         agents_md = (project_root / "AGENTS.md").read_text(encoding="utf-8")
-        for marker in ("Phase 1", "Phase 2", "Phase 3", "Explorer", "Implementer", "Documenter"):
-            assert marker in agents_md, f"missing flow marker: {marker!r}"
+        # The three triadic anchors are named explicitly.
+        for marker in ("/cortex-sync", "/cortex-SDDwork", "/cortex-documenter"):
+            assert marker in agents_md, f"missing anchor reference: {marker!r}"
+        # Phase headers describe the sequence inline.
+        for marker in ("Phase 1", "Phase 2", "Phase 3"):
+            assert marker in agents_md, f"missing phase marker: {marker!r}"
         # Pre-flight check obligatorio (Fase 2 del plan multi-IDE).
         assert "cortex_ping" in agents_md
         assert "Pre-flight check" in agents_md
@@ -625,7 +638,10 @@ class TestClaudeCodeTripartitaRefinada:
         (subagents / "cortex-code-explorer.md").write_text(explorer_body, encoding="utf-8")
         (subagents / "cortex-code-implementer.md").write_text(implementer_body, encoding="utf-8")
 
-    def test_claude_md_mentions_verification_gate(self, tmp_path: Path) -> None:
+    def test_claude_md_describes_triadic_anchors(self, tmp_path: Path) -> None:
+        """Phase 09.A+ / May 2026: CLAUDE.md describes the three slash
+        anchors of the triadic model instead of the legacy Tripartita
+        Refinada Verification-Gate text."""
         project_root = tmp_path / "project"
         self._setup_canonical(project_root)
         adapter = get_adapter("claude_code")
@@ -634,17 +650,22 @@ class TestClaudeCodeTripartitaRefinada:
             prompts={
                 "cortex-sync": "---\nname: cortex-sync\n---\n\nx",
                 "cortex-SDDwork": "---\nname: cortex-SDDwork\n---\n\ny",
+                "cortex-documenter": "---\nname: cortex-documenter\n---\n\nz",
             },
         )
 
         claude_md = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
-        # All 4 new rules must be present.
-        assert "Verification Gate" in claude_md
-        assert "cortex_validate_handoff" in claude_md
-        assert "cortex_verify_session_claims" in claude_md
-        assert "AgentHandoff" in claude_md
-        assert "status: handoff" in claude_md.lower() or "`handoff`" in claude_md
+        # The three triadic anchors are surfaced.
+        assert "/cortex-sync" in claude_md
+        assert "/cortex-SDDwork" in claude_md
+        assert "/cortex-documenter" in claude_md
+        # Handoff remains a first-class outcome.
+        assert "`handoff`" in claude_md
+        # CONTEXT.md governance still mentioned.
         assert "CONTEXT.md" in claude_md
+        # Hard rule about governance precedence.
+        assert "cortex_sync_ticket" in claude_md
+        assert "cortex_create_spec" in claude_md
 
     def test_documenter_agent_inherits_canonical_markers(self, tmp_path: Path) -> None:
         """``.claude/agents/cortex-documenter.md`` must carry every Plan 01
@@ -705,27 +726,44 @@ class TestPiSyncCanonicalSubagents:
     Pi adopters get yesterday's prompts."""
 
     def _make_canonical(self, project_root: Path) -> Path:
-        """Drop a synthetic canonical bundle with the 3 shared subagents."""
-        canonical = project_root / ".cortex" / "subagents"
-        canonical.mkdir(parents=True)
-        (canonical / "cortex-code-explorer.md").write_text(
-            "# canonical explorer (post-Plan 01)\nVERIFICATION GATE marker.",
+        """Drop a synthetic canonical bundle with the 3 skill anchors + 2
+        deep-track subagents that Pi mirrors. Phase 09.A+ (May 2026):
+        cortex-documenter is sourced from the SKILL, not the subagent
+        (the legacy subagent stays for non-Pi IDEs only)."""
+        skills = project_root / ".cortex" / "skills"
+        skills.mkdir(parents=True)
+        (skills / "cortex-sync.md").write_text(
+            "# canonical sync\nANCHOR INICIO marker.",
             encoding="utf-8",
         )
-        (canonical / "cortex-code-implementer.md").write_text(
-            "# canonical implementer\nAnti-rationalization marker.",
+        (skills / "cortex-SDDwork.md").write_text(
+            "# canonical SDDwork\nINTELLIGENT ROUTING marker.",
             encoding="utf-8",
         )
-        (canonical / "cortex-documenter.md").write_text(
+        (skills / "cortex-documenter.md").write_text(
             "# canonical documenter\nHIGH-SIGNAL DOCUMENTATION MODE marker.",
             encoding="utf-8",
         )
-        return canonical
+
+        subagents = project_root / ".cortex" / "subagents"
+        subagents.mkdir(parents=True)
+        (subagents / "cortex-code-explorer.md").write_text(
+            "# canonical explorer\nVERIFICATION GATE marker.",
+            encoding="utf-8",
+        )
+        (subagents / "cortex-code-implementer.md").write_text(
+            "# canonical implementer\nAnti-rationalization marker.",
+            encoding="utf-8",
+        )
+        return subagents
 
     def test_overwrites_bundle_with_canonical_content(self, tmp_path: Path) -> None:
         """When the canonical content is fresher than the bundle, the
-        bundle gets updated. We pass a fake ``bundle_dir`` so the real
-        repository bundle is not mutated by the test."""
+        bundle gets updated. Phase 09.A+ (May 2026): the sync now covers
+        BOTH the 3 skill anchors and the deep-track subagents — total 5
+        files when both ``cortex-code-designer`` is absent (the helper
+        omits it). We pass a fake ``bundle_dir`` so the real repository
+        bundle is not mutated by the test."""
         project_root = tmp_path / "project"
         self._make_canonical(project_root)
         fake_bundle = tmp_path / "fake-bundle"
@@ -733,15 +771,20 @@ class TestPiSyncCanonicalSubagents:
         adapter = get_adapter("pi")
         overwritten = adapter.sync_canonical_subagents(project_root, bundle_dir=fake_bundle)
 
-        assert len(overwritten) == 3
+        # 3 skill anchors (sync/SDDwork/documenter) + 2 subagents
+        # (explorer/implementer) — designer not in the helper.
+        assert len(overwritten) == 5
         documenter = (fake_bundle / ".pi" / "agents" / "cortex-documenter.md").read_text(encoding="utf-8")
         assert "HIGH-SIGNAL DOCUMENTATION MODE" in documenter
         explorer = (fake_bundle / ".pi" / "agents" / "cortex-code-explorer.md").read_text(encoding="utf-8")
         assert "VERIFICATION GATE" in explorer
+        sync_agent = (fake_bundle / ".pi" / "agents" / "cortex-sync.md").read_text(encoding="utf-8")
+        assert "ANCHOR INICIO" in sync_agent
 
     def test_no_canonical_directory_returns_empty_list(self, tmp_path: Path) -> None:
-        """When the project has no ``.cortex/subagents/`` (e.g. Pi is
-        being injected before Cortex setup ran), the sync is a no-op."""
+        """When the project has neither ``.cortex/skills/`` nor
+        ``.cortex/subagents/`` (e.g. Pi is being injected before Cortex
+        setup ran), the sync is a no-op."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         fake_bundle = tmp_path / "fake-bundle"
@@ -750,18 +793,28 @@ class TestPiSyncCanonicalSubagents:
         overwritten = adapter.sync_canonical_subagents(project_root, bundle_dir=fake_bundle)
 
         assert overwritten == []
-        # Bundle agents directory may exist but must contain none of the shared agents.
+        # Bundle agents directory may exist but must contain none of the
+        # shared anchors or subagents.
         agents_dir = fake_bundle / ".pi" / "agents"
-        for name in ("cortex-code-explorer.md", "cortex-code-implementer.md", "cortex-documenter.md"):
+        for name in (
+            "cortex-sync.md",
+            "cortex-SDDwork.md",
+            "cortex-documenter.md",
+            "cortex-code-explorer.md",
+            "cortex-code-implementer.md",
+        ):
             assert not (agents_dir / name).exists()
 
     def test_partial_canonical_only_copies_what_exists(self, tmp_path: Path) -> None:
-        """If only one of the 3 shared agents exists in canonical, only
-        that one gets mirrored — the others stay as they were in the bundle."""
+        """If only one of the canonical files exists, only that one gets
+        mirrored — the others stay as they were in the bundle. Phase 09.A+:
+        the documenter is sourced from ``.cortex/skills/cortex-documenter.md``."""
         project_root = tmp_path / "project"
-        canonical = project_root / ".cortex" / "subagents"
-        canonical.mkdir(parents=True)
-        (canonical / "cortex-documenter.md").write_text("# only documenter", encoding="utf-8")
+        canonical_skills = project_root / ".cortex" / "skills"
+        canonical_skills.mkdir(parents=True)
+        (canonical_skills / "cortex-documenter.md").write_text(
+            "# only documenter (from skill)", encoding="utf-8"
+        )
         # Pre-seed the fake bundle with stale content for the other two.
         fake_bundle = tmp_path / "fake-bundle"
         agents_dir = fake_bundle / ".pi" / "agents"
@@ -773,6 +826,10 @@ class TestPiSyncCanonicalSubagents:
 
         assert len(overwritten) == 1
         assert overwritten[0].name == "cortex-documenter.md"
+        # Documenter content came from the SKILL.
+        assert (agents_dir / "cortex-documenter.md").read_text(encoding="utf-8") == (
+            "# only documenter (from skill)"
+        )
         # Stale content for the others remains intact.
         assert (agents_dir / "cortex-code-explorer.md").read_text(encoding="utf-8") == "STALE explorer"
 
@@ -872,9 +929,11 @@ class TestTripartitaCrossIDE:
                 "Contrato de Salida",
             ],
             # CLAUDE.md is at project root, not under .claude/agents/
+            # Phase 09.A+ / May 2026: governance pivot from
+            # Tripartita-Refinada terminology to triadic-anchor model.
             "_top_level_governance": [
-                "Verification Gate",
-                "cortex_validate_handoff",
+                "/cortex-sync",
+                "/cortex-documenter",
                 "CONTEXT.md",
             ],
         },
@@ -976,11 +1035,14 @@ class TestPiBundleHasTripartitaRefinada:
         return Path(__file__).resolve().parents[2] / "cortex-pi" / ".pi"
 
     def test_pi_only_agents_have_contrato_de_salida(self, bundle_dir: Path) -> None:
-        """Each of the 4 Pi-only agents must have the Tripartita Refinada
-        Contrato de Salida YAML section."""
+        """Phase 09.A+ / May 2026: agents that still use the legacy
+        YAML AgentHandoff contract (Pi-specific helpers + the cortex-sync
+        anchor) must keep their ``Contrato de Salida`` section. cortex-SDDwork
+        was removed from this list because it emits checkpoints (not YAML
+        handoffs) since Phase 02 — see ``.cortex/skills/cortex-SDDwork.md``.
+        """
         for agent in (
             "cortex-sync",
-            "cortex-SDDwork",
             "cortex-security-auditor",
             "cortex-test-verifier",
         ):
@@ -988,11 +1050,18 @@ class TestPiBundleHasTripartitaRefinada:
             assert "Contrato de Salida" in content, agent
             assert "AgentHandoff" in content or "agent: cortex-" in content, agent
 
-    def test_sddwork_has_validation_de_handoffs(self, bundle_dir: Path) -> None:
+    def test_sddwork_uses_checkpoints_not_yaml_handoffs(self, bundle_dir: Path) -> None:
+        """Phase 02+: cortex-SDDwork emits ``cortex_session_checkpoint``
+        events and explicitly avoids ``cortex_validate_handoff``. The
+        Pi bundle must reflect this (since Phase 09.A+ it's synced from
+        ``.cortex/skills/cortex-SDDwork.md`` directly)."""
         content = (bundle_dir / "agents" / "cortex-SDDwork.md").read_text(encoding="utf-8")
-        assert "Validación de handoffs" in content
-        assert "cortex_validate_handoff" in content
-        assert "expected_agent" in content
+        assert "cortex_session_checkpoint" in content
+        # The phrase explicitly tells the agent NOT to use validate_handoff.
+        assert (
+            "NO necesitas validar nada con `cortex_validate_handoff`" in content
+            or "deprecated" in content.lower()
+        )
 
     def test_sync_has_pre_flight_context_md(self, bundle_dir: Path) -> None:
         content = (bundle_dir / "agents" / "cortex-sync.md").read_text(encoding="utf-8")

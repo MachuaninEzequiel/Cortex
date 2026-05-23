@@ -273,3 +273,32 @@ def test_canonical_subagent_files_in_disk_match_renders():
         assert h_disk == h_rendered, (
             f"{path} drifted from its render. Re-run setup or regenerate."
         )
+
+
+def test_canonical_skill_files_in_disk_match_renders():
+    """Los archivos en .cortex/skills/ siguen alineados con sus renders.
+
+    Phase 09.A+ / May 2026 — incluye el nuevo /cortex-documenter skill,
+    ANCHOR DE CIERRE de la arquitectura triádica.
+    """
+    import hashlib
+
+    from cortex.setup.cortex_workspace import (
+        render_cortex_documenter_skill,
+        render_cortex_sddwork_skill,
+        render_cortex_sync_skill,
+    )
+
+    pairs = [
+        (".cortex/skills/cortex-sync.md", render_cortex_sync_skill()),
+        (".cortex/skills/cortex-SDDwork.md", render_cortex_sddwork_skill()),
+        (".cortex/skills/cortex-documenter.md", render_cortex_documenter_skill()),
+    ]
+    for path, rendered in pairs:
+        disk = Path(path).read_text(encoding="utf-8").replace("\r\n", "\n")
+        rendered_lf = rendered.replace("\r\n", "\n")
+        h_disk = hashlib.sha256(disk.encode()).hexdigest()
+        h_rendered = hashlib.sha256(rendered_lf.encode()).hexdigest()
+        assert h_disk == h_rendered, (
+            f"{path} drifted from its render. Re-run setup or regenerate."
+        )

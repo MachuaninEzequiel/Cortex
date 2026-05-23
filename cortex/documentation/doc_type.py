@@ -36,43 +36,67 @@ class DocType(str, Enum):
     CHANGELOG = "changelog"
     HU = "hu"
     GLOSSARY = "glossary"
+    # Pluggable Middle Phase 09.B — written by ``cortex-code-designer``
+    # before the implementer kicks in. Optional but recommended in Deep
+    # Track flows.
+    DESIGN = "design"
 
 
 VALID_STATUSES: dict[DocType, frozenset[str]] = {
-    DocType.SESSION: frozenset({
-        "draft", "completed", "handoff", "fallback", "auto-draft",
-    }),
+    DocType.SESSION: frozenset(
+        {
+            "draft",
+            "completed",
+            "handoff",
+            "fallback",
+            "auto-draft",
+        }
+    ),
     DocType.HANDOFF: frozenset({"open", "consumed", "stale"}),
-    DocType.SPEC: frozenset({
-        "draft", "approved", "implementing", "done", "abandoned",
-    }),
+    DocType.SPEC: frozenset(
+        {
+            "draft",
+            "approved",
+            "implementing",
+            "done",
+            "abandoned",
+        }
+    ),
     DocType.ADR: frozenset({"proposed", "accepted", "superseded", "rejected"}),
     DocType.DECISION: frozenset({"active", "reverted"}),
     DocType.INCIDENT: frozenset({"open", "mitigated", "closed"}),
-    DocType.POSTMORTEM: frozenset({
-        "draft", "published", "actions-tracked", "complete",
-    }),
+    DocType.POSTMORTEM: frozenset(
+        {
+            "draft",
+            "published",
+            "actions-tracked",
+            "complete",
+        }
+    ),
     DocType.RUNBOOK: frozenset({"draft", "verified", "deprecated"}),
     DocType.ARCHITECTURE: frozenset({"draft", "current", "deprecated"}),
     DocType.CHANGELOG: frozenset({"unreleased", "released"}),
     DocType.HU: frozenset({"backlog", "in-progress", "done", "cancelled"}),
     DocType.GLOSSARY: frozenset({"draft", "canonical", "deprecated"}),
+    DocType.DESIGN: frozenset({"draft", "approved", "superseded"}),
 }
 
 
 # Doc types that can be promoted from local to enterprise vault.
-_PROMOTABLE: frozenset[DocType] = frozenset({
-    DocType.SESSION,   # promoted as summary
-    DocType.SPEC,
-    DocType.ADR,
-    DocType.DECISION,
-    DocType.INCIDENT,
-    DocType.POSTMORTEM,
-    DocType.RUNBOOK,
-    DocType.ARCHITECTURE,
-    DocType.CHANGELOG,
-    DocType.GLOSSARY,
-})
+_PROMOTABLE: frozenset[DocType] = frozenset(
+    {
+        DocType.SESSION,  # promoted as summary
+        DocType.SPEC,
+        DocType.ADR,
+        DocType.DECISION,
+        DocType.INCIDENT,
+        DocType.POSTMORTEM,
+        DocType.RUNBOOK,
+        DocType.ARCHITECTURE,
+        DocType.CHANGELOG,
+        DocType.GLOSSARY,
+    }
+)
 
 # Subfolder -> doc_type slug mapping for path inference.
 _SUBFOLDER_TO_DOC_TYPE: dict[str, DocType] = {
@@ -87,6 +111,7 @@ _SUBFOLDER_TO_DOC_TYPE: dict[str, DocType] = {
     "changelog": DocType.CHANGELOG,
     "hu": DocType.HU,
     "glossary": DocType.GLOSSARY,
+    "designs": DocType.DESIGN,
 }
 
 _ADR_FILENAME_RE = re.compile(r"^ADR-\d+", re.IGNORECASE)

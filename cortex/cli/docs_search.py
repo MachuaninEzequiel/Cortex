@@ -14,9 +14,7 @@ Output formats:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -28,7 +26,7 @@ from cortex.context_enricher.presenter import ContextPresenter
 
 def search(
     query: str = typer.Argument(..., help="Natural-language search query."),
-    project_root: Optional[str] = typer.Option(
+    project_root: str | None = typer.Option(
         None, "--project-root", help="Project root (defaults to cwd).",
     ),
     top_k: int = typer.Option(5, "--top-k", "-k", help="Max results."),
@@ -51,7 +49,7 @@ def search(
     scope: str = typer.Option(
         "all", "--scope", help="Vault scope: local | enterprise | all.",
     ),
-    max_age_days: Optional[int] = typer.Option(
+    max_age_days: int | None = typer.Option(
         None, "--max-age-days", help="Drop items older than this many days.",
     ),
     project_id: list[str] = typer.Option(
@@ -106,7 +104,7 @@ def search(
     typer.echo(ContextPresenter.to_markdown_grouped(ctx))
 
 
-def _build_enricher(project_root: Optional[str]) -> ContextEnricher:
+def _build_enricher(project_root: str | None) -> ContextEnricher:
     """Construct a ``ContextEnricher`` with the project's episodic + semantic stores."""
     root = Path(project_root).resolve() if project_root else Path.cwd().resolve()
 

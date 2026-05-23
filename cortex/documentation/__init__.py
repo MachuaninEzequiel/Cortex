@@ -26,14 +26,6 @@ from __future__ import annotations
 
 from dataclasses import replace as _dc_replace
 
-from cortex.documentation.errors import (
-    DocumentationError,
-    DuplicateDocumentError,
-    RoutingError,
-    SchemaValidationError,
-    TemplateRenderError,
-    UnknownDocTypeError,
-)
 from cortex.documentation.common import (
     compute_fingerprint,
     has_frontmatter,
@@ -43,20 +35,30 @@ from cortex.documentation.common import (
     yaml_dump_safe,
     yaml_load_safe,
 )
+from cortex.documentation.doc_type import DocType as _DocType
+from cortex.documentation.errors import (
+    DocumentationError,
+    DuplicateDocumentError,
+    RoutingError,
+    SchemaValidationError,
+    TemplateRenderError,
+    UnknownDocTypeError,
+)
 from cortex.documentation.inventory import (
     VaultInventory,
     classify_path,
     inventory_vault,
 )
-from cortex.documentation.doc_type import DocType as _DocType
 from cortex.documentation.routing import DOC_TYPE_ROUTING as _DOC_TYPE_ROUTING
 
-# Canonical writers (Fase 03 + Fase 04).
+# Canonical writers (Fase 03 + Fase 04 + Phase 09.B).
 from cortex.documentation.writers import (
     write_adr_note,
     write_architecture_note,
     write_changelog_note,
     write_decision_note,
+    write_design_note,
+    write_design_note_canonical,
     write_glossary_entry,
     write_handoff_note,
     write_hu_note,
@@ -67,7 +69,6 @@ from cortex.documentation.writers import (
     write_spec_note_canonical,
 )
 
-
 # Bind the 12 canonical writers to their RouteSpec entries.
 _DOC_TYPE_ROUTING[_DocType.SESSION] = _dc_replace(
     _DOC_TYPE_ROUTING[_DocType.SESSION], writer=write_session_note_canonical
@@ -75,9 +76,7 @@ _DOC_TYPE_ROUTING[_DocType.SESSION] = _dc_replace(
 _DOC_TYPE_ROUTING[_DocType.SPEC] = _dc_replace(
     _DOC_TYPE_ROUTING[_DocType.SPEC], writer=write_spec_note_canonical
 )
-_DOC_TYPE_ROUTING[_DocType.HU] = _dc_replace(
-    _DOC_TYPE_ROUTING[_DocType.HU], writer=write_hu_note
-)
+_DOC_TYPE_ROUTING[_DocType.HU] = _dc_replace(_DOC_TYPE_ROUTING[_DocType.HU], writer=write_hu_note)
 _DOC_TYPE_ROUTING[_DocType.ADR] = _dc_replace(
     _DOC_TYPE_ROUTING[_DocType.ADR], writer=write_adr_note
 )
@@ -104,6 +103,9 @@ _DOC_TYPE_ROUTING[_DocType.HANDOFF] = _dc_replace(
 )
 _DOC_TYPE_ROUTING[_DocType.GLOSSARY] = _dc_replace(
     _DOC_TYPE_ROUTING[_DocType.GLOSSARY], writer=write_glossary_entry
+)
+_DOC_TYPE_ROUTING[_DocType.DESIGN] = _dc_replace(
+    _DOC_TYPE_ROUTING[_DocType.DESIGN], writer=write_design_note
 )
 
 
@@ -140,4 +142,6 @@ __all__ = [
     "write_hu_note",
     "write_session_note_canonical",
     "write_spec_note_canonical",
+    "write_design_note",
+    "write_design_note_canonical",
 ]

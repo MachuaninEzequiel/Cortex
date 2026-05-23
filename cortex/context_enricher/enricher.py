@@ -62,7 +62,7 @@ class ContextEnricher:
         work: WorkContext,
         *,
         top_k: int | None = None,
-        filters: "EnrichmentFilters | None" = None,
+        filters: EnrichmentFilters | None = None,
     ) -> EnrichedContext:
         """
         Execute multi-strategy search and return enriched context.
@@ -276,7 +276,7 @@ class ContextEnricher:
         # for the detected intent. Unknown DocTypes and GENERIC intent
         # leave the score untouched.
         if queries:
-            from cortex.context_enricher.doc_intent import DocIntentDetector, DocIntent
+            from cortex.context_enricher.doc_intent import DocIntent, DocIntentDetector
             from cortex.documentation.doc_type import DocType as _DocType
             from cortex.documentation.routing import resolve_route as _resolve
 

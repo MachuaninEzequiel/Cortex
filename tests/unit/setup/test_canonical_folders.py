@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 
 def _create_directories(layout) -> list[Path]:
     """Invoke the same private helper the orchestrator runs at setup time."""
@@ -60,13 +58,13 @@ def test_no_dead_subfolders_in_routing() -> None:
         "sessions", "handoffs", "specs", "decisions", "incidents",
         "postmortems", "runbooks", "architecture", "changelog",
         "hu", "glossary",
+        "designs",  # Pluggable Middle Phase 09.B
     }
     assert declared == expected
 
 
 def test_orchestrator_directories_list_matches_canonical() -> None:
     """The orchestrator file enumerates exactly the canonical folders."""
-    import re
     from pathlib import Path
     src = Path("cortex/setup/orchestrator.py").read_text(encoding="utf-8")
     # Snapshot the directories block declared in the orchestrator.

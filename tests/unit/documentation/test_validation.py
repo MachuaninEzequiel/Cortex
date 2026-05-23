@@ -20,7 +20,6 @@ from cortex.documentation.validation import (
     validate_path_frontmatter,
 )
 
-
 _NOW_ISO = datetime(2026, 5, 14, 10, 0, 0, tzinfo=UTC).isoformat()
 _FP = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from cortex.autopilot.cli import app
@@ -273,7 +272,7 @@ class TestDeepTrack:
 
     def test_delegation_stub_no_cross_process_persistence(self, autopilot_workspace: Path) -> None:
         """Delegation registry is in-memory; e2e must not assume cross-process persistence."""
-        from cortex.autopilot.delegation import register_task, get_task_result, _task_registry
+        from cortex.autopilot.delegation import _task_registry, get_task_result, register_task
         from cortex.autopilot.models import DelegationResult
 
         task_id = "stub-task-001"
@@ -295,8 +294,8 @@ class TestCleanupAndConfig:
     """Scenario 7 — Cleanup leaves configuration tidy."""
 
     def test_cleanup_archives_old_jsonl(self, autopilot_workspace: Path) -> None:
-        import time
         import os
+        import time
 
         events_dir = (
             autopilot_workspace / ".cortex" / "run" / "autopilot" / "events"

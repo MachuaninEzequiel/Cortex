@@ -34,24 +34,57 @@ Antes de empezar, lee `<workspace>/CONTEXT.md` (o `<repo>/CONTEXT.md` en layout 
 1. **⚠️ PASO 1 - cortex_sync_ticket**: PRIMER paso. Inyecta contexto historico via ONNX/hybrid retrieval.
 2. **PASO 2 - CONTEXT.md (opcional)**: si existe, leerlo.
 3. **PASO 3 - EXPLORAR**: `glob` + `read` para contrastar ticket con codigo real.
-4. **PASO 4 - ESPECIFICAR**: `cortex_create_spec` con la spec tecnica.
-5. **PASO 5 - HANDOFF**: emite YAML AgentHandoff y para.
+4. **PASO 3.5 - PROPOSAL (Pluggable Middle Fase 09.A+)**: antes de comprometerse a una spec detallada, **llamá a `cortex_emit_proposal`** con la estructura:
 
-## Ejemplo correcto
+   ```json
+   {
+     "summary": "<resumen ejecutivo, 2-3 lineas>",
+     "alternatives": [
+       {"id": "A", "description": "<que propone>", "rejected_reason": "<por que no>"},
+       {"id": "B", "description": "<que propone>", "rejected_reason": "<por que no>"},
+       {"id": "C", "description": "<que propone>", "rejected_reason": ""}
+     ],
+     "recommendation_id": "C",
+     "risks": ["<riesgo opcional 1>", "<riesgo opcional 2>"]
+   }
+   ```
+
+   La tool result es una **card en Markdown** que el usuario ve directamente — NO la repitas como mensaje normal.
+
+   **Reglas operativas por `proposal_mode`:**
+
+   - **`required`** — DEBES llamar `cortex_emit_proposal` y **terminar tu turno inmediatamente** (no llames `cortex_create_spec` en el mismo turno; el server lo rechaza con `proposal emitted Xs ago — too recent`). Cuando el usuario responda `ok` / `y` / silencio: recien ahi llamás `cortex_create_spec` con `proposal_mode="required"` y `proposal_confirmed=true`. Si el usuario propone cambios o elige otra alternativa: re-emití un nuevo proposal con sus ajustes y volvé a esperar.
+   - **`optional`** (default) — Llamá `cortex_emit_proposal` y **podés** seguir directo con `cortex_create_spec(proposal_mode="optional")` en el mismo turno. El usuario tiene la card visible para objetar en su proximo mensaje; si lo hace, deshacés re-ejecutando `cortex-sync`.
+   - **`skip`** — Omitir el paso (modo legacy / Fast tasks triviales).
+
+   **No existe una tool para "esperar input del usuario".** En `required`, "esperar" significa literalmente: no emitir mas tool calls, no escribir texto, dejar que el turno termine.
+
+5. **PASO 4 - ESPECIFICAR**: `cortex_create_spec` con la spec tecnica. Pasá `proposal_mode` y (cuando aplique) `proposal_confirmed=true`.
+6. **PASO 5 - HANDOFF**: emite YAML AgentHandoff y para.
+
+## Ejemplo correcto (modo `required`)
 
 ```
 Usuario: "Cambiar el login.html para que sea mas moderno"
 
-❌ INCORRECTO:
-- Glob "**/*"
-- cortex_create_spec(...)  # SERA RECHAZADO
+❌ INCORRECTO (mismo turno):
+- cortex_sync_ticket(...)
+- cortex_emit_proposal(...)
+- cortex_create_spec(proposal_mode="required", proposal_confirmed=true)  # RECHAZADO: gap < 2s
 
-✅ CORRECTO:
+✅ CORRECTO (dos turnos):
+
+Turno 1 (agente):
 - cortex_sync_ticket(user_request="Cambiar el login.html...")
-- Read CONTEXT.md (si existe)
 - Glob "**/*"
 - Read login.html
-- cortex_create_spec(...)
+- cortex_emit_proposal({summary:..., alternatives:[A,B,C], recommendation_id:"C", risks:[...]})
+- [TURN END]
+
+Turno 2 (usuario): "ok"
+
+Turno 3 (agente):
+- cortex_create_spec(..., proposal_mode="required", proposal_confirmed=true)
 - emite YAML AgentHandoff
 ```
 

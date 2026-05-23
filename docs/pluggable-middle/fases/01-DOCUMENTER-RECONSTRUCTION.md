@@ -845,24 +845,37 @@ Al cerrar Fase 01:
 
 ## 8. Progress Log
 
-- [ ] T1.1 — Schema de verification hooks en spec
-- [ ] T1.2 — CLI/MCP de create-spec admite verification_hooks
-- [ ] T1.3 — Runner de verification hooks
-- [ ] T1.4 — Módulo de reconstrucción (algoritmo 8 pasos)
-- [ ] T1.5 — Persister + finish flow
-- [ ] T1.6 — CLI `cortex finish-session`
-- [ ] T1.7 — MCP tool `cortex_finish_session`
-- [ ] T1.8 — Actualizar subagent `cortex-documenter.md`
-- [ ] T1.9 — Actualizar skill `cortex-sync.md`
-- [ ] T1.10 — Tests E2E del modo BYO
-- [ ] T1.11 — Documentación pública
-- [ ] Completion Verification Commands — TODOS pasaron
-- [ ] Tabla de progreso en `../README.md` actualizada con ✅
-- [ ] Commit final hecho
+- [x] T1.1 — Schema de verification hooks en spec ✅
+- [x] T1.2 — CLI/MCP de create-spec admite verification_hooks ✅
+- [x] T1.3 — Runner de verification hooks ✅
+- [x] T1.4 — Módulo de reconstrucción (algoritmo 8 pasos) ✅
+- [x] T1.5 — Persister + finish flow ✅
+- [x] T1.6 — CLI `cortex finish-session` ✅
+- [x] T1.7 — MCP tool `cortex_finish_session` ✅
+- [x] T1.8 — Actualizar subagent `cortex-documenter.md` ✅
+- [x] T1.9 — Actualizar skill `cortex-sync.md` ✅
+- [x] T1.10 — Tests E2E del modo BYO ✅
+- [x] T1.11 — Documentación pública ✅
+- [x] Completion Verification Commands — todos pasaron ✅
+- [x] Tabla de progreso en `../README.md` actualizada con ✅
+- [ ] Commit final hecho (pendiente — esperando autorización del usuario)
 
 **Notas durante la ejecución:**
 
-> Reservado para anotaciones del agente ejecutor.
+- **Coverage del módulo `cortex.documenter`: 100%** (350 stmts, 0 missed; 53 tests).
+- **`VerificationHook` model**: vive en `cortex.session.models` (mismo módulo que `VerificationHookResult`) y se integra en `SpecData` (dataclass) + `SpecFrontmatter` (Pydantic). El template `spec.md.j2` lo renderiza en el body; el writer también lo persiste en el frontmatter para que la reconstrucción pueda parsearlo back.
+- **Decisión sobre verification_hooks obligatorios**: implementé soft warning (no hard error) cuando la lista está vacía, en lugar de fallar duro. Razón: durante Fase 01 hay specs de ejemplo y tests que crean specs sin hooks; un hard error rompería todo. Fase 04 promueve a hard error.
+- **Decisión sobre `_normalize_hooks`**: nombres duplicados sí son hard error (data integrity), pero lista vacía es warning. Acepta tanto `VerificationHook` instances como `dict` (auto-coerce vía `model_validate`).
+- **`spec.md.j2` template**: extendido con sección "Verification Hooks" que renderiza nombre/comando/criterio/timeout. Specs legacy sin hooks muestran un mensaje claro `*(none declared — legacy spec; finish-session will skip verification)*`.
+- **Writer extension**: además de `verification_hooks`, agregué `goal`, `files_in_scope`, `constraints`, `acceptance_criteria` al frontmatter del spec. Antes solo iban al body via template; ahora también al frontmatter para que `spec_loader.load_spec()` pueda leerlos back (clave para que `Reconstructor` detecte unimplemented files).
+- **Reconstruction algorithm (8 pasos)**: implementación literal de la arquitectura §7.2. `ContradictionDetector` como Protocol + `NoOpContradictionDetector` default (deferred a Fase 02+ cuando AgentMemory esté disponible en este path). Mode inference reusa `SessionService.infer_mode` indirectamente vía checkpoints.
+- **ADR evaluator**: heurística por keywords ("decidimos", "instead of", "trade-off", etc.). High confidence = 2+ keywords; low = 1. Sin checkpoints → sin sugerencias (BYO mode).
+- **Persister `FinishOverrides`**: dataclass con `approved_adr_indices`, `edited_note_title`, `edited_note_body`, `forced_status`, `forced_reason`. Fase 01 solo usa `forced_status` y `approved_adr_indices`; el resto es hook point para Fase 04 interactive.
+- **`finish-session` CLI** se conecta a `AgentMemory` (heavyweight) porque necesita NoteService + indexing. El subapp `cortex session ...` sigue siendo lightweight (sólo SessionService). Decisión de diseño: dos surfaces complementarios, no uno solo.
+- **MCP tool `cortex_finish_session`** retorna JSON estable con `{session_id, final_status, session_note_path, adrs_created, summary_text, already_closed}`.
+- **canonical_tools.py extension**: agregué los 6 nuevos tools (`cortex_session_open/checkpoint/close/status/list` + `cortex_finish_session`) al vocabulario canónico para que el adapter de Claude Code los pueda traducir a `mcp__cortex__*`. Esto se descubrió por test de no-regresión del IDE adapter.
+- **`render_subagent_documenter()` sincronizado con `.cortex/subagents/cortex-documenter.md`**: ambos archivos comparten contenido (hash check vía test). Update both when editing.
+- **No regresiones**: 1802+ tests verde. 4 failures preexistentes (test_paths Windows symlink, 3 `TestVerifySessionClaims` por bug en `_subprocess.py`) sin relación con esta fase.
 
 ---
 

@@ -32,7 +32,7 @@ def list_enterprise_presets() -> list[str]:
 def discover_enterprise_config_path(
     project_root: Path,
     *,
-    workspace_layout: "WorkspaceLayout | None" = None,
+    workspace_layout: WorkspaceLayout | None = None,
 ) -> Path | None:
     """Discover the enterprise config file.
 
@@ -57,7 +57,7 @@ def load_enterprise_config(
     *,
     required: bool = False,
     path: Path | None = None,
-    workspace_layout: "WorkspaceLayout | None" = None,
+    workspace_layout: WorkspaceLayout | None = None,
 ) -> EnterpriseOrgConfig | None:
     """Load enterprise organisational config.
 
@@ -228,7 +228,7 @@ def write_enterprise_config(
     project_root: Path,
     config: EnterpriseOrgConfig,
     *,
-    workspace_layout: "WorkspaceLayout | None" = None,
+    workspace_layout: WorkspaceLayout | None = None,
 ) -> Path:
     """Write enterprise config to disk.
 
@@ -259,7 +259,7 @@ def describe_enterprise_topology(
     config: EnterpriseOrgConfig | None,
     project_root: Path | None = None,
     *,
-    workspace_layout: "WorkspaceLayout | None" = None,
+    workspace_layout: WorkspaceLayout | None = None,
 ) -> str:
     if config is None:
         return "project-only (no .cortex/org.yaml)"

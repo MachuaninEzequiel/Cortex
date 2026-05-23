@@ -110,7 +110,7 @@ class PersistentObserver:
 
     def record_enrichment(
         self,
-        ctx: "EnrichedContext",
+        ctx: EnrichedContext,
         *,
         latency_ms: int | None = None,
     ) -> str:
@@ -378,7 +378,7 @@ def make_observer(
     enabled: bool | None = None,
     config: dict | None = None,
     project_root: Path | None = None,
-) -> "PersistentObserver":
+) -> PersistentObserver:
     """Create a ``PersistentObserver`` from a ``WorkspaceLayout`` or path.
 
     Resolves the canonical telemetry path

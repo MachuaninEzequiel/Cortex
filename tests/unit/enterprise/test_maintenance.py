@@ -5,16 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
 import yaml
 
 from cortex.enterprise.maintenance import (
-    RetentionViolation,
     archive_violations,
     scan_retention_violations,
 )
 from cortex.enterprise.models import EnterpriseOrgConfig, RetentionPolicy
-
 
 _FP = "a" * 64
 

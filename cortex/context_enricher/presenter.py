@@ -114,7 +114,7 @@ class ContextPresenter:
         return "\n".join(parts)
 
     @staticmethod
-    def to_markdown_grouped(ctx: "EnrichedContext") -> str:
+    def to_markdown_grouped(ctx: EnrichedContext) -> str:
         """Markdown grouped by ``doc_type`` (Fase 08).
 
         Groups are sorted by the max ``enriched_score`` of their items. Within
@@ -160,7 +160,7 @@ class ContextPresenter:
         return "\n".join(parts)
 
     @staticmethod
-    def to_compact_grouped(ctx: "EnrichedContext") -> str:
+    def to_compact_grouped(ctx: EnrichedContext) -> str:
         """Compact format grouped by ``doc_type`` (Fase 08)."""
         if not ctx.items:
             return "🧠 Cortex Context — No related memories found."

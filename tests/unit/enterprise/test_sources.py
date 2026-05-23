@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from cortex.enterprise.sources import EpisodicSource, MultiEpisodicReader, MultiVaultReader, VaultSource
+from cortex.enterprise.sources import (
+    EpisodicSource,
+    MultiEpisodicReader,
+    MultiVaultReader,
+    VaultSource,
+)
 from cortex.models import EpisodicHit, MemoryEntry, SemanticDocument
 
 

@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cortex — Análisis crítico: Tripartito vs Pluggable Middle</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --primary: #1e293b;
+    --primary-soft: #334155;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --before: #dc2626;
+    --before-soft: #fee2e2;
+    --after: #059669;
+    --after-soft: #d1fae5;
+    --warn: #d97706;
+    --warn-soft: #fef3c7;
+    --info: #2563eb;
+    --info-soft: #dbeafe;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Hero ────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    color: white;
+    padding: 80px 0 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(5, 150, 105, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero-inner { position: relative; z-index: 1; }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 800;
+    margin: 16px 0 12px;
+    letter-spacing: -0.02em;
+  }
+  .hero .tagline {
+    font-size: 1.2rem;
+    color: #cbd5e1;
+    max-width: 760px;
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba(5, 150, 105, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(5, 150, 105, 0.4);
+  }
+  .badge::before {
+    content: "●";
+    color: #34d399;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+    margin-top: 40px;
+  }
+  .stat-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 20px;
+    backdrop-filter: blur(8px);
+  }
+  .stat-card .num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+  }
+  .stat-card .label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-top: 6px;
+  }
+
+  /* ── Sections ────────────────────────────────────────────────────── */
+  section {
+    padding: 72px 0;
+  }
+  section.alt { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+  h2 .kicker {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--info);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  h3 { font-size: 1.3rem; font-weight: 700; color: var(--primary); margin: 32px 0 12px; }
+  h4 { font-size: 1.05rem; font-weight: 700; color: var(--primary-soft); margin: 20px 0 8px; }
+
+  .section-intro {
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 1.05rem;
+    margin: 12px 0 36px;
+  }
+
+  /* ── Side-by-side comparison ─────────────────────────────────────── */
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 24px 0;
+  }
+  @media (max-width: 800px) { .side-by-side { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 24px 28px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .panel.before { border-top: 4px solid var(--before); }
+  .panel.after { border-top: 4px solid var(--after); }
+  .panel-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .panel.before .panel-label { background: var(--before-soft); color: var(--before); }
+  .panel.after .panel-label { background: var(--after-soft); color: var(--after); }
+  .panel h3 { margin-top: 0; font-size: 1.2rem; }
+  .panel ul { margin: 12px 0; padding-left: 20px; }
+  .panel li { margin: 6px 0; }
+
+  /* ── Comparison tables ───────────────────────────────────────────── */
+  .compare-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 16px 0 24px;
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .compare-table th, .compare-table td {
+    text-align: left;
+    padding: 14px 18px;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.93rem;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table thead th {
+    background: #f1f5f9;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .compare-table thead th:nth-child(2) { color: var(--before); }
+  .compare-table thead th:nth-child(3) { color: var(--after); }
+  .compare-table td.aspect { font-weight: 600; color: var(--primary); width: 25%; }
+  .compare-table td.before { color: var(--primary-soft); width: 37%; }
+  .compare-table td.after { color: var(--primary-soft); width: 38%; }
+
+  /* ── Flow diagrams ───────────────────────────────────────────────── */
+  .flow-diagram {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 32px;
+    border: 1px solid var(--border);
+    margin: 16px 0;
+  }
+  .flow-diagram h3 { margin-top: 0; }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  .flow-box {
+    background: #f1f5f9;
+    border: 2px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    min-width: 140px;
+    color: var(--primary);
+  }
+  .flow-box.mandatory { background: var(--before-soft); border-color: var(--before); color: var(--before); }
+  .flow-box.optional { background: var(--info-soft); border-color: var(--info); color: var(--info); }
+  .flow-box.endpoint { background: #f1f5f9; border-color: var(--primary); color: var(--primary); }
+  .flow-box.middle { border-style: dashed; }
+  .flow-arrow {
+    font-size: 1.4rem;
+    color: var(--muted);
+  }
+  .flow-fork {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .flow-fork .flow-box { min-width: 200px; }
+
+  .flow-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* ── Advantage cards ─────────────────────────────────────────────── */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin: 24px 0;
+  }
+  .adv-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--after);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .adv-card .icon {
+    font-size: 1.7rem;
+    margin-bottom: 8px;
+  }
+  .adv-card h4 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+    color: var(--primary);
+  }
+  .adv-card p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.93rem;
+  }
+  .adv-card.warn { border-left-color: var(--warn); }
+
+  /* ── Code blocks ─────────────────────────────────────────────────── */
+  pre.code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    margin: 12px 0;
+  }
+  pre.code .comment { color: #94a3b8; }
+  pre.code .prompt { color: #34d399; }
+  pre.code .keyword { color: #fbbf24; }
+  pre.code .deleted { color: #fca5a5; text-decoration: line-through; }
+  pre.code .new { color: #6ee7b7; font-weight: bold; }
+
+  .code-label {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: var(--info-soft);
+    color: var(--info);
+    margin-bottom: -4px;
+  }
+
+  /* ── Decision verdict ────────────────────────────────────────────── */
+  .verdict {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid var(--after);
+    border-radius: 14px;
+    padding: 32px;
+    margin: 28px 0;
+  }
+  .verdict h3 {
+    color: var(--after);
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .verdict .verdict-icon { font-size: 1.6rem; }
+  .verdict p { color: #064e3b; }
+  .verdict-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .verdict-stat {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 14px 16px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .verdict-stat .v {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--after);
+  }
+  .verdict-stat .l {
+    font-size: 0.82rem;
+    color: var(--primary-soft);
+    margin-top: 4px;
+  }
+
+  /* ── Persona cards ───────────────────────────────────────────────── */
+  .persona-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    margin: 16px 0;
+  }
+  .persona-card .persona-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .persona-card .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+  .persona-card .persona-name { font-weight: 700; color: var(--primary); }
+  .persona-card .persona-tag { color: var(--muted); font-size: 0.88rem; }
+  .persona-benefit {
+    background: var(--after-soft);
+    color: #064e3b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 0.92rem;
+  }
+  .persona-benefit::before { content: "✓ "; font-weight: 700; color: var(--after); }
+
+  /* ── Tradeoff list ───────────────────────────────────────────────── */
+  .tradeoff-item {
+    background: #fffbeb;
+    border-left: 4px solid var(--warn);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+  }
+  .tradeoff-item h4 { color: #92400e; margin: 0 0 6px; }
+  .tradeoff-item p { color: #78350f; margin: 0; font-size: 0.94rem; }
+  .tradeoff-item .mitigation { margin-top: 8px; font-size: 0.88rem; color: #78350f; }
+  .tradeoff-item .mitigation::before { content: "→ "; font-weight: 700; color: var(--warn); }
+
+  /* ── What didn't change ──────────────────────────────────────────── */
+  .preserved-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .preserved-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--primary-soft);
+    font-size: 0.92rem;
+    text-align: center;
+  }
+  .preserved-item strong { color: var(--primary); display: block; font-size: 0.95rem; margin-bottom: 2px; }
+
+  /* ── Footer ──────────────────────────────────────────────────────── */
+  footer {
+    background: var(--primary);
+    color: #94a3b8;
+    padding: 40px 0;
+    margin-top: 60px;
+    font-size: 0.88rem;
+  }
+  footer .container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+  footer a { color: #cbd5e1; text-decoration: none; }
+  footer a:hover { color: white; text-decoration: underline; }
+  footer .footer-links a { margin-left: 20px; }
+
+  /* ── Status pills ────────────────────────────────────────────────── */
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+  .pill-new { background: var(--after-soft); color: var(--after); }
+  .pill-changed { background: var(--info-soft); color: var(--info); }
+  .pill-removed { background: var(--before-soft); color: var(--before); }
+  .pill-kept { background: #f1f5f9; color: var(--primary-soft); }
+
+  /* ── Architecture overview ───────────────────────────────────────── */
+  .arch-overview {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 28px;
+    border: 1px solid var(--border);
+    margin: 24px 0;
+  }
+  .arch-flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .arch-step {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .arch-step .number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--info);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .arch-step .desc { color: var(--primary-soft); }
+  .arch-step .desc strong { color: var(--primary); }
+
+  /* ── Big quote ───────────────────────────────────────────────────── */
+  .quote-block {
+    background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
+    color: white;
+    border-radius: 14px;
+    padding: 36px 40px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .quote-block::before {
+    content: "“";
+    position: absolute;
+    top: 0;
+    left: 20px;
+    font-size: 5rem;
+    color: rgba(255, 255, 255, 0.15);
+    font-family: Georgia, serif;
+    line-height: 1;
+  }
+  .quote-block p {
+    font-size: 1.15rem;
+    font-style: italic;
+    margin: 0 0 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .quote-block .author {
+    color: #93c5fd;
+    font-style: normal;
+    font-size: 0.9rem;
+  }
+
+  /* ── TOC sidebar (simple inline) ─────────────────────────────────── */
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 24px 0;
+  }
+  nav.toc h4 { margin: 0 0 10px; color: var(--primary); }
+  nav.toc ul { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 24px; }
+  @media (max-width: 700px) { nav.toc ul { columns: 1; } }
+  nav.toc li { margin: 6px 0; font-size: 0.9rem; }
+  nav.toc a { color: var(--info); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- HERO                                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <div class="container hero-inner">
+    <span class="badge">Implementado · 2026-05-17</span>
+    <h1>Cortex: Tripartito → Pluggable Middle</h1>
+    <p class="tagline">
+      Análisis crítico, comparación 1-a-1 y veredicto honesto del cambio
+      arquitectural más estructural en la historia del framework. Sin marketing,
+      con números y trade-offs.
+    </p>
+    <div class="hero-stats">
+      <div class="stat-card"><div class="num">5</div><div class="label">Fases ejecutadas (00–04)</div></div>
+      <div class="stat-card"><div class="num">1743</div><div class="label">Tests passing al cierre</div></div>
+      <div class="stat-card"><div class="num">0</div><div class="label">Failures nuevas introducidas</div></div>
+      <div class="stat-card"><div class="num">~2k</div><div class="label">LOC netas eliminadas</div></div>
+      <div class="stat-card"><div class="num">3</div><div class="label">Nuevos modos de operación</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="container">
+  <nav class="toc">
+    <h4>Contenido</h4>
+    <ul>
+      <li><a href="#tldr">1. TL;DR — ¿Valió la pena?</a></li>
+      <li><a href="#problema">2. El problema que existía</a></li>
+      <li><a href="#solucion">3. La solución estructural</a></li>
+      <li><a href="#comparacion">4. Comparación 1-a-1</a></li>
+      <li><a href="#flujos">5. Flujos visualizados</a></li>
+      <li><a href="#comandos">6. Comandos: antes vs ahora</a></li>
+      <li><a href="#ventajas">7. Ventajas profundas</a></li>
+      <li><a href="#tradeoffs">8. Trade-offs honestos</a></li>
+      <li><a href="#personas">9. Quién se beneficia más</a></li>
+      <li><a href="#caso-real">10. Caso real: una compañía adoptando</a></li>
+      <li><a href="#sin-cambio">11. Lo que NO cambió</a></li>
+      <li><a href="#veredicto">12. Veredicto final</a></li>
+    </ul>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 1. TL;DR                                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="tldr">
+  <div class="container">
+    <h2><span class="kicker">Resumen ejecutivo</span>1. TL;DR — ¿Valió la pena?</h2>
+    <p class="section-intro">
+      Si solo tenés 30 segundos: <strong>sí, la migración valió la pena</strong>.
+      Pasamos de un framework que <em>forzaba</em> un flujo único a uno que admite
+      tres modos sin perder calidad de gobernanza. Más libertad para el usuario,
+      menos código en el repo, cero deuda técnica nueva.
+    </p>
+
+    <div class="verdict">
+      <h3><span class="verdict-icon">✓</span> Veredicto en una línea</h3>
+      <p>
+        El cambio Pluggable Middle convirtió a Cortex de un <strong>protocolo
+        opinionado y rígido</strong> en una <strong>plataforma opinionada y
+        pluggable</strong> — manteniendo la misma calidad de memoria, ADRs y
+        verificación, pero sin obligar al usuario a abandonar sus herramientas.
+      </p>
+      <div class="verdict-row">
+        <div class="verdict-stat"><div class="v">+3</div><div class="l">modos en lugar de 1 forzado</div></div>
+        <div class="verdict-stat"><div class="v">−31%</div><div class="l">código en módulo Autopilot</div></div>
+        <div class="verdict-stat"><div class="v">100%</div><div class="l">tests sin regresiones</div></div>
+        <div class="verdict-stat"><div class="v">3</div><div class="l">IDEs con hooks automáticos</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 2. EL PROBLEMA                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="problema" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Diagnóstico</span>2. El problema que existía</h2>
+    <p class="section-intro">
+      El modelo tripartito original era técnicamente sólido pero
+      <strong>asumía que el desarrollador estaba dispuesto a abandonar sus
+      herramientas</strong> a cambio de la disciplina que Cortex impone. En
+      2026, esa suposición ya no se sostiene: cada equipo tiene su stack
+      preferido (Cursor con skills custom, Claude Code con subagentes
+      propios, Pi, Codex, manual). Forzar `cortex-SDDwork` en el medio era
+      fricción que la mayoría no iba a pagar.
+    </p>
+
+    <div class="grid-cards">
+      <div class="adv-card warn">
+        <div class="icon">🚧</div>
+        <h4>Flujo único obligatorio</h4>
+        <p>Sync → SDDwork → Documenter era el ÚNICO camino. No había forma de usar tus propios skills sin perder gobernanza.</p>
+      </div>
+      <div class="adv-card warn">
+        <div class="icon">🔒</div>
+        <h4>Contrato cooperativo opaco</h4>
+        <p>Los subagentes pasaban YAML inline entre sí. Si uno fallaba en formato, el siguiente quedaba sin contexto.</p>
+      </div>
+      <div class="adv-card warn">
+        <div class="icon">👻</div>
+        <h4>Sesiones invisibles</h4>
+        <p>No había forma de listar, inspeccionar o recuperar una sesión interrumpida. La sesión era un detalle interno.</p>
+      </div>
+      <div class="adv-card warn">
+        <div class="icon">❓</div>
+        <h4>Verificación basada en prosa</h4>
+        <p>Los specs declaraban "acceptance criteria" como texto libre. El documenter adivinaba si el trabajo terminó.</p>
+      </div>
+      <div class="adv-card warn">
+        <div class="icon">🔀</div>
+        <h4>Autopilot paralelo</h4>
+        <p>Autopilot tenía su propia primitiva de sesión, su propio storage y sus propios session writers — duplicaba ~2.000 LOC del framework principal.</p>
+      </div>
+      <div class="adv-card warn">
+        <div class="icon">🚪</div>
+        <h4>Salida implícita</h4>
+        <p>El cierre del flujo dependía de que SDDwork emitiera correctamente el handoff YAML y el documenter lo consumiera. No había un comando explícito.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 3. LA SOLUCIÓN                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="solucion">
+  <div class="container">
+    <h2><span class="kicker">Diseño</span>3. La solución estructural</h2>
+    <p class="section-intro">
+      <strong>Hacer pluggable el medio</strong>, manteniendo intacto el contrato
+      entrada/salida. Las dos puntas (sync produce el spec, documenter persiste
+      el resultado) siguen fijas. El medio admite tres modos según cómo el
+      usuario quiera trabajar.
+    </p>
+
+    <div class="arch-overview">
+      <h3>Los 3 pilares del Pluggable Middle</h3>
+
+      <div class="arch-flow">
+        <div class="arch-step">
+          <div class="number">1</div>
+          <div class="desc">
+            <strong>La Session es la primitiva canónica</strong> — un YAML en
+            <code>.cortex/sessions/</code> con id, spec, start_commit, status,
+            checkpoints y verification_results. Es <em>visible</em> al usuario
+            vía <code>cortex session list/show/...</code>.
+          </div>
+        </div>
+        <div class="arch-step">
+          <div class="number">2</div>
+          <div class="desc">
+            <strong>Los verification_hooks son objetivos</strong> — el spec
+            declara comandos ejecutables (no prosa) que el documenter corre
+            para decidir si la sesión cierra como <code>CLOSED</code> o
+            <code>HANDOFF</code>.
+          </div>
+        </div>
+        <div class="arch-step">
+          <div class="number">3</div>
+          <div class="desc">
+            <strong>El documenter reconstruye desde el diff</strong> — ya no
+            necesita que el middle "le pase contexto". Lee la Session + el spec
+            + corre los hooks + computa el diff observable de git. Esto desacopla
+            completamente sync y documenter del middle.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-block">
+      <p>
+        Antes Cortex imponía un protocolo. Ahora Cortex envuelve un workflow:
+        observa entrada (spec) y salida (estado verificable del repo), sin
+        requerir cooperación del middle.
+      </p>
+      <div class="author">— Principio rector del Pluggable Middle (Arquitectura §2.1)</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 4. COMPARACIÓN 1-A-1                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="comparacion" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Tablas comparativas</span>4. Comparación 1-a-1</h2>
+    <p class="section-intro">
+      Cada aspecto del framework, lado a lado. No se invierte tinta en lo que
+      es igual — solo se contrastan los diferenciales reales.
+    </p>
+
+    <h3>4.1 · Filosofía y modelo de uso</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes (Tripartito)</th><th>Ahora (Pluggable Middle)</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Postura del framework</td>
+          <td class="before">Protocolo obligatorio — "usá Cortex como te dice".</td>
+          <td class="after">Plataforma con 3 modos — "usá tus herramientas; Cortex respalda".</td>
+        </tr>
+        <tr>
+          <td class="aspect">Camino feliz</td>
+          <td class="before">Sync → SDDwork → Documenter (siempre, sin excepción).</td>
+          <td class="after">Sync → [Managed | Observed | BYO] → Documenter vía <code>finish-session</code>.</td>
+        </tr>
+        <tr>
+          <td class="aspect">¿Necesito abandonar mis skills/agentes?</td>
+          <td class="before">Sí. Cualquier flujo paralelo era ad-hoc.</td>
+          <td class="after">No. Observed mode (IDE hooks) y BYO cubren los casos.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Barrera de adopción</td>
+          <td class="before">Alta. Equipos con tooling propio resistían.</td>
+          <td class="after">Baja. BYO arranca con un <code>cortex create-spec</code> y nada más.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.2 · Contrato entre agentes</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Inter-agente</td>
+          <td class="before">YAML <code>AgentHandoff</code> inline entre subagentes.</td>
+          <td class="after"><code>Checkpoint</code> apendeado a la <code>SessionRecord</code> compartida.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Validación del contrato</td>
+          <td class="before">Manual con <code>cortex_validate_handoff</code> (subagent llamaba a la herramienta).</td>
+          <td class="after">Automática vía Pydantic v2 + invariantes del SessionRecord.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Si un agente falla a mitad</td>
+          <td class="before">El siguiente queda sin contexto. Solo recuperable releyendo el chat.</td>
+          <td class="after">La Session está en disco; cualquier agente posterior la lee.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Auditoría de eventos</td>
+          <td class="before">JSONL events en <code>run/autopilot/events/</code> (sin uso real).</td>
+          <td class="after">Append-only <code>checkpoints</code> en el YAML con timestamp, source, verified/unverified claims, files touched, note.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.3 · Visibilidad y debugabilidad</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Listar sesiones activas</td>
+          <td class="before">No existía. Las sesiones eran internas.</td>
+          <td class="after"><code>cortex session list [--status open|closed|handoff|abandoned]</code></td>
+        </tr>
+        <tr>
+          <td class="aspect">Ver detalle de una sesión</td>
+          <td class="before">No existía.</td>
+          <td class="after"><code>cortex session show [ID]</code> con tabla rica.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Recuperar una sesión interrumpida</td>
+          <td class="before">No directamente. Había que releer logs.</td>
+          <td class="after"><code>cortex session switch &lt;ID&gt;</code> + <code>cortex finish-session</code>.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Multi-tasking (varios specs en paralelo)</td>
+          <td class="before">No soportado naturalmente.</td>
+          <td class="after">Varias sesiones OPEN coexisten; el active pointer dice cuál es la primaria.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Diff observable de la sesión</td>
+          <td class="before">No expuesto.</td>
+          <td class="after"><code>cortex session diff</code> retorna <code>git diff start_commit..HEAD</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.4 · Verificación de calidad</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Acceptance criteria</td>
+          <td class="before">Prosa libre en el spec.</td>
+          <td class="after">Prosa + comandos ejecutables (<code>verification_hooks</code> obligatorios).</td>
+        </tr>
+        <tr>
+          <td class="aspect">"¿Terminé?" se responde</td>
+          <td class="before">Por el subagent (subjetivo).</td>
+          <td class="after">Por el exit code de los hooks (objetivo).</td>
+        </tr>
+        <tr>
+          <td class="aspect">Hook que falla</td>
+          <td class="before">No aplicable.</td>
+          <td class="after">Session cierra como <code>HANDOFF</code> con blockers documentados.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Scope drift</td>
+          <td class="before">Detectado por humano al revisar el session note.</td>
+          <td class="after">Detectado automáticamente: <code>files_touched \ files_in_scope</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.5 · Integración con IDEs</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Direccionalidad del hook</td>
+          <td class="before">Cortex → IDE (bootstrap context al iniciar sesión).</td>
+          <td class="after">IDE → Cortex (cada evento del IDE emite un checkpoint).</td>
+        </tr>
+        <tr>
+          <td class="aspect">IDEs soportados con hooks reales</td>
+          <td class="before">0 (los adapters viejos solo escribían markdown de instrucciones).</td>
+          <td class="after">3: Claude Code (settings.json nativo), Cursor (git post-commit), Pi (justfile recipes).</td>
+        </tr>
+        <tr>
+          <td class="aspect">"El hook rompió, ¿abortar el commit?"</td>
+          <td class="before">N/A.</td>
+          <td class="after">No. Todos los hooks tienen <code>|| true</code> / <code>try/except</code>. Cortex caído nunca bloquea al IDE.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Instalación del hook</td>
+          <td class="before">Adapter Autopilot modificaba archivos sin convención clara.</td>
+          <td class="after"><code>cortex session hooks install --ide &lt;name&gt;</code>; idempotente; uninstall quirúrgico.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.6 · Documenter</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect">Cómo se invoca</td>
+          <td class="before">Por SDDwork al final (implícito).</td>
+          <td class="after">Por el usuario: <code>cortex finish-session</code>.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Modos de operación</td>
+          <td class="before">Uno (consume YAML inline).</td>
+          <td class="after">Dos: <strong>auto</strong> (default) y <strong>interactive</strong> (UI con <code>rich</code>: aprobar/editar/handoff/cancelar).</td>
+        </tr>
+        <tr>
+          <td class="aspect">Reconstrucción</td>
+          <td class="before">Dependía del handoff YAML del middle.</td>
+          <td class="after">Algoritmo de 8 pasos: carga Session + spec, computa diff, corre hooks, cross-checks scope, busca contradicciones, sintetiza handoff, decide status, persiste.</td>
+        </tr>
+        <tr>
+          <td class="aspect">Editar el draft antes de persistir</td>
+          <td class="before">No.</td>
+          <td class="after">Sí, vía <code>--interactive</code>: título inline, body en <code>$EDITOR</code>, ADRs uno a uno.</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 5. FLUJOS VISUALIZADOS                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="flujos">
+  <div class="container">
+    <h2><span class="kicker">Diagramas de flujo</span>5. Flujos visualizados</h2>
+    <p class="section-intro">
+      La diferencia es más nítida cuando se ven los dos diagramas lado a lado.
+    </p>
+
+    <div class="flow-diagram">
+      <h3>Cortex antes — flujo único obligatorio</h3>
+      <div class="flow-row">
+        <div class="flow-box endpoint">cortex-sync</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box mandatory">cortex-SDDwork<br><small>(obligatorio)</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box endpoint">cortex-documenter</div>
+      </div>
+      <p class="flow-note">
+        Si el usuario quería usar Cursor / Claude Code / Pi con sus skills propios,
+        tenía que abandonarlos. El middle era inmovible.
+      </p>
+    </div>
+
+    <div class="flow-diagram">
+      <h3>Cortex ahora — middle pluggable</h3>
+      <div class="flow-row">
+        <div class="flow-box endpoint">cortex-sync<br><small>(crea Session)</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-fork">
+          <div class="flow-box middle optional">🟢 Managed<br>(cortex-SDDwork)</div>
+          <div class="flow-box middle optional">🟡 Observed<br>(tu IDE + hooks)</div>
+          <div class="flow-box middle optional">🔵 BYO<br>(lo que sea)</div>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box endpoint">cortex finish-session<br><small>(documenter)</small></div>
+      </div>
+      <p class="flow-note">
+        Las dos puntas (sync y documenter) son fijas; el medio admite 3 modos.
+        El usuario elige según cuánta disciplina vs libertad quiera.
+      </p>
+    </div>
+
+    <h3>El rol de la Session en el medio</h3>
+    <div class="flow-diagram">
+      <div class="flow-row">
+        <div class="flow-box">spec.md</div>
+        <span class="flow-arrow">↘</span>
+        <div class="flow-box endpoint" style="background: var(--info-soft); border-color: var(--info); color: var(--info); min-width: 200px;">
+          📄 SessionRecord<br>
+          <small style="font-weight: normal; color: var(--primary-soft);">
+            spec_id · start_commit · checkpoints[] · status<br>
+            (.cortex/sessions/&lt;id&gt;.yaml)
+          </small>
+        </div>
+        <span class="flow-arrow">↗</span>
+        <div class="flow-box">middle emite checkpoints</div>
+      </div>
+      <div class="flow-row" style="margin-top: 20px;">
+        <span class="flow-arrow">↓</span>
+      </div>
+      <div class="flow-row">
+        <div class="flow-box">documenter lee Session</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box">corre verification_hooks</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box">persiste session note + ADRs</div>
+      </div>
+      <p class="flow-note">
+        La Session es <strong>el</strong> contrato compartido. Cualquier agente
+        (incluido el documenter) la lee desde disco. Nadie tiene que "pasar
+        contexto" en mensajes.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 6. COMANDOS                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="comandos" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Inventario de CLI</span>6. Comandos: antes vs ahora</h2>
+    <p class="section-intro">
+      Qué comando agregamos, cuál cambió, cuál sigue idéntico, cuál desapareció.
+    </p>
+
+    <h3>6.1 · Setup y diagnóstico (sin cambios significativos)</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Comando</th><th>Antes</th><th>Ahora</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect"><code>cortex setup agent</code></td>
+          <td class="before"><span class="pill pill-kept">igual</span> crea workspace v2 en <code>.cortex/</code>.</td>
+          <td class="after"><span class="pill pill-kept">igual</span> + crea también <code>.cortex/sessions/</code>.</td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex doctor</code></td>
+          <td class="before"><span class="pill pill-kept">igual</span> chequeos básicos.</td>
+          <td class="after"><span class="pill pill-changed">extendido</span> nuevos checks: <code>[sessions]</code>, <code>[autopilot]</code> policy + hooks, <code>[pluggable_middle]</code> health.</td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex search / index-docs / stats</code></td>
+          <td class="before"><span class="pill pill-kept">igual</span></td>
+          <td class="after"><span class="pill pill-kept">igual</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 · Creación de specs (cambio importante)</h3>
+    <div class="side-by-side">
+      <div class="panel before">
+        <span class="panel-label">Antes</span>
+        <h3><code>cortex create-spec</code></h3>
+        <pre class="code"><span class="prompt">$</span> cortex create-spec \
+    --title <span class="keyword">"JWT refresh"</span> \
+    --goal <span class="keyword">"..."</span> \
+    --file src/auth.py
+<span class="comment"># Sin verification_hooks.</span>
+<span class="comment"># El documenter después adivina si</span>
+<span class="comment"># el trabajo está hecho.</span></pre>
+      </div>
+      <div class="panel after">
+        <span class="panel-label">Ahora</span>
+        <h3><code>cortex create-spec</code> + hooks</h3>
+        <pre class="code"><span class="prompt">$</span> cortex create-spec \
+    --title <span class="keyword">"JWT refresh"</span> \
+    --goal <span class="keyword">"..."</span> \
+    --file src/auth.py \
+    <span class="new">--verification-hook</span> \
+      <span class="keyword">'name=tests;command=pytest tests/auth/'</span>
+<span class="comment"># Verification hooks OBLIGATORIOS.</span>
+<span class="comment"># Session abre automáticamente.</span></pre>
+      </div>
+    </div>
+
+    <h3>6.3 · Comandos NUEVOS de Sessions</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Comando</th><th>Para qué sirve</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect"><code>cortex session current</code></td>
+          <td class="before">Id de la sesión activa.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session list [--status ...]</code></td>
+          <td class="before">Lista sesiones (open/closed/handoff/abandoned).</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session show [ID]</code></td>
+          <td class="before">Detalle completo, incluyendo checkpoints y verification status.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session diff [ID]</code></td>
+          <td class="before"><code>git diff start_commit..HEAD</code> de la sesión.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session switch &lt;ID&gt;</code></td>
+          <td class="before">Promueve otra sesión OPEN a activa.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session abandon &lt;ID&gt; --reason</code></td>
+          <td class="before">Cierra como ABANDONED sin session note.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session checkpoint --source ... --note ...</code></td>
+          <td class="before">Appendea un checkpoint manual (los IDE hooks lo invocan).</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex session hooks list | install | uninstall | status</code></td>
+          <td class="before">Gestiona IDE hooks para el modo Observed.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex finish-session [--interactive] [--handoff]</code></td>
+          <td class="before">Cierra la sesión y dispara el documenter.</td>
+          <td><span class="pill pill-new">nuevo</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.4 · Autopilot — preservado como alias</h3>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Comando</th><th>Comportamiento</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="aspect"><code>cortex autopilot start --mode assist</code></td>
+          <td class="before">Adopta la session activa con políticas.</td>
+          <td><span class="pill pill-changed">delega a Sessions</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex autopilot checkpoint / finish / status / doctor</code></td>
+          <td class="before">Mantienen su CLI; internamente usan <code>SessionService</code>.</td>
+          <td><span class="pill pill-changed">delega</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex autopilot install --ide cursor</code></td>
+          <td class="before">Reemplazado por <code>cortex session hooks install --ide cursor</code>.</td>
+          <td><span class="pill pill-removed">eliminado</span></td>
+        </tr>
+        <tr>
+          <td class="aspect"><code>cortex autopilot cleanup / report</code></td>
+          <td class="before">JSONL events ya no existen; reporting cubierto por <code>cortex session list</code>.</td>
+          <td><span class="pill pill-removed">eliminado</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 7. VENTAJAS                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="ventajas">
+  <div class="container">
+    <h2><span class="kicker">Lo que se gana</span>7. Ventajas profundas</h2>
+    <p class="section-intro">
+      No "más features", sino <strong>capacidades estructurales</strong> que
+      antes no eran posibles.
+    </p>
+
+    <div class="grid-cards">
+      <div class="adv-card">
+        <div class="icon">🔓</div>
+        <h4>Libertad de tooling</h4>
+        <p>Cursor, Claude Code, Pi, Codex, manual — todos sirven. Cortex aporta gobernanza sin imponer agente.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">👁️</div>
+        <h4>Transparencia operativa</h4>
+        <p>Las sesiones son archivos YAML inspeccionables. <code>cortex session show</code> muestra exactamente qué pasó.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">↻</div>
+        <h4>Recuperabilidad</h4>
+        <p>Sesión interrumpida = sigue OPEN en disco. <code>switch</code> + <code>finish-session</code> y ya está.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🧪</div>
+        <h4>Verificación objetiva</h4>
+        <p>Los hooks declarados son exit codes, no prosa. "Terminé" es un hecho técnico, no una opinión.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">⚙️</div>
+        <h4>Reconstrucción autónoma</h4>
+        <p>El documenter NO depende del middle. Lee Session + diff + hooks. BYO mode funciona end-to-end.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🔁</div>
+        <h4>Multi-tasking real</h4>
+        <p>Varias sesiones OPEN en paralelo. Útil para reviews + dev simultáneos.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🪝</div>
+        <h4>Hooks IDE automáticos</h4>
+        <p>Cada commit / file save / tool use puede emitir checkpoint. El registro se llena solo.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🎛️</div>
+        <h4>Control granular</h4>
+        <p><code>finish-session --interactive</code> permite editar título, body, aprobar/rechazar ADRs uno por uno antes de persistir.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">📉</div>
+        <h4>Menos código en el repo</h4>
+        <p>~2.000 LOC netas eliminadas. El módulo Autopilot bajó 31%. Menos superficie = menos bugs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 8. TRADE-OFFS                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="tradeoffs" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Lo que cuesta</span>8. Trade-offs honestos</h2>
+    <p class="section-intro">
+      No todo es ganancia. Estas son las cosas que se complicaron o se hicieron
+      más costosas. Hay que ponerlas en la balanza con honestidad.
+    </p>
+
+    <div class="tradeoff-item">
+      <h4>Verification hooks obligatorios = más fricción en sync</h4>
+      <p>
+        El autor del spec ahora tiene que pensar <em>cómo</em> se verifica que el
+        trabajo está hecho. Para tareas pequeñas ("rename variable", "fix typo")
+        eso puede sentirse como burocracia.
+      </p>
+      <div class="mitigation">
+        Mitigación: el hook puede ser tan simple como <code>test -f archivo.md</code>
+        para tareas de docs, o reusar un test existente del repo. La fricción real
+        se paga en specs <em>vagos</em>, que es donde más se necesita disciplina.
+      </div>
+    </div>
+
+    <div class="tradeoff-item">
+      <h4>Curva de aprendizaje inicial mayor</h4>
+      <p>
+        Hay 3 modos (Managed/Observed/BYO), 9 comandos nuevos de
+        <code>cortex session</code>, 2 modos de documenter (auto/interactive),
+        y un sistema de hooks IDE por configurar. Un usuario que llega hoy tiene
+        más para asimilar que uno que llegó hace 6 meses.
+      </p>
+      <div class="mitigation">
+        Mitigación: hay <code>MIGRATION-FROM-TRIPARTITO.md</code> que enseña por
+        modos, y <code>docs/architecture/pluggable-middle-overview.md</code>
+        cubre el modelo en 3 páginas. El BYO mode requiere conocer 3 comandos
+        para empezar: <code>create-spec</code>, edición libre, <code>finish-session</code>.
+      </div>
+    </div>
+
+    <div class="tradeoff-item">
+      <h4>Legacy YAML mode deprecated pero vivo</h4>
+      <p>
+        El esquema <code>AgentHandoff</code> y la herramienta
+        <code>cortex_validate_handoff</code> siguen funcionando para single-agent
+        IDEs (Codex). Es carga de mantenimiento extra y un camino que puede
+        confundir a contribuyentes nuevos.
+      </p>
+      <div class="mitigation">
+        Mitigación: el código está claramente marcado <code>@deprecated</code> en
+        docstrings y en el subagent prompt. Cuando Codex (o equivalente) soporte
+        hooks nativos, se elimina en una mayor.
+      </div>
+    </div>
+
+    <div class="tradeoff-item">
+      <h4>Modelo más complejo conceptualmente</h4>
+      <p>
+        Antes había un solo path mental: "Cortex orquesta todo". Ahora hay que
+        elegir entre Managed, Observed o BYO; entender qué es la Session, qué
+        son los checkpoints, qué son los hooks. La superficie cognitiva creció.
+      </p>
+      <div class="mitigation">
+        Mitigación: los modos son <em>opt-in</em>. Un usuario que solo quiere el
+        flujo viejo usa Managed mode y nunca toca lo demás. Los modos avanzados
+        existen para quien los necesita.
+      </div>
+    </div>
+
+    <div class="tradeoff-item">
+      <h4>Migración interna fue grande (aunque transparente al usuario)</h4>
+      <p>
+        Eliminamos <code>state_store</code>, <code>session_builder</code>,
+        <code>session_writer</code>, todos los <code>renderers</code> del
+        autopilot, 8 adapters viejos, 4 hook scripts. Cualquier consumidor
+        externo que importaba de esos paths se rompió.
+      </p>
+      <div class="mitigation">
+        Mitigación: no había usuarios reales del módulo Autopilot en su forma
+        vieja. Si hubiera, el migration guide cubre el remapping de imports.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 9. PERSONAS                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="personas">
+  <div class="container">
+    <h2><span class="kicker">Segmentación de usuarios</span>9. Quién se beneficia más</h2>
+    <p class="section-intro">
+      No todos los usuarios ganan lo mismo. Estos son los 4 perfiles típicos y
+      cuánto cambia su vida.
+    </p>
+
+    <div class="persona-card">
+      <div class="persona-header">
+        <div class="avatar">A</div>
+        <div>
+          <div class="persona-name">Anita — dev solo con Cursor + skills custom</div>
+          <div class="persona-tag">"No quiero abandonar mis flows; pero la memoria de Cortex me sirve."</div>
+        </div>
+      </div>
+      <p>
+        Antes tenía que elegir entre sus skills o Cortex-SDDwork. Ahora:
+        <code>cortex session hooks install --ide cursor</code>, sigue trabajando
+        con sus skills, y los commits emiten checkpoints automáticamente al
+        modo Observed.
+      </p>
+      <div class="persona-benefit">Gana mucho. Es el caso de uso que la nueva arquitectura desbloqueó.</div>
+    </div>
+
+    <div class="persona-card">
+      <div class="persona-header">
+        <div class="avatar">B</div>
+        <div>
+          <div class="persona-name">Beto — equipo nuevo sin tooling propio</div>
+          <div class="persona-tag">"Soy nuevo, prefiero que el framework me diga qué hacer."</div>
+        </div>
+      </div>
+      <p>
+        Sigue usando Managed mode (cortex-SDDwork). El flujo desde su perspectiva
+        es casi idéntico al de antes — la única diferencia es que ahora al final
+        él corre <code>cortex finish-session</code> en lugar de que el subagent
+        lo invoque por debajo.
+      </p>
+      <div class="persona-benefit">Gana poco directamente, pero NO pierde nada — la calidad del flujo es la misma.</div>
+    </div>
+
+    <div class="persona-card">
+      <div class="persona-header">
+        <div class="avatar">C</div>
+        <div>
+          <div class="persona-name">Carla — tech lead que revisa PRs</div>
+          <div class="persona-tag">"Necesito visibilidad de qué hicieron los demás."</div>
+        </div>
+      </div>
+      <p>
+        Antes los session notes aparecían tarde, después del cierre. Ahora puede
+        <code>cortex session list</code> en cualquier momento y ver qué hay
+        OPEN, los checkpoints emitidos, scope drift detectado. Pre-merge sabe
+        en qué estado real está la sesión.
+      </p>
+      <div class="persona-benefit">Gana visibilidad operacional — observabilidad que antes no existía.</div>
+    </div>
+
+    <div class="persona-card">
+      <div class="persona-header">
+        <div class="avatar">D</div>
+        <div>
+          <div class="persona-name">Diego — vibe coder los fines de semana</div>
+          <div class="persona-tag">"Solo quiero codear; que Cortex me documente al final."</div>
+        </div>
+      </div>
+      <p>
+        Usa BYO mode. <code>cortex create-spec ...</code>, edita lo que quiera con
+        cualquier herramienta (o sin ninguna), commits libres, y al final
+        <code>cortex finish-session</code>. El documenter reconstruye desde el
+        diff y persiste todo.
+      </p>
+      <div class="persona-benefit">Gana mucho. Antes no podía usar Cortex sin abandonar su workflow.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 10. CASO REAL                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="caso-real" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Comparación end-to-end</span>10. Caso real: una compañía adoptando</h2>
+    <p class="section-intro">
+      "Acme Corp" decide adoptar Cortex. Estos son sus scripts típicos de
+      onboarding y uso diario, antes y después.
+    </p>
+
+    <h3>10.1 · Setup de un repo nuevo</h3>
+    <div class="side-by-side">
+      <div class="panel before">
+        <span class="panel-label">Antes</span>
+        <pre class="code"><span class="prompt">$</span> cd repo-de-acme
+<span class="prompt">$</span> pip install cortex-memory
+<span class="prompt">$</span> cortex setup agent
+<span class="prompt">$</span> cortex doctor
+<span class="comment"># Verifica: vault, memoria, git, layout v2.</span>
+
+<span class="comment"># Para empezar a trabajar:</span>
+<span class="comment"># Tenía que aprender el flujo</span>
+<span class="comment"># sync→SDDwork→documenter Y</span>
+<span class="comment"># cambiarse a perfiles específicos</span>
+<span class="comment"># del IDE para cada paso.</span></pre>
+      </div>
+      <div class="panel after">
+        <span class="panel-label">Ahora</span>
+        <pre class="code"><span class="prompt">$</span> cd repo-de-acme
+<span class="prompt">$</span> pip install cortex-memory
+<span class="prompt">$</span> cortex setup agent
+<span class="prompt">$</span> cortex doctor
+<span class="comment"># Verifica: vault, memoria, git, layout v2,</span>
+<span class="comment"># sessions, hooks, documenter modes.</span>
+
+<span class="comment"># Si usan Cursor / Claude Code / Pi:</span>
+<span class="prompt">$</span> cortex session hooks install --ide cursor
+<span class="comment"># Listo. Cada commit emitirá checkpoint.</span></pre>
+      </div>
+    </div>
+
+    <h3>10.2 · Flujo diario de un desarrollo</h3>
+    <div class="side-by-side">
+      <div class="panel before">
+        <span class="panel-label">Antes (Tripartito obligatorio)</span>
+        <pre class="code"><span class="comment"># 1. Pedir el feature al agente</span>
+<span class="prompt">&gt;</span> claude-code "implementa JWT refresh"
+
+<span class="comment"># 2. cortex-sync skill se invoca</span>
+<span class="comment">#    crea vault/specs/...md</span>
+
+<span class="comment"># 3. Cambiar al perfil cortex-SDDwork</span>
+<span class="comment">#    Manual: switch profile in IDE</span>
+
+<span class="comment"># 4. SDDwork orquesta</span>
+<span class="comment">#    explorer + implementer + reviewer</span>
+<span class="comment">#    emite YAML AgentHandoff al final</span>
+
+<span class="comment"># 5. cortex-documenter consume el YAML</span>
+<span class="comment">#    llama save-session internamente</span>
+
+<span class="comment"># Listo.</span>
+<span class="comment"># Si fallaba algún YAML handoff,</span>
+<span class="comment"># el documenter quedaba sin contexto</span>
+<span class="comment"># y había que releer el chat.</span></pre>
+      </div>
+      <div class="panel after">
+        <span class="panel-label">Ahora (Observed con Cursor + hooks)</span>
+        <pre class="code"><span class="comment"># 1. Crear spec con verification hooks</span>
+<span class="prompt">$</span> cortex create-spec \
+    --title <span class="keyword">"JWT refresh"</span> \
+    --goal <span class="keyword">"refresh tokens con rotación"</span> \
+    --file src/auth.py \
+    --verification-hook \
+      <span class="keyword">'name=tests;command=pytest tests/auth/'</span>
+<span class="comment"># Session abierta automáticamente.</span>
+
+<span class="comment"># 2. Trabajar en Cursor con tus skills</span>
+<span class="comment">#    Editar, commits, lo que sea.</span>
+<span class="comment">#    Cada commit → hook → checkpoint.</span>
+
+<span class="comment"># 3. (Opcional) inspeccionar</span>
+<span class="prompt">$</span> cortex session show
+<span class="comment"># Ver checkpoints, diff acumulado, etc.</span>
+
+<span class="comment"># 4. Cerrar la sesión</span>
+<span class="prompt">$</span> cortex finish-session --interactive
+<span class="comment"># Modo interactivo: aprobar/editar/handoff</span>
+<span class="comment"># Persiste session note + ADRs.</span></pre>
+      </div>
+    </div>
+
+    <h3>10.3 · Recuperación tras un crash</h3>
+    <div class="side-by-side">
+      <div class="panel before">
+        <span class="panel-label">Antes</span>
+        <pre class="code"><span class="comment"># El subagente cortex-SDDwork crasheó</span>
+<span class="comment"># a mitad de Deep Track.</span>
+
+<span class="comment"># El usuario:</span>
+<span class="comment">#  - No tiene visibilidad de qué pasó.</span>
+<span class="comment">#  - No puede retomar fácilmente.</span>
+<span class="comment">#  - Probablemente reinicia desde 0,</span>
+<span class="comment">#    creando un spec nuevo o</span>
+<span class="comment">#    re-explicándole al agente.</span>
+
+<span class="comment"># Pérdida estimada: 10-30 min</span>
+<span class="comment"># de contexto y trabajo.</span></pre>
+      </div>
+      <div class="panel after">
+        <span class="panel-label">Ahora</span>
+        <pre class="code"><span class="comment"># El subagente crasheó.</span>
+
+<span class="prompt">$</span> cortex session list --status open
+<span class="comment"># 2026-05-17_jwt-refresh    OPEN  managed  2h 14m ago</span>
+
+<span class="prompt">$</span> cortex session show 2026-05-17_jwt-refresh
+<span class="comment"># Muestra: spec, checkpoints emitidos antes</span>
+<span class="comment"># del crash, diff acumulado, scope drift, etc.</span>
+
+<span class="prompt">$</span> cortex session diff
+<span class="comment"># Muestra exactamente qué archivos se</span>
+<span class="comment"># cambiaron — punto de partida concreto.</span>
+
+<span class="comment"># Continúa el trabajo. Cuando termine:</span>
+<span class="prompt">$</span> cortex finish-session
+<span class="comment"># Si los hooks pasan: CLOSED.</span>
+<span class="comment"># Si no: HANDOFF con blockers documentados.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 11. LO QUE NO CAMBIÓ                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="sin-cambio">
+  <div class="container">
+    <h2><span class="kicker">Estabilidad</span>11. Lo que NO cambió</h2>
+    <p class="section-intro">
+      Esto importa tanto como lo que cambió. Acme Corp puede confiar en que las
+      siguientes piezas son <strong>idénticas</strong> a antes:
+    </p>
+
+    <div class="preserved-grid">
+      <div class="preserved-item">
+        <strong>Vault (Obsidian-compatible)</strong>
+        Los archivos markdown en <code>vault/</code> son los mismos.
+      </div>
+      <div class="preserved-item">
+        <strong>Memoria episódica</strong>
+        ChromaDB sigue siendo el backend; embeddings ONNX por default.
+      </div>
+      <div class="preserved-item">
+        <strong>Memoria semántica</strong>
+        Vault con embeddings, recuperación RRF híbrida.
+      </div>
+      <div class="preserved-item">
+        <strong>Schema de session notes</strong>
+        Los <code>.md</code> que persiste el documenter mantienen formato.
+      </div>
+      <div class="preserved-item">
+        <strong>Workspace layout v2</strong>
+        Todo sigue viviendo en <code>.cortex/</code>. Cero cambios estructurales.
+      </div>
+      <div class="preserved-item">
+        <strong>Spec format</strong>
+        Markdown con frontmatter YAML; solo se agregaron <code>verification_hooks</code>.
+      </div>
+      <div class="preserved-item">
+        <strong>Enterprise</strong>
+        Governance, knowledge promotion, retrieval scopes — sin tocar.
+      </div>
+      <div class="preserved-item">
+        <strong>Comandos básicos</strong>
+        <code>setup</code>, <code>doctor</code>, <code>search</code>, <code>stats</code>, <code>install-skills</code> — iguales.
+      </div>
+      <div class="preserved-item">
+        <strong>Tutor system</strong>
+        <code>cortex tutor</code> sigue funcionando idéntico.
+      </div>
+      <div class="preserved-item">
+        <strong>MCP server</strong>
+        Mismo binario (<code>cortex mcp-server</code>); solo agregaron 6 tools nuevas.
+      </div>
+      <div class="preserved-item">
+        <strong>Adapters IDE (canonical_tools)</strong>
+        Sistema de traducción de tools por IDE intacto.
+      </div>
+      <div class="preserved-item">
+        <strong>WebGraph</strong>
+        Visualización de memorias sin cambios.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 12. VEREDICTO                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section id="veredicto" class="alt">
+  <div class="container">
+    <h2><span class="kicker">Análisis crítico final</span>12. Veredicto final</h2>
+
+    <h3>12.1 · La pregunta dura: ¿valió la pena?</h3>
+    <p style="font-size: 1.05rem; color: var(--primary-soft);">
+      Sí, contundentemente. Tres razones objetivas:
+    </p>
+
+    <div class="grid-cards">
+      <div class="adv-card">
+        <div class="icon">📈</div>
+        <h4>Adopción posible aumentó</h4>
+        <p>Pre-cambio, Cortex era usable por equipos dispuestos a abandonar sus tools. Post-cambio, es usable por <em>cualquier</em> equipo. La superficie de usuarios potenciales se multiplicó.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🧹</div>
+        <h4>Código quedó más limpio</h4>
+        <p>~2.000 LOC netas eliminadas (módulo Autopilot bajó 31%). Sin duplicación de sesiones, sin renderers paralelos, sin state stores en run/.</p>
+      </div>
+      <div class="adv-card">
+        <div class="icon">🔬</div>
+        <h4>Quality bar subió</h4>
+        <p>Verification hooks obligatorios + Pydantic v2 strict + algoritmo de reconstrucción + interactive UX = más rigor automatizado que antes.</p>
+      </div>
+    </div>
+
+    <h3>12.2 · Lo que podría haber salido mal (y no salió)</h3>
+    <ul>
+      <li>
+        <strong>Regresiones en flujo existente:</strong> tras 5 fases de cambios estructurales,
+        <strong>0 failures nuevas</strong> en la suite. 1743 tests pasan; las 4 failures preexistentes
+        documentadas también fueron arregladas.
+      </li>
+      <li>
+        <strong>Inconsistencia entre docs y código:</strong> el migration guide, el overview, el README,
+        el CHANGELOG y los progress logs de cada fase fueron actualizados en la misma serie de
+        commits que el código. Cero drift documentado.
+      </li>
+      <li>
+        <strong>Deuda técnica nueva:</strong> el cleanup de Fase 04 eliminó los 17 archivos legacy del
+        Autopilot (adapters viejos, hooks viejos, packaging). No quedó código zombie "por las
+        dudas".
+      </li>
+    </ul>
+
+    <h3>12.3 · Lo que sigue siendo discutible</h3>
+    <ul>
+      <li>
+        <strong>Mantener Legacy YAML mode:</strong> el código de
+        <code>AgentHandoff</code> + <code>cortex_validate_handoff</code> sigue vivo solo
+        para single-agent IDEs (Codex). Es deuda no-cerrada. Algunos podrían argumentar que
+        es mejor un breaking change limpio que un alias deprecated indefinido.
+      </li>
+      <li>
+        <strong>Hooks IDE solo para 3 IDEs:</strong> opencode quedó como "post-MVP roadmap" (Fase 05
+        planeada). Hay usuarios potenciales en otros IDEs (JetBrains nativo, Zed) que no se
+        benefician del modo Observed todavía.
+      </li>
+      <li>
+        <strong>Modo interactive como opt-in:</strong> el default es auto. Algunos argumentarían
+        que interactive debería ser el default para reducir errores silenciosos. Es una
+        decisión de UX que puede revisarse.
+      </li>
+    </ul>
+
+    <div class="verdict">
+      <h3><span class="verdict-icon">✓</span> Conclusión final</h3>
+      <p>
+        Cortex hizo lo correcto. La arquitectura Pluggable Middle <strong>no es solo un
+        refactor</strong> — es una <strong>reformulación filosófica</strong>. Pasó de imponer un
+        protocolo a respetar la diversidad de stacks. Pasó de invisibilidad operativa a Sessions
+        observables. Pasó de verificación subjetiva a hooks ejecutables. Y todo eso con cero
+        regresiones, cero deuda nueva, y un módulo Autopilot más liviano.
+      </p>
+      <p style="margin-top: 16px;">
+        Para una compañía considerando adoptar Cortex hoy: <strong>la decisión es trivialmente
+        positiva</strong>. El framework es más flexible, mejor documentado, con más superficie de
+        diagnóstico, y con un camino claro hacia post-MVP (opencode, TUI, CI plugin) ya planeado.
+      </p>
+      <div class="verdict-row">
+        <div class="verdict-stat"><div class="v">✓</div><div class="l">Libertad de tooling</div></div>
+        <div class="verdict-stat"><div class="v">✓</div><div class="l">Visibilidad operativa</div></div>
+        <div class="verdict-stat"><div class="v">✓</div><div class="l">Verificación objetiva</div></div>
+        <div class="verdict-stat"><div class="v">✓</div><div class="l">Menos código, mejor</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div>
+      <strong>Cortex — Pluggable Middle Architecture</strong><br>
+      Análisis crítico generado tras el cierre de Fase 04 · 2026-05-17
+    </div>
+    <div class="footer-links">
+      <a href="../ARQUITECTURA-PLUGGABLE-MIDDLE.md">Arquitectura completa</a>
+      <a href="../MIGRATION-FROM-TRIPARTITO.md">Migration guide</a>
+      <a href="../../architecture/pluggable-middle-overview.md">Overview corto</a>
+      <a href="README.md">Plan de fases</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -58,25 +58,45 @@ _CORTEX_TOML_MARKER_CLOSE = "# END CORTEX MCP"
 
 
 def _build_cortex_agents_section(autogen_header: str) -> str:
-    """Devuelve el bloque Cortex que se inyecta en AGENTS.md del project root.
+    """Build the Cortex block injected into AGENTS.md at the project root.
 
-    Codex no soporta subagents personalizados — el agente unico ejecuta las
-    3 fases tripartitas secuencialmente. El AGENTS.md instruye explicitamente
-    el orden y los gates de cada fase.
+    Phase 09.A+ / May 2026 — rewritten for the **triadic anchor model**:
+
+        /cortex-sync       (mandatory opening anchor)
+            ↓
+        MIDDLE (pluggable: cortex-SDDwork / BYO / etc.)
+            ↓
+        /cortex-documenter (mandatory closing anchor)
+
+    Codex has no native ``Task`` tool for parallel subagent delegation
+    and no native slash-skill dispatch. The single Codex agent therefore
+    executes the three anchors **in sequence within the same session**,
+    guided by the explicit phase instructions below. Each anchor uses
+    the MCP tools documented in the corresponding canonical skill file
+    under ``.cortex/skills/``.
     """
     return f"""{_CORTEX_AGENTS_MD_MARKER_OPEN}
 <!--
 {autogen_header.strip()}
 -->
 
-# Cortex Workflow for Codex
+# Cortex Workflow for Codex (triadic anchors, single-agent sequential)
 
-This project uses Cortex governance. Codex executes the Cortex tripartite
-flow as a **single-agent sequence** because Codex has no native `Task`
-tool for parallel subagent delegation — see
-`docs/architecture/canonical-tools.md`.
+This project uses **Cortex** governance. Cortex is structured around
+three slash-invocable anchors:
 
-## Pre-flight check (mandatory)
+| Anchor             | Role            | Mandatory |
+|--------------------|-----------------|-----------|
+| `/cortex-sync`     | opening anchor  | YES — every Session opens here |
+| (middle)           | implementation  | pluggable (SDDwork / BYO / etc.) |
+| `/cortex-documenter` | closing anchor | YES — every Session closes here |
+
+Codex has no native `Task` tool nor slash-skill dispatch, so the **single
+Codex agent executes the three phases sequentially within the same
+session**, guided by the explicit instructions below. The phases mirror
+the canonical skill files under `.cortex/skills/`.
+
+## Pre-flight check (mandatory, every session)
 
 Before any operation, call `cortex_ping`. If the response is not
 `status: "ok"`, abort the operation with a clear message to the user:
@@ -87,47 +107,92 @@ Before any operation, call `cortex_ping`. If the response is not
 NEVER fall back to manual markdown writing. NEVER degrade Cortex features
 when the MCP is down.
 
-## Sequential tripartite flow
+---
 
-For each non-trivial task, execute the 3 phases **in this exact order**
-within the same session:
+## Phase 1 — Opening anchor (acts as `/cortex-sync`)
 
-### Phase 1 — Explorer (read-only analysis)
+Mandatory first step. See `.cortex/skills/cortex-sync.md` for the full
+canonical skill.
 
-- Use `cortex_search` and `cortex_context` to find relevant files.
-- Read ONLY what the spec mentions or what is essential.
-- DO NOT modify any code in this phase.
-- At the end of this phase, summarize verified facts and unverified
-  assumptions in your message before moving to Phase 2.
+1. Call `cortex_sync_ticket` with the user's request. The MCP server
+   rejects any later `cortex_create_spec` if this step is skipped.
+2. Read `CONTEXT.md` if it exists; its terms are canonical and the spec
+   must not invent synonyms.
+3. Explore the repo with `glob` + `read` (NOT modify) to ground the spec
+   in real code.
+4. Emit a proposal with `cortex_emit_proposal` (summary + 2-5
+   alternatives + recommendation + risks). In `proposal_mode="required"`,
+   end the turn after emitting — wait for the user's confirmation in a
+   later message before continuing.
+5. After confirmation, call `cortex_create_spec` (passing
+   `proposal_mode` / `proposal_confirmed` as appropriate). This persists
+   the spec to `vault/specs/` AND opens the Session.
 
-### Phase 2 — Implementer (code changes)
+---
 
-- Read the explorer summary above (still in your context).
-- Modify code following the existing repo conventions.
-- Run tests if available; report failures explicitly.
-- Use `cortex_validate_handoff` to validate the YAML `AgentHandoff`
-  structure before declaring the phase complete. Status `handoff` is a
-  first-class outcome — use it when work is partial, NOT `completed`.
+## Phase 2 — Middle (acts as `/cortex-SDDwork`)
 
-### Phase 3 — Documenter (Verification Gate + persistence)
+Implement the persisted spec. The full canonical skill lives at
+`.cortex/skills/cortex-SDDwork.md`.
 
-The Verification Gate is mandatory before persisting any session note:
+1. Verify the active Session with `cortex_session_status`. Abort if no
+   active session exists.
+2. Decide between **Fast Track** (1-2 files, cosmetic / bugfix / simple
+   logic) and **Deep Track** (refactors, new architecture).
+3. Make the changes following existing repo conventions. Run tests if
+   declared in the spec's `verification_hooks`. Codex cannot delegate to
+   subagents — for Deep Track, perform the explorer / designer /
+   implementer steps sequentially in your own context.
+4. Emit ONE `cortex_session_checkpoint` with `source="cortex-SDDwork"`,
+   carrying `verified_claims`, `unverified_claims`, `artifacts_touched`,
+   and a brief `note`. Do NOT close the session here — that's Phase 3.
 
-- Use `cortex_verify_session_claims` to cross-check every claim against
-  the actual git diff. If a verification fails, close the session with
-  `status: handoff` (NOT `completed`).
-- Persist the session note via `cortex_save_session` with the verified
-  state, decisions, and next steps.
+---
+
+## Phase 3 — Closing anchor (acts as `/cortex-documenter`)
+
+Mandatory final step. The full canonical skill lives at
+`.cortex/skills/cortex-documenter.md`. The documenter writes the session
+note **by hand with editorial criterion** — NOT a template fill.
+
+1. Call `cortex_documenter_briefing` (no args = active session). Receive
+   JSON with: spec, diff_text, diff_entries, files_verified_by_git (✓),
+   files_declared_only (◌), in_scope / out_of_scope / unimplemented
+   files, verification_results, contradictions, suggested_adrs,
+   raw_checkpoints, gitless flag.
+2. Apply the canonical decision table to decide what doc types to emit
+   (1 mandatory main note: `session` or `handoff`; 0..N optional:
+   `adr`, `decision`, `incident`, `postmortem`, `runbook`,
+   `architecture`, `changelog`, `glossary`, `hu`). See the skill file
+   for the objective criteria per doc type.
+3. Write the main note body in your own prose — reference, don't
+   duplicate. Mention files with provenance: ``✓ path`` for git-verified,
+   ``◌ path`` for declared-only (uncommitted).
+4. **Recommended**: call `cortex_self_review_note(body=<draft>,
+   verification_hooks_passed=<bool>)`. Surfaces placeholder tokens and
+   hollow success claims. Revise or proceed.
+5. Persist the main note with `cortex_write_doc(doc_type=...,
+   payload=...)`. Persist any secondary notes the same way.
+6. Close the Session with `cortex_close_session(status=...,
+   session_note_path=..., adrs_created=[...])`. `status` MUST be one of
+   `closed` / `handoff` / `abandoned`. Use `handoff` (not `closed`) when
+   required verification hooks failed OR unimplemented files remain.
+
+---
 
 ## Hard rules
 
 - NEVER call `cortex_create_spec` before `cortex_sync_ticket`. The MCP
   server rejects it with a governance violation.
-- ALWAYS pass through the Verification Gate (Phase 3) before closing the
-  session.
+- NEVER skip Phase 3 (closing anchor). A session without the documenter
+  closing step erodes the organizational memory.
+- NEVER write Markdown to the vault by hand with `write_file` — the
+  canonical routing depends on `cortex_write_doc` and `cortex_create_spec`.
+- The status `handoff` is a first-class outcome. If hooks fail or
+  unimplemented files remain, close with `handoff` (NOT `closed`).
 - If `CONTEXT.md` exists at project root or under `.cortex/CONTEXT.md`,
-  treat its terms as canonical. Suggest new domain terms via the
-  handoff's `suggested_context_terms` field.
+  treat its terms as canonical. Add new canonical terms via
+  `cortex_write_doc(doc_type="glossary", ...)`.
 
 {_CORTEX_AGENTS_MD_MARKER_CLOSE}
 """
@@ -230,8 +295,10 @@ class CodexAdapter(IDEAdapter):
             sources=[
                 ".cortex/skills/cortex-sync.md",
                 ".cortex/skills/cortex-SDDwork.md",
+                ".cortex/skills/cortex-documenter.md",
                 ".cortex/subagents/cortex-code-explorer.md",
                 ".cortex/subagents/cortex-code-implementer.md",
+                ".cortex/subagents/cortex-code-designer.md",
                 ".cortex/subagents/cortex-documenter.md",
             ],
             ide_name="codex",

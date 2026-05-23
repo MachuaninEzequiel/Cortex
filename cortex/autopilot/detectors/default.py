@@ -1,4 +1,5 @@
 """cortex.autopilot.detectors.default — Built-in detectors."""
+
 from __future__ import annotations
 
 from cortex.autopilot.models import DetectionRequest, DetectionResult
@@ -13,7 +14,9 @@ class CodeChangeDetector:
 
     def detect(self, request: DetectionRequest) -> DetectionResult:
         if request.changed_files:
-            code_files = [f for f in request.changed_files if any(f.endswith(ext) for ext in self.CODE_EXTS)]
+            code_files = [
+                f for f in request.changed_files if any(f.endswith(ext) for ext in self.CODE_EXTS)
+            ]
             if code_files:
                 count = len(code_files)
                 if count > 3:
@@ -32,7 +35,15 @@ class CodeChangeDetector:
 
         if request.user_request:
             req_lower = request.user_request.lower()
-            code_keywords = {"implement", "refactor", "add feature", "bugfix", "fix bug", "crear", "implementar"}
+            code_keywords = {
+                "implement",
+                "refactor",
+                "add feature",
+                "bugfix",
+                "fix bug",
+                "crear",
+                "implementar",
+            }
             if any(kw in req_lower for kw in code_keywords):
                 return DetectionResult(
                     task_type="fast-code",
@@ -58,7 +69,9 @@ class DocsOnlyDetector:
 
     def detect(self, request: DetectionRequest) -> DetectionResult:
         if request.changed_files:
-            docs_files = [f for f in request.changed_files if any(f.endswith(ext) for ext in self.DOCS_EXTS)]
+            docs_files = [
+                f for f in request.changed_files if any(f.endswith(ext) for ext in self.DOCS_EXTS)
+            ]
             non_docs = [f for f in request.changed_files if f not in docs_files]
             if docs_files and not non_docs:
                 return DetectionResult(
@@ -95,7 +108,19 @@ class QuestionOnlyDetector:
 
     name = "question_only"
 
-    QUESTION_STARTS = ("what", "how", "why", "when", "where", "who", "which", "can you", "could you", "explain", "describe")
+    QUESTION_STARTS = (
+        "what",
+        "how",
+        "why",
+        "when",
+        "where",
+        "who",
+        "which",
+        "can you",
+        "could you",
+        "explain",
+        "describe",
+    )
     QUESTION_MARKERS = ("?", "what is", "how to", "how do", "how does")
 
     def detect(self, request: DetectionRequest) -> DetectionResult:
@@ -144,15 +169,43 @@ class SecuritySensitiveDetector:
     name = "security_sensitive"
 
     SECURITY_FILES = {
-        "auth", "authentication", "authorization", "login", "logout",
-        "password", "secret", "key", "token", "jwt", "oauth",
-        "crypto", "encrypt", "decrypt", "hash", "salt",
-        "permission", "acl", "rbac", "role",
+        "auth",
+        "authentication",
+        "authorization",
+        "login",
+        "logout",
+        "password",
+        "secret",
+        "key",
+        "token",
+        "jwt",
+        "oauth",
+        "crypto",
+        "encrypt",
+        "decrypt",
+        "hash",
+        "salt",
+        "permission",
+        "acl",
+        "rbac",
+        "role",
     }
     SECURITY_KEYWORDS = {
-        "password", "secret", "token", "jwt", "encrypt", "hash",
-        "permission", "role", "security", "vulnerability", "cve",
-        "exploit", "csrf", "xss", "sql injection",
+        "password",
+        "secret",
+        "token",
+        "jwt",
+        "encrypt",
+        "hash",
+        "permission",
+        "role",
+        "security",
+        "vulnerability",
+        "cve",
+        "exploit",
+        "csrf",
+        "xss",
+        "sql injection",
     }
     SECONDARY_KEYWORDS = {"auth", "login", "oauth"}
 

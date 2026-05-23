@@ -1,0 +1,40 @@
+# Cortex PR (MR) validation for GitLab CI.
+#
+# Drop this snippet into your project's ``.gitlab-ci.yml`` (or include
+# it via the includes: directive). Requires Python 3.13 and the
+# ``cortex-memory`` package.
+
+cortex-validate:
+  stage: test
+  image: python:3.13-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git
+    - pip install cortex-memory
+  script:
+    - |
+      cortex ci validate-pr \
+        --base-commit "$CI_MERGE_REQUEST_DIFF_BASE_SHA" \
+        --head-commit "$CI_COMMIT_SHA" \
+        --base-branch "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" \
+        --head-branch "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" \
+        --pr-number "$CI_MERGE_REQUEST_IID" \
+        --pr-author "$CI_MERGE_REQUEST_AUTHOR" \
+        --format json | tee cortex-result.json
+
+  after_script:
+    # Optional Level 2 — post the Markdown summary as an MR note.
+    - |
+      cortex ci validate-pr \
+        --base-commit "$CI_MERGE_REQUEST_DIFF_BASE_SHA" \
+        --head-commit "$CI_COMMIT_SHA" \
+        --pr-number "$CI_MERGE_REQUEST_IID" \
+        --format pr-comment > cortex-comment.md || true
+    - |
+      if [ -n "$CI_API_V4_URL" ] && [ -n "$GITLAB_TOKEN" ]; then
+        curl --silent --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+          --data-urlencode "body@cortex-comment.md" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes" \
+          > /dev/null || true
+      fi

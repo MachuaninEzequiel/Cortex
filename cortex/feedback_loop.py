@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class ExplicitFeedback:
     feedback_type: str             # "positive", "negative", "neutral"
     score: float = 0.0             # -1.0 to 1.0
     context: str = ""              # Additional context
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     
     @property
     def is_positive(self) -> bool:

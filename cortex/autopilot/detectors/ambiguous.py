@@ -1,4 +1,5 @@
 """cortex.autopilot.detectors.ambiguous — Ambiguous-request detector."""
+
 from __future__ import annotations
 
 from cortex.autopilot.models import DetectionRequest, DetectionResult
@@ -17,8 +18,16 @@ class AmbiguousRequestDetector:
     name = "ambiguous_request"
 
     VAGUE_VERBS = {
-        "mejorar", "arreglar", "cambiar", "actualizar", "fixear",
-        "improve", "fix", "change", "update", "refactor",
+        "mejorar",
+        "arreglar",
+        "cambiar",
+        "actualizar",
+        "fixear",
+        "improve",
+        "fix",
+        "change",
+        "update",
+        "refactor",
     }
     MIN_WORDS = 8
     FILE_EXTS = ("py", "ts", "js", "md", "yaml", "json")
@@ -35,10 +44,7 @@ class AmbiguousRequestDetector:
         words = request.user_request.lower().split()
         has_vague_verb = any(w in self.VAGUE_VERBS for w in words)
         is_short = len(words) < self.MIN_WORDS
-        has_file_ref = any(
-            "." in w and w.split(".")[-1] in self.FILE_EXTS
-            for w in words
-        )
+        has_file_ref = any("." in w and w.split(".")[-1] in self.FILE_EXTS for w in words)
 
         if is_short and has_vague_verb and not has_file_ref:
             return DetectionResult(

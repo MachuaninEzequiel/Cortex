@@ -1,5 +1,24 @@
 # Cortex Autopilot - Plan por Fases
 
+> ⚠️ **Documento histórico.** Esta carpeta contiene el plan de
+> construcción **original** del módulo `cortex.autopilot/` (fases 01-07
+> internas de Autopilot). La **Fase 03** del proyecto *Pluggable Middle*
+> (ver [`../pluggable-middle/`](../pluggable-middle/)) refactorizó el
+> módulo como una capa fina sobre la primitiva canónica
+> `cortex.session`. La API CLI (`cortex autopilot ...`) y las MCP tools
+> (`cortex_autopilot_*`) siguen funcionando, pero internamente delegan
+> a `SessionService` + `PolicyEnforcer`. Los hooks IDE viven ahora en
+> `cortex/session/hooks/` con el comando `cortex session hooks install
+> --ide <name>`. Los documentos de fase aquí dentro se conservan para
+> trazabilidad pero **no reflejan el estado actual** del módulo.
+>
+> Fuentes vigentes:
+> - [`../pluggable-middle/ARQUITECTURA-PLUGGABLE-MIDDLE.md`](../pluggable-middle/ARQUITECTURA-PLUGGABLE-MIDDLE.md)
+> - [`../architecture/session-primitive.md`](../architecture/session-primitive.md) §8 (IDE hooks)
+> - [`../pluggable-middle/fases/03-AUTOPILOT-FUSION.md`](../pluggable-middle/fases/03-AUTOPILOT-FUSION.md)
+
+---
+
 **Fecha:** 2026-05-09  
 **Estado:** Propuesta tecnica para planificacion  
 **Alcance:** Nuevo modo autonomo opcional, sin reemplazar el flujo actual  

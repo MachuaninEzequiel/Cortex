@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 
 import pytest
-import yaml
 
 from tests.e2e.helpers import run_cortex
 

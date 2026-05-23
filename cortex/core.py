@@ -10,7 +10,7 @@ infrastructure layer (episodic store, semantic store, retriever) and
 delegates all business logic to dedicated domain services:
 
 - ``SpecService``    → create_spec_note()
-- ``SessionService`` → save_session_note()
+- ``NoteService`` → save_session_note()
 - ``PRService``      → store_pr_context(), generate_pr_docs(), write_pr_docs()
 
 The façade keeps a stable public API so that no consumer (CLI, MCP
@@ -54,15 +54,19 @@ from cortex.runtime_context import (
     slugify,
 )
 from cortex.semantic.vault_reader import VaultReader
+from cortex.services.note_service import NoteService
 from cortex.services.pr_service import PRService
-from cortex.services.session_service import SessionService
-from cortex.services.spec_service import SpecService
+from cortex.services.spec_service import SpecCreationResult, SpecService
+from cortex.session import CheckpointSource, SessionRecord, SessionStatus
+from cortex.session.service import SessionService
+from cortex.session.storage import SessionStorage
 from cortex.workitems.providers.jira import JiraProvider
 from cortex.workitems.service import WorkItemService
 
 # ------------------------------------------------------------------
 # Config models — validated with Pydantic
 # ------------------------------------------------------------------
+
 
 class EpisodicConfig(BaseModel):
     persist_dir: str = "memory"
@@ -99,17 +103,33 @@ class IntegrationsConfig(BaseModel):
     jira: JiraIntegrationConfig = Field(default_factory=JiraIntegrationConfig)
 
 
+class DocumenterConfig(BaseModel):
+    """Configuration for ``cortex finish-session`` behaviour.
+
+    ``default_mode`` controls whether the documenter runs the auto
+    pipeline (reconstruct → write → close, no prompts) or the
+    interactive prompt loop (``cortex.documenter.interactive``).
+
+    Phase 04 of the Pluggable Middle architecture; the CLI flag
+    ``--interactive`` / ``--no-interactive`` overrides this default.
+    """
+
+    default_mode: Literal["auto", "interactive"] = "auto"
+
+
 class CortexConfig(BaseModel):
     episodic: EpisodicConfig = Field(default_factory=EpisodicConfig)
     semantic: SemanticConfig = Field(default_factory=SemanticConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
+    documenter: DocumenterConfig = Field(default_factory=DocumenterConfig)
 
 
 # ------------------------------------------------------------------
 # AgentMemory — the public façade
 # ------------------------------------------------------------------
+
 
 class AgentMemory:
     """
@@ -123,7 +143,7 @@ class AgentMemory:
 
     Business logic is delegated to domain services:
     - :class:`~cortex.services.SpecService`
-    - :class:`~cortex.services.SessionService`
+    - :class:`~cortex.services.NoteService`
     - :class:`~cortex.services.PRService`
 
     Quick start::
@@ -165,6 +185,7 @@ class AgentMemory:
                 _discover_start = self._config_path.resolve().parent
             else:
                 from pathlib import Path as _P
+
                 _discover_start = _P.cwd()
             self._layout = WorkspaceLayout.discover(_discover_start)
 
@@ -196,7 +217,9 @@ class AgentMemory:
         self.git_branch = detect_git_branch(self.repo_root)
         self.git_repo = str(detect_git_repo_path(self.repo_root))
         self.enterprise_config = load_enterprise_config(
-            self.repo_root, required=False, workspace_layout=self._layout,
+            self.repo_root,
+            required=False,
+            workspace_layout=self._layout,
         )
         self.enterprise_topology = describe_enterprise_topology(
             self.enterprise_config,
@@ -251,14 +274,25 @@ class AgentMemory:
             semantic_weight=self.config.retrieval.semantic_weight,
         )
 
+        # --- Session primitive (Pluggable Middle, Phase 00) ---
+        # SessionService tracks the lifecycle (open → checkpoint → close) of a
+        # development unit anchored on a spec. Wired into SpecService so that
+        # ``create-spec`` opens a Session automatically.
+        self._session_storage = SessionStorage(self._layout.sessions_dir)
+        self._session_service = SessionService(
+            storage=self._session_storage,
+            repo_root=self._layout.repo_root,
+        )
+
         # --- Domain services (injected with infrastructure dependencies) ---
         self._spec_service = SpecService(
             vault_path=str(self._vault_path_resolved),
             semantic=self.semantic,
             episodic=self.episodic,
             context_metadata=self._runtime_metadata,
+            session_service=self._session_service,
         )
-        self._session_service = SessionService(
+        self._note_service = NoteService(
             vault_path=str(self._vault_path_resolved),
             semantic=self.semantic,
             episodic=self.episodic,
@@ -403,10 +437,7 @@ class AgentMemory:
             result.unified_hits = [
                 hit
                 for hit in result.unified_hits
-                if not (
-                    hit.source == "episodic"
-                    and hit.metadata.get("branch") != current_branch
-                )
+                if not (hit.source == "episodic" and hit.metadata.get("branch") != current_branch)
             ]
 
         return result
@@ -474,14 +505,25 @@ class AgentMemory:
         constraints: list[str] | None = None,
         acceptance_criteria: list[str] | None = None,
         tags: list[str] | None = None,
+        verification_hooks: list[Any] | None = None,
         sync_vault: bool = False,
         remember: bool = True,
-    ) -> Path:
+        proposal_mode: str = "optional",
+        proposal_confirmed: bool = False,
+        with_tasks: bool = False,
+    ) -> SpecCreationResult:
         """
         Persist an implementation spec into the vault.
 
-        Delegates to :class:`~cortex.services.SpecService`.
-        See its ``create()`` method for full parameter documentation.
+        Delegates to :class:`~cortex.services.SpecService`. See its
+        ``create()`` method for full parameter documentation, including
+        the Phase 09.A ``proposal_mode`` knob and the Phase 09.C
+        ``with_tasks`` flag.
+
+        Returns a :class:`SpecCreationResult` carrying the persisted
+        spec path and the auto-opened ``SessionRecord`` (if any) — the
+        latter lets callers detect ``is_gitless`` and surface a
+        degraded-mode notice to the user.
         """
         return self._spec_service.create(
             title=title,
@@ -491,12 +533,16 @@ class AgentMemory:
             constraints=constraints,
             acceptance_criteria=acceptance_criteria,
             tags=tags,
+            verification_hooks=verification_hooks,
             sync_vault=sync_vault,
             remember=remember,
+            proposal_mode=proposal_mode,
+            proposal_confirmed=proposal_confirmed,
+            with_tasks=with_tasks,
         )
 
     # ------------------------------------------------------------------
-    # Session workflow — delegated to SessionService
+    # Session note workflow — delegated to NoteService
     # ------------------------------------------------------------------
 
     def save_session_note(
@@ -520,13 +566,13 @@ class AgentMemory:
         """
         Persist a structured session note into the vault.
 
-        Delegates to :class:`~cortex.services.SessionService`.
+        Delegates to :class:`~cortex.services.NoteService`.
         See its ``create()`` method for full parameter documentation,
         including the Tripartita Refinada handoff fields (``handoff``,
         ``blockers``, ``verified_state``, ``unverified_claims``,
         ``suggested_skills``).
         """
-        return self._session_service.create(
+        return self._note_service.create(
             title=title,
             spec_summary=spec_summary,
             changes_made=changes_made,
@@ -542,6 +588,121 @@ class AgentMemory:
             unverified_claims=unverified_claims,
             suggested_skills=suggested_skills,
         )
+
+    # ------------------------------------------------------------------
+    # Session primitive (Pluggable Middle) — delegated to SessionService
+    # ------------------------------------------------------------------
+
+    def open_session(
+        self,
+        *,
+        spec_id: str,
+        spec_path: str | Path,
+        spec_summary: str = "",
+    ) -> SessionRecord:
+        """Open a new Session anchored on a spec.
+
+        Delegates to :meth:`cortex.session.service.SessionService.open`.
+        Returns the created :class:`SessionRecord`.
+        """
+        return self._session_service.open(
+            spec_id=spec_id,
+            spec_path=Path(spec_path),
+            spec_summary=spec_summary,
+        )
+
+    def checkpoint_session(
+        self,
+        session_id: str,
+        *,
+        source: str,
+        verified_claims: list[str] | None = None,
+        unverified_claims: list[str] | None = None,
+        artifacts_touched: list[str] | None = None,
+        note: str = "",
+    ) -> SessionRecord:
+        """Append a checkpoint to an OPEN Session.
+
+        ``source`` must be one of the values in
+        :class:`cortex.session.CheckpointSource`.
+        """
+        return self._session_service.checkpoint(
+            session_id,
+            source=CheckpointSource(source),
+            verified_claims=list(verified_claims or []),
+            unverified_claims=list(unverified_claims or []),
+            artifacts_touched=list(artifacts_touched or []),
+            note=note,
+        )
+
+    def close_session(
+        self,
+        session_id: str,
+        *,
+        status: str,
+        documenter_decision: str,
+        session_note_path: str | Path | None = None,
+        adrs_created: list[str | Path] | None = None,
+    ) -> SessionRecord:
+        """Close an OPEN Session into a terminal status.
+
+        ``status`` and ``documenter_decision`` must be one of
+        ``closed`` / ``handoff`` / ``abandoned``.
+        """
+        return self._session_service.close(
+            session_id,
+            status=SessionStatus(status),
+            documenter_decision=SessionStatus(documenter_decision),
+            session_note_path=Path(session_note_path) if session_note_path else None,
+            adrs_created=[Path(p) for p in (adrs_created or [])],
+        )
+
+    def get_session(self, session_id: str) -> SessionRecord:
+        """Return the :class:`SessionRecord` for ``session_id`` (raises if missing)."""
+        return self._session_service.get(session_id)
+
+    def get_active_session(self) -> SessionRecord | None:
+        """Return the active :class:`SessionRecord`, or ``None`` if no pointer."""
+        return self._session_service.get_active()
+
+    def list_sessions(self, status: str | None = None) -> list[SessionRecord]:
+        """List all Sessions, optionally filtered by status."""
+        filter_status = SessionStatus(status) if status else None
+        return self._session_service.list(filter_status)
+
+    # ------------------------------------------------------------------
+    # Session tasks (Pluggable Middle Phase 09.C)
+    # ------------------------------------------------------------------
+
+    def add_session_task(self, session_id: str, task: Any) -> SessionRecord:
+        """Append a ``Task`` to ``SessionRecord.tasks`` via SessionService."""
+        return self._session_service.add_task(session_id, task)
+
+    def update_session_task(
+        self,
+        session_id: str,
+        task_id: str,
+        new_status: Any,
+        *,
+        note: str = "",
+        checkpoint_index: int | None = None,
+    ) -> SessionRecord:
+        """Mutate one task's status via SessionService."""
+        return self._session_service.update_task_status(
+            session_id,
+            task_id,
+            new_status,
+            note=note,
+            checkpoint_index=checkpoint_index,
+        )
+
+    def list_session_tasks(
+        self,
+        session_id: str,
+        status: Any | None = None,
+    ) -> list[Any]:
+        """Return the tasks attached to ``session_id`` (optionally filtered)."""
+        return self._session_service.list_tasks(session_id, status=status)
 
     # ------------------------------------------------------------------
     # PR / DevSecDocOps workflow — delegated to PRService
@@ -705,6 +866,7 @@ class AgentMemory:
     def _get_enricher_config(self):
         """Build ContextEnricherConfig from raw YAML config."""
         from cortex.context_enricher import ContextEnricherConfig
+
         try:
             raw = self._raw_config.get("context_enricher", {})
             return ContextEnricherConfig(**raw)
@@ -728,9 +890,7 @@ class AgentMemory:
     @staticmethod
     def _load_config(path: Path) -> dict:
         if not path.exists():
-            raise FileNotFoundError(
-                f"Config file not found: {path}. Run `cortex init` first."
-            )
+            raise FileNotFoundError(f"Config file not found: {path}. Run `cortex init` first.")
         with open(path) as f:
             return yaml.safe_load(f)
 

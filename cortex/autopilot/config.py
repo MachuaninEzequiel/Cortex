@@ -3,15 +3,14 @@
 Reads ``.cortex/autopilot.yaml`` if present; otherwise returns sensible
 defaults so the module works out-of-the-box.
 """
-from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
 
 import yaml
 from pydantic import BaseModel
 
 from cortex.workspace.layout import WorkspaceLayout
+
 from .errors import ConfigError
 
 
@@ -21,6 +20,7 @@ class AutopilotConfig(BaseModel):
     All fields have safe defaults so that Autopilot is usable even when
     the user has not created ``autopilot.yaml``.
     """
+
     mode: str = "assist"
     default_budget_profile: str = "fast_code"
     auto_checkpoint_files: int = 5
@@ -31,7 +31,7 @@ class AutopilotConfig(BaseModel):
     ide_adapter: str | None = None
 
     @classmethod
-    def defaults(cls) -> "AutopilotConfig":
+    def defaults(cls) -> AutopilotConfig:
         return cls()
 
 

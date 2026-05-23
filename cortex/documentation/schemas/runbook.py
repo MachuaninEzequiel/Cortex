@@ -9,16 +9,20 @@ from pydantic import Field, field_validator
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
 
-_RUNBOOK_KINDS = frozenset({
-    "deploy", "rollback", "incident-response", "data-migration", "operational",
-})
+_RUNBOOK_KINDS = frozenset(
+    {
+        "deploy",
+        "rollback",
+        "incident-response",
+        "data-migration",
+        "operational",
+    }
+)
 
 
 def _validate_kind(v: str) -> str:
     if v not in _RUNBOOK_KINDS:
-        raise ValueError(
-            f"runbook_kind must be one of {sorted(_RUNBOOK_KINDS)}, got {v!r}"
-        )
+        raise ValueError(f"runbook_kind must be one of {sorted(_RUNBOOK_KINDS)}, got {v!r}")
     return v
 
 

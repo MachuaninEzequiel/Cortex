@@ -3,11 +3,17 @@ from __future__ import annotations
 from collections import deque
 from pathlib import Path
 
-from cortex.runtime_context import slugify
 from cortex.enterprise.config import discover_enterprise_config_path, load_enterprise_config
+from cortex.runtime_context import slugify
 from cortex.webgraph.cache import WebGraphCache
 from cortex.webgraph.config import WebGraphConfig
-from cortex.webgraph.contracts import WebGraphEdge, WebGraphMode, WebGraphNode, WebGraphNodeDetail, WebGraphSnapshot
+from cortex.webgraph.contracts import (
+    WebGraphEdge,
+    WebGraphMode,
+    WebGraphNode,
+    WebGraphNodeDetail,
+    WebGraphSnapshot,
+)
 from cortex.webgraph.episodic_source import EpisodicSource
 from cortex.webgraph.graph_builder import GraphBuilder
 from cortex.webgraph.semantic_source import SemanticSource
@@ -98,6 +104,7 @@ class WebGraphService:
             # can render the color/shape key without having to import
             # ``cortex.webgraph.style`` directly.
             import json
+
             from cortex.webgraph.style import build_legend
             payload = snapshot.model_dump(mode="json")
             payload["legend"] = build_legend()

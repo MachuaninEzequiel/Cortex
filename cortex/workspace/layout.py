@@ -58,7 +58,7 @@ All relative paths in ``config.yaml`` and ``org.yaml`` resolve against
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -88,7 +88,7 @@ class WorkspaceLayout:
     # ────────────────────────────────────────────────────────────────
 
     @classmethod
-    def discover(cls, start: Path) -> "WorkspaceLayout":
+    def discover(cls, start: Path) -> WorkspaceLayout:
         """Walk up from *start* to find a Cortex project root.
 
         Precedence (first match wins):
@@ -159,7 +159,7 @@ class WorkspaceLayout:
         repo_root: Path,
         *,
         _force_new: bool = False,
-    ) -> "WorkspaceLayout":
+    ) -> WorkspaceLayout:
         """Build a *new-layout* workspace rooted at ``repo_root``.
 
         Parameters
@@ -185,7 +185,7 @@ class WorkspaceLayout:
     # ────────────────────────────────────────────────────────────────
 
     @classmethod
-    def _from_legacy_root(cls, repo_root: Path) -> "WorkspaceLayout":
+    def _from_legacy_root(cls, repo_root: Path) -> WorkspaceLayout:
         """Build a *legacy-layout* workspace rooted at ``repo_root``.
 
         In legacy mode the workspace root *is* the repo root —
@@ -296,6 +296,21 @@ class WorkspaceLayout:
         if self.is_legacy_layout:
             return self.repo_root / ".cortex" / "skills"
         return self.workspace_root / "skills"
+
+    @property
+    def sessions_dir(self) -> Path:
+        """Path to the Sessions directory (Pluggable Middle architecture).
+
+        Both layouts: ``repo_root / ".cortex" / "sessions"``
+
+        Sessions are tracking records for the lifecycle of a development
+        unit (one per spec). They are stored as ``<session_id>.yaml`` files
+        plus an ``active.txt`` pointer. See
+        ``docs/pluggable-middle/ARQUITECTURA-PLUGGABLE-MIDDLE.md`` §5.
+        """
+        if self.is_legacy_layout:
+            return self.repo_root / ".cortex" / "sessions"
+        return self.workspace_root / "sessions"
 
     @property
     def subagents_dir(self) -> Path:

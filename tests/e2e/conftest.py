@@ -9,7 +9,6 @@ escenarios, ver tests/e2e/scenarios/conftest.py.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
