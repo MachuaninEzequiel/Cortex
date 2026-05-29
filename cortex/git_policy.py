@@ -31,12 +31,19 @@ RECOMMENDED_GITIGNORE_PATTERNS = (
 NEW_LAYOUT_GITIGNORE_PATTERNS = (
     ".cortex/memory/",
     ".cortex/vault/sessions/",
+    # Pi 2.5+net (mayo 2026): runtime lock written by SessionService for
+    # external IDE extensions (cortex-net.ts). Per-machine, never
+    # versioned.
+    ".cortex/session.lock",
 )
 
 # Legacy-layout patterns.
 LEGACY_GITIGNORE_PATTERNS = (
     ".memory/",
     "vault/sessions/",
+    # Pi 2.5+net (mayo 2026): same lock as new layout; ``.cortex/`` is
+    # also created in legacy projects (skills/subagents).
+    ".cortex/session.lock",
 )
 
 

@@ -72,6 +72,45 @@ class SessionService:
         self._storage = storage
         self._repo_root = Path(repo_root)
 
+    # ── Active-session lock for external IDE extensions ───────────
+
+    def _write_session_lock(self, session_id: str | None) -> None:
+        """Mantener sincronizado ``<repo_root>/.cortex/session.lock``.
+
+        External IDE extensions bundled with Cortex (notably ``cortex-net.ts``
+        en el bundle de Pi 2.5+net) read this file to discover the active
+        Cortex session id **without** going through the MCP server. Format:
+        the session_id as plain UTF-8 text (no JSON, no frontmatter), with a
+        trailing newline. ``cortex-net.ts`` uses ``readFileSync(...).trim()``,
+        so the trailing newline is benign.
+
+        Semantics:
+            ``session_id is None`` → remove the file if it exists.
+            ``session_id is str``  → atomically (best-effort) write the id.
+
+        Best-effort: if the parent directory does not exist (e.g. workspaces
+        without ``.cortex/`` setup) and we cannot create it, we log at debug
+        and continue. Failing here must NEVER break the session lifecycle —
+        the lock is a presentation-layer artifact for external readers, not a
+        source of truth.
+        """
+        lock_path = self._repo_root / ".cortex" / "session.lock"
+        try:
+            if session_id is None:
+                if lock_path.is_file():
+                    lock_path.unlink()
+                return
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            # ``write_bytes`` para evitar la traduccion CRLF de Windows que
+            # ``Path.write_text`` aplica por default. El formato esperado
+            # por ``cortex-net.ts`` (y por consistencia cross-platform) es
+            # ``<id>\n`` literal.
+            lock_path.write_bytes(f"{session_id}\n".encode())
+        except OSError:
+            logger.debug(
+                "Failed to update session.lock at %s", lock_path, exc_info=True
+            )
+
     # ── Read API ──────────────────────────────────────────────────
 
     def get(self, session_id: str) -> SessionRecord:
@@ -106,6 +145,7 @@ class SessionService:
                 "only OPEN sessions can be active."
             )
         self._storage.set_active_session_id(session_id)
+        self._write_session_lock(session_id)
 
     def list(self, status: SessionStatus | None = None) -> list[SessionRecord]:
         if status is None:
@@ -153,6 +193,7 @@ class SessionService:
                 existing = None
             if existing is not None and existing.status is SessionStatus.OPEN:
                 self._storage.set_active_session_id(existing.session_id)
+                self._write_session_lock(existing.session_id)
                 return existing
         session_id = self._make_unique_session_id(spec_id)
         if git.is_git_repo(self._repo_root):
@@ -177,6 +218,7 @@ class SessionService:
         )
         self._storage.save_new(record)
         self._storage.set_active_session_id(session_id)
+        self._write_session_lock(session_id)
         if record.is_gitless:
             logger.info("Opened session %s in gitless mode", session_id)
         else:
@@ -265,6 +307,7 @@ class SessionService:
         self._storage.save(updated)
         if self._storage.get_active_session_id() == session_id:
             self._storage.set_active_session_id(None)
+            self._write_session_lock(None)
         logger.info(
             "Closed session %s as %s (mode=%s, end=%s)",
             session_id,

@@ -198,6 +198,19 @@ class Reconstructor:
             # Union preserving order: verified first, then declared-only.
             files_touched = [*files_verified_by_git, *files_declared_only]
 
+        # Filter Cortex-managed runtime paths (e.g. ``.cortex/session.lock``).
+        # See ``_CORTEX_INTERNAL_PATHS`` for the rationale. Applied here so
+        # both branches (gitless / git-aware) are covered with a single
+        # filter pass and every downstream output (in_scope/out_of_scope,
+        # files_verified_by_git, files_declared_only) is consistent.
+        files_verified_by_git = [
+            p for p in files_verified_by_git if not _is_cortex_internal_path(p)
+        ]
+        files_declared_only = [
+            p for p in files_declared_only if not _is_cortex_internal_path(p)
+        ]
+        files_touched = [p for p in files_touched if not _is_cortex_internal_path(p)]
+
         # STEP 3: run verification hooks (skippable by the caller)
         if not payload.run_hooks:
             logger.info(
@@ -284,6 +297,27 @@ class Reconstructor:
 # ---------------------------------------------------------------------------
 # Pure helpers (module level so they're trivially testable)
 # ---------------------------------------------------------------------------
+
+
+# Paths managed by Cortex's session runtime that must NEVER count as
+# files "touched" during the session. They are presentation-layer
+# artifacts for external readers, not work produced by the agent:
+#
+#   * ``.cortex/session.lock`` — written/cleared by
+#     :class:`cortex.session.service.SessionService` so IDE-side
+#     extensions (notably ``cortex-net.ts`` en el bundle Pi 2.5+net)
+#     pueden descubrir el ``session_id`` activo sin pasar por el MCP.
+#
+# Counting them as "touched" leaks runtime state into the documenter
+# output as bogus ``out_of_scope`` files.
+_CORTEX_INTERNAL_PATHS: frozenset[str] = frozenset({".cortex/session.lock"})
+
+
+def _is_cortex_internal_path(path: Path) -> bool:
+    """True if ``path`` is a Cortex-managed runtime file the documenter
+    must ignore. Uses POSIX form so Windows backslashes don't trip the
+    comparison."""
+    return path.as_posix() in _CORTEX_INTERNAL_PATHS
 
 
 def _files_touched_from_checkpoints(checkpoints: Sequence[Checkpoint]) -> list[Path]:

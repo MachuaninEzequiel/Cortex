@@ -425,6 +425,92 @@ class TestList:
         assert {r.session_id for r in closeds} == {"2026-05-16_a"}
 
 
+# ---------------------------------------------------------------------------
+# .cortex/session.lock — Pi 2.5+net cortex-net integration
+# ---------------------------------------------------------------------------
+
+
+class TestSessionLockFile:
+    """``SessionService`` mantiene ``<repo_root>/.cortex/session.lock``
+    sincronizado con la sesión activa para que extensiones IDE externas
+    (notablemente ``cortex-net.ts`` del bundle Pi 2.5+net) puedan descubrir
+    el ``session_id`` sin pasar por el MCP server.
+
+    Formato esperado por ``cortex-net.ts``:
+    ``readFileSync(lock, "utf-8").trim()`` → session_id.
+    """
+
+    def _lock_path(self, service: SessionService) -> Path:
+        return service._repo_root / ".cortex" / "session.lock"  # noqa: SLF001
+
+    def test_open_writes_session_lock(self, service: SessionService) -> None:
+        record = service.open(
+            spec_id="2026-05-16_lock",
+            spec_path=Path("vault/specs/2026-05-16_lock.md"),
+        )
+        lock = self._lock_path(service)
+        assert lock.is_file()
+        assert lock.read_text(encoding="utf-8").strip() == record.session_id
+
+    def test_close_clears_session_lock(self, service: SessionService) -> None:
+        record = service.open(
+            spec_id="2026-05-16_lock",
+            spec_path=Path("vault/specs/2026-05-16_lock.md"),
+        )
+        service.close(
+            record.session_id,
+            status=SessionStatus.CLOSED,
+            documenter_decision=SessionStatus.CLOSED,
+        )
+        assert not self._lock_path(service).exists()
+
+    def test_set_active_updates_session_lock(self, service: SessionService) -> None:
+        first = service.open(
+            spec_id="2026-05-16_a",
+            spec_path=Path("vault/specs/2026-05-16_a.md"),
+        )
+        second = service.open(
+            spec_id="2026-05-16_b",
+            spec_path=Path("vault/specs/2026-05-16_b.md"),
+        )
+        # tras dos opens, el lock apunta al ultimo (active).
+        assert self._lock_path(service).read_text(encoding="utf-8").strip() == second.session_id
+        # promover el primero y el lock se actualiza.
+        service.set_active(first.session_id)
+        assert self._lock_path(service).read_text(encoding="utf-8").strip() == first.session_id
+
+    def test_lock_format_is_plain_text_with_trailing_newline(
+        self, service: SessionService
+    ) -> None:
+        """``cortex-net.ts`` usa ``.trim()``, por lo que el newline final
+        es benigno; pero confirmamos el formato esperado: texto plano,
+        sin JSON ni frontmatter, terminado en ``\\n``."""
+        record = service.open(
+            spec_id="2026-05-16_fmt",
+            spec_path=Path("vault/specs/2026-05-16_fmt.md"),
+        )
+        raw = self._lock_path(service).read_bytes()
+        assert raw.endswith(b"\n")
+        # Sin caracteres de control salvo el newline final.
+        assert raw.decode("utf-8") == f"{record.session_id}\n"
+
+    def test_lock_write_is_best_effort_when_dir_missing(
+        self, tmp_path: Path, git_repo: Path
+    ) -> None:
+        """Si ``.cortex/`` no se puede crear, el ciclo de vida de la
+        sesión sigue funcionando (el lock es presentación, no SSoT)."""
+        storage = SessionStorage(tmp_path / "sessions")
+        # Bloqueamos la creacion de .cortex/ poniendo un FILE en su lugar.
+        (git_repo / ".cortex").write_text("not-a-directory", encoding="utf-8")
+        svc = SessionService(storage, repo_root=git_repo)
+        # No debe levantar excepcion.
+        record = svc.open(
+            spec_id="2026-05-16_besteffort",
+            spec_path=Path("vault/specs/2026-05-16_besteffort.md"),
+        )
+        assert record.session_id.startswith("2026-05-16_besteffort")
+
+
 # Reference an unused import to keep linters quiet when we ever stop using
 # SessionRecord directly in this file.
 _ = SessionRecord
