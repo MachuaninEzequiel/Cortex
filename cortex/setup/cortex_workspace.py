@@ -1451,40 +1451,148 @@ breve:
 """
 
 
-def _read_obsidian_skill_files() -> dict[str, str]:
-    """Read the Obsidian formatting skills from the in-repo Pi bundle.
+def _obsidian_skill_files() -> dict[str, str]:
+    """Return the Obsidian formatting skills, hardcoded into ``.cortex/``.
 
-    Phase 09.A+ / May 2026: the four Obsidian skills + the indexer skill
-    are sourced from ``cortex-pi/.pi/skills/obsidian{,-index}/`` (the
-    only place they exist in the repo) and installed into every Cortex
-    project under ``.cortex/skills/obsidian{,-index}/`` so that
-    ``/cortex-documenter`` can reference them when writing vault notes.
+    DESACOPLE bundle↔canonical (mayo 2026): antes estas skills se LEÍAN
+    del bundle de Pi (``cortex-pi/.pi/skills/obsidian{,-index}/``), lo que
+    acoplaba ``.cortex/`` al bundle. Ahora ``.cortex/`` es autosuficiente:
+    el contenido vive embebido acá y el bundle de Pi conserva su propia
+    copia independiente (Pi es su propia SSoT). Estas skills de referencia
+    son estables y no cambian, así que la duplicación no genera deuda real.
 
-    Returns a mapping ``{ ".cortex/skills/obsidian/<name>.md": content }``.
-    If the source files aren't present (e.g. running from an installed
-    wheel without the Pi bundle), returns an empty dict — the documenter
-    skill keeps working, only the inline Obsidian reference is lost.
+    Se instalan bajo ``.cortex/skills/obsidian{,-index}/`` para que
+    ``/cortex-documenter`` (y el resto de IDEs) puedan referenciarlas al
+    escribir notas en el Vault.
+
+    Returns a mapping ``{ ".cortex/skills/<path>.md": content }`` — same
+    shape ``workspace_file_map`` consumed before, so callers don't change.
     """
-    # ``Path(__file__)`` is ``cortex/setup/cortex_workspace.py`` so going
-    # 3 parents up reaches the repo root which contains both ``cortex/``
-    # and ``cortex-pi/``.
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    pi_skills_root = repo_root / "cortex-pi" / ".pi" / "skills"
-    files: dict[str, str] = {}
+    obsidian_markdown = """\
+---
+name: obsidian-markdown
+description: Sintaxis avanzada de Obsidian (Wikilinks, Embeds, Callouts, Properties).
+---
+# Obsidian Flavored Markdown
+Usa esta guía para asegurar compatibilidad total con el Vault de Obsidian.
 
-    obsidian_src = pi_skills_root / "obsidian"
-    if obsidian_src.is_dir():
-        for md_file in sorted(obsidian_src.glob("*.md")):
-            rel_target = f".cortex/skills/obsidian/{md_file.name}"
-            files[rel_target] = md_file.read_text(encoding="utf-8")
+## Sintaxis Core
+- **Wikilinks**: `[[Nombre de Nota]]` o `[[Nombre#Sección|Texto]]`.
+- **Embeds**: `![[Nombre de Nota]]` o `![[imagen.png|300]]`.
+- **Callouts**:
+  > [!type] Título
+  > Contenido
+  (Tipos: note, tip, warning, info, example, bug, success, failure, danger).
 
-    obsidian_index_src = pi_skills_root / "obsidian-index" / "SKILL.md"
-    if obsidian_index_src.is_file():
-        files[".cortex/skills/obsidian-index/SKILL.md"] = obsidian_index_src.read_text(
-            encoding="utf-8"
-        )
+## Propiedades (YAML)
+Siempre incluye frontmatter en nuevas notas:
+```yaml
+---
+title: Nombre
+tags: [tag1, tag2]
+status: active
+---
+```
+"""
 
-    return files
+    obsidian_bases = """\
+---
+name: obsidian-bases
+description: Creación y edición de vistas de base de datos (.base).
+---
+# Obsidian Bases
+Usa esta guía para crear trackers, tablas y vistas dinámicas.
+
+## Estructura .base (YAML)
+```yaml
+filters: 'file.hasTag("task") && status != "done"'
+views:
+  - type: table
+    name: "Dashboard"
+    order: [file.name, status, priority]
+    summaries: { priority: Average }
+```
+
+## Operadores y Funciones
+- **Filtros**: `==`, `!=`, `>`, `<`, `&&`, `||`, `!`.
+- **Fechas**: `today()`, `now()`, `date("YYYY-MM-DD")`.
+- **Duraciones**: `(due - today()).days`.
+- **Propiedades**: `file.name`, `file.mtime`, `file.size`, `file.tags`.
+"""
+
+    json_canvas = """\
+---
+name: json-canvas
+description: Creación de mapas mentales y diagramas visuales (.canvas).
+---
+# JSON Canvas
+Guía para generar lienzos visuales compatibles con Obsidian Canvas.
+
+## Estructura .canvas (JSON)
+```json
+{
+  "nodes": [
+    { "id": "hex16", "type": "text", "x": 0, "y": 0, "width": 400, "height": 200, "text": "Contenido" }
+  ],
+  "edges": [
+    { "id": "hex16", "fromNode": "id1", "toNode": "id2", "toEnd": "arrow" }
+  ]
+}
+```
+## Reglas
+- IDs: 16 caracteres hexadecimales aleatorios.
+- Tipos: `text`, `file`, `link`, `group`.
+- Espaciado: Deja 50-100px entre nodos.
+"""
+
+    defuddle = """\
+---
+name: defuddle
+description: Extracción de Markdown limpio desde URLs usando Defuddle CLI.
+---
+# Defuddle CLI
+Optimiza la lectura de documentación externa eliminando ruido (ads, nav, footer).
+
+## Comandos
+- **Parse básico**: `defuddle parse --md <URL>`
+- **Guardar**: `defuddle parse --md <URL> -o doc.md`
+- **Metadatos**: `defuddle parse -p title <URL>`
+
+Usa esto siempre que el usuario provea una URL de un sitio web estándar para evitar saturar el contexto con HTML.
+"""
+
+    obsidian_index = """\
+---
+name: obsidian-index
+description: "Indice del conocimiento Obsidian del proyecto Cortex. Cargalo cuando la tarea involucre el Vault de Obsidian: sintaxis de notas, wikilinks, bases de datos (.base), mapas canvas o limpieza de URLs con Defuddle."
+---
+
+# 🗂️ Obsidian Knowledge Index (BAJO DEMANDA)
+
+Solo si la tarea requiere específicamente interactuar con el Vault o formatos de Obsidian, debes cargar el manual correspondiente mediante `read_file` antes de proceder:
+
+- **Sintaxis y Estructura de Notas** (Wikilinks, Callouts, Frontmatter):
+  👉 Leer `.cortex/skills/obsidian/obsidian-markdown.md`
+
+- **Bases de Datos y Vistas Dinámicas** (Archivos .base, filtros, tablas):
+  👉 Leer `.cortex/skills/obsidian/obsidian-bases.md`
+
+- **Mapas Visuales y Diagramas de Flujo** (Archivos .canvas):
+  👉 Leer `.cortex/skills/obsidian/json-canvas.md`
+
+- **Investigación Web Optimizada** (Limpieza de URLs con Defuddle):
+  👉 Leer `.cortex/skills/obsidian/defuddle.md`
+
+**IMPORTANTE**: No cargues estos archivos si la tarea es de programación pura sin relación con la documentación del Vault.
+"""
+
+    return {
+        ".cortex/skills/obsidian/obsidian-markdown.md": obsidian_markdown,
+        ".cortex/skills/obsidian/obsidian-bases.md": obsidian_bases,
+        ".cortex/skills/obsidian/json-canvas.md": json_canvas,
+        ".cortex/skills/obsidian/defuddle.md": defuddle,
+        ".cortex/skills/obsidian-index/SKILL.md": obsidian_index,
+    }
 
 
 def workspace_file_map() -> dict[str, str]:
@@ -1509,8 +1617,10 @@ def workspace_file_map() -> dict[str, str]:
     }
     # Phase 09.A+ — install Obsidian formatting reference skills so the
     # /cortex-documenter skill can ground its Markdown output in the
-    # Obsidian conventions the vault expects.
-    base.update(_read_obsidian_skill_files())
+    # Obsidian conventions the vault expects. Hardcoded into ``.cortex/``
+    # (mayo 2026): ya NO se leen del bundle de Pi — ``.cortex/`` es
+    # autosuficiente y el bundle ``cortex-pi/`` es su propia SSoT.
+    base.update(_obsidian_skill_files())
     return base
 
 

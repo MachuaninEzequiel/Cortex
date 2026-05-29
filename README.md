@@ -12,8 +12,8 @@
   </p>
 
   <p>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Architecture-Hybrid--Enterprise--Memory-orange.svg" alt="Architecture" /></a>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python 3.10+" /></a>
+    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Architecture-Pluggable--Middle-orange.svg" alt="Architecture" /></a>
+    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python 3.11+" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
   </p>
 
@@ -27,7 +27,7 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 
 **Cortex redefine la relación humano-agente.** No es solo una base de conocimientos; es un **Sistema de Gobernanza** que obliga a la IA a seguir un ciclo de vida disciplinado de ingeniería de software. Cortex escala esta gobernanza al nivel **corporativo**: memoria institucional, promoción auditable de conocimiento, retrieval multi-nivel y observabilidad operativa, todo gobernado por una topología declarativa (`org.yaml`).
 
->  Para un documento exhaustivo del estado completo de Cortex Enterprise, consultá el [Manifiesto Cortex Enterprise](docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md).
+>  Para un documento exhaustivo del estado completo de Cortex, consultá el [Manifiesto Cortex](docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md).
 
 ---
 
@@ -36,30 +36,30 @@ En la era de los agentes de IA, la **Amnesia de Sesión** es el mayor enemigo de
 | Problema | Solución Cortex |
 | --- | --- |
 | Agentes olvidan contexto entre sesiones | Memoria Híbrida RRF persistente (local + enterprise) |
-| Código sin documentación actualizada | `save-session` obligatorio post-tarea |
-| Sin trazabilidad de decisiones arquitectónicas | Especificaciones técnicas (`create-spec`) |
+| Specs vagos sin criterio objetivo de éxito | `verification_hooks` ejecutables declarados en cada spec |
+| Sin trazabilidad de decisiones arquitectónicas | ADRs sugeridos desde los checkpoints + Especificaciones técnicas (`create-spec`) |
+| Cada IDE trabaja distinto | Pluggable Middle: Cortex se adapta al modo de trabajo (Managed / Observed / BYO) |
+| Documentación que envejece sola | Documenter por reconstrucción: compara spec vs. `git diff` real al cerrar |
 | Vulnerabilidades detectadas tarde | SecuritySubAgent en tiempo real |
 | Tests como afterthought | TestSubAgent integrado en flujo |
+| PRs sin trazabilidad de lo prometido vs. entregado | Plugin de CI valida cada PR contra su Session + spec |
 | Conocimiento aislado por proyecto | Promotion Pipeline hacia vault corporativo |
-| Sin visibilidad sobre salud de memoria | `memory-report` con JSON estable |
+| Sin visibilidad sobre salud de memoria | `memory-report` con JSON estable + TUI viva de sesiones |
 | Configuración enterprise compleja | Setup guiado con presets por industria |
-| Cambio de contexto manual entre tareas | Autopilot: modo autónomo opt-in |
-| Workspace disperso en la raíz del repo | Layout v2: todo en `.cortex/`, WorkspaceLayout central |
+| Cambio de contexto manual entre tareas | Autopilot: capa autónoma opt-in con políticas |
+| Workspace disperso en la raíz del repo | Layout v2: todo en `.cortex/`, `WorkspaceLayout` central |
 
 ---
 
 ## Modelo de Ejecución: Pluggable Middle
 
-Cortex envuelve tu workflow en tres puntos: **sync** (antes), **middle**
-(durante) y **documenter** (después). El "middle" es **pluggable** — admite
-tres modos según cómo quieras (o puedas) trabajar.
+Cortex envuelve cada unidad de trabajo en tres puntos: **sync** (antes), **middle** (durante) y **documenter** (después). Sync y documenter son fijos; el middle es **pluggable** y admite tres modos según cómo quieras (o puedas) trabajar.
 
 ### 1. `cortex-sync` — El Analista
 
-Recupera contexto histórico del Vault y de la memoria episódica para
-refinar los requisitos. Produce una `Spec` con `verification_hooks`
-ejecutables (comandos que prueban objetivamente que el trabajo está hecho).
-**Abre la Session automáticamente** al persistir el spec.
+Recupera contexto histórico del Vault y de la memoria episódica para refinar los requisitos. Produce una `Spec` con `verification_hooks` ejecutables (comandos que prueban objetivamente que el trabajo está hecho) y **abre la Session automáticamente** al persistir el spec.
+
+Sub-paso opcional: emisión de una **propuesta** previa a la spec (`--proposal-mode optional|required|skip`) para alinear con el usuario antes de comprometer alcance.
 
 ### 2. Middle (Pluggable)
 
@@ -69,20 +69,25 @@ ejecutables (comandos que prueban objetivamente que el trabajo está hecho).
 | 🟡 **Observed** | Tu agente / skills + IDE hooks | Tenés tus skills/agentes preferidos; Cortex observa los checkpoints. |
 | 🔵 **BYO** | Lo que sea (manual, otro agente, vibe coding) | Máxima libertad; Cortex reconstruye desde el diff observable. |
 
-En los tres modos, cada paso significativo del middle puede emitir un
-**checkpoint** en la Session vía `cortex_session_checkpoint`. El contrato
-inter-agente es la **Session**, no YAML inline.
+El modo **se infiere al cerrar** a partir de las fuentes de checkpoint registradas: sin checkpoints → BYO; sólo fuentes Cortex → Managed; cualquier otra → Observed. En los tres modos, cada paso significativo del middle puede emitir un **checkpoint** en la Session vía `cortex_session_checkpoint`. El contrato inter-agente es la **Session**, no YAML inline.
 
-**IDE hooks para el modo Observed (Fase 03):**
+**Deep Track (Managed) — pipeline de subagents:**
+
+`cortex-code-explorer` → `cortex-code-designer` → `cortex-code-implementer` → wrap-up. El designer puede saltearse con una nota mínima cuando `task_type == "docs-only"`.
+
+```
+Especificación → [Fast Track | Deep Track] → SecuritySubAgent → TestSubAgent → [Loop hasta aprobar]
+```
+
+**IDE hooks para el modo Observed:**
 
 | IDE | Soporte | Mecanismo | Comando |
 |---|---|---|---|
 | Claude Code | ✓ Nativo | Hook `PostToolUse` en `.claude/settings.json` | `cortex session hooks install --ide claude-code` |
-| Cursor / VSCode / Cline | ✓ Vía git | `.git/hooks/post-commit` (independiente del IDE) | `cortex session hooks install --ide cursor` |
-| opencode | ✓ Nativo (Fase 05) | Bloque markdown en `.opencode/hooks.md` | `cortex session hooks install --ide opencode` |
+| Cursor / VSCode / Cline / Roo | ✓ Vía git | `.git/hooks/post-commit` (independiente del IDE) | `cortex session hooks install --ide cursor` |
+| opencode | ✓ Nativo | Bloque markdown en `.opencode/hooks.md` | `cortex session hooks install --ide opencode` |
 | Pi Coding Agent | ✓ Nativo | Recipes en `justfile` | `cortex session hooks install --ide pi` |
 | Codex | ❌ Sin hooks | — (modo BYO con `cortex finish-session` manual) | — |
-| opencode | ⏳ Roadmap | — | — |
 
 Inspeccionar/desinstalar:
 
@@ -92,33 +97,39 @@ cortex session hooks status         # idem (formato detallado)
 cortex session hooks uninstall --ide cursor
 ```
 
-Los hooks emiten checkpoints con `source=ide-hook`. Si Cortex no está
-disponible o falla, el hook **no aborta** la operación del IDE
-(garantizado por `|| true` en los scripts shell y por `try/except` en
-los hooks JSON nativos).
+Los hooks emiten checkpoints con `source=ide-hook`. Si Cortex no está disponible o falla, el hook **no aborta** la operación del IDE (garantizado por `|| true` en los scripts shell y por `try/except` en los hooks JSON nativos).
 
 ### 3. `cortex-documenter` — El Guardián
 
-Paso final via `cortex finish-session` (CLI) o `cortex_finish_session`
-(MCP). Reconstruye el contexto desde la Session: carga el spec, computa
-`git diff`, ejecuta los verification hooks, detecta scope drift, evalúa
-candidatos ADR, y persiste el session note + ADRs. Cierra la Session como
-`CLOSED` o `HANDOFF` según los resultados.
+Paso final via `cortex finish-session` (CLI) o `cortex_finish_session` (MCP). Reconstruye el contexto desde la Session: carga el spec, computa `git diff`, ejecuta los verification hooks, detecta scope drift, evalúa candidatos ADR, y persiste el session note + ADRs. Cierra la Session como `CLOSED` o `HANDOFF` según los resultados.
 
-**Dos modos de documenter** (Fase 04):
-- **`auto` (default)** — corre la pipeline completa sin pedir nada.
-  `cortex finish-session` la usa por default.
-- **`interactive`** — renderiza el draft + ADRs sugeridos en consola,
-  permite editar título/cuerpo via `$EDITOR`, aprobar/rechazar ADRs
-  uno por uno, o forzar HANDOFF / cancelar. Activarlo:
+**Dos modos de documenter:**
+
+- **`auto` (default)** — corre la pipeline completa sin pedir nada. `cortex finish-session` la usa por default.
+- **`interactive`** — renderiza el draft + ADRs sugeridos en consola, permite editar título/cuerpo via `$EDITOR`, aprobar/rechazar ADRs uno por uno, o forzar HANDOFF / cancelar. Activarlo:
   - flag CLI: `cortex finish-session --interactive`.
-  - default per-proyecto: `documenter.default_mode: interactive` en
-    `.cortex/config.yaml`.
+  - default per-proyecto: `documenter.default_mode: interactive` en `.cortex/config.yaml`.
 
-> Ver `docs/pluggable-middle/` para la arquitectura completa.
-> Ver `docs/pluggable-middle/MIGRATION-FROM-TRIPARTITO.md` para usuarios
-> que vienen del modelo tripartito anterior.
-> Ver `docs/architecture/session-primitive.md` para la primitiva Session.
+---
+
+## La primitiva Session
+
+La **Session** es el YAML atómico que ancla el ciclo de vida de cada unidad de trabajo, desde `create-spec` hasta `finish-session`. Vive en `.cortex/sessions/<session_id>.yaml`; el pointer `.cortex/sessions/active.txt` marca la sesión activa.
+
+Captura: identidad (`session_id`, `spec_path`), snapshot (`start_commit`, `start_branch`, `opened_at`), live state (`status`, `mode`), enriquecimiento (`checkpoints` append-only, `verification_results`, `tasks` opt-in) y cierre (`closed_at`, `end_commit`, `documenter_decision`, `session_note_path`, `adrs_created`).
+
+### Verification hooks
+
+Cada spec declara uno o más `verification_hooks`: comandos ejecutables que **prueban** que el trabajo está hecho. El documenter los corre al cerrar.
+
+```bash
+cortex create-spec --title "Auth JWT" --goal "Implementar refresh tokens" \
+  --verification-hook "name=tests;command=pytest tests/auth/" \
+  --verification-hook "name=types;command=mypy src/auth.py" \
+  --verification-hook "name=lint;command=ruff check src/auth.py;required=false"
+```
+
+Hooks `required=true` (default) que fallen fuerzan la Session a cerrar como `HANDOFF`. Hooks `required=false` registran el resultado pero no bloquean. Para tareas de research/docs el hook puede ser una presencia: `command=test -f docs/research-output.md`.
 
 ---
 
@@ -126,11 +137,11 @@ candidatos ADR, y persiste el session note + ADRs. Cierra la Session como
 
 ###  Cortex Autopilot
 
-Autopilot es una capa autónoma **opt-in** que aplica políticas (warnings, blocks, auto-checkpoints) sobre la primitiva `cortex.session` sin que el usuario tenga que orquestar manualmente el flujo Pluggable Middle. Desde Fase 03 de Pluggable Middle es un wrapper delgado: la API CLI se mantiene como atajo.
+Autopilot es una capa autónoma **opt-in** que aplica políticas (warnings, blocks, auto-checkpoints) sobre la primitiva Session sin que el usuario tenga que orquestar manualmente el flujo Pluggable Middle. Es un wrapper delgado sobre `SessionService`: la API CLI se mantiene como atajo.
 
 ```bash
-cortex autopilot start --mode assist    # Iniciar sesión
-cortex autopilot preflight              # Pre-enriquecimiento inteligente
+cortex autopilot start --mode assist    # Adopta la sesión activa
+cortex autopilot preflight              # Dry-run del pipeline de detectors
 cortex autopilot checkpoint             # Guardar punto de control
 cortex autopilot finish --auto          # Cierre y session note automática
 cortex autopilot doctor                 # Diagnóstico del módulo
@@ -144,19 +155,55 @@ cortex autopilot doctor                 # Diagnóstico del módulo
 | `assist` | Sugiere acciones y pide cierre. Default recomendado. |
 | `autopilot` | Preflight y cierre automáticos con políticas activas. |
 
-Autopilot es **reversible**: `cortex autopilot disable` o `cortex autopilot uninstall --ide cursor` restaura el flujo manual intacto. Para la especificación técnica completa, ver [`docs/autopilot/`](docs/autopilot/).
+> Los hooks de IDE ahora se gestionan con `cortex session hooks install|uninstall|list|status --ide <name>`. La auditoría de sesiones se hace con `cortex session list`.
+
+---
+
+### CI Plugin (provider-agnostic)
+
+Un único comando valida un PR contra la Session que lo originó: cruza el `git diff` con `files_in_scope` del spec, corre los `verification_hooks`, y emite el resultado en JSON, texto o **comentario sticky de PR**. Exit codes: `0 pass / 1 warn / 2 blocked / 3 error` — listos para ser gate de CI.
+
+```bash
+cortex ci validate-pr --base-branch main --head-branch feature/x
+cortex ci validate-pr --format pr-comment   # Markdown con sentinel marker
+
+# Review session dedicada al PR (modo CI_REVIEW)
+cortex ci open-review-session
+cortex ci report-checkpoint --note "validación pasada"
+cortex ci close-review-session
+```
+
+Templates listos para copiar en `templates/ci/`:
+
+- `github-actions-cortex-validate.yml`
+- `gitlab-ci-cortex-validate.yml`
+
+---
+
+### Sessions TUI
+
+Vista en vivo de la primitiva Session con `rich`. Refresca cada `N` segundos (default 1.5, rango 0.5–30) y se adapta al ancho de la terminal:
+
+```bash
+cortex session watch                     # sesión activa
+cortex session watch <ID> --refresh 3    # otra sesión
+cortex session show <ID> --watch         # alias enfocado
+```
+
+Muestra: panel de sesión activa, checkpoints recientes, diff preview truncado, status de verificaciones y sidebar de sesiones recientes. `Ctrl+C` sale limpio.
 
 ---
 
 ###  Workspace Layout v2
 
-El setup de Cortex ahora consolida **toda** la infraestructura en un único directorio `.cortex/`, eliminando archivos sueltos en la raíz del repo:
+El setup de Cortex consolida **toda** la infraestructura en un único directorio `.cortex/`, eliminando archivos sueltos en la raíz del repo:
 
 ```
 .cortex/              ← todo Cortex aquí
   config.yaml
-  vault/
+  vault/              ← specs/, sessions/, designs/, adrs/, …
   vault-enterprise/
+  sessions/           ← <id>.yaml + active.txt
   memory/
   enterprise-memory/
   skills/
@@ -190,6 +237,16 @@ La resolución de rutas está centralizada en `WorkspaceLayout` (`cortex/workspa
 - **Gobernanza CI**: Perfiles `observability` / `advisory` / `enforced`.
 - **Observabilidad**: `cortex memory-report` con salida humana y JSON.
 
+### Quality Gates (managed)
+
+Cinco mecanismos que la pipeline corre inline:
+
+1. **Rollback transaccional** en `NoteService.create` — garantía *"file on disk ⇒ file indexed"*.
+2. **`cortex_review_checkpoint`** — review en dos etapas (spec compliance + quality) sobre cualquier checkpoint de una sesión abierta.
+3. **Self-review del documenter** — surface placeholders y claims huecos antes de persistir.
+4. **Budget task-aware** en `cortex_context` — pasá `task_type` y `(top_k, max_chars)` se dimensionan solos.
+5. **Template condicional `session.md.j2`** — renderiza `question-only` / `docs-only` / `security` / `fast-code` / `deep-code` según el `task_type` del spec.
+
 ### Eficiencia ONNX
 
 ```
@@ -201,7 +258,7 @@ API keys:         No requeridas
 
 ### Context Enricher Proactivo
 
-Detección de dominio, co-occurrence boost, multi-strategy search con budget control.
+Detección de dominio, co-occurrence boost, multi-strategy search con budget control y `task_type`-aware sizing.
 
 ### WebGraph
 
@@ -222,14 +279,15 @@ cortex webgraph export    # Exporta snapshot del grafo
 | --- | --- |
 | `cortex setup agent` | Configura Vault, Memoria, Skills y MCP. |
 | `cortex setup pipeline` | Configura GitHub Actions y auditoría. |
-| `cortex setup full` | Instalación completa (Agent + Pipeline). |
+| `cortex setup full` | Instalación completa (Agent + Pipeline + WebGraph). |
 | `cortex setup webgraph` | Configura visualización de grafos. |
 | `cortex setup enterprise` | Setup enterprise con wizard o presets. |
 | `cortex init` | Alias rápido para `setup agent`. |
-| `cortex create-spec` | Define metas y criterios de aceptación. |
-| `cortex save-session` | Persiste cambios y decisiones en el Vault. |
+| `cortex create-spec` | Define metas, criterios y `verification_hooks`. Abre la Session automáticamente. Flags: `--verification-hook`, `--proposal-mode`, `--with-tasks`. |
+| `cortex finish-session [ID]` | Cierra la Session vía la pipeline de reconstrucción del documenter. Flags: `--handoff`, `--abandon`, `--reason`, `--interactive`, `--json`. |
+| `cortex save-session` | Persiste cambios y decisiones en el Vault (modo legacy / single-agent IDE). |
 | `cortex search` | Búsqueda híbrida RRF (`--scope local\|enterprise\|all`). |
-| `cortex context` | Inyecta contexto basado en archivos modificados. |
+| `cortex context` | Inyecta contexto basado en archivos modificados (acepta `--task-type`). |
 | `cortex doctor` | Valida entorno (`--scope project\|enterprise\|all`). |
 | `cortex validate-docs` | Valida frontmatter y estructura Markdown. |
 | `cortex verify-docs` | Verifica documentación de agente en PRs. |
@@ -241,44 +299,43 @@ cortex webgraph export    # Exporta snapshot del grafo
 | `cortex mcp-server` | Inicia servidor MCP para IDEs. |
 | `cortex agent-guidelines` | Muestra guidelines del agente. |
 
-### Comandos Sessions (Pluggable Middle)
-
-La **Session** es la primitiva que ancla el ciclo de vida de un desarrollo
-(desde `create-spec` hasta `finish-session`). Visibles vía CLI para
-inspeccionar, listar o recuperar manualmente. Ver
-[`docs/architecture/session-primitive.md`](docs/architecture/session-primitive.md)
-y [`docs/pluggable-middle/`](docs/pluggable-middle/) para el diseño completo.
+### Comandos Sessions
 
 | Comando | Descripción |
 | --- | --- |
 | `cortex session current` | Id de la sesión activa (o `(no active session)`). |
 | `cortex session list` | Lista sesiones (`--status open\|closed\|handoff\|abandoned`, `--json`). |
-| `cortex session show [ID]` | Detalle completo de una sesión (default: la activa). Pasa `--watch` para abrir la TUI en vivo focalizada en esa sesión (Fase 06). |
-| `cortex session watch [ID] [--refresh N]` | **TUI viva** (Fase 06): refresca cada `N` segundos (default 1.5, rango 0.5–30) la sesión activa o la indicada. Muestra checkpoints recientes, diff preview, verification status y sidebar de sesiones recientes. `Ctrl+C` para salir. |
+| `cortex session show [ID]` | Detalle completo de una sesión (default: la activa). Con `--watch` abre la TUI viva. |
+| `cortex session watch [ID] [--refresh N]` | TUI viva: refresca cada `N` segundos, muestra checkpoints, diff preview, verification status y sidebar de sesiones recientes. |
 | `cortex session diff [ID]` | `git diff start_commit..HEAD` de la sesión. |
-| `cortex session task list \| done \| in-progress \| skip \| block` | **Tasks granulares** (Fase 09.C, opt-in). Lista o muta el status de las tasks atómicas que SDDwork emitió tras `cortex create-spec --with-tasks`. |
-| `cortex session switch <ID>` | Cambia la sesión activa (la nueva debe estar OPEN). |
+| `cortex session task list \| done \| in-progress \| skip \| block` | Tasks granulares (opt-in con `cortex create-spec --with-tasks`). |
+| `cortex session switch <ID>` | Cambia la sesión activa. |
 | `cortex session abandon <ID> --reason X` | Cierra como `abandoned` sin generar session note. |
-| `cortex session checkpoint --source <s> --note "..." [--verified-claim X] [--artifact path]` | Appendea un checkpoint a la sesión activa. Es el comando que invocan los IDE hooks (Fase 03). |
-| `cortex session hooks list \| status \| install --ide <name> \| uninstall --ide <name>` | Gestiona hooks IDE para el modo Observed. Adapters: `claude-code`, `cursor` (vía git post-commit), `pi`. |
-| `cortex finish-session [ID]` | **Cierra una sesión**: reconstruye el contexto desde el diff, corre los verification hooks del spec, persiste session note + ADRs. Flags: `--handoff --reason X`, `--abandon --reason X`, `--interactive` (UI guiada, Fase 04), `--no-interactive` (override), `--json`. |
+| `cortex session checkpoint --source <s> --note "..." [--verified-claim X] [--artifact path]` | Appendea un checkpoint a la sesión activa. |
+| `cortex session hooks list \| status \| install \| uninstall --ide <name>` | Gestiona hooks de IDE para el modo Observed. |
+| `cortex finish-session [ID]` | Cierra la sesión vía documenter. Flags: `--handoff`, `--abandon`, `--reason`, `--interactive`/`--no-interactive`, `--json`. |
 
 > Las sesiones se crean automáticamente al ejecutar `cortex create-spec`.
-> En Fase 01 se agrega `cortex finish-session` para cerrarlas vía
-> documenter.
+
+### Comandos CI Plugin
+
+| Comando | Descripción |
+| --- | --- |
+| `cortex ci validate-pr` | Valida un PR contra su Session + spec. Flags: `--base-branch`, `--head-branch`, `--base-commit`, `--head-commit`, `--diff`, `--session`, `--format json\|text\|pr-comment`. Exit codes 0/1/2/3 = pass/warn/blocked/error. |
+| `cortex ci open-review-session` | Abre una review session dedicada al PR (modo `CI_REVIEW`). |
+| `cortex ci report-checkpoint` | Appendea un checkpoint `CI_BOT` a la review session activa. |
+| `cortex ci close-review-session` | Cierra la review session y persiste el resumen. |
 
 ### Comandos Autopilot
 
 | Comando | Descripción |
 | --- | --- |
-| `cortex autopilot start` | Inicia sesión Autopilot (`--mode observe\|assist\|autopilot`). |
-| `cortex autopilot preflight` | Pre-enriquecimiento con budget inteligente. |
-| `cortex autopilot checkpoint` | Registra punto de control mid-task. |
-| `cortex autopilot finish` | Cierra sesión y genera session note (`--auto`). |
-| `cortex autopilot status` | Estado de la sesión activa. |
-| `cortex autopilot install` | Instala hooks en el IDE (`--ide cursor\|claude-code\|opencode`). |
-| `cortex autopilot uninstall` | Desinstala hooks del IDE. |
-| `cortex autopilot doctor` | Diagnóstico completo del módulo. |
+| `cortex autopilot start` | Adopta la sesión activa bajo un modo (`--mode observe\|assist\|autopilot`). |
+| `cortex autopilot preflight` | Dry-run del pipeline de detectors. |
+| `cortex autopilot checkpoint` | Appendea un checkpoint a la sesión activa. |
+| `cortex autopilot finish` | Cierra la sesión activa; con `--auto` corre la pipeline canónica del documenter. |
+| `cortex autopilot status` | Estado de la sesión activa o de la indicada. |
+| `cortex autopilot doctor` | Diagnóstico del módulo. |
 
 ### Comandos Enterprise
 
@@ -298,8 +355,6 @@ y [`docs/pluggable-middle/`](docs/pluggable-middle/) para el diseño completo.
 | `cortex pr-context capture/store/search/generate/full` | Pipeline DevSecDocOps de PRs. |
 | `cortex inject` / `cortex sync-ide` | Configuración de IDEs. |
 | `cortex webgraph serve/export` | Visualización de grafos de conocimiento. |
-
-
 
 ---
 
@@ -336,6 +391,8 @@ just audit             # Auditoría de calidad
 | `cortex-hotfix` | Fix urgente (Fast Track) |
 | `cortex-research` | Investigación |
 | `cortex-audit` | Auditoría de código |
+
+**Subagentes bundled** (sincronizados desde `.cortex/subagents/`): `cortex-code-explorer`, `cortex-code-designer`, `cortex-code-implementer`, `cortex-documenter`, `cortex-security-auditor`, `cortex-test-verifier`. El comando `cortex inject --ide pi` corre un mirror canonical → bundle antes de copiar (`--sync-canonical`/`--no-sync-canonical`).
 
 ---
 
@@ -376,9 +433,13 @@ just audit             # Auditoría de calidad
 
 ### Herramientas MCP disponibles
 
-`cortex_search`, `cortex_search_vector`, `cortex_context`, `cortex_sync_ticket`, `cortex_create_spec`, `cortex_save_session`, `cortex_import_hu`, `cortex_get_hu`, `cortex_sync_vault`.
+**Retrieval / contexto / governance:** `cortex_ping`, `cortex_search`, `cortex_search_vector`, `cortex_context` (acepta `task_type` para dimensionar el budget), `cortex_sync_ticket`, `cortex_create_spec` (soporta `verification_hooks`, `proposal_mode`, `with_tasks`), `cortex_emit_proposal`, `cortex_save_session`, `cortex_write_doc`, `cortex_self_review_note`, `cortex_sync_vault`, `cortex_import_hu`, `cortex_get_hu`.
 
-Herramientas Autopilot: `cortex_autopilot_start`, `cortex_autopilot_preflight`, `cortex_autopilot_checkpoint`, `cortex_autopilot_finish`, `cortex_autopilot_status`.
+**Session primitive (Pluggable Middle):** `cortex_session_open`, `cortex_session_checkpoint`, `cortex_session_close`, `cortex_session_status`, `cortex_session_list`, `cortex_finish_session`, `cortex_close_session`, `cortex_documenter_briefing`, `cortex_session_task_list`, `cortex_session_task_update`, `cortex_review_checkpoint`, `cortex_write_design_note_canonical`.
+
+**Legacy / handoff:** `cortex_validate_handoff` y `cortex_verify_session_claims` (kept para el modo Legacy YAML — single-agent IDEs como Codex; emiten `DeprecationWarning`).
+
+**Autopilot:** `cortex_autopilot_start`, `cortex_autopilot_preflight`, `cortex_autopilot_checkpoint`, `cortex_autopilot_finish`, `cortex_autopilot_status`.
 
 ---
 
@@ -390,7 +451,7 @@ Esta guía te lleva desde cero hasta tener Cortex funcionando en tu máquina. No
 
 Antes de empezar, asegurate de tener instalado:
 
-- **Python 3.10 o superior** — [Descargar Python](https://www.python.org/downloads/)
+- **Python 3.11 o superior** — [Descargar Python](https://www.python.org/downloads/)
 - **Git** — [Descargar Git](https://git-scm.com/downloads)
 - **pipx** — recomendado si querés usar Cortex como herramienta global para varios proyectos
 
@@ -476,8 +537,10 @@ cortex setup agent
 Esto crea en tu proyecto el layout `.cortex/` (Cortex Workspace v2):
 - `.cortex/config.yaml` — Configuración de Cortex
 - `.cortex/vault/` — Tu base de conocimiento (archivos Markdown)
+- `.cortex/sessions/` — Sesiones activas y cerradas (YAML atómico)
 - `.cortex/memory/` — Base de datos de memoria episódica (ChromaDB)
 - `.cortex/skills/` — Habilidades de escritura de documentación
+- `.cortex/subagents/` — Subagentes canónicos
 - `.cortex/workspace.yaml` — Declaración de layout (v2)
 - `.cortex/org.yaml` — Topología enterprise
 - `.github/workflows/` — CI/CD pipelines
@@ -485,14 +548,20 @@ Esto crea en tu proyecto el layout `.cortex/` (Cortex Workspace v2):
 **A partir de acá, todos los comandos se corren desde la carpeta de tu proyecto:**
 
 ```bash
-# Crear una especificación técnica antes de codear
-cortex create-spec --title "Auth JWT" --goal "Implementar refresh tokens"
+# Crear una especificación técnica con verification hooks
+cortex create-spec --title "Auth JWT" --goal "Implementar refresh tokens" \
+  --verification-hook "name=tests;command=pytest tests/auth/"
 
-# Guardar una sesión de trabajo al terminar
-cortex save-session --title "JWT Auth" --spec-summary "Refresh tokens implementados"
+# Trabajar (el modo Managed / Observed / BYO depende de tu setup) ...
+
+# Cerrar la sesión: el documenter reconstruye y persiste el session note
+cortex finish-session
 
 # Buscar en tu memoria (episódica + semántica)
 cortex search "error handling en middleware"
+
+# Ver la sesión activa en vivo
+cortex session watch
 
 # Verificar que todo esté sano
 cortex doctor
@@ -505,12 +574,15 @@ cortex stats
 
 ### Paso 4: Conectar Cortex con tu IDE (Opcional)
 
-Si usás un IDE con soporte MCP (Cursor, VSCode con Cline, Claude Desktop, Pi), Cortex puede funcionar como un servidor de herramientas para tu agente de IA:
+Si usás un IDE con soporte MCP (Cursor, VSCode con Cline, Claude Desktop, opencode, Pi), Cortex puede funcionar como un servidor de herramientas para tu agente de IA:
 
 ```bash
 # Desde la carpeta de tu proyecto:
 cortex inject --ide cursor        # Para Cursor
-cortex inject --ide claude-code   # Para Claude Desktop
+cortex inject --ide claude-code   # Para Claude Code / Claude Desktop
+cortex inject --ide opencode      # Para opencode
+cortex inject --ide codex         # Para Codex
+cortex inject --ide pi            # Para Pi
 cortex inject                     # Menú interactivo para elegir IDE
 ```
 
@@ -520,6 +592,15 @@ O podés iniciar el servidor MCP manualmente:
 cortex mcp-server --project-root D:\MiProyecto
 ```
 
+Para activar el modo **Observed** (Cortex registra checkpoints automáticamente desde tu IDE):
+
+```bash
+cortex session hooks install --ide claude-code
+cortex session hooks install --ide cursor       # vía .git/hooks/post-commit
+cortex session hooks install --ide opencode
+cortex session hooks install --ide pi
+```
+
 ---
 
 ### Paso 5: Activar Autopilot (Opcional)
@@ -527,10 +608,7 @@ cortex mcp-server --project-root D:\MiProyecto
 Si querés que Cortex opere de forma más autónoma, podés activar el módulo Autopilot:
 
 ```bash
-# Instalar hooks en tu IDE preferido
-cortex autopilot install --ide claude-code
-
-# O iniciarlo manualmente para una sesión
+# Iniciar Autopilot para una sesión
 cortex autopilot start --mode assist
 ```
 
@@ -551,9 +629,9 @@ cd D:\MiProyecto
 
 # 4. Trabajar con Cortex
 cortex search "lo que necesito recordar"
-cortex create-spec --title "Mi Feature"
+cortex create-spec --title "Mi Feature" --verification-hook "name=tests;command=pytest"
 # ... codear ...
-cortex save-session --title "Mi Feature" --spec-summary "Lo que hice"
+cortex finish-session             # Cierra la sesión y deja todo documentado
 ```
 
 ---
@@ -563,7 +641,7 @@ Si querés contribuir con código al proyecto, necesitás instalar las dependenc
 
 ### Enterprise
 
-Para configurar Cortex en modo corporativo con topologías organizacionales, consultá la sección Enterprise del [Manifiesto Cortex](docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md#guía-de-instalación-completa).
+Para configurar Cortex en modo corporativo con topologías organizacionales, consultá la sección Enterprise del [Manifiesto Cortex](docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md#enterprise-memory-productization).
 
 ---
 
@@ -592,28 +670,35 @@ cortex hu show PROJ-123
 ```
 Cortex/
 ├── cortex/                    # Núcleo del Sistema (AgentMemory)
-│   ├── cli/                   # Interfaz Typer (30+ comandos)
+│   ├── cli/                   # Interfaz Typer (sub-apps: session, ci, autopilot, …)
 │   ├── core.py                # Fachada Principal (Inyección de Servicios)
-│   ├── autopilot/             # Módulo Autopilot (ciclo de vida autónomo)
+│   ├── session/               # PRIMITIVA Session (SessionRecord, hooks, verification)
+│   ├── documenter/            # Pipeline de reconstrucción + persistencia + interactive UI
+│   ├── ci/                    # CI plugin provider-agnostic (validate-pr + review sessions)
+│   ├── autopilot/             # Capa de política + lifecycle sobre Sessions
 │   ├── enterprise/            # Capa Enterprise Corporativa (org.yaml, promotion, reporting)
-│   ├── services/              # Lógica de negocio (spec, session, pr)
+│   ├── services/              # Lógica de negocio (SpecService, NoteService, PRService)
+│   ├── handoff.py             # AgentHandoff (kept para Legacy YAML / single-agent IDEs)
 │   ├── pipeline/              # Abstracciones DevSecDocOps (CI/CD Gates)
 │   ├── episodic/              # Memoria episódica (ChromaDB + RRF)
 │   ├── semantic/              # Memoria semántica (Vault Markdown)
 │   ├── retrieval/             # Motor de búsqueda híbrida adaptativo
 │   ├── embedders/             # Factory de backends (ONNX, local, openai)
-│   ├── context_enricher/      # Enriquecimiento proactivo de contexto
+│   ├── context_enricher/      # Enriquecimiento proactivo + budget task-aware
+│   ├── documentation/         # Sistema canónico (doc_type, schemas, templates, writers)
 │   ├── workspace/             # WorkspaceLayout — resolución central de rutas
 │   ├── mcp/                   # Servidor Model Context Protocol
 │   ├── setup/                 # Orquestador (Agent/Pipeline/Full/Enterprise/WebGraph)
 │   ├── webgraph/              # Visualización de grafos + nodos enterprise
 │   ├── workitems/             # Integración Work Items (Jira)
-│   └── ide/                   # Adaptadores IDE (Cursor, VSCode, Claude, Pi)
+│   └── ide/                   # Adaptadores IDE (Claude Code, Cursor, opencode, Codex, Pi)
 ├── cortex-pi/                 # Entorno Pi Agent (Premium Edition)
+├── templates/
+│   └── ci/                    # GitHub Actions / GitLab CI listos para el plugin
 ├── tests/                     # Suite (unit/, integration/, e2e/)
 ├── docs/
 │   ├── enterprise/            # Manifiesto, planes y bitácoras Enterprise
-│   ├── autopilot/             # Plan, contratos y estrategia de tests de Autopilot
+│   ├── autopilot/             # Plan, contratos y estrategia de tests
 │   ├── BusinessSignal/        # Propuesta: inteligencia de negocio sobre memoria
 │   └── refact/                # Specs de refactorización (workspace, WebGraph)
 ├── .github/workflows/         # CI/CD Pipelines (PR, Enterprise, Security, Release)
@@ -621,11 +706,13 @@ Cortex/
 │   ├── config.yaml            # Configuración principal
 │   ├── workspace.yaml         # Layout versión y proyectos
 │   ├── vault/                 # Knowledge base (Obsidian compatible)
+│   ├── sessions/              # Sessions YAML + active.txt pointer
 │   ├── memory/                # Memoria episódica ChromaDB
 │   ├── skills/                # Agent skills
-│   ├── subagents/             # Subagentes de documentación
+│   ├── subagents/             # Subagentes canónicos
 │   ├── org.yaml               # Topología enterprise
 │   └── scripts/               # Scripts DevSecDocOps
+├── CHANGELOG.md
 └── pyproject.toml             # Configuración de empaquetado
 ```
 
@@ -640,7 +727,7 @@ pytest --cov=cortex   # Tests con coverage
 mypy cortex/          # Type checking
 ```
 
-Coverage objetivo: >85%. Suite dividida en `unit/`, `integration/`, `e2e/`. Property-Based Testing con Hypothesis.
+Coverage objetivo: >85%. Suite dividida en `unit/`, `integration/`, `e2e/`. Property-Based Testing con Hypothesis. El módulo `cortex.documentation.*` corre bajo `mypy --strict`.
 
 ---
 

@@ -716,167 +716,88 @@ class TestClaudeCodeTripartitaRefinada:
 
 
 # ---------------------------------------------------------------------------
-# Tripartita Refinada — Plan 05 (Pi)
+# Desacople bundle↔canonical (mayo 2026) — Pi es su propia SSoT
 # ---------------------------------------------------------------------------
 
 
-class TestPiSyncCanonicalSubagents:
-    """Plan 05 §1 contract — Pi must mirror canonical subagents into its
-    bundle before injecting the project, otherwise the bundle drifts and
-    Pi adopters get yesterday's prompts."""
+class TestPiBundleIsOwnSSoT:
+    """Pi ya NO se rehidrata desde ``.cortex/``.
 
-    def _make_canonical(self, project_root: Path) -> Path:
-        """Drop a synthetic canonical bundle with the 3 skill anchors + 2
-        deep-track subagents that Pi mirrors. Phase 09.A+ (May 2026):
-        cortex-documenter is sourced from the SKILL, not the subagent
-        (the legacy subagent stays for non-Pi IDEs only)."""
-        skills = project_root / ".cortex" / "skills"
-        skills.mkdir(parents=True)
-        (skills / "cortex-sync.md").write_text(
-            "# canonical sync\nANCHOR INICIO marker.",
-            encoding="utf-8",
-        )
-        (skills / "cortex-SDDwork.md").write_text(
-            "# canonical SDDwork\nINTELLIGENT ROUTING marker.",
-            encoding="utf-8",
-        )
-        (skills / "cortex-documenter.md").write_text(
-            "# canonical documenter\nHIGH-SIGNAL DOCUMENTATION MODE marker.",
-            encoding="utf-8",
-        )
+    ``sync_canonical_subagents`` quedó DESACTIVADA (comentada en
+    ``adapters/pi.py``) y el flag ``sync_canonical`` es inerte:
+    ``inject_profiles`` copia el bundle ``cortex-pi/`` verbatim, sin
+    espejar el contenido canónico de ``.cortex/{skills,subagents}/``.
+    """
 
-        subagents = project_root / ".cortex" / "subagents"
-        subagents.mkdir(parents=True)
-        (subagents / "cortex-code-explorer.md").write_text(
-            "# canonical explorer\nVERIFICATION GATE marker.",
-            encoding="utf-8",
+    def _make_fake_bundle(self, bundle_root: Path) -> None:
+        """Crea un ``cortex-pi/`` falso con contenido propio del bundle
+        (marcador ``PI OWN SSoT``) para detectar contaminación canónica."""
+        agents = bundle_root / ".pi" / "agents"
+        agents.mkdir(parents=True)
+        (agents / "cortex-sync.md").write_text(
+            "# BUNDLE sync\nPI OWN SSoT marker.", encoding="utf-8"
         )
-        (subagents / "cortex-code-implementer.md").write_text(
-            "# canonical implementer\nAnti-rationalization marker.",
-            encoding="utf-8",
-        )
-        return subagents
+        (bundle_root / "AGENTS.md").write_text("# bundle agents", encoding="utf-8")
 
-    def test_overwrites_bundle_with_canonical_content(self, tmp_path: Path) -> None:
-        """When the canonical content is fresher than the bundle, the
-        bundle gets updated. Phase 09.A+ (May 2026): the sync now covers
-        BOTH the 3 skill anchors and the deep-track subagents — total 5
-        files when both ``cortex-code-designer`` is absent (the helper
-        omits it). We pass a fake ``bundle_dir`` so the real repository
-        bundle is not mutated by the test."""
-        project_root = tmp_path / "project"
-        self._make_canonical(project_root)
-        fake_bundle = tmp_path / "fake-bundle"
-
+    def test_sync_method_is_disabled(self) -> None:
+        """La función de sync quedó comentada: ya no es un atributo del
+        adapter. Si reaparece, alguien re-acopló Pi al canónico sin querer."""
         adapter = get_adapter("pi")
-        overwritten = adapter.sync_canonical_subagents(project_root, bundle_dir=fake_bundle)
+        assert not hasattr(adapter, "sync_canonical_subagents")
 
-        # 3 skill anchors (sync/SDDwork/documenter) + 2 subagents
-        # (explorer/implementer) — designer not in the helper.
-        assert len(overwritten) == 5
-        documenter = (fake_bundle / ".pi" / "agents" / "cortex-documenter.md").read_text(encoding="utf-8")
-        assert "HIGH-SIGNAL DOCUMENTATION MODE" in documenter
-        explorer = (fake_bundle / ".pi" / "agents" / "cortex-code-explorer.md").read_text(encoding="utf-8")
-        assert "VERIFICATION GATE" in explorer
-        sync_agent = (fake_bundle / ".pi" / "agents" / "cortex-sync.md").read_text(encoding="utf-8")
-        assert "ANCHOR INICIO" in sync_agent
-
-    def test_no_canonical_directory_returns_empty_list(self, tmp_path: Path) -> None:
-        """When the project has neither ``.cortex/skills/`` nor
-        ``.cortex/subagents/`` (e.g. Pi is being injected before Cortex
-        setup ran), the sync is a no-op."""
+    def test_inject_profiles_copies_bundle_verbatim(self, tmp_path: Path, monkeypatch) -> None:
+        """``inject_profiles`` copia el bundle tal cual, sin tocar ``.cortex/``."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         fake_bundle = tmp_path / "fake-bundle"
-
-        adapter = get_adapter("pi")
-        overwritten = adapter.sync_canonical_subagents(project_root, bundle_dir=fake_bundle)
-
-        assert overwritten == []
-        # Bundle agents directory may exist but must contain none of the
-        # shared anchors or subagents.
-        agents_dir = fake_bundle / ".pi" / "agents"
-        for name in (
-            "cortex-sync.md",
-            "cortex-SDDwork.md",
-            "cortex-documenter.md",
-            "cortex-code-explorer.md",
-            "cortex-code-implementer.md",
-        ):
-            assert not (agents_dir / name).exists()
-
-    def test_partial_canonical_only_copies_what_exists(self, tmp_path: Path) -> None:
-        """If only one of the canonical files exists, only that one gets
-        mirrored — the others stay as they were in the bundle. Phase 09.A+:
-        the documenter is sourced from ``.cortex/skills/cortex-documenter.md``."""
-        project_root = tmp_path / "project"
-        canonical_skills = project_root / ".cortex" / "skills"
-        canonical_skills.mkdir(parents=True)
-        (canonical_skills / "cortex-documenter.md").write_text(
-            "# only documenter (from skill)", encoding="utf-8"
+        self._make_fake_bundle(fake_bundle)
+        monkeypatch.setattr(
+            "cortex.ide.adapters.pi._default_pi_bundle_dir", lambda: fake_bundle
         )
-        # Pre-seed the fake bundle with stale content for the other two.
-        fake_bundle = tmp_path / "fake-bundle"
-        agents_dir = fake_bundle / ".pi" / "agents"
-        agents_dir.mkdir(parents=True)
-        (agents_dir / "cortex-code-explorer.md").write_text("STALE explorer", encoding="utf-8")
 
         adapter = get_adapter("pi")
-        overwritten = adapter.sync_canonical_subagents(project_root, bundle_dir=fake_bundle)
-
-        assert len(overwritten) == 1
-        assert overwritten[0].name == "cortex-documenter.md"
-        # Documenter content came from the SKILL.
-        assert (agents_dir / "cortex-documenter.md").read_text(encoding="utf-8") == (
-            "# only documenter (from skill)"
-        )
-        # Stale content for the others remains intact.
-        assert (agents_dir / "cortex-code-explorer.md").read_text(encoding="utf-8") == "STALE explorer"
-
-    def test_inject_profiles_invokes_sync_by_default(self, tmp_path: Path, monkeypatch) -> None:
-        """``inject_profiles(sync_canonical=True)`` (the default) must
-        call ``sync_canonical_subagents`` before copying the bundle. We
-        patch the method to a no-op spy so the test never touches the
-        real bundle on disk."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
-
-        adapter = get_adapter("pi")
-        calls: list[Path] = []
-
-        def spy(self_: object, root: Path, **_: object) -> list[Path]:
-            calls.append(root)
-            return []
-
-        monkeypatch.setattr(type(adapter), "sync_canonical_subagents", spy)
-        # Also stop inject_profiles from copying the real bundle into tmp_path.
-        monkeypatch.setattr("cortex.ide.adapters.pi._default_pi_bundle_dir", lambda: tmp_path / "noop-bundle")
-        (tmp_path / "noop-bundle").mkdir()
-
         adapter.inject_profiles(project_root)
 
-        assert calls == [project_root]
+        sync_agent = (project_root / ".pi" / "agents" / "cortex-sync.md").read_text(
+            encoding="utf-8"
+        )
+        assert "PI OWN SSoT" in sync_agent
 
-    def test_inject_profiles_skips_sync_when_disabled(self, tmp_path: Path, monkeypatch) -> None:
-        """``sync_canonical=False`` reproduces the previous behavior
-        (raw bundle copy) — useful for regression / snapshot testing."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
-
+    def test_sync_canonical_flag_is_inert(self, tmp_path: Path, monkeypatch) -> None:
+        """El flag ``sync_canonical`` ya no tiene efecto: True y False
+        producen el mismo resultado (copia cruda del bundle), aun con
+        contenido canónico presente en ``.cortex/``. El bundle fuente
+        nunca se contamina con el contenido canónico."""
+        fake_bundle = tmp_path / "fake-bundle"
+        self._make_fake_bundle(fake_bundle)
+        monkeypatch.setattr(
+            "cortex.ide.adapters.pi._default_pi_bundle_dir", lambda: fake_bundle
+        )
         adapter = get_adapter("pi")
-        calls: list[Path] = []
 
-        def spy(self_: object, root: Path, **_: object) -> list[Path]:
-            calls.append(root)
-            return []
+        for flag in (True, False):
+            project_root = tmp_path / f"project-{flag}"
+            project_root.mkdir()
+            # Canonical presente: antes el sync lo habría espejado al bundle.
+            skills = project_root / ".cortex" / "skills"
+            skills.mkdir(parents=True)
+            (skills / "cortex-sync.md").write_text(
+                "# canonical sync\nCANONICAL marker.", encoding="utf-8"
+            )
 
-        monkeypatch.setattr(type(adapter), "sync_canonical_subagents", spy)
-        monkeypatch.setattr("cortex.ide.adapters.pi._default_pi_bundle_dir", lambda: tmp_path / "noop-bundle")
-        (tmp_path / "noop-bundle").mkdir()
+            adapter.inject_profiles(project_root, sync_canonical=flag)
 
-        adapter.inject_profiles(project_root, sync_canonical=False)
-
-        assert calls == []  # sync was skipped
+            # El bundle fuente nunca se contamina con el contenido canónico.
+            bundle_agent = (
+                fake_bundle / ".pi" / "agents" / "cortex-sync.md"
+            ).read_text(encoding="utf-8")
+            assert "PI OWN SSoT" in bundle_agent
+            assert "CANONICAL" not in bundle_agent
+            # Y el proyecto recibe el contenido del bundle, no el canónico.
+            injected = (
+                project_root / ".pi" / "agents" / "cortex-sync.md"
+            ).read_text(encoding="utf-8")
+            assert "PI OWN SSoT" in injected
 
 
 def test_windsurf_adapter_writes_agents_md(monkeypatch, tmp_path: Path) -> None:
@@ -1018,15 +939,22 @@ class TestTripartitaCrossIDE:
 
 
 class TestPiBundleHasTripartitaRefinada:
-    """Plan 07 §2 (Pi-specific) — the in-tree Pi bundle at
-    ``cortex-pi/.pi/`` must already contain the Tripartita Refinada
-    markers in its 4 Pi-only agents (sync, SDDwork, security-auditor,
-    test-verifier), the agent-chain.yaml validation hooks, the damage
-    control rules, and the cortex-vault skill awareness section.
+    """Plan 07 §2 (Pi-specific) + Pi 2.5+net (mayo 2026) — the in-tree
+    Pi bundle at ``cortex-pi/.pi/`` must reflect the canonical contracts
+    that the adapter ships into adopter projects.
 
-    These markers were added by Plan 05. This test guards against
-    accidental rollback that would silently ship adopters with the old
-    bundle when they run ``cortex inject --ide pi``.
+    Originally guarded against rollback of Plan 05 markers. After the
+    Pi 2.5+net upgrade, the assertions track the NEW contract:
+
+    - ``cortex-sync`` is the **only** Pi-only agent that still uses the
+      legacy YAML AgentHandoff (it remains the opening anchor).
+    - ``cortex-security-auditor`` and ``cortex-test-verifier`` migrated
+      to ``cortex_session_checkpoint`` (no YAML handoff).
+    - ``cortex-SDDwork`` uses checkpoints since Phase 02.
+    - ``agent-chain.yaml`` is now FALLBACK only (cortex-net is the
+      primary coordination channel); the legacy ``validate_handoff`` /
+      ``expected_input_agent`` keys were intentionally removed.
+    - ``cortex-net.ts`` extension must exist in the bundle.
     """
 
     @pytest.fixture(scope="class")
@@ -1034,27 +962,30 @@ class TestPiBundleHasTripartitaRefinada:
         # tests/unit/test_ide_adapters.py → repo root is 3 parents up.
         return Path(__file__).resolve().parents[2] / "cortex-pi" / ".pi"
 
-    def test_pi_only_agents_have_contrato_de_salida(self, bundle_dir: Path) -> None:
-        """Phase 09.A+ / May 2026: agents that still use the legacy
-        YAML AgentHandoff contract (Pi-specific helpers + the cortex-sync
-        anchor) must keep their ``Contrato de Salida`` section. cortex-SDDwork
-        was removed from this list because it emits checkpoints (not YAML
-        handoffs) since Phase 02 — see ``.cortex/skills/cortex-SDDwork.md``.
-        """
-        for agent in (
-            "cortex-sync",
-            "cortex-security-auditor",
-            "cortex-test-verifier",
-        ):
+    def test_only_sync_keeps_legacy_yaml_handoff(self, bundle_dir: Path) -> None:
+        """Pi 2.5+net: ``cortex-sync`` is the sole Pi-only agent that
+        still emits ``YAML AgentHandoff`` (it's the opening anchor and
+        gates spec creation). security-auditor and test-verifier moved
+        to ``cortex_session_checkpoint``."""
+        sync_content = (bundle_dir / "agents" / "cortex-sync.md").read_text(encoding="utf-8")
+        assert "Contrato de Salida" in sync_content
+        assert "AgentHandoff" in sync_content or "agent: cortex-" in sync_content
+
+    def test_security_auditor_and_test_verifier_emit_checkpoints(
+        self, bundle_dir: Path
+    ) -> None:
+        """Pi 2.5+net: ambos agents migraron de YAML AgentHandoff a
+        ``cortex_session_checkpoint``. El contract debe estar marcado
+        explícitamente como **deprecated** en el cuerpo del agent."""
+        for agent in ("cortex-security-auditor", "cortex-test-verifier"):
             content = (bundle_dir / "agents" / f"{agent}.md").read_text(encoding="utf-8")
-            assert "Contrato de Salida" in content, agent
-            assert "AgentHandoff" in content or "agent: cortex-" in content, agent
+            assert "cortex_session_checkpoint" in content, agent
+            assert "NO EMITAS YAML AgentHandoff" in content, agent
+            assert "cortex_validate_handoff" in content, agent  # mentioned as deprecated
 
     def test_sddwork_uses_checkpoints_not_yaml_handoffs(self, bundle_dir: Path) -> None:
         """Phase 02+: cortex-SDDwork emits ``cortex_session_checkpoint``
-        events and explicitly avoids ``cortex_validate_handoff``. The
-        Pi bundle must reflect this (since Phase 09.A+ it's synced from
-        ``.cortex/skills/cortex-SDDwork.md`` directly)."""
+        events and explicitly avoids ``cortex_validate_handoff``."""
         content = (bundle_dir / "agents" / "cortex-SDDwork.md").read_text(encoding="utf-8")
         assert "cortex_session_checkpoint" in content
         # The phrase explicitly tells the agent NOT to use validate_handoff.
@@ -1068,13 +999,33 @@ class TestPiBundleHasTripartitaRefinada:
         assert "Pre-flight" in content
         assert "CONTEXT.md" in content
 
-    def test_agent_chain_has_validation_hooks(self, bundle_dir: Path) -> None:
+    def test_agent_chain_is_fallback_without_legacy_handoff_hooks(
+        self, bundle_dir: Path
+    ) -> None:
+        """Pi 2.5+net: ``agent-chain.yaml`` quedó como FALLBACK puro para
+        IDEs sin cortex-net. Las claves ``validate_handoff`` /
+        ``expected_input_agent`` se eliminaron a propósito (el contrato
+        real son los checkpoints del session, no YAML). Las 3 chains
+        canónicas (sddwork/hotfix/refactor) deben seguir declaradas."""
         content = (bundle_dir / "agents" / "agent-chain.yaml").read_text(encoding="utf-8")
-        assert "validate_handoff:" in content
-        assert "expected_input_agent:" in content
-        # All 3 chains must declare the keys.
+        # Marcado explicitamente como fallback en el header.
+        assert "FALLBACK" in content
+        # Hooks viejos eliminados a proposito.
+        assert "validate_handoff:" not in content
+        assert "expected_input_agent:" not in content
+        # Las 3 chains siguen existiendo.
         for chain in ("sddwork:", "hotfix:", "refactor:"):
             assert chain in content
+
+    def test_cortex_net_extension_ships_in_bundle(self, bundle_dir: Path) -> None:
+        """Pi 2.5+net: la extension ``cortex-net.ts`` (peer-to-peer agent
+        comms) debe existir en el bundle y referenciar ``session.lock``
+        como fuente de session_id."""
+        ext = bundle_dir / "extensions" / "cortex-net.ts"
+        assert ext.is_file()
+        content = ext.read_text(encoding="utf-8")
+        assert "session.lock" in content
+        assert "CORTEX_SESSION_ID" in content
 
     def test_damage_control_has_handoff_rules(self, bundle_dir: Path) -> None:
         content = (bundle_dir / "damage-control-rules.yaml").read_text(encoding="utf-8")

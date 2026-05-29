@@ -1,16 +1,27 @@
 {
   "model": "claude-sonnet-4-20250514",
   "theme": "cortex-dark",
-  "defaultExtensions": ["extensions/cortex-dashboard.ts"],
+  "defaultExtensions": [
+    ".pi/extensions/cortex-tools.ts",
+    ".pi/extensions/cortex-mcp.ts",
+    ".pi/extensions/cortex-net.ts",
+    ".pi/extensions/cortex-cockpit.ts",
+    ".pi/extensions/cortex-autopilot.ts",
+    ".pi/extensions/cortex-panel.ts",
+    ".pi/extensions/cortex-team.ts",
+    ".pi/extensions/system-select.ts",
+    ".pi/extensions/damage-control.ts"
+  ],
   "skills": [
-    ".pi/skills/cortex-vault.md",
-    ".pi/skills/cortex-python.md",
-    ".pi/skills/cortex-testing.md",
-    ".pi/skills/obsidian-index.md"
+    ".pi/skills/cortex-vault/SKILL.md",
+    ".pi/skills/cortex-python/SKILL.md",
+    ".pi/skills/cortex-testing/SKILL.md",
+    ".pi/skills/obsidian-index/SKILL.md"
   ],
   "agents": [
     ".pi/agents/cortex-sync.md",
     ".pi/agents/cortex-SDDwork.md",
+    ".pi/agents/cortex-code-designer.md",
     ".pi/agents/cortex-code-explorer.md",
     ".pi/agents/cortex-code-implementer.md",
     ".pi/agents/cortex-security-auditor.md",

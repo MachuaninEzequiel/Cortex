@@ -1,160 +1,129 @@
-# Cortex Agent Chain — Pipeline secuencial SDDwork (Tripartita Refinada / 0.5.0)
-# Usado por la extensión agent-chain de Pi
-# Cada step toma el output del anterior como $INPUT
+# Cortex Agent Chain — Pipeline secuencial (FALLBACK)
 #
-# Tripartita Refinada (Plan 05): cada step a partir del segundo lleva
-# `validate_handoff: true` y `expected_input_agent: <nombre>`. Estas keys
-# son declarativas — la extensión Pi actual las ignora y el orquestador
-# (cortex-SDDwork) hace la validación con `cortex_validate_handoff`
-# explícitamente, según se documenta en cortex-SDDwork.md "Validación de
-# handoffs". Cuando un futuro runtime Pi implemente el hook automático,
-# ya están las keys disponibles para ser consumidas sin rework.
+# ⚠️ Release 2.5 + cortex-net: este archivo es FALLBACK para IDEs que no
+# soportan subagents nativos (ej: Codex single-agent) o cuando cortex-net
+# no está disponible (sin Pi extensions cargadas).
+#
+# Si tu IDE soporta cortex-net (Pi con cortex-net.ts cargado), NO uses
+# estos pipelines — usá el team `cortex-sddwork` directamente. La red
+# coordina lo que estos chains hacían secuencialmente, pero mejor.
+#
+# Cambios respecto a 2.5 pre-net:
+#   - Eliminado: validate_handoff / expected_input_agent / YAML AgentHandoff.
+#     El contrato es el Cortex Session + checkpoints, no YAML.
+#   - Cada step ahora termina con un cortex_session_checkpoint, no con YAML.
+#   - El chain solo tiene sentido cuando la red está apagada.
 
 chains:
-  # Pipeline SDDwork completo (Tripartita Refinada)
+  # Pipeline SDDwork completo (fallback secuencial sin red)
   sddwork:
-    description: "Ciclo completo de desarrollo gobernado por Cortex Tripartita Refinada"
+    description: "Ciclo completo SDDwork — modo fallback secuencial sin cortex-net"
     steps:
       - agent: cortex-sync
-        validate_handoff: false   # primer paso, no recibe handoff entrante
         prompt: |
-          Analiza la siguiente tarea y genera un SPEC completo:
+          Analizá la siguiente tarea y generá un SPEC completo:
           TAREA: $INPUT
 
-          ⚠️ MANDATORY: Ejecuta cortex_sync_ticket PRIMERO antes de cortex_create_spec.
+          ⚠️ MANDATORY: ejecutá cortex_sync_ticket PRIMERO antes de cortex_create_spec.
           Si existe CONTEXT.md en el workspace, leelo antes de redactar la spec.
-          Finaliza con: SPEC LISTO en vault/specs/<fecha>-<nombre>.md
-          Cierre con bloque YAML AgentHandoff (agent: cortex-sync).
+          Finalizá con la spec persistida en vault/specs/<fecha>-<slug>.md
+          y el mensaje canónico de cortex-sync.
 
       - agent: cortex-SDDwork
-        validate_handoff: true
-        expected_input_agent: cortex-sync
         prompt: |
-          Implementa según el siguiente SPEC usando Intelligent Routing:
+          Implementá según la SPEC recién creada usando Intelligent Routing:
           $INPUT
 
-          Antes de empezar: validá el handoff entrante con cortex_validate_handoff
-          (expected_agent: cortex-sync). Si falla, status: blocked y detené el chain.
+          Evaluá complejidad y elegí:
+          - 🟢 FAST TRACK (1-2 archivos): implementá directamente.
+          - 🔴 DEEP TRACK (complejo): delegá a explorer → designer → implementer
+            secuencialmente (estás en modo sin red).
 
-          Evalúa complejidad y elige:
-          - 🟢 FAST TRACK (1-2 archivos): Implementa directamente
-          - 🔴 DEEP TRACK (complejo): Delega a cortex-code-explorer → cortex-code-implementer
-
-          Cierre con bloque YAML AgentHandoff (agent: cortex-SDDwork).
-          Finaliza delegando a cortex-security-auditor.
+          Emití cortex_session_checkpoint al final con source="cortex-SDDwork".
+          Pasá al security auditor.
 
       - agent: cortex-security-auditor
-        validate_handoff: true
-        expected_input_agent: cortex-SDDwork
         prompt: |
-          Realiza una auditoría de seguridad del código implementado:
+          Realizá una auditoría de seguridad del código implementado:
           $INPUT
 
-          Validá el handoff entrante. Si falla, status: blocked.
-          Busca vulnerabilidades, secretos y cumplimiento de estándares.
+          Buscá vulnerabilidades, secretos y cumplimiento de estándares OWASP.
           Veredicto: APROBADO o BLOQUEADO.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-security-auditor).
-          Finaliza delegando a cortex-test-verifier.
+          Emití cortex_session_checkpoint con source="cortex-security-auditor".
+          Pasá al test-verifier.
 
       - agent: cortex-test-verifier
-        validate_handoff: true
-        expected_input_agent: cortex-security-auditor
         prompt: |
-          Verifica la calidad y cobertura de los cambios:
+          Verificá calidad y cobertura de los cambios:
           $INPUT
 
-          Validá el handoff entrante. Si falla, status: blocked.
-          Ejecuta tests y valida cobertura >85%.
+          Ejecutá tests y validá cobertura >85%.
           Veredicto: APROBADO o BLOQUEADO.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-test-verifier).
-          Finaliza delegando a cortex-documenter.
+          Emití cortex_session_checkpoint con source="cortex-test-verifier".
+          Pasá al documenter.
 
       - agent: cortex-documenter
-        validate_handoff: true
-        expected_input_agent: cortex-test-verifier
         prompt: |
-          Persiste el conocimiento de esta sesión:
+          Persistí el conocimiento de esta sesión:
           $INPUT
 
-          Validá el handoff entrante. Antes de cortex_save_session, ejecutá el
-          Verification Gate: cortex_verify_session_claims sobre los verified_claims
-          del handoff entrante. Llená el campo `confidence` de cada memoria con el
-          resultado (verified | asserted | contradicted).
+          Ejecutá el pipeline canónico: cortex_ping, cortex_documenter_briefing,
+          analizá briefing, decidí qué notas emitir, escribí con criterio,
+          cortex_self_review_note (opcional), cortex_write_doc por cada nota,
+          cortex_close_session.
 
-          Ejecuta cortex_save_session y crea las notas de vault.
-          Usa propiedades Obsidian, backlinks y tags.
-          Si el chain cerró con status: handoff (en cualquier paso), invocá
-          cortex_save_session con handoff=True y rellena blockers/verified_state.
-          Finaliza con: TAREA COMPLETADA ✅
+          Si la sesión va a `handoff`, llená blockers y next_steps.
 
-  # Pipeline de hotfix (Fast Track directo)
+  # Hotfix Fast Track (sin red, 1 archivo, sin subagents)
   hotfix:
-    description: "Fix rápido con Fast Track directo"
-    steps:
-      - agent: cortex-SDDwork
-        validate_handoff: false   # entrada directa del usuario, sin handoff entrante
-        prompt: |
-          Implementa el siguiente hotfix en modo FAST TRACK:
-          $INPUT
-
-          No uses Deep Track. Implementa directamente.
-          Valida lógicamente que funcione.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-SDDwork).
-          Finaliza delegando a cortex-documenter.
-
-      - agent: cortex-documenter
-        validate_handoff: true
-        expected_input_agent: cortex-SDDwork
-        prompt: |
-          Documenta el hotfix:
-          $INPUT
-
-          Validá el handoff entrante. Verification Gate antes de save_session.
-          Ejecuta cortex_save-session --tag "hotfix".
-
-  # Pipeline de refactor (Deep Track)
-  refactor:
-    description: "Refactoring con análisis de contexto histórico"
+    description: "Fix rápido con Fast Track directo (sin red)"
     steps:
       - agent: cortex-sync
-        validate_handoff: false   # primer paso
         prompt: |
-          Analiza el código a refactorizar y recupera contexto histórico:
+          Analizá el hotfix y generá una spec minimalista:
           $INPUT
-          ⚠️ MANDATORY: Ejecuta cortex_sync_ticket PRIMERO.
-          Si existe CONTEXT.md en el workspace, leelo antes.
-          Identifica qué decisiones motivaron el diseño actual.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-sync).
+          ⚠️ MANDATORY: cortex_sync_ticket PRIMERO.
 
-      - agent: cortex-code-explorer
-        validate_handoff: true
-        expected_input_agent: cortex-sync
+      - agent: cortex-SDDwork
         prompt: |
-          Analiza la arquitectura actual:
+          Implementá el hotfix en modo FAST TRACK:
           $INPUT
-          Validá el handoff entrante. Si falla, status: blocked.
-          Mapea dependencias y patrones existentes.
-          Output CONCISO: archivos relevantes + arquitectura esencial.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-code-explorer).
-
-      - agent: cortex-code-implementer
-        validate_handoff: true
-        expected_input_agent: cortex-code-explorer
-        prompt: |
-          Ejecuta el refactor según:
-          $INPUT
-          Validá el handoff entrante. Si falla, status: blocked.
-          Mantén o mejora la cobertura de tests.
-          Output CONCISO: resumen de cambios + decisiones técnicas.
-          Cierre con bloque YAML AgentHandoff (agent: cortex-code-implementer).
+          Sin Deep Track. Implementá directamente.
+          Emití un checkpoint al final.
 
       - agent: cortex-documenter
-        validate_handoff: true
-        expected_input_agent: cortex-code-implementer
         prompt: |
-          Documenta las decisiones del refactor:
+          Documentá el hotfix:
           $INPUT
+          Pipeline canónico. Tag la session note como "hotfix".
 
-          Validá el handoff entrante. Verification Gate antes de save_session.
-          Crea una nota de arquitectura en vault/decisions/ o vault/architecture/.
-          Si la decisión amerita ADR (3 criterios del documenter), crealo.
+  # Refactor con análisis histórico (sin red)
+  refactor:
+    description: "Refactoring con contexto histórico — modo fallback"
+    steps:
+      - agent: cortex-sync
+        prompt: |
+          Analizá el código a refactorizar y recuperá contexto histórico:
+          $INPUT
+          ⚠️ MANDATORY: cortex_sync_ticket PRIMERO.
+          Identificá qué decisiones motivaron el diseño actual.
+
+      - agent: cortex-code-explorer
+        prompt: |
+          Analizá la arquitectura actual:
+          $INPUT
+          Mapeá dependencias y patrones existentes.
+          Output conciso. Emití checkpoint con source="cortex-code-explorer".
+
+      - agent: cortex-code-implementer
+        prompt: |
+          Ejecutá el refactor según el contexto:
+          $INPUT
+          Mantené o mejorá la cobertura de tests.
+          Emití checkpoint con source="cortex-code-implementer".
+
+      - agent: cortex-documenter
+        prompt: |
+          Documentá las decisiones del refactor:
+          $INPUT
+          Si la decisión amerita ADR (3 criterios), creálo.

@@ -33,6 +33,17 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
+// Bugfix mayo 2026: Pi v0.77 no dispara before_agent_start con
+// event.agentName cuando el "agent persona" lo gestiona system-select
+// (system-select solo inyecta system prompt, no le dice a Pi qué agent
+// está activo). Para que el cockpit / cortex-net se enteren del cambio,
+// system-select escribe al singleton compartido.
+// Import desde .pi/lib/ para evitar doble instancia del singleton (ver
+// docs/multi-ide-mcp-hardening/PI-COCKPIT-UX/README.md § 8).
+import {
+  update as updateCortexState,
+  resolveRoleFromAgentName,
+} from "../lib/cortex-state";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -173,6 +184,13 @@ export default function (pi: ExtensionAPI) {
       if (selected === NONE) {
         activeAgent = null;
         ctx.ui.setStatus("cortex-agent", "");
+        // Bugfix: propagar al singleton para que cortex-cockpit y
+        // cortex-net se enteren (Pi v0.77 no dispara
+        // before_agent_start con event.agentName en este flujo).
+        updateCortexState({
+          activeAgentName: null,
+          myRole: null,
+        });
         ctx.ui.notify("✓ System prompt por defecto restaurado", "success");
         // sendMessage con firma correcta: objeto con customType, content, display
         pi.sendMessage({
@@ -194,6 +212,13 @@ export default function (pi: ExtensionAPI) {
 
       activeAgent = agent;
       ctx.ui.setStatus("cortex-agent", `⬡ ${agent.name}`);
+      // Bugfix: propagar al singleton para que cortex-cockpit y
+      // cortex-net se enteren del cambio de agent. resolveRoleFromAgentName
+      // devuelve null para cortex-sync (B' anchor, afuera de la red).
+      updateCortexState({
+        activeAgentName: agent.name,
+        myRole: resolveRoleFromAgentName(agent.name),
+      });
       ctx.ui.notify(`✓ Agente activo: ${agent.name}`, "success");
 
       // Muestra la descripción del agente en el chat

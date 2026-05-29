@@ -60,80 +60,102 @@ class PiAdapter(IDEAdapter):
     def display_name(self) -> str:
         return "Pi Coding Agent"
 
-    def sync_canonical_subagents(
-        self,
-        project_root: Path,
-        *,
-        bundle_dir: Path | None = None,
-    ) -> list[Path]:
-        """Mirror ``.cortex/{skills,subagents}/`` into ``cortex-pi/.pi/agents/``.
-
-        Pi has no slash-skill concept of its own — every prompt is an
-        ``agent`` under ``.pi/agents/``. Phase 09.A+ (May 2026) extends
-        the original sync (which only covered the 3 code-* subagents) to
-        also propagate the **three triadic anchors** (``cortex-sync``,
-        ``cortex-SDDwork``, ``cortex-documenter``) from ``.cortex/skills/``.
-        Without this extension the Pi bundle drifts from the SSoT every
-        time the skills are updated upstream.
-
-        Sync sources, by priority:
-
-        - ``.cortex/skills/<anchor>.md``     → ``.pi/agents/<anchor>.md`` (anchor)
-        - ``.cortex/subagents/<name>.md``    → ``.pi/agents/<name>.md`` (subagent)
-
-        The ``cortex-documenter.md`` entry comes from the SKILL (canonical
-        closing anchor), NOT from the legacy subagent. The subagent file
-        is irrelevant on Pi — Pi targets the skill content.
-
-        Idempotent. If the canonical directories do not exist (e.g. Pi
-        is being injected before any Cortex setup ran), the bundle stays
-        untouched and an empty list is returned.
-
-        Args:
-            project_root: Project where the canonical files live.
-            bundle_dir:   Override for the Pi bundle root. Tests pass a
-                          temporary directory so they do not mutate the
-                          repository's real ``cortex-pi/`` bundle.
-
-        Returns:
-            Paths under ``<bundle_dir>/.pi/agents/`` that were overwritten.
-        """
-        from cortex.workspace.layout import WorkspaceLayout
-
-        layout = WorkspaceLayout.discover(project_root)
-        skills_dir = layout.skills_dir
-        subagents_dir = layout.subagents_dir
-        if not skills_dir.is_dir() and not subagents_dir.is_dir():
-            return []
-
-        bundle = bundle_dir if bundle_dir is not None else _default_pi_bundle_dir()
-        pi_bundle_agents = bundle / ".pi" / "agents"
-        pi_bundle_agents.mkdir(parents=True, exist_ok=True)
-
-        overwritten: list[Path] = []
-
-        # Skill anchors override anything in the subagents folder with
-        # the same basename. Sync skills first so the documenter ends up
-        # with the SKILL content (not the legacy DEPRECATED subagent).
-        if skills_dir.is_dir():
-            for name in _SHARED_SKILL_ANCHORS:
-                src = skills_dir / name
-                if not src.exists():
-                    continue
-                dst = pi_bundle_agents / name
-                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-                overwritten.append(dst)
-
-        if subagents_dir.is_dir():
-            for name in _SHARED_SUBAGENTS:
-                src = subagents_dir / name
-                if not src.exists():
-                    continue
-                dst = pi_bundle_agents / name
-                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
-                overwritten.append(dst)
-
-        return overwritten
+    # ────────────────────────────────────────────────────────────────────────
+    # DESACTIVADA (mayo 2026): Pi es ahora su propia SSoT.
+    #
+    # POR QUÉ ESTÁ COMENTADA:
+    #   Esta función espejaba el contenido canónico de
+    #   ``.cortex/{skills,subagents}/`` DENTRO de ``cortex-pi/.pi/agents/`` antes
+    #   de copiar el bundle. Eso acoplaba el bundle de Pi a ``.cortex/``: cada
+    #   inyección sobreescribía los agentes de Pi con la versión canónica, de
+    #   modo que el bundle se "actualizaba" cada vez que cambiaba ``.cortex/``.
+    #   Por decisión de diseño, el bundle ``cortex-pi/`` pasa a ser la ÚNICA
+    #   fuente de verdad de Pi y NO debe mutar cuando ``.cortex/`` cambia.
+    #
+    # QUÉ HARÍA AL DESCOMENTAR:
+    #   Volvería a sincronizar (sobrescribir) los 3 anchors triádicos
+    #   (cortex-sync, cortex-SDDwork, cortex-documenter) desde
+    #   ``.cortex/skills/`` y los 3 subagents code-* desde
+    #   ``.cortex/subagents/`` hacia ``cortex-pi/.pi/agents/``, re-acoplando Pi
+    #   al SSoT canónico. Si se descomenta, hay que reactivar TAMBIÉN su llamada
+    #   en ``inject_profiles`` (abajo) y el flag ``sync_canonical`` en
+    #   ``cortex/ide/__init__.py``.
+    #
+    # def sync_canonical_subagents(
+    #     self,
+    #     project_root: Path,
+    #     *,
+    #     bundle_dir: Path | None = None,
+    # ) -> list[Path]:
+    #     """Mirror ``.cortex/{skills,subagents}/`` into ``cortex-pi/.pi/agents/``.
+    #
+    #     Pi has no slash-skill concept of its own — every prompt is an
+    #     ``agent`` under ``.pi/agents/``. Phase 09.A+ (May 2026) extends
+    #     the original sync (which only covered the 3 code-* subagents) to
+    #     also propagate the **three triadic anchors** (``cortex-sync``,
+    #     ``cortex-SDDwork``, ``cortex-documenter``) from ``.cortex/skills/``.
+    #     Without this extension the Pi bundle drifts from the SSoT every
+    #     time the skills are updated upstream.
+    #
+    #     Sync sources, by priority:
+    #
+    #     - ``.cortex/skills/<anchor>.md``     → ``.pi/agents/<anchor>.md`` (anchor)
+    #     - ``.cortex/subagents/<name>.md``    → ``.pi/agents/<name>.md`` (subagent)
+    #
+    #     The ``cortex-documenter.md`` entry comes from the SKILL (canonical
+    #     closing anchor), NOT from the legacy subagent. The subagent file
+    #     is irrelevant on Pi — Pi targets the skill content.
+    #
+    #     Idempotent. If the canonical directories do not exist (e.g. Pi
+    #     is being injected before any Cortex setup ran), the bundle stays
+    #     untouched and an empty list is returned.
+    #
+    #     Args:
+    #         project_root: Project where the canonical files live.
+    #         bundle_dir:   Override for the Pi bundle root. Tests pass a
+    #                       temporary directory so they do not mutate the
+    #                       repository's real ``cortex-pi/`` bundle.
+    #
+    #     Returns:
+    #         Paths under ``<bundle_dir>/.pi/agents/`` that were overwritten.
+    #     """
+    #     from cortex.workspace.layout import WorkspaceLayout
+    #
+    #     layout = WorkspaceLayout.discover(project_root)
+    #     skills_dir = layout.skills_dir
+    #     subagents_dir = layout.subagents_dir
+    #     if not skills_dir.is_dir() and not subagents_dir.is_dir():
+    #         return []
+    #
+    #     bundle = bundle_dir if bundle_dir is not None else _default_pi_bundle_dir()
+    #     pi_bundle_agents = bundle / ".pi" / "agents"
+    #     pi_bundle_agents.mkdir(parents=True, exist_ok=True)
+    #
+    #     overwritten: list[Path] = []
+    #
+    #     # Skill anchors override anything in the subagents folder with
+    #     # the same basename. Sync skills first so the documenter ends up
+    #     # with the SKILL content (not the legacy DEPRECATED subagent).
+    #     if skills_dir.is_dir():
+    #         for name in _SHARED_SKILL_ANCHORS:
+    #             src = skills_dir / name
+    #             if not src.exists():
+    #                 continue
+    #             dst = pi_bundle_agents / name
+    #             dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    #             overwritten.append(dst)
+    #
+    #     if subagents_dir.is_dir():
+    #         for name in _SHARED_SUBAGENTS:
+    #             src = subagents_dir / name
+    #             if not src.exists():
+    #                 continue
+    #             dst = pi_bundle_agents / name
+    #             dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    #             overwritten.append(dst)
+    #
+    #     return overwritten
+    # ────────────────────────────────────────────────────────────────────────
 
     def inject_profiles(
         self,
@@ -144,22 +166,26 @@ class PiAdapter(IDEAdapter):
     ) -> list[str]:
         """Inject Cortex Pi configuration.
 
-        Copies the entire cortex-pi folder contents into the project root.
-        When ``sync_canonical`` is True (the default), the 3 shared
-        subagents in the bundle are first re-synced from
-        ``.cortex/subagents/`` so the project receives the latest
-        Tripartita Refinada contracts even when the bundle is stale.
+        Copies the entire cortex-pi folder contents into the project root,
+        **as-is**. The bundle ``cortex-pi/`` is Pi's own single source of
+        truth and is never refreshed from ``.cortex/`` — see the comment
+        on the (disabled) ``sync_canonical_subagents`` method above.
 
         Args:
             project_root:   Destination project.
             prompts:        Unused by Pi (the bundle ships its own prompts).
-            sync_canonical: When True, refresh the bundle's shared
-                            subagents from the canonical workspace before
-                            copying. Set to False to copy the bundle as-is
-                            (useful for reproducing a bundle snapshot).
+            sync_canonical: NEUTRALIZED (mayo 2026). Kept in the signature
+                            for backward compatibility with callers / the
+                            CLI ``--no-sync-canonical`` flag, but it has no
+                            effect: the bundle is always copied verbatim.
         """
-        if sync_canonical:
-            self.sync_canonical_subagents(project_root)
+        # Flag neutralizado: Pi ya no se rehidrata desde ``.cortex/``.
+        # La llamada al sync queda comentada a propósito (la función fue
+        # desactivada arriba). Para reactivar el acoplamiento canónico hay
+        # que descomentar ``sync_canonical_subagents`` y esta línea.
+        del sync_canonical  # acepta el kwarg pero lo ignora
+        # if sync_canonical:
+        #     self.sync_canonical_subagents(project_root)
 
         cortex_pi_dir = _default_pi_bundle_dir()
 

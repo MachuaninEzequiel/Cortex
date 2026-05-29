@@ -1,9 +1,19 @@
-# Cortex Pi — Justfile
-# Carga automáticamente el .env si existe en el directorio actual.
+# Cortex Pi — Justfile (Release 2.5 + cortex-net)
+#
+# Carga automáticamente el .env si existe.
 # Uso: just <recipe>
 #
-# Requiere: just, pi v0.70+
-# Instalar just: https://just.systems/  (o: winget install Casey.Just)
+# Requiere: just, pi v0.70+, bun
+#
+# Cómo funcionan las env vars en cortex-net:
+#
+#   - CORTEX_SESSION_ID: la extensión la lee, pero si no está, hace
+#     fallback automático a .cortex/session.lock. NO hace falta exportarla.
+#
+#   - CORTEX_NET_ROLE: ESCAPE HATCH. Solo úsala en las recetas role-*
+#     para forzar un rol específico en una terminal dedicada.
+#     En uso normal (just cortex), la extensión infiere el rol desde
+#     el agent activo de Pi en cada before_agent_start (modelo D).
 
 set dotenv-load := true
 set shell := ["powershell", "-Command"]
@@ -11,52 +21,62 @@ set shell := ["powershell", "-Command"]
 EXT := ".pi/extensions"
 
 # ── Listado de recipes ────────────────────────────────────────────────────
-# Muestra todos los comandos disponibles
 default:
     @just --list
 
-# ── Pi base ───────────────────────────────────────────────────────────────
-# Pi sin extensiones adicionales (usa solo lo que carga settings.json)
+# ── Pi base sin extensiones ────────────────────────────────────────────────
 pi:
     pi
 
-# ── Selector de agente (/system) ─────────────────────────────────────────
-# Permite cambiar el system prompt al persona de cualquier agente Cortex
-system-select:
-    pi -e {{EXT}}/system-select.ts
-
-# ── Pipeline de agentes (/chain) ─────────────────────────────────────────
-# Ejecuta pipelines secuenciales definidos en agent-chain.yaml
-agent-chain:
-    pi -e {{EXT}}/agent-chain.ts
-
-# ── Damage control (seguridad) ───────────────────────────────────────────
-# Intercepta comandos bash peligrosos según damage-control-rules.yaml
-damage-control:
-    pi -e {{EXT}}/damage-control.ts
-
-# ── Stack completo Cortex ─────────────────────────────────────────────────
-# Las tres extensiones juntas: selector + pipeline + seguridad
+# ── Cortex completo (modo principal) ──────────────────────────────────────
+# Stack canónico: tools + mcp + net + selector + damage-control.
+# El rol se infiere del agent activo. La sesión se lee de .cortex/session.lock.
 cortex:
-    pi -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+    pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts -e {{EXT}}/system-select.ts -e {{EXT}}/damage-control.ts
 
-# ── Stack completo + modelo específico ───────────────────────────────────
-# Útil para usar Gemini Flash en pipelines largos (más barato)
-cortex-fast:
-    pi --model anthropic/claude-sonnet-4-20250514 -e {{EXT}}/system-select.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+# ── Cortex sin red (Fast Track, hotfix, fallback) ─────────────────────────
+cortex-solo:
+    pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/system-select.ts -e {{EXT}}/damage-control.ts
 
-# ── Solo pipeline + seguridad (sin selector de agente) ───────────────────
-cortex-chain:
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
+# ── Solo cortex-net (debug) ───────────────────────────────────────────────
+net:
+    pi -e {{EXT}}/cortex-net.ts
 
-# ── Solo selector de agente + seguridad ──────────────────────────────────
-cortex-select:
-    pi -e {{EXT}}/system-select.ts -e {{EXT}}/damage-control.ts
+# ── Solo tools MCP de Cortex ──────────────────────────────────────────────
+tools:
+    pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts
 
-# ── Pipeline rápido: lanza directamente el chain sddwork ─────────────────
-sddwork task="":
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts "{{task}}"
+# ── Pipeline fallback con agent-chain (solo si tu IDE no soporta red) ────
+agent-chain:
+    pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts
 
-# ── Pipeline rápido: hotfix ───────────────────────────────────────────────
-hotfix task="":
-    pi -e {{EXT}}/agent-chain.ts -e {{EXT}}/damage-control.ts "{{task}}"
+# ── ROL FORZADO (escape hatch para terminales dedicadas) ─────────────────
+#
+# Útil cuando querés abrir varias terminales en paralelo, cada una atada
+# a un rol fijo (estilo demo IndyDevDan de coms-net). En este modo,
+# CORTEX_NET_ROLE gana sobre el agent activo de Pi — la terminal queda
+# clavada en ese rol pase lo que pase.
+#
+# Para el flujo cotidiano (un solo Pi, cambias de agent in-session)
+# usá `just cortex` y no necesitás estas recetas.
+
+role-sddwork:
+    $env:CORTEX_NET_ROLE = "sddwork"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-designer:
+    $env:CORTEX_NET_ROLE = "designer"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-explorer:
+    $env:CORTEX_NET_ROLE = "explorer"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-implementer:
+    $env:CORTEX_NET_ROLE = "implementer"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-security:
+    $env:CORTEX_NET_ROLE = "security"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-test-verifier:
+    $env:CORTEX_NET_ROLE = "test-verifier"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts
+
+role-documenter:
+    $env:CORTEX_NET_ROLE = "documenter"; pi -e {{EXT}}/cortex-tools.ts -e {{EXT}}/cortex-mcp.ts -e {{EXT}}/cortex-net.ts

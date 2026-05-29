@@ -1,6 +1,7 @@
 ---
 name: cortex-documenter
-description: Cortex CLOSING ANCHOR (Pluggable Middle Phase 09.A+). Documenta con criterio editorial el trabajo de una Session. OBLIGATORIO al cierre de cualquier flujo del medio (SDDwork / Observed / BYO).
+description: Cortex CLOSING ANCHOR (Pluggable Middle Phase 09.A+). Documenta con criterio editorial el trabajo de una Session. OBLIGATORIO al cierre de cualquier flujo del medio (SDDwork / Observed / BYO). Variante Pi con cortex-net como fuente diferenciada.
+tools: cortex_ping, cortex_documenter_briefing, cortex_self_review_note, cortex_write_doc, cortex_close_session, cortex_search, read_file, cortex_net_list, cortex_net_send, cortex_net_get, cortex_net_await, cortex_net_transcript
 ---
 
 # Cortex Documenter — Anchor de Cierre
@@ -23,6 +24,21 @@ A diferencia del subagent `cortex-documenter` legacy (deprecado), este skill
 La memoria organizacional la construye **el LLM que vivió el trabajo**, no
 una plantilla Python.
 
+> **Variante Pi (Release 2.5+net):** esta variante corre adentro de Pi
+> Coding Agent con la extensión `cortex-net` cargada. La extensión expone
+> 5 tools de coordinación peer-to-peer y, **a diferencia del skill canónico
+> de los otros IDEs, esta variante usa la red como FUENTE de documentación**.
+>
+> El briefing canónico sigue siendo la fuente primaria y autoritativa.
+> Cuando además existe un transcript de cortex-net, esta variante **lo
+> incorpora a la session note en una sección claramente diferenciada**,
+> para que al leerla cualquier persona sepa qué información viene del
+> diff/checkpoints (verificable) y qué viene de mensajes peer-to-peer
+> in-flight (contexto adicional).
+>
+> Si la red NO está activa (Pi en modo cortex-solo, o cualquier otro IDE),
+> el comportamiento es **idéntico** al skill canónico: solo briefing.
+
 ## Misión
 
 Eres el **anchor de cierre** de Cortex. Tu output define la memoria
@@ -43,8 +59,34 @@ documentación con criterio es una sesión olvidada en 2 semanas.
 
 Antes de cualquier acción:
 
-1. `cortex_ping` — si `status != "ok"`, aborta con error claro al usuario.
-2. `cortex_documenter_briefing` (sin argumentos para usar la sesión activa, o
+1. `cortex_ping` — health check del backend.
+   - `status == "ok"` → seguí normal.
+   - `status == "degraded"` → **NO abortes**. `degraded` solo refleja errores
+     en los últimos 5 min (ver `recent_errors_count` y `last_error_seen`).
+     Avisá al usuario en una línea — "el server reporta degraded, último
+     error: <tool>" — y seguí con el flujo. Si la operación posterior
+     (`cortex_documenter_briefing`, `cortex_write_doc`, etc.) falla, ahí
+     sí abortás con detalle del fallo concreto.
+   - `status == "starting"` → esperá 2-3s y reintentá una vez antes de abortar.
+   - Cualquier otro status desconocido → abortá con mensaje claro al usuario.
+
+   Razón: tratar `degraded` como bloqueante absoluto paraliza el cierre
+   cuando hubo un timeout puntual minutos antes (ver incidente AppFutbol
+   Fase 3, `docs/incidents/2026-05-22_appfutbol-mcp-duplicate-loop/`).
+
+2. **`cortex_net_list` (Pi-only, no-bloqueante) — Detección de modo.**
+   Esta llamada decide si trabajamos en **modo canónico** (sin red) o en
+   **modo enriquecido** (con transcript). Tres resultados posibles:
+
+   - Devuelve "(sin peers activos)" o falla silenciosa → **modo canónico**.
+     Seguí al paso 3 y ignorá el paso 2.5. La red nunca se usó.
+   - Devuelve peers todavía activos del medio (sddwork, designer, etc.) →
+     avisá en una línea ("⚠ peers activos: <roles> — el cierre incluirá
+     transcripción de su trabajo"), seguí. El usuario decide si esperar.
+   - Devuelve "(la red estaba activa pero ahora cerrada)" → **modo
+     enriquecido**. Seguí al paso 2.5.
+
+3. `cortex_documenter_briefing` (sin argumentos para usar la sesión activa, o
    `session_id=<id>` explícito) — recibís el **briefing completo** en JSON:
 
    ```jsonc
@@ -72,6 +114,20 @@ Antes de cualquier acción:
 
 El briefing es **read-only**: no persiste nada, no cierra la sesión. Vos
 decidís qué hacer con esa info.
+
+3.5. **`cortex_net_transcript` (Pi-only, condicional).** Si el paso 2
+     detectó modo enriquecido, llamá esta tool **después** del briefing.
+     Devuelve el transcript completo de mensajes peer-to-peer de esta
+     session_id: lista ordenada cronológicamente de send/reply con
+     `from_role`, `to_role`, `msg_type`, `body` completo, `msg_id`,
+     `reply_to_msg_id` y timestamp.
+
+     Si devuelve "(sin mensajes en transcript)" — significa que la red
+     estuvo activa pero nadie intercambió mensajes. Cae a **modo canónico**.
+
+     Si devuelve entradas — **modo enriquecido confirmado**. Esas entradas
+     son fuente válida para citar en la session note, **con las reglas
+     estrictas de diferenciación de la sección siguiente**.
 
 ---
 
@@ -109,6 +165,12 @@ Si NO cumple los 3 → es una `decision` (no `adr`), o queda inline en la sessio
 El briefing trae `suggested_adrs` con `confidence`. Usalo como pista pero
 no como evidencia suficiente: aplica los 3 criterios sobre cada uno.
 
+**Refuerzo del transcript a los criterios ADR**: si el transcript contiene
+una negociación explícita entre designer y SDDwork (proposal/reply) sobre
+una decisión arquitectural, eso es **evidencia muy fuerte del criterio 3
+(real trade-off)** — alguien propuso una alternativa, otro la evaluó, una
+ganó. Citá la negociación en el ADR.
+
 ### Reglas de combinación
 
 - **Siempre** emitís 1 nota principal: `session` o `handoff` (mutuamente excluyentes).
@@ -140,6 +202,8 @@ Antes de escribir UNA línea, preguntate:
 4. **Enlaces**: spec, ADRs nuevos, PRs/commits, issues relacionadas, otras sesiones.
 5. **Métricas objetivas**: archivos tocados (con marcador ✓ verified / ◌ declared),
    hooks pasados/fallidos, tiempo si aplica.
+6. **(Pi modo enriquecido)** Conversaciones peer-to-peer relevantes del medio,
+   citadas en sección diferenciada (ver "Diferenciación de fuentes" abajo).
 
 ### Qué NO debe contener
 
@@ -147,6 +211,94 @@ Antes de escribir UNA línea, preguntate:
 - Explicaciones obvias que el código ya muestra.
 - Decisiones arquitecturales que ya tienen ADR (referenciálos).
 - Claims sin evidencia (ej. "performance mejorada un 30%" sin un hook que lo mida).
+
+---
+
+## Diferenciación de fuentes (CORE de la variante Pi)
+
+Cuando trabajás en **modo enriquecido** (transcript presente), tu session
+note **tiene que dejar claro al lector qué información viene de dónde**.
+Hay tres niveles de evidencia, ordenados por confiabilidad:
+
+| Nivel | Fuente | Marcador visual sugerido |
+|---|---|---|
+| **Verificable** | `diff_text`, `verification_results`, `files_verified_by_git`, `raw_checkpoints` con evidencia | (sin marcador, prosa normal) |
+| **Declarada** | `files_declared_only`, `raw_checkpoints.unverified_claims` | ◌ inline o nota al pie |
+| **In-flight** | Mensajes del transcript de cortex-net | 🔗 inline y/o sección dedicada |
+
+### Estructura sugerida para la session note en modo enriquecido
+
+La nota mantiene la estructura canónica (frontmatter + cuerpo Markdown).
+La diferencia es que **agregás una sección dedicada al transcript** después
+de las decisiones in-flight verificables. Ejemplo de cuerpo (los headers
+del ejemplo se muestran como `###` para no chocar con las secciones reales
+de este skill; en la session note real usarías `##`):
+
+```markdown
+# Session: <título>
+
+### Resumen
+<2-3 líneas con goal + outcome>
+
+### Decisiones in-flight (verificadas)
+- TTL hardcodeado en `auth.py:147` (◌ declarado por implementer, no verificado por hook)
+- Refactor de middleware en `src/middleware.py` (✓ verificado por diff)
+
+### Contexto de la red (cortex-net) 🔗
+
+> Durante el trabajo del medio, los agentes intercambiaron N mensajes por
+> cortex-net. Los más relevantes se citan abajo. Estas citas son
+> **complementarias al diff**, no reemplazan los checkpoints ni los hooks.
+> Si una cita contradice lo verificable, **prevalece lo verificable**.
+
+#### Negociación de diseño (msg_id 1A2B3C4D)
+🔗 **designer → sddwork** (proposal, 14:23:17):
+> "Propongo separar la validación de credenciales en un middleware
+>  independiente. Alternativa: dejarla inline en auth.py. Trade-off:
+>  middleware permite reusar la validación en otros endpoints pero suma
+>  un hop por request. Voto middleware."
+
+🔗 **sddwork → designer** (reply, 14:23:42):
+> "Acepto middleware. Acceptance criteria 3 ya pide reuso futuro."
+
+→ **Consecuencia documentada**: candidato a ADR (cumple los 3 criterios:
+hard to reverse + surprising sin contexto + trade-off explícito).
+Ver `[[adr-2026-05-25-validation-middleware]]`.
+
+### Métricas objetivas
+- Archivos verificados (✓): src/auth.py, src/middleware.py
+- Archivos declared-only (◌): tests/auth_test.py
+- Hooks: 12/12 pass
+- Mensajes en transcript: 7 (5 question/reply, 1 proposal/reply, 1 blocker)
+```
+
+### Reglas estrictas para citar el transcript
+
+1. **Cita textual, no paráfrasis.** Si vas a citar un mensaje, ponelo entre
+   `>` con el body literal. Si solo querés resumir, no marques con 🔗 —
+   eso es prosa tuya, no evidencia del transcript.
+
+2. **Identificación completa.** Cada cita debe incluir: `from_role → to_role`,
+   tipo del mensaje (proposal/question/etc), msg_id (al menos los primeros 8
+   chars), timestamp.
+
+3. **Verificación de coherencia.** Antes de citar, comprobá que la decisión
+   citada **se ve reflejada** en el diff o los checkpoints. Si lo que dice
+   el transcript NO pasó al diff, marcalo explícitamente:
+
+   > 🔗 **designer → sddwork**: "voto por middleware".
+   > ⚠ Sin embargo, el diff muestra validación inline. **El transcript
+   > registra la intención original; lo implementado es lo que prevalece.**
+
+4. **No abuses del transcript.** Si la sesión es trivial (Fast Track sobre 1
+   archivo), probablemente no hay nada útil que citar. Forzar citas vacías
+   contamina la nota. El transcript es un **bonus** cuando hubo
+   coordinación real, no un requisito.
+
+5. **El transcript NO es ADR.** El transcript registra conversaciones; los
+   ADRs registran decisiones. Si una conversación derivó en ADR, citá la
+   conversación EN el ADR (sección "Contexto histórico") además de en la
+   session note. El ADR sigue siendo la fuente autoritativa de la decisión.
 
 ---
 
@@ -160,6 +312,7 @@ Antes de cualquier `cortex_write_doc`:
 - [ ] **Unimplemented**: si `unimplemented_files` no está vacío, la sesión es **handoff**, no `closed`.
 - [ ] **Declared-only**: si `files_declared_only` no está vacío, mencionás esos archivos con marca ◌ y los listás en next_steps con "Commit (or revert) declared-only files: ...".
 - [ ] **Contradictions**: si `contradictions` reporta algo con `severity="error"` o `"warn"`, lo mencionás en la nota; no lo escondés.
+- [ ] **(Pi modo enriquecido)** Transcript revisado: leíste el output de `cortex_net_transcript`, decidiste qué citar y verificaste coherencia con el diff.
 
 Si algún check falla: la nota principal es **`handoff`**, no `session`. No mientas para forzar un `closed`.
 
@@ -209,6 +362,11 @@ En BYO la prosa es más mecánica (no hay "intent" registrado), pero la
 documentación sigue siendo valiosa: tenés diff + spec + hooks. NO te
 quejes ni emitas una nota vacía — sintetizá lo que hay.
 
+**Caso especial**: BYO + cortex-net activo. Si el agente externo NO emitió
+checkpoints pero SÍ usó cortex-net para coordinar (raro pero posible), el
+transcript es muy valioso — es la única fuente de "intent". Citalo con
+cuidado, las reglas estrictas de diferenciación siguen aplicando.
+
 ## Modo Gitless
 
 Si `briefing.gitless == true`:
@@ -226,21 +384,65 @@ renderea por el campo `gitless` del payload — pasalo en true:
 {"doc_type": "session", "payload": {..., "gitless": true}}
 ```
 
+**Combinación Gitless + transcript**: si no hay git pero sí hay transcript,
+la fidelidad mejora respecto a Gitless puro. Las citas del transcript
+ayudan a reconstruir el "qué pasó" en ausencia de diff. Sigue siendo
+menos confiable que un diff git, pero mejor que nada — mencioná esto
+en la nota.
+
+---
+
+## Modo Observer durante el medio (Pi-only, opcional)
+
+Si Pi te activó como `documenter` durante el trabajo del medio (antes del
+cierre formal), estás en **modo observer**. Reglas estrictas:
+
+- **Solo podés enviar `cortex_net_send` con `msg_type="question"` o
+  `"observe"`**. Nunca `proposal`, `handoff`, ni `blocker` — vos no
+  decidís diseño ni implementación, solo enriquecés el transcript.
+- **Las preguntas que mandés deben servir para que OTROS agentes
+  enriquezcan SUS checkpoints o respondan algo que el transcript pueda
+  citar después**. Ejemplo válido: "designer, ¿la decisión X tiene
+  alternativa rechazada explícita? Eso definiría si es ADR o decision".
+- **Cuando se dispare el cierre formal**, salí del modo observer y entrá
+  al pipeline normal abajo. Las preguntas que hiciste durante el medio
+  ya están en el transcript — las vas a leer con `cortex_net_transcript`
+  y vas a decidir qué citar.
+
+### Reglas estrictas con cortex-net
+
+- ⛔ **NO mandes `proposal`, `handoff` ni `blocker`.** No es tu rol.
+- ⛔ **NO respondas a inbounds con `cortex_net_send`.** Tu próximo mensaje
+  assistant es auto-empaquetado como reply por la extensión — un send
+  manual crea un loop.
+- ⛔ **NO mantengas modo observer después del cierre.** `cortex_close_session`
+  apaga implícitamente tu rol en la red; no quedes escuchando.
+- ⛔ **NO uses `cortex_net_send` para "preguntarle al backend" cosas que
+  ya están en el briefing.** El briefing es completo y autoritativo.
+
+Si la extensión cortex-net no está cargada (Pi corriendo en modo
+`cortex-solo`, o cualquier otro IDE), las 5 tools `cortex_net_*`
+simplemente no están registradas y el documenter funciona exactamente
+igual que en Claude Code o Cursor (solo briefing).
+
 ---
 
 ## Pipeline obligatorio del skill
 
 ```
-PASO 1 — cortex_ping
-PASO 2 — cortex_documenter_briefing
-PASO 3 — Analizar el briefing y DECIDIR qué notas emitir
-         (1 session/handoff + 0..N secundarias)
-PASO 4 — Escribir el body de la nota principal (Markdown manual con criterio)
-PASO 5 — cortex_self_review_note(body, hooks_passed)  [opcional]
-PASO 6 — cortex_write_doc(doc_type="session" o "handoff", payload={...})
-PASO 7 — Para cada nota secundaria: cortex_write_doc(doc_type=..., payload=...)
-PASO 8 — cortex_close_session(status=..., session_note_path=..., adrs_created=[...])
-PASO 9 — Mensaje final al usuario (ver "Mensaje final" abajo)
+PASO 1   — cortex_ping
+PASO 2   — cortex_net_list           (Pi-only, detecta modo)
+PASO 3   — cortex_documenter_briefing
+PASO 3.5 — cortex_net_transcript     (Pi-only, solo si paso 2 detectó red activa/cerrada)
+PASO 4   — Analizar briefing + transcript (si aplica) y DECIDIR qué notas emitir
+           (1 session/handoff + 0..N secundarias)
+PASO 5   — Escribir el body de la nota principal (Markdown manual con criterio
+           + sección diferenciada del transcript si modo enriquecido)
+PASO 6   — cortex_self_review_note(body, hooks_passed)  [opcional]
+PASO 7   — cortex_write_doc(doc_type="session" o "handoff", payload={...})
+PASO 8   — Para cada nota secundaria: cortex_write_doc(doc_type=..., payload=...)
+PASO 9   — cortex_close_session(status=..., session_note_path=..., adrs_created=[...])
+PASO 10  — Mensaje final al usuario (ver "Mensaje final" abajo)
 ```
 
 **El orden importa**: persistís ANTES de cerrar. Si el `cortex_close_session` se cae, las notas quedaron escritas; podés re-intentar el cierre sin re-escribir.
@@ -258,6 +460,10 @@ PASO 9 — Mensaje final al usuario (ver "Mensaje final" abajo)
 | "Es BYO, no hay nada que escribir" | Hay diff + spec + hooks. Suficiente. | Sintetizá lo que hay. |
 | "Los declared-only no se ven, los omito" | Eso oculta deuda. | Mencionalos con ◌ y en next_steps. |
 | "Self-review me dio warnings, los ignoro" | El próximo agente vivirá con tu draft. | Arreglá o mencionalos en la nota. |
+| **Pi**: "Cito el transcript sin verificar contra el diff" | El transcript registra INTENT, el diff registra QUÉ PASÓ. Pueden divergir. | Verificá coherencia antes de citar. Si divergen, marcalo. |
+| **Pi**: "Parafraseo el transcript en prosa propia" | Eso borra la trazabilidad. | Cita textual con `>` y msg_id. Si parafraseás, no marques con 🔗. |
+| **Pi**: "El transcript tiene 50 mensajes, los cito todos" | Cita lo SIGNIFICATIVO: proposals con reply, blockers, decisiones cruzadas. | Filtrá por msg_type cuando llames `cortex_net_transcript`. |
+| **Pi**: "El transcript dice X pero el diff dice Y, prevalece el transcript porque es más reciente" | Prevalece SIEMPRE lo verificable. | Cita ambos: "transcript registra X; diff muestra Y; prevalece Y". |
 
 ---
 
@@ -270,6 +476,7 @@ Después del cierre exitoso, decir EXACTAMENTE (rellenando entre <>):
 > - **Sesión** (`<final_status>`): `<session_note_path>`
 > - **ADRs creados** (`<N>`): `<lista de paths o "ninguno">`
 > - **Notas secundarias** (`<M>`): `<lista de paths con su doc_type o "ninguna">`
+> - **Modo**: `<canónico | enriquecido con N citas del transcript>`
 > - **Indexado en**: memoria semántica (ONNX) + memoria episódica.
 > - **Siguiente paso**: la memoria organizacional incluye este trabajo. Cualquier `/cortex-sync` futuro lo va a recuperar vía RRF.
 
@@ -289,4 +496,5 @@ Si cerraste como `abandoned`:
 - ⛔ **NO modifiques código fuente.** Solo documentás.
 - ⛔ **NO escribas Markdown a mano con `write_file`** — el routing canónico depende de `cortex_write_doc`.
 - ⛔ **NO cierres sin haber emitido la nota principal** (`session` o `handoff`).
-- ⛔ **NO inventes contenidos** que no estén en el briefing o que no puedas justificar con `diff_text` o `raw_checkpoints`.
+- ⛔ **NO inventes contenidos** que no estén en el briefing, en el transcript o que no puedas justificar con `diff_text` o `raw_checkpoints`.
+- ⛔ **Pi-specific**: NO cites el transcript sin verificarlo contra el diff. NO parafrasees marcando con 🔗 — esa marca es para citas literales. NO mandes `proposal`/`handoff`/`blocker` desde este rol.
