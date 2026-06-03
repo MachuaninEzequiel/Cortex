@@ -43,6 +43,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 // docs/multi-ide-mcp-hardening/PI-COCKPIT-UX/README.md § 8).
 import {
   cortexState,
+  subscribe as subscribeCortexState,
   update as updateCortexState,
   type Suggestion,
 } from "../lib/cortex-state";
@@ -54,13 +55,12 @@ import {
 // ``cx-`` (de "cortex") como aliases de las acciones más usadas. Pi
 // los manda al handler registrado garantizado.
 //
-// Mapeo:
+// IMPORTANTE: los alias que mapean a comandos de OTRAS extensiones
+// (/cx-team → cortex-team; /cx-role, /cx-mode → cortex-net) se co-registran
+// EN esas extensiones (apuntando al mismo handler), porque Pi no permite
+// invocar un slash command desde otro handler. Acá sólo viven los propios:
 //
-//   /cx       → mismo que /cortex (alias corto del panel grande)
 //   /cx-next  → anuncia la sugerencia activa
-//   /cx-team  → /cortex-team
-//   /cx-role  → /cortex-role
-//   /cx-mode  → /cortex-mode
 //   /cx-help  → lista los atajos
 
 // ── Sugerencias contextuales ───────────────────────────────────────────────
@@ -119,18 +119,25 @@ function computeSuggestion(): Suggestion | null {
   // 5. Middle activo sin peers conectados
   if (cortexState.peers.length === 0) {
     return {
-      label: "Sin peers en la red — abrí terminales con `just role-*`",
-      hotkey: ":t",
+      label: "Sin peers en la red — abrí el team con /cortex-team (o /cx-team)",
+      hotkey: null,
       reason: "deep track requiere multi-terminal",
     };
   }
 
   // 6. Middle activo con peers
   return {
-    label: "Coordiná con peers (mandá mensajes o esperá inbounds)",
-    hotkey: ":l",
+    label: "Coordiná con peers desde /cortex (mandar mensaje / broadcast)",
+    hotkey: null,
     reason: `${cortexState.peers.length} peers conectados`,
   };
+}
+
+/** Igualdad por valor de sugerencias (para no re-escribir ni loopear). */
+function suggestionsEqual(a: Suggestion | null, b: Suggestion | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.label === b.label && a.hotkey === b.hotkey && a.reason === b.reason;
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
@@ -143,6 +150,7 @@ export default function (pi: ExtensionAPI) {
   // de que los workers entren a la red — así que el set local cubre el
   // caso real. El backend MCP tiene su propio gate más robusto.
   const toolsCalled = new Set<string>();
+  let unsub: (() => void) | null = null;
 
   // ── Slash commands cortos (reemplazo de las hotkeys ":" que Pi v0.77
   //    interpretaba como bash). Ver bloque de comentario arriba.
@@ -181,33 +189,11 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // Aliases delegados a los slash commands ya existentes en cortex-net.
-  // Como cortex-autopilot se carga DESPUÉS que cortex-net en
-  // defaultExtensions, /cortex-team/-role/-mode ya están registrados.
-  // Nosotros sólo agregamos los aliases cortos.
-  pi.registerCommand("cx-team", {
-    description: "Alias de /cortex-team",
-    async handler(_args, ctx) {
-      // Notify hint — Pi no expone API documentada para invocar slash
-      // commands programáticamente desde un handler. El usuario tipea
-      // el comando completo si quiere ejecutar.
-      ctx.ui.notify("Ejecutá /cortex-team para abrir el spawner.", "info");
-    },
-  });
-
-  pi.registerCommand("cx-role", {
-    description: "Alias de /cortex-role",
-    async handler(_args, ctx) {
-      ctx.ui.notify("Ejecutá /cortex-role para cambiar tu rol.", "info");
-    },
-  });
-
-  pi.registerCommand("cx-mode", {
-    description: "Alias de /cortex-mode",
-    async handler(_args, ctx) {
-      ctx.ui.notify("Ejecutá /cortex-mode para cambiar Full/Solo.", "info");
-    },
-  });
+  // Los alias /cx-team, /cx-role y /cx-mode YA NO viven acá: se co-registran
+  // en cortex-team.ts (/cx-team) y cortex-net.ts (/cx-role, /cx-mode)
+  // apuntando al handler REAL, así ejecutan en vez de mostrar un hint (Pi no
+  // permite invocar un slash command desde otra extensión). Acá quedan sólo
+  // /cx-next y /cx-help, que son propios de autopilot.
 
   // ── tool_call: gates de gobernanza ───────────────────────────────────
   pi.on("tool_call", async (event, ctx) => {
@@ -245,9 +231,26 @@ export default function (pi: ExtensionAPI) {
     updateCortexState({ suggestion: computeSuggestion() });
   });
 
-  // ── session_start: sembrar primera sugerencia + notify de bienvenida ─
+  // ── session_start: sembrar primera sugerencia + suscribir refresh ─────
   pi.on("session_start", async (_event, ctx) => {
     updateCortexState({ suggestion: computeSuggestion() });
+
+    // 1a: la sugerencia se recalcula cuando CUALQUIER parte del estado
+    // cambia (sessionId/myRole/peers vía la red), no solo en eventos de Pi.
+    // Antes quedaba stale (un worker que no hace turns mostraba "tipeá tu
+    // tarea" para siempre). Deferimos con queueMicrotask y sólo escribimos
+    // si cambió, para no loopear con el propio update() (que re-notifica).
+    if (!unsub) {
+      unsub = subscribeCortexState(() => {
+        queueMicrotask(() => {
+          const next = computeSuggestion();
+          if (!suggestionsEqual(next, cortexState.suggestion)) {
+            updateCortexState({ suggestion: next });
+          }
+        });
+      });
+    }
+
     ctx.ui.notify(
       "⬡ cortex-autopilot: tipeá /cx-help para ver atajos. " +
         "Sugerencias contextuales activas.",
@@ -258,6 +261,10 @@ export default function (pi: ExtensionAPI) {
   // ── session_shutdown: limpiar estado local ──────────────────────────
   pi.on("session_shutdown", async () => {
     toolsCalled.clear();
+    if (unsub) {
+      unsub();
+      unsub = null;
+    }
     // No notify acá: Pi se está cerrando, no llega.
     // No reset del singleton: cortex-cockpit ya lo hace en su shutdown.
   });

@@ -1,14 +1,13 @@
 ---
 name: cortex-documenter
 description: Cortex CLOSING ANCHOR (Pluggable Middle Phase 09.A+). Documenta con criterio editorial el trabajo de una Session. OBLIGATORIO al cierre de cualquier flujo del medio (SDDwork / Observed / BYO). Variante Pi con cortex-net como fuente diferenciada.
-tools: cortex_ping, cortex_documenter_briefing, cortex_self_review_note, cortex_write_doc, cortex_close_session, cortex_search, read_file, cortex_net_list, cortex_net_send, cortex_net_get, cortex_net_await, cortex_net_transcript
+tools: cortex_ping, cortex_documenter_briefing, cortex_self_review_note, cortex_write_doc, cortex_close_session, cortex_search, read_file, cortex_net_list, cortex_net_send, cortex_net_transcript
 ---
 
 # Cortex Documenter — Anchor de Cierre
 
-A partir de Phase 09.A+ (May 2026), el cierre de toda Session pasa por este
-skill. Es el **anchor final** de la arquitectura Pluggable Middle, simétrico
-a `/cortex-sync` al inicio:
+El cierre de toda Session pasa por este skill. Es el **anchor final** de la
+arquitectura, simétrico a `/cortex-sync` al inicio:
 
 ```
 /cortex-sync         (ANCHOR INICIO, obligatorio)
@@ -24,10 +23,10 @@ A diferencia del subagent `cortex-documenter` legacy (deprecado), este skill
 La memoria organizacional la construye **el LLM que vivió el trabajo**, no
 una plantilla Python.
 
-> **Variante Pi (Release 2.5+net):** esta variante corre adentro de Pi
-> Coding Agent con la extensión `cortex-net` cargada. La extensión expone
-> 5 tools de coordinación peer-to-peer y, **a diferencia del skill canónico
-> de los otros IDEs, esta variante usa la red como FUENTE de documentación**.
+> **Variante Pi:** esta variante corre adentro de Pi Coding Agent con la
+> extensión `cortex-net` cargada. La extensión expone tools de coordinación
+> peer-to-peer y, **a diferencia del skill canónico de los otros IDEs, esta
+> variante usa la red como FUENTE de documentación**.
 >
 > El briefing canónico sigue siendo la fuente primaria y autoritativa.
 > Cuando además existe un transcript de cortex-net, esta variante **lo
@@ -400,6 +399,10 @@ cierre formal), estás en **modo observer**. Reglas estrictas:
 - **Solo podés enviar `cortex_net_send` con `msg_type="question"` o
   `"observe"`**. Nunca `proposal`, `handoff`, ni `blocker` — vos no
   decidís diseño ni implementación, solo enriquecés el transcript.
+- **Cuando recibís un mensaje, leelo y considéralo directamente** para tu
+  documentación. Si querés repreguntar, mandá un `cortex_net_send`
+  (`question`/`observe`); el humano lo confirma antes de salir. No hay
+  respuesta automática.
 - **Las preguntas que mandés deben servir para que OTROS agentes
   enriquezcan SUS checkpoints o respondan algo que el transcript pueda
   citar después**. Ejemplo válido: "designer, ¿la decisión X tiene
@@ -411,19 +414,21 @@ cierre formal), estás en **modo observer**. Reglas estrictas:
 
 ### Reglas estrictas con cortex-net
 
-- ⛔ **NO mandes `proposal`, `handoff` ni `blocker`.** No es tu rol.
-- ⛔ **NO respondas a inbounds con `cortex_net_send`.** Tu próximo mensaje
-  assistant es auto-empaquetado como reply por la extensión — un send
-  manual crea un loop.
+- ⛔ **NO mandes `proposal`, `handoff` ni `blocker`.** No es tu rol: solo
+  `question` y `observe`.
+- ✅ **Respondé a los inbounds con un `cortex_net_send` explícito.** Cuando
+  recibís un mensaje lo considerás directamente; si querés repreguntar,
+  mandás un send (`question`/`observe`) que el humano confirma antes de
+  salir. No hay auto-reply ni loops.
 - ⛔ **NO mantengas modo observer después del cierre.** `cortex_close_session`
   apaga implícitamente tu rol en la red; no quedes escuchando.
 - ⛔ **NO uses `cortex_net_send` para "preguntarle al backend" cosas que
   ya están en el briefing.** El briefing es completo y autoritativo.
 
 Si la extensión cortex-net no está cargada (Pi corriendo en modo
-`cortex-solo`, o cualquier otro IDE), las 5 tools `cortex_net_*`
-simplemente no están registradas y el documenter funciona exactamente
-igual que en Claude Code o Cursor (solo briefing).
+`cortex-solo`, o cualquier otro IDE), las tools `cortex_net_*` simplemente
+no están registradas y el documenter funciona exactamente igual que en
+Claude Code o Cursor (solo briefing).
 
 ---
 

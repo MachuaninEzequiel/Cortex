@@ -7,6 +7,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
+# ---------------------------------------------------------------------------
+# CODEX_HOME isolation (autouse, todos los tests)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _isolate_codex_home(tmp_path, monkeypatch):
+    """Apunta ``CODEX_HOME`` a un dir temporal por test.
+
+    El adapter de Codex escribe una entrada de trust en el ``config.toml``
+    GLOBAL (``~/.codex/config.toml``) para que Codex cargue el MCP server
+    project-scoped. Sin este aislamiento, los tests que ejercitan la inyeccion
+    de Codex tocarian el config real del desarrollador. ``CODEX_HOME`` es la
+    misma env var que respeta Codex, asi que redirigirla es fiel al runtime.
+    """
+    codex_home = tmp_path / ".codex_home"
+    codex_home.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    return codex_home
+
 # ---------------------------------------------------------------------------
 # Embedder helpers — bag-of-words deterministic vectors
 # ---------------------------------------------------------------------------

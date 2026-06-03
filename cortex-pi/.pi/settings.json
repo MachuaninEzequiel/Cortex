@@ -14,8 +14,6 @@
   ],
   "skills": [
     ".pi/skills/cortex-vault/SKILL.md",
-    ".pi/skills/cortex-python/SKILL.md",
-    ".pi/skills/cortex-testing/SKILL.md",
     ".pi/skills/obsidian-index/SKILL.md"
   ],
   "agents": [

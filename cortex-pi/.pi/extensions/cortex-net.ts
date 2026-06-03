@@ -70,6 +70,7 @@ import {
   cortexState,
   subscribe as subscribeCortexState,
   update as updateCortexState,
+  registerNetActions,
   type PeerSnapshot,
 } from "../lib/cortex-state";
 
@@ -721,18 +722,23 @@ class CortexNetClient {
   private inboundServer: Server | null = null;
   private pendingReplies = new Map<string, PendingReply>();
   /**
-   * Cuando un agente recibe un mensaje "send", lo guardamos acá. Cuando el
-   * agente termine su próximo turno, el hook turn_end empaqueta el output
-   * como reply al inboundForReply. Esto es la auto-reply implícita.
+   * Cola FIFO de mensajes entrantes pendientes. Rediseño may-2026: se
+   * entregan UNO por turno y el receptor los ejecuta DIRECTO (sin auto-reply).
+   * El handler de Pi los entrega vía pi.sendUserMessage.
    */
-  inboundForReply: { msg_id: string; from_role: CortexRole } | null = null;
-  /** Cola de inbounds para inyectar al system prompt del agente. */
   inboundQueue: Array<{
     msg_id: string;
     from_role: CortexRole;
     msg_type: MsgType;
     body: string;
   }> = [];
+
+  /**
+   * Callback que el handler de Pi setea para enterarse de un inbound nuevo
+   * (lo invoca processInbound). El handler decide: notificar + (si el agente
+   * está libre) auto-disparar un turno para ejecutarlo. null = sin listener.
+   */
+  onInbound: (() => void) | null = null;
 
   private heartbeatTimer: NodeJS.Timeout | null = null;
 
@@ -907,11 +913,9 @@ class CortexNetClient {
         msg_type: msg.msg_type ?? "question",
         body: msg.body ?? "",
       });
-      // FIFO: si ya había un inboundForReply, mantenemos el primero
-      // (el agente debería responder uno por turn)
-      if (!this.inboundForReply) {
-        this.inboundForReply = { msg_id: msg.msg_id!, from_role: msg.from_role };
-      }
+      // Avisar al handler de Pi: notifica + (si el agente está libre)
+      // auto-dispara un turno para ejecutar el inbound DIRECTO.
+      this.onInbound?.();
     } else if (msg.kind === "reply") {
       // Respuesta a un await/get nuestro
       const pending = this.pendingReplies.get(msg.reply_to_msg_id!);
@@ -1024,26 +1028,21 @@ class CortexNetClient {
 
   private replyBuffer = new Map<string, string>();
 
-  /** Llamado por el hook turn_end para auto-empaquetar el output como reply. */
-  async sendAutoReply(body: string): Promise<void> {
-    if (!this.inboundForReply) return;
-    const { msg_id, from_role } = this.inboundForReply;
-    this.inboundForReply = null;
-    await this.send({
-      kind: "reply",
-      from_role: this.role,
-      to_role: from_role,
-      session_id: this.sessionId,
-      reply_to_msg_id: msg_id,
-      body,
-    });
+  // Rediseño may-2026: se eliminó sendAutoReply (auto-reply implícita). Ahora
+  // el receptor ejecuta el inbound directo y, si quiere responder, manda un
+  // cortex_net_send explícito (gated por el humano). Los replies que SÍ llegan
+  // (de un cortex_net_await) se manejan en processInbound → pendingReplies.
+
+  /** Saca el siguiente inbound de la cola (FIFO), o null si está vacía. */
+  dequeueInbound():
+    | { msg_id: string; from_role: CortexRole; msg_type: MsgType; body: string }
+    | null {
+    return this.inboundQueue.shift() ?? null;
   }
 
-  /** Drenamos la cola de inbounds para inyectarla al system prompt. */
-  drainInbound(): typeof this.inboundQueue {
-    const out = [...this.inboundQueue];
-    this.inboundQueue = [];
-    return out;
+  /** Cantidad de inbounds pendientes en la cola. */
+  inboundCount(): number {
+    return this.inboundQueue.length;
   }
 }
 
@@ -1053,7 +1052,9 @@ export default async function (pi: ExtensionAPI) {
   // Estado global de la extensión
   let client: CortexNetClient | null = null;
   let hub: CortexNetHub | null = null;
-  let lastAssistantText = "";
+  // Último ctx visto en un handler — lo usan los callbacks async (ej. la
+  // llegada de un inbound por socket) para ctx.isIdle() / ctx.ui.notify().
+  let lastCtx: any = null;
   let cachedSessionId: string | null = null;
   let cachedModel = "unknown";
   let cachedCwd = "";
@@ -1069,6 +1070,90 @@ export default async function (pi: ExtensionAPI) {
     const content = typeof message.content === "string" ? message.content : "";
     return new Text(theme.fg("accent", "⬢ net: ") + content, 0, 0);
   });
+
+  // Publicamos las acciones de red para que el panel /cortex (u otra
+  // extensión) pueda mandar/broadcastear DE VERDAD —sin LLM— en vez de
+  // mostrar un hint. Los closures leen `client` en tiempo de llamada, así
+  // que siguen al cliente actual aunque se re-registre o se baje.
+  registerNetActions({
+    isReady: () => client !== null,
+    listPeers: async () => cortexState.peers,
+    send: async (toRole, msgType, body) => {
+      if (!client) return { ok: false, error: "no estás conectado a la red" };
+      try {
+        const r = await client.sendMessage(
+          toRole as CortexRole,
+          msgType as MsgType,
+          body
+        );
+        return { ok: r.ok, error: r.error };
+      } catch (e: any) {
+        return { ok: false, error: e?.message ?? String(e) };
+      }
+    },
+    broadcast: async (msgType, body) => {
+      if (!client) return { ok: false, error: "no estás conectado a la red" };
+      try {
+        const r = await client.broadcast(msgType as MsgType, body);
+        return { ok: r.ok, delivered: r.delivered, error: r.error };
+      } catch (e: any) {
+        return { ok: false, error: e?.message ?? String(e) };
+      }
+    },
+  });
+
+  // ── Cola de inbound (rediseño may-2026) ─────────────────────────────────
+
+  /** Refleja la cola del cliente al singleton (cockpit muestra "📨 N en cola"). */
+  function syncInboundSnapshot(): void {
+    const q = client?.inboundQueue ?? [];
+    updateCortexState({
+      inbound: q.map((m) => ({
+        from: m.from_role,
+        type: m.msg_type,
+        preview: m.body.slice(0, 60),
+      })),
+    });
+  }
+
+  /**
+   * Entrega UN inbound (FIFO) al agente vía pi.sendUserMessage, que dispara un
+   * turno. El agente lo ejecuta DIRECTO (el humano emisor ya aprobó el envío).
+   * Para responder/coordinar, el agente usa cortex_net_send (gated).
+   */
+  function deliverNextInbound(): void {
+    if (!client) return;
+    const msg = client.dequeueInbound();
+    syncInboundSnapshot();
+    if (!msg) return;
+    pi.sendUserMessage(
+      `📨 [cortex-net] Mensaje de "${msg.from_role}" (${msg.msg_type}):\n` +
+        `${msg.body}\n\n` +
+        `Ejecutá esta instrucción directamente. Para responder o coordinar usá ` +
+        `cortex_net_send (te lo confirma el humano antes de salir).`
+    );
+  }
+
+  /**
+   * Lo llama el cliente al llegar un inbound nuevo. Notifica y, si el agente
+   * está LIBRE y es el único en cola, lo dispara directo (knob a). Si está
+   * ocupado, queda en cola y se libera tras el turno (turn_end / /cx-inbox) —
+   * así no se encadenan instrucciones sin relación ni se pisa el trabajo en vuelo.
+   */
+  function handleNewInbound(): void {
+    const q = client?.inboundQueue ?? [];
+    syncInboundSnapshot();
+    if (q.length === 0) return;
+    const last = q[q.length - 1];
+    lastCtx?.ui?.notify(
+      `📨 ${last.msg_type} de ${last.from_role}: ${last.body.slice(0, 80)}`,
+      "info"
+    );
+    const idle = typeof lastCtx?.isIdle === "function" ? lastCtx.isIdle() : true;
+    if (idle && q.length === 1) {
+      deliverNextInbound();
+    }
+  }
 
   /**
    * Helper interno: registra (o re-registra) el cliente con un rol dado.
@@ -1102,6 +1187,9 @@ export default async function (pi: ExtensionAPI) {
     }
 
     client = new CortexNetClient(cachedCwd, role, cachedSessionId, cachedModel);
+    // Rediseño may-2026: al llegar un inbound, notificar + (si está libre)
+    // ejecutar directo. Se engancha ANTES del start() para no perder mensajes.
+    client.onInbound = handleNewInbound;
     // F3: enchufar el callback de peer_event ANTES del start(), así no
     // perdemos eventos que lleguen entre register y la primera vuelta
     // del event loop.
@@ -1203,6 +1291,7 @@ export default async function (pi: ExtensionAPI) {
   }
 
   pi.on("session_start", async (_event, ctx) => {
+    lastCtx = ctx;
     cachedCwd = ctx.cwd;
     cachedModel =
       `${ctx.model?.provider ?? "?"}/${ctx.model?.id ?? "?"}` || "unknown";
@@ -1321,7 +1410,9 @@ export default async function (pi: ExtensionAPI) {
       peers: [],
       myRole: null,
       isMaster: false,
+      inbound: [],
     });
+    registerNetActions(null); // dejamos de exponer acciones de red
   });
 
   // ── before_agent_start: re-asegura el registro según el singleton ─────
@@ -1341,6 +1432,7 @@ export default async function (pi: ExtensionAPI) {
     // (resolveRole lo contempla). Derivamos el rol de ahí, no del evento.
     // ensureRegisteredAs es idempotente, así que re-derivar cada turno no
     // cuesta nada y actúa de respaldo del subscriber del singleton.
+    lastCtx = ctx;
     const activeAgentName = cortexState.activeAgentName ?? undefined;
     const role = resolveRole(activeAgentName);
 
@@ -1368,62 +1460,112 @@ export default async function (pi: ExtensionAPI) {
       }
     }
 
-    // Inyección de inbounds (sin cambios respecto a antes)
-    if (!client) return;
-    const inbounds = client.drainInbound();
-    if (inbounds.length === 0) return;
-
-    const block = inbounds
-      .map((m) => {
-        return `[cortex-net inbound from "${m.from_role}" — msg_id ${m.msg_id} — type=${m.msg_type}]
-${m.body}
-
-[NOTE: tu próximo mensaje assistant será auto-empaquetado como respuesta a "${m.from_role}". NO llames cortex_net_send para responder — eso crearía un ping-pong loop. msg_id ${m.msg_id} pertenece al outbound de "${m.from_role}", no al tuyo.]`;
-      })
-      .join("\n\n---\n\n");
-
-    return {
-      systemPrompt:
-        event.systemPrompt +
-        `\n\n## Cortex Net — mensajes entrantes este turno\n\n${block}`,
-    };
-  });
-
-  // ── Capturamos el último texto del assistant para auto-reply ───────────
-  pi.on("message_update", async (event, _ctx) => {
-    const update = (event as any).assistantMessageEvent;
-    if (update?.type === "text_delta") {
-      lastAssistantText += update.delta ?? "";
-    } else if (update?.type === "message_start") {
-      lastAssistantText = "";
-    }
+    // Rediseño may-2026: la entrega de inbounds ya NO se hace acá (inyección
+    // al system prompt + auto-reply). Ahora cada inbound se entrega como user
+    // message vía pi.sendUserMessage (deliverNextInbound), UNO por turno, y el
+    // agente lo ejecuta directo. before_agent_start solo asegura el registro.
   });
 
   // ── turn_start: marcamos status busy ───────────────────────────────────
   // F3: el cliente avisa al hub que está procesando un turn vía status.
   // Documenter queda en ``observe`` (no rota a busy) porque su rol es
   // mirar la red, no consumirla.
-  pi.on("turn_start", async () => {
+  pi.on("turn_start", async (_event, ctx) => {
+    lastCtx = ctx;
     if (!client) return;
     if (client.getStatus() === "observe") return;
     client.setStatus("busy");
   });
 
-  // ── turn_end: si hubo inbound pendiente, auto-reply ────────────────────
-  pi.on("turn_end", async (_event, _ctx) => {
+  // ── turn_end: volver a idle + avisar si quedan inbounds en cola ─────────
+  pi.on("turn_end", async (_event, ctx) => {
+    lastCtx = ctx;
     if (!client) return;
-    if (client.inboundForReply && lastAssistantText.trim()) {
-      try {
-        await client.sendAutoReply(lastAssistantText.trim());
-      } catch {
-        /* peer might be gone */
-      }
-    }
-    lastAssistantText = "";
     // F3: volver a idle (excepto documenter que mantiene observe).
     if (client.getStatus() !== "observe") {
       client.setStatus("idle");
     }
+    // Rediseño may-2026: NO encadenamos solo al siguiente inbound. Si quedan
+    // en cola, avisamos y el usuario los libera con /cx-inbox (ventana de
+    // revisión: ves lo recién hecho antes de procesar el siguiente).
+    const pending = client.inboundCount();
+    if (pending > 0) {
+      syncInboundSnapshot();
+      ctx?.ui?.notify(
+        `📨 ${pending} mensaje(s) en cola. Liberá el siguiente con /cx-inbox cuando quieras.`,
+        "info"
+      );
+    }
+  });
+
+  // ── Gate de SALIDA: confirmar/editar/bloquear todo mensaje que sale ─────
+  // Rediseño may-2026: la comunicación es autónoma (el agente decide qué y a
+  // quién) PERO está prohibido enviar sin que el humano lo apruebe. Cada
+  // cortex_net_send / cortex_net_broadcast se intercepta acá.
+  const NET_MSG_CAP = 1500;
+  pi.on("tool_call", async (event, ctx) => {
+    lastCtx = ctx;
+    const toolName = (event as any).toolName ?? "";
+    if (toolName !== "cortex_net_send" && toolName !== "cortex_net_broadcast") {
+      return;
+    }
+    const input = (event as any).input as Record<string, any> | undefined;
+    const isBroadcast = toolName === "cortex_net_broadcast";
+    const dest = isBroadcast ? "TODOS los peers" : String(input?.to_role ?? "?");
+    const type = String(input?.msg_type ?? "?");
+    let body = String(input?.body ?? "");
+
+    // Loop Enviar / Editar / No enviar.
+    while (true) {
+      const over = body.length > NET_MSG_CAP;
+      const preview =
+        body.length > 600 ? body.slice(0, 600) + "\n…(vista recortada)" : body;
+      const title =
+        `⬢ El agente quiere ${isBroadcast ? "broadcastear" : `mandar a ${dest}`} (${type}):\n\n` +
+        `${preview}\n` +
+        (over
+          ? `\n⚠ Excede ${NET_MSG_CAP} chars (${body.length}). Conviene recortar (Editar).`
+          : "");
+      const choice = await ctx.ui.select(title, [
+        "✅ Enviar",
+        "✏️ Editar",
+        "❌ No enviar",
+      ]);
+      if (choice === undefined || choice.startsWith("❌")) {
+        return { block: true, reason: "El usuario rechazó el envío por cortex-net." };
+      }
+      if (choice.startsWith("✏️")) {
+        const edited = await ctx.ui.editor(
+          "Editá el mensaje (esto es lo que se va a enviar)",
+          body
+        );
+        if (edited !== undefined) body = edited;
+        continue;
+      }
+      // Enviar: persistimos el body final (posiblemente editado) en event.input.
+      if (input) input.body = body;
+      return; // permitir la ejecución de la tool
+    }
+  });
+
+  // ── /cx-inbox: liberar el siguiente mensaje de la cola ──────────────────
+  pi.registerCommand("cx-inbox", {
+    description: "Procesar el siguiente mensaje entrante de cortex-net (cola)",
+    async handler(_args, ctx) {
+      lastCtx = ctx;
+      if (!client || client.inboundCount() === 0) {
+        ctx.ui.notify("No hay mensajes en cola.", "info");
+        return;
+      }
+      if (typeof ctx.isIdle === "function" && !ctx.isIdle()) {
+        ctx.ui.notify(
+          "El agente está ocupado — esperá a que termine y reintentá.",
+          "warning"
+        );
+        return;
+      }
+      deliverNextInbound();
+    },
   });
 
   // ── Tools ──────────────────────────────────────────────────────────────
@@ -1894,9 +2036,10 @@ ${m.body}
   });
 
   // ── /cortex-mode — TUI selector de modo de operación ───────────────────
-  pi.registerCommand("cortex-mode", {
-    description: "Cambiar modo de operación de cortex-net (Full / Solo)",
-    async handler(_args, ctx) {
+  // Handler compartido por /cortex-mode y su alias corto /cx-mode
+  // (co-registrado abajo: Pi no permite invocar comandos programáticamente,
+  // así que el alias apunta al MISMO handler para que SÍ ejecute).
+  async function cortexModeHandler(_args: string, ctx: any) {
       const currentMode = client ? "Full (red activa)" : "Solo (sin red)";
 
       const choice = await ctx.ui.select(
@@ -1951,18 +2094,27 @@ ${m.body}
           client = null;
           currentRegisteredRole = null;
         }
+        // 2b: propagar la baja al singleton para que el cockpit/panel no
+        // muestren rol/peers fantasma.
+        updateCortexState({ myRole: null, peers: [] });
         // El hub lo dejamos vivo: otras Pi en otras terminales podrían
         // estar usándolo. Solo cerramos NUESTRO cliente. Si vos sos el
         // hub y querés cerrarlo del todo, usá /cortex-net-shutdown.
         ctx.ui.notify("⬢ Modo Solo activado · cortex-net desconectado", "success");
       }
-    },
+  }
+  pi.registerCommand("cortex-mode", {
+    description: "Cambiar modo de operación de cortex-net (Full / Solo)",
+    handler: cortexModeHandler,
+  });
+  pi.registerCommand("cx-mode", {
+    description: "Alias de /cortex-mode (Full / Solo)",
+    handler: cortexModeHandler,
   });
 
   // ── /cortex-role — TUI selector para forzar rol ────────────────────────
-  pi.registerCommand("cortex-role", {
-    description: "Forzar rol cortex-net (escape hatch para multi-terminal)",
-    async handler(_args, ctx) {
+  // Handler compartido por /cortex-role y su alias corto /cx-role.
+  async function cortexRoleHandler(_args: string, ctx: any) {
       const currentLabel = currentRegisteredRole
         ? `Actual: ${currentRegisteredRole}`
         : "Sin rol asignado";
@@ -1996,6 +2148,8 @@ ${m.body}
           client = null;
           currentRegisteredRole = null;
         }
+        // 2b: propagar la baja al singleton (cockpit/panel).
+        updateCortexState({ myRole: null, peers: [] });
         ctx.ui.notify(
           "⬢ Modo auto · rol se infiere del agent activo en cada turno",
           "success"
@@ -2013,7 +2167,14 @@ ${m.body}
       // Seteamos override y re-registramos
       process.env.CORTEX_NET_ROLE = role;
       await ensureRegisteredAs(role, ctx);
-    },
+  }
+  pi.registerCommand("cortex-role", {
+    description: "Forzar rol cortex-net (escape hatch para multi-terminal)",
+    handler: cortexRoleHandler,
+  });
+  pi.registerCommand("cx-role", {
+    description: "Alias de /cortex-role (forzar rol)",
+    handler: cortexRoleHandler,
   });
 
   // ── /cortex-net-shutdown — cierre limpio del hub si vos lo levantaste ──
@@ -2044,6 +2205,8 @@ ${m.body}
       }
       hub.shutdown();
       hub = null;
+      // 2b: salimos del todo de la red → limpiar el singleton.
+      updateCortexState({ myRole: null, isMaster: false, peers: [] });
       ctx.ui.notify("⬢ Hub cerrado · workspace sin red hasta nuevo session_start", "success");
     },
   });

@@ -78,6 +78,29 @@ export const AGENT_TO_ROLE: Record<string, CortexRole> = {
 };
 
 /**
+ * Mapa inverso rol → nombre canónico del agent (tal cual el ``name:`` del
+ * frontmatter en ``.pi/agents/``). Lo usa cortex-team para decirle a la
+ * terminal hija qué persona activar (env ``CORTEX_AGENT``), así el peer
+ * spawneado no solo tiene el rol de red sino la persona Pi correcta.
+ *
+ * Mantener alineado con AGENT_TO_ROLE (es su inverso).
+ */
+export const ROLE_TO_AGENT: Record<CortexRole, string> = {
+  sddwork: "cortex-SDDwork",
+  designer: "cortex-code-designer",
+  explorer: "cortex-code-explorer",
+  implementer: "cortex-code-implementer",
+  security: "cortex-security-auditor",
+  "test-verifier": "cortex-test-verifier",
+  documenter: "cortex-documenter",
+};
+
+/** Nombre canónico del agent para un rol cortex-net. */
+export function agentForRole(role: CortexRole): string {
+  return ROLE_TO_AGENT[role];
+}
+
+/**
  * Snapshot mínimo de un peer en la red, replicado desde cortex-net para
  * que el cockpit no tenga que abrir socket al hub solo para mostrar la
  * lista. Mantener alineado con ``Peer`` en cortex-net.ts.
@@ -116,6 +139,17 @@ export interface Suggestion {
 }
 
 /**
+ * Snapshot de un mensaje entrante encolado (cortex-net). El cockpit lo usa
+ * para mostrar "📨 N en cola". La cola REAL (con el body completo y el orden
+ * FIFO) vive en cortex-net.ts; esto es solo visibilidad.
+ */
+export interface InboundSnapshot {
+  from: CortexRole;
+  type: string;
+  preview: string;
+}
+
+/**
  * Snapshot completo del estado Cortex en este proceso Pi.
  *
  * Convenciones:
@@ -144,6 +178,9 @@ export interface CortexState {
   // Network
   peers: PeerSnapshot[];
   recentTraffic: TranscriptSnapshot[];
+  // Cola de mensajes entrantes pendientes (visibilidad; la cola real, con
+  // body completo, vive en cortex-net.ts).
+  inbound: InboundSnapshot[];
 
   // Workflow guidance
   suggestion: Suggestion | null;
@@ -173,9 +210,48 @@ export interface CortexState {
 
 const GLOBAL_KEY = "__cortex_pi_state_v1__";
 
+/**
+ * Acciones de red que ``cortex-net.ts`` publica al cargar, para que otras
+ * extensiones (p.ej. el panel ``/cortex``) puedan EJECUTAR de verdad
+ * —sin LLM— sin depender de invocar slash commands ni tools (Pi v0.77 no
+ * expone ninguna API para eso). cortex-net registra esto en su factory; el
+ * panel lo obtiene con ``getNetActions()``. Es ``null`` mientras cortex-net
+ * no esté cargado/listo.
+ */
+export interface NetActions {
+  /** ¿Hay cliente conectado al hub ahora mismo? */
+  isReady(): boolean;
+  /** Lista los peers actuales (vacío si no hay cliente). */
+  listPeers(): Promise<PeerSnapshot[]>;
+  /** Manda un mensaje 1:1 a un peer. */
+  send(
+    toRole: CortexRole,
+    msgType: string,
+    body: string
+  ): Promise<{ ok: boolean; error?: string }>;
+  /** Broadcast a todos los peers de la sesión. */
+  broadcast(
+    msgType: string,
+    body: string
+  ): Promise<{ ok: boolean; delivered?: number; error?: string }>;
+}
+
+/**
+ * Acción de spawn de team que ``cortex-team.ts`` publica al cargar, para
+ * que el panel ``/cortex`` pueda abrir el spawner real (selector de presets
+ * + apertura de terminales) en vez de mostrar un hint. ``null`` si
+ * cortex-team no está cargado.
+ */
+export interface TeamActions {
+  /** Abre el selector de presets y spawnea las terminales elegidas. */
+  spawn(ctx: any): Promise<void>;
+}
+
 interface GlobalAnchor {
   state: CortexState;
   subscribers: Set<Listener>;
+  netActions: NetActions | null;
+  teamActions: TeamActions | null;
 }
 
 type Listener = () => void;
@@ -194,10 +270,13 @@ function getAnchor(): GlobalAnchor {
         myModel: null,
         peers: [],
         recentTraffic: [],
+        inbound: [],
         suggestion: null,
         lastUpdate: Date.now(),
       },
       subscribers: new Set<Listener>(),
+      netActions: null,
+      teamActions: null,
     };
   }
   return g[GLOBAL_KEY];
@@ -213,6 +292,28 @@ const anchor = getAnchor();
 export const cortexState: CortexState = anchor.state;
 
 const subscribers: Set<Listener> = anchor.subscribers;
+
+// ── Registro de acciones de red (lo publica cortex-net) ─────────────────────
+
+/** cortex-net publica sus acciones acá al cargar. Pasar null para limpiar. */
+export function registerNetActions(actions: NetActions | null): void {
+  anchor.netActions = actions;
+}
+
+/** El panel (u otra extensión) obtiene las acciones de red, o null si cortex-net no está. */
+export function getNetActions(): NetActions | null {
+  return anchor.netActions;
+}
+
+/** cortex-team publica su acción de spawn acá al cargar. */
+export function registerTeamActions(actions: TeamActions | null): void {
+  anchor.teamActions = actions;
+}
+
+/** El panel obtiene la acción de spawn de team, o null si cortex-team no está. */
+export function getTeamActions(): TeamActions | null {
+  return anchor.teamActions;
+}
 
 // ── Pub/sub ─────────────────────────────────────────────────────────────────
 
@@ -258,6 +359,7 @@ export function reset(): void {
     myModel: null,
     peers: [],
     recentTraffic: [],
+    inbound: [],
     suggestion: null,
     lastUpdate: Date.now(),
   });
