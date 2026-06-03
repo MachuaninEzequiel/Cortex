@@ -1,132 +1,111 @@
 ---
 name: cortex-vault
-description: "Interaccion con la memoria hibrida de Cortex (episodica y semantica). Cargalo cuando necesites buscar contexto con cortex search, guardar decisiones, o consultar el vault antes de implementar."
+description: "Interacción con la memoria híbrida de Cortex (episódica y semántica). Cargala cuando necesites buscar contexto, ubicar dónde va una nota en el vault, registrar una decisión o persistir el cierre de una sesión."
 ---
 
-# Skill: Cortex Vault — Interacción con la Memoria
+# Cortex Vault — Interacción con la Memoria
 
-## Descripción
+Cortex mantiene la memoria del proyecto en dos capas:
 
-Este skill te enseña a interactuar con el sistema de memoria híbrida de Cortex.
-Cárgalo cuando necesites buscar contexto, guardar decisiones, o interactuar con el vault.
+- **Episódica** — eventos recientes y fechados: sesiones, PRs, commits, fallos de CI.
+- **Semántica** — conocimiento estable del vault: arquitectura, decisiones, patrones.
 
-## Comandos Esenciales
+`cortex search` consulta las dos capas a la vez y fusiona los resultados por relevancia. Consultá la memoria **antes** de escribir o implementar: evita repetir decisiones ya tomadas y mantiene la coherencia con lo que ya existe.
 
-### Búsqueda en Memoria (SIEMPRE antes de implementar)
-
-```bash
-# Búsqueda RRF cross-source (episódica + semántica)
-cortex search "término de búsqueda"
-
-# Con más resultados
-cortex search "término" --top-k 10
-
-# Solo en memoria episódica (eventos CI, PRs, logs)
-cortex search "término" --source episodic
-
-# Solo en vault semántico (arquitectura, decisiones)
-cortex search "término" --source semantic
-```
-
-### Enriquecimiento de Contexto
+## Buscar contexto
 
 ```bash
-# Enriquecer con archivos modificados en git
-cortex context
-
-# Con archivos específicos
-cortex context --files cortex/core.py cortex/retrieval/hybrid_search.py
+cortex search "término de búsqueda"            # ambas capas, 5 resultados por fuente
+cortex search "término" --top-k 10             # más resultados por fuente
+cortex search "término" --tag auth --tag api   # exigir tags (deben estar todos)
+cortex search "término" --show-scores          # ver score y origen de cada resultado
 ```
 
-### Persistencia de Memoria
+Secuencia recomendada al recibir una tarea:
+
+1. Búsqueda amplia por el dominio principal.
+2. Búsqueda específica por el término técnico exacto.
+3. `cortex context` si ya hay archivos modificados.
+4. Priorizá los resultados de mayor score y más recientes.
+
+## Enriquecer contexto desde los cambios
 
 ```bash
-# Guardar memoria episódica manual
-cortex remember "Decisión: usamos ONNX en lugar de sentence-transformers por <1ms latencia"
-
-# Con tags para mejor recuperación
-cortex remember "Bug: ChromaDB falla con nombres de colección > 63 chars" --tags "bug,chromadb"
-
-# Con summarización LLM (requiere LLM configurado)
-cortex remember "texto largo..." --summarize
-
-# Save-session completo al terminar tarea
-cortex save-session
-cortex save-session --pr 123
-cortex save-session --tag "2026-04-21-jwt-auth"
+cortex context                                 # auto-detecta los archivos modificados en git
+cortex context --files ruta/a/archivo.py       # archivos explícitos
+cortex context --format compact                # salida compacta para inyectar en un prompt
 ```
 
-### Estadísticas y Gestión
+## Registrar memoria
 
 ```bash
-cortex stats          # resumen de vault + memoria episódica
-cortex search "x" | head -5  # preview rápido
+# Memoria episódica puntual
+cortex remember "Decisión: usamos X en lugar de Y por Z"
+cortex remember "Bug: el parser falla con nombres > 63 chars" --tag bug --tag parser
+cortex remember "texto largo..." --summarize   # resume con LLM (si hay un provider configurado)
 ```
 
-## Estrategia de Búsqueda
+## Cerrar una sesión
 
-Cuando recibas una tarea, usa esta secuencia:
+Al terminar una tarea, dejá una nota de sesión estructurada en el vault:
 
-1. **Búsqueda amplia** → `cortex search "<dominio principal>"`
-2. **Búsqueda específica** → `cortex search "<término técnico exacto>"`
-3. **Contexto de archivos** → `cortex context` (si ya tienes archivos modificados)
-4. **Revisar resultados** → prioriza score >0.7, fuentes recientes
-
-## Interpretación de Resultados RRF
-
-```
-[0.89] EPISODIC: PR #119 fix-auth-middleware (2026-04-15)
-[0.85] SEMANTIC: vault/architecture/auth-patterns.md
-[0.82] EPISODIC: CI failure log - test_auth.py (2026-04-14)
+```bash
+cortex save-session \
+  --title "Título de la sesión" \
+  --spec-summary "Qué se pedía resolver" \
+  --change "Qué se hizo" \
+  --decision "Decisión clave tomada" \
+  --next-step "Pendiente para la próxima" \
+  --tag release
 ```
 
-- **Score >0.80**: Muy relevante, leer completo
-- **Score 0.60-0.80**: Posiblemente relevante, revisar
-- **Score <0.60**: Baja relevancia, ignorar a menos que no haya más
-- **EPISODIC**: Eventos recientes (CI, PRs, sesiones)
-- **SEMANTIC**: Conocimiento estable (arquitectura, decisiones)
+`--title` y `--spec-summary` son obligatorios; el resto es opcional y repetible.
 
-## Estructura del Vault
+## Estadísticas
+
+```bash
+cortex stats        # conteos y resumen de ambas capas de memoria
+```
+
+## Interpretar los resultados
+
+Cada resultado trae un score de relevancia y la capa de origen:
+
+- **Score alto** — muy relevante, leelo completo.
+- **Score medio** — posiblemente relevante, revisalo.
+- **Score bajo** — ignoralo salvo que no haya nada mejor.
+- **Episódica** — evento reciente (sesión, PR, CI).
+- **Semántica** — conocimiento estable (arquitectura, decisiones).
+
+## Dónde vive cada cosa
 
 ```
 vault/
-├── sessions/      # Notas de sesión (save-session output)
+├── sessions/      # Notas de cierre de sesión
 ├── architecture/  # Decisiones arquitectónicas
 ├── patterns/      # Patrones reutilizables
-├── bugs/          # Bugs conocidos y sus fixes
+├── bugs/          # Bugs conocidos y sus soluciones
 └── adr/           # Architecture Decision Records
 ```
 
-## CONTEXT.md awareness (Tripartita Refinada — 0.5.0)
+Al crear una nota, ubicala en la carpeta que corresponde a su tipo.
 
-Junto al vault, el workspace puede tener un `CONTEXT.md` (en `.cortex/CONTEXT.md` para
-new layout, o `CONTEXT.md` en root para legacy). Este archivo es **un prompt asset**: una
-tabla de términos de dominio canónicos que el equipo decidió usar para este proyecto.
-El uso correcto:
+## Glosario de dominio (CONTEXT.md)
 
-1. **Antes de buscar** — si el usuario menciona un término que parece de dominio
-   (no genérico de programación), revisá `CONTEXT.md` para ver si tiene un sinónimo
-   canónico. Si lo tiene, buscá por el canónico en lugar del término del usuario.
-2. **Antes de persistir memoria** — si vas a guardar una memoria episódica que mencione
-   un concepto recurrente, usá el término canónico del `CONTEXT.md`. Esto mejora la
-   recuperación futura porque ONNX colocaliza embeddings sobre el mismo término.
-3. **Si un término nuevo emerge** — no lo agregues a `CONTEXT.md` vos mismo. Sugerilo
-   en el `suggested_context_terms` del handoff para que el `cortex-documenter` decida
-   si amerita ser canónico (criterio: el término aparece ≥3 veces en sesiones distintas).
+El proyecto puede incluir un `CONTEXT.md`: una tabla con los términos canónicos que el equipo acordó usar en este dominio. Aprovechalo así:
 
-CONTEXT.md vacío significa "proyecto nuevo, sin glosario aún" — no significa "irrelevante".
+- **Antes de buscar** — si aparece un término de dominio, fijate si `CONTEXT.md` tiene su forma canónica y buscá por esa.
+- **Antes de registrar memoria** — usá siempre el término canónico, no un sinónimo. Así las búsquedas futuras recuperan mejor el contenido.
+- **Si surge un término nuevo y recurrente** — no lo agregues vos mismo: proponelo para que se evalúe si merece volverse canónico.
 
-## Confidence labels en respuestas (Tripartita Refinada — 0.5.0)
+Un `CONTEXT.md` vacío significa "proyecto nuevo, sin glosario todavía", no "irrelevante".
 
-A partir de 0.5.0, los hits que retorna `cortex search` y `cortex context` pueden traer
-un label `[verified]`, `[asserted]` o `[contradicted]` junto al `memory_type`. Significa:
+## Confianza de cada memoria
 
-- **`[verified]`** — el documenter cruzó esta memoria contra el `git diff` real al persistirla.
-  Confiá: el contenido refleja cambios que efectivamente ocurrieron.
-- **`[asserted]`** — el implementador la reportó pero el Verification Gate no la pudo cruzar
-  contra evidencia. Tratala como hipótesis, no como hecho.
-- **`[contradicted]`** — la memoria afirma algo que el diff contradice. Ignorala o pedí
-  confirmación al usuario antes de usarla.
+Los resultados pueden traer una etiqueta de confianza:
 
-Memorias sin label son pre-0.5.0 y no pasaron por el Verification Gate. Tratalas con
-confianza media (mejor que `[asserted]`, peor que `[verified]`).
+- **verified** — la memoria fue contrastada contra los cambios reales del código. Confiá en ella.
+- **asserted** — fue reportada pero no se pudo contrastar contra evidencia. Tratala como hipótesis.
+- **contradicted** — afirma algo que los cambios contradicen. Ignorala o pedí confirmación antes de usarla.
+
+Una memoria sin etiqueta no pasó por esa verificación: tratala con confianza media.

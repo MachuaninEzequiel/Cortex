@@ -202,6 +202,17 @@ function renderCockpit(theme: any, width: number): string[] {
     }
   }
 
+  // Cola de mensajes entrantes (rediseño may-2026). Visible para que nunca
+  // queden mensajes esperando sin que el usuario lo sepa.
+  if (cortexState.inbound.length > 0) {
+    const froms = [...new Set(cortexState.inbound.map((m) => m.from))].join(", ");
+    lines.push(
+      theme.fg("warning", `  📨 ${cortexState.inbound.length} en cola`) +
+        theme.fg("dim", ` (de ${froms}) · `) +
+        theme.fg("accent", "/cx-inbox")
+    );
+  }
+
   // Sugerencia (la popula F2)
   if (cortexState.suggestion) {
     const hk = cortexState.suggestion.hotkey
@@ -266,15 +277,16 @@ function updateStatusBar(ctx: any): void {
   }
   ctx.ui.setStatus(STATUS_ROLE, roleStatus);
 
-  // Slot 3: peers
+  // Slot 3: peers (+ 📨N si hay mensajes en cola)
+  const mail = cortexState.inbound.length > 0 ? ` 📨${cortexState.inbound.length}` : "";
   if (cortexState.peers.length === 0) {
-    ctx.ui.setStatus(STATUS_PEERS, "0 peers");
+    ctx.ui.setStatus(STATUS_PEERS, "0 peers" + mail);
   } else {
     const idle = cortexState.peers.filter((p) => p.status === "idle").length;
     const busy = cortexState.peers.filter((p) => p.status === "busy").length;
     ctx.ui.setStatus(
       STATUS_PEERS,
-      `${cortexState.peers.length} peers (${idle}i/${busy}b)`
+      `${cortexState.peers.length} peers (${idle}i/${busy}b)` + mail
     );
   }
 }

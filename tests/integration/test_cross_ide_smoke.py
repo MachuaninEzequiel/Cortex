@@ -149,7 +149,8 @@ def test_smoke_inject_codex(tmp_path: Path) -> None:
     config_toml = root / ".codex" / "config.toml"
     assert config_toml.exists(), ".codex/config.toml (TOML MCP config) missing"
     parsed = tomllib.loads(config_toml.read_text(encoding="utf-8"))
-    assert parsed["mcp_servers"]["cortex"]["command"] == "cortex"
+    cmd = parsed["mcp_servers"]["cortex"]["command"]
+    assert Path(cmd).name.lower() in ("cortex", "cortex.exe")
     assert parsed["mcp_servers"]["cortex"]["enabled"] is True
 
     # Paths obsoletos NO deben existir post-Fase 4

@@ -36,7 +36,9 @@ Layout escrito por este adapter:
 """
 from __future__ import annotations
 
+import os
 import re
+import shutil
 from pathlib import Path
 
 from cortex.ide.base import (
@@ -55,6 +57,16 @@ _CORTEX_AGENTS_MD_MARKER_CLOSE = "<!-- END CORTEX SECTION -->"
 # el bloque Cortex sin tocar otros servers MCP que el adopter pueda tener.
 _CORTEX_TOML_MARKER_OPEN = "# BEGIN CORTEX MCP (auto-generated, do not edit)"
 _CORTEX_TOML_MARKER_CLOSE = "# END CORTEX MCP"
+
+# Marcadores para la entrada de trust en el config GLOBAL ``~/.codex/config.toml``.
+# Codex DESCARTA toda la capa project-local ``.codex/`` (incluido nuestro MCP
+# server) hasta que el proyecto esta "trusted" alli — confirmado en los logs de
+# ``codex_app_server`` ("Project-local config, hooks, and exec policies are
+# disabled ... until the project is trusted"). Se agrega una entrada de trust
+# por proyecto, envuelta en marcadores ESPECIFICOS del path para que
+# ``uninstall`` remueva solo la de ese proyecto (multi-repo safe).
+_CORTEX_TRUST_MARKER_OPEN_TPL = "# BEGIN CORTEX TRUST [{tag}] (auto-generated, do not edit)"
+_CORTEX_TRUST_MARKER_CLOSE_TPL = "# END CORTEX TRUST [{tag}]"
 
 
 def _build_cortex_agents_section(autogen_header: str) -> str:
@@ -213,36 +225,67 @@ def _replace_or_append_cortex_section(existing: str, cortex_block: str) -> str:
         re.DOTALL,
     )
     if pattern.search(existing):
-        return pattern.sub(cortex_block.strip(), existing)
+        # Replacement vía callable: evita que ``re.sub`` interprete backslashes
+        # del bloque (rutas Windows) como escapes de regex.
+        return pattern.sub(lambda _m: cortex_block.strip(), existing)
     # Append: separator only if existing has content and doesn't end with newline
     sep = "" if not existing else ("\n" if existing.endswith("\n") else "\n\n")
     return existing + sep + cortex_block
 
 
+def _resolve_cortex_command() -> str:
+    """Ruta absoluta al ejecutable ``cortex``, o el nombre pelado como fallback.
+
+    Codex spawnea el MCP server heredando el entorno con que fue lanzado. En
+    Windows — sobre todo la app Codex Desktop — ese entorno puede NO incluir el
+    directorio ``Scripts`` de Python en el ``PATH``, con lo cual un ``"cortex"``
+    pelado no resolveria. Capturar la ruta absoluta en tiempo de instalacion
+    elimina esa ambiguedad.
+    """
+    return shutil.which("cortex") or "cortex"
+
+
 def _build_cortex_toml_block(project_root: Path) -> str:
     """Devuelve el bloque TOML de configuracion del MCP server Cortex.
 
-    Sintaxis exacta segun docs oficiales:
+    Sintaxis validada contra https://developers.openai.com/codex/mcp:
 
         [mcp_servers.cortex]
-        command = "cortex"
+        command = "<ruta absoluta a cortex>"
         args = ["mcp-server", "--stdio", "--project-root", "<path>"]
+        startup_timeout_sec = 60
         enabled = true
 
         [mcp_servers.cortex.env]
         PYTHONWARNINGS = "ignore"
+        PYTHONIOENCODING = "utf-8"
+        PYTHONUNBUFFERED = "1"
 
-    El path se inyecta como TOML string (escapado para Windows backslashes).
+    Hardening (2026-05-30):
+
+    - ``command`` se resuelve a ruta absoluta (Codex Desktop no garantiza el
+      PATH de la shell del usuario).
+    - ``startup_timeout_sec = 60``: el server Python es pesado en frio y el
+      default de Codex (10 s) lo mata. El propio ``node_repl`` de OpenAI usa
+      120 s; 60 s es margen holgado.
+    - ``PYTHONIOENCODING`` / ``PYTHONUNBUFFERED`` protegen el stdio JSON-RPC en
+      Windows.
+
+    Los strings se escapan para backslashes de Windows.
     """
     project_str = str(project_root).replace("\\", "\\\\")
+    command_str = _resolve_cortex_command().replace("\\", "\\\\")
     return f"""{_CORTEX_TOML_MARKER_OPEN}
 [mcp_servers.cortex]
-command = "cortex"
+command = "{command_str}"
 args = ["mcp-server", "--stdio", "--project-root", "{project_str}"]
+startup_timeout_sec = 60
 enabled = true
 
 [mcp_servers.cortex.env]
 PYTHONWARNINGS = "ignore"
+PYTHONIOENCODING = "utf-8"
+PYTHONUNBUFFERED = "1"
 {_CORTEX_TOML_MARKER_CLOSE}
 """
 
@@ -256,9 +299,108 @@ def _replace_or_append_cortex_toml_block(existing: str, cortex_toml: str) -> str
         re.DOTALL,
     )
     if pattern.search(existing):
-        return pattern.sub(cortex_toml.strip(), existing)
+        # Replacement vía callable: el bloque trae rutas Windows con backslashes
+        # que ``re.sub`` interpretaria como escapes de regex en un repl string.
+        return pattern.sub(lambda _m: cortex_toml.strip(), existing)
     sep = "" if not existing else ("\n" if existing.endswith("\n") else "\n\n")
     return existing + sep + cortex_toml
+
+
+# ---------------------------------------------------------------------------
+# Trust del proyecto en el config GLOBAL (~/.codex/config.toml)
+# ---------------------------------------------------------------------------
+
+
+def _codex_global_config_path() -> Path:
+    """Resuelve el ``config.toml`` GLOBAL de Codex (respeta ``CODEX_HOME``).
+
+    Codex lee de este archivo, de forma incondicional, tanto los MCP servers
+    como el trust de proyectos. Default ``~/.codex/config.toml``; la env var
+    ``CODEX_HOME`` redefine el directorio (Codex la respeta, y los tests la
+    usan para aislamiento).
+    """
+    codex_home = os.environ.get("CODEX_HOME")
+    base = Path(codex_home) if codex_home else (Path.home() / ".codex")
+    return base / "config.toml"
+
+
+def _trust_markers(project_root: Path) -> tuple[str, str]:
+    """Marcadores BEGIN/END especificos del path para la entrada de trust."""
+    tag = str(project_root)
+    return (
+        _CORTEX_TRUST_MARKER_OPEN_TPL.format(tag=tag),
+        _CORTEX_TRUST_MARKER_CLOSE_TPL.format(tag=tag),
+    )
+
+
+def _build_cortex_trust_block(project_root: Path) -> str:
+    """Entrada de trust para el config global, envuelta en marcadores del path.
+
+    Sintaxis (a confirmar contra la version instalada de Codex; validado contra
+    el mensaje de ``codex_app_server`` que pide "add <path> as a trusted
+    project in ~/.codex/config.toml"):
+
+        [projects."<path>"]
+        trust_level = "trusted"
+    """
+    open_m, close_m = _trust_markers(project_root)
+    project_str = str(project_root).replace("\\", "\\\\")
+    return f"""{open_m}
+[projects."{project_str}"]
+trust_level = "trusted"
+{close_m}
+"""
+
+
+def _global_has_foreign_trust(content: str, project_root: Path) -> bool:
+    """¿Existe ya un ``[projects."<este path>"]`` FUERA de nuestros marcadores?
+
+    Si el usuario (o Codex) ya confio el proyecto por su cuenta, NO debemos
+    agregar otra tabla con la misma key: TOML prohibe tablas duplicadas y
+    romperia el parseo de toda la config. La comparacion normaliza
+    case/separadores (Windows es case-insensitive).
+    """
+    target = os.path.normcase(os.path.normpath(str(project_root)))
+    for match in re.finditer(
+        r"""(?mi)^\s*\[projects\.(?:"([^"]*)"|'([^']*)')\]\s*$""", content
+    ):
+        key = match.group(1) if match.group(1) is not None else match.group(2)
+        # Los basic strings escapan backslashes (\\ -> \); los literales no.
+        key_unescaped = key.replace("\\\\", "\\")
+        if os.path.normcase(os.path.normpath(key_unescaped)) == target:
+            return True
+    return False
+
+
+def _merge_trust_into_global(existing: str, project_root: Path) -> str:
+    """Merge no-destructivo del trust de ESTE proyecto en el config global.
+
+    Agrega/reemplaza SOLO el bloque entre nuestros marcadores (especificos del
+    path), preservando todo lo demas: ``marketplaces``, ``plugins``, otros MCP
+    servers, ``desktop`` y otros proyectos confiados. Idempotente.
+
+    Si el proyecto ya esta confiado fuera de nuestros marcadores, no toca nada
+    (evita una tabla ``[projects."..."]`` duplicada que invalidaria el TOML).
+    """
+    open_m, close_m = _trust_markers(project_root)
+    pattern = re.compile(
+        re.escape(open_m) + r".*?" + re.escape(close_m) + r"\n?",
+        re.DOTALL,
+    )
+    ours_present = bool(pattern.search(existing))
+    without_ours = pattern.sub("", existing)
+
+    if _global_has_foreign_trust(without_ours, project_root):
+        # Ya confiado por el usuario/Codex: no duplicar. Si nosotros habiamos
+        # agregado el bloque, lo quitamos para no dejar la tabla duplicada.
+        return without_ours if ours_present else existing
+
+    trust_block = _build_cortex_trust_block(project_root)
+    if ours_present:
+        # Replacement vía callable: el path del proyecto trae backslashes.
+        return pattern.sub(lambda _m: trust_block.strip() + "\n", existing)
+    sep = "" if not existing else ("\n" if existing.endswith("\n") else "\n\n")
+    return existing + sep + trust_block
 
 
 class CodexAdapter(IDEAdapter):
@@ -315,24 +457,64 @@ class CodexAdapter(IDEAdapter):
         return [str(agents_md_path)]
 
     def inject_mcp(self, project_root: Path) -> list[str]:
-        """Inyectar el MCP server Cortex en ``.codex/config.toml`` (TOML, no JSON).
+        """Inyectar el MCP server Cortex para Codex (modelo mono-repo).
 
-        Sintaxis validada contra https://developers.openai.com/codex/mcp.
+        Dos escrituras, ambas merge **no-destructivo**:
+
+        1. ``<proyecto>/.codex/config.toml`` — registro project-scoped del MCP.
+           Solo activo en este proyecto (mono-repo). Sintaxis validada contra
+           https://developers.openai.com/codex/mcp.
+        2. ``~/.codex/config.toml`` (global) — marca el proyecto como
+           ``trusted``. Sin esto Codex DESCARTA en silencio toda la capa
+           project-local (incluido el MCP) hasta confiar el proyecto. Se
+           preserva intacto el resto del config global del usuario.
         """
         paths = self.get_config_paths()
+        written: list[str] = []
+
+        # 1. Registro project-scoped del MCP (mono-repo).
         config_path = project_root / paths["config_toml"]
         config_path.parent.mkdir(parents=True, exist_ok=True)
-
         cortex_toml = _build_cortex_toml_block(project_root)
-
         existing = ""
         if config_path.exists():
             _backup_file(config_path)
             existing = config_path.read_text(encoding="utf-8")
+        config_path.write_text(
+            _replace_or_append_cortex_toml_block(existing, cortex_toml),
+            encoding="utf-8",
+        )
+        written.append(str(config_path))
 
-        new_content = _replace_or_append_cortex_toml_block(existing, cortex_toml)
-        config_path.write_text(new_content, encoding="utf-8")
-        return [str(config_path)]
+        # 2. Trust del proyecto en el config global (habilita la capa
+        #    project-local para que Codex efectivamente cargue el MCP).
+        global_path = _codex_global_config_path()
+        global_existing = (
+            global_path.read_text(encoding="utf-8") if global_path.exists() else ""
+        )
+        new_global = _merge_trust_into_global(global_existing, project_root)
+        if new_global != global_existing:
+            global_path.parent.mkdir(parents=True, exist_ok=True)
+            if global_path.exists():
+                _backup_file(global_path)
+            global_path.write_text(new_global, encoding="utf-8")
+            written.append(str(global_path))
+            self._print_trust_notice(project_root, global_path)
+
+        return written
+
+    @staticmethod
+    def _print_trust_notice(project_root: Path, global_path: Path) -> None:
+        """Aviso explicito y auditable: marcamos el proyecto como trusted."""
+        print(
+            "\n[Cortex][Codex] Proyecto marcado como 'trusted' en Codex:\n"
+            f"    {project_root}\n"
+            f"  escrito en: {global_path}\n"
+            "  Necesario para que Codex cargue el MCP server (sin trust, Codex\n"
+            "  ignora la capa project-local .codex/). Esto habilita la capa\n"
+            "  project-local (config/hooks/exec policies) SOLO para este\n"
+            "  proyecto. Se revierte con 'cortex uninstall --ide codex'.\n"
+        )
 
     def detect_installation(self) -> bool:
         """Detect whether the Codex CLI binary is available on PATH."""
@@ -395,6 +577,24 @@ class CodexAdapter(IDEAdapter):
                 else:
                     config_toml.unlink()
                     removed.append(str(config_toml))
+
+        # 2b. Revertir la entrada de trust de ESTE proyecto en el config global
+        # (ownership-aware: solo el bloque entre NUESTROS marcadores para este
+        # path). No toca el trust de otros proyectos ni un trust que el usuario
+        # haya puesto a mano fuera de los marcadores.
+        global_path = _codex_global_config_path()
+        if global_path.exists():
+            existing = global_path.read_text(encoding="utf-8")
+            open_m, close_m = _trust_markers(cwd)
+            trust_pattern = re.compile(
+                re.escape(open_m) + r".*?" + re.escape(close_m) + r"\n?",
+                re.DOTALL,
+            )
+            cleaned = trust_pattern.sub("", existing)
+            if cleaned != existing:
+                _backup_file(global_path)
+                global_path.write_text(cleaned.rstrip() + "\n", encoding="utf-8")
+                removed.append(f"{global_path} (Cortex trust entry removed)")
 
         # 3. Limpieza de artefactos legacy del adapter pre-Fase 4 (Codex
         # nunca los leyo, pero pueden quedar de instalaciones viejas).

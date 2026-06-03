@@ -138,6 +138,29 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     const agents = scanAgents(ctx.cwd);
     if (agents.length === 0) return;
+
+    // Auto-activación por env (CORTEX_AGENT): cortex-team la setea al
+    // spawnear una terminal de rol, para que la hija arranque YA con la
+    // persona correcta (sin que el usuario tenga que hacer /system). Match
+    // case-insensitive para tolerar el casing de cortex-SDDwork.
+    const envAgent = process.env.CORTEX_AGENT?.trim();
+    if (envAgent) {
+      const match = agents.find(
+        (a) => a.name.toLowerCase() === envAgent.toLowerCase()
+      );
+      if (match) {
+        activeAgent = match;
+        ctx.ui.setStatus("cortex-agent", `⬡ ${match.name}`);
+        // Fuente de verdad del agent/rol para cockpit + cortex-net.
+        updateCortexState({
+          activeAgentName: match.name,
+          myRole: resolveRoleFromAgentName(match.name),
+        });
+        ctx.ui.notify(`✓ Agente activo (auto vía CORTEX_AGENT): ${match.name}`, "success");
+        return;
+      }
+    }
+
     ctx.ui.notify(
       `⬡ Cortex: ${agents.length} agentes en .pi/agents/ → /system para activar`,
       "info"

@@ -1,22 +1,19 @@
 ---
 name: obsidian-index
-description: "Indice del conocimiento Obsidian del proyecto Cortex. Cargalo cuando la tarea involucre el Vault de Obsidian: sintaxis de notas, wikilinks, bases de datos (.base), mapas canvas o limpieza de URLs con Defuddle."
+description: "Índice de las guías de formato Obsidian del vault. Cargala cuando la tarea involucre el vault: sintaxis de notas, wikilinks, bases de datos (.base), mapas canvas o limpieza de URLs con Defuddle."
 ---
 
-# 🗂️ Obsidian Knowledge Index (BAJO DEMANDA)
+# Índice de conocimiento Obsidian
 
-Solo si la tarea requiere específicamente interactuar con el Vault o formatos de Obsidian, debes cargar el manual correspondiente mediante `read_file` antes de proceder:
+Estas guías se cargan **bajo demanda**. Solo si la tarea requiere trabajar con el vault o con algún formato de Obsidian, abrí el manual que corresponda antes de proceder:
 
-- **Sintaxis y Estructura de Notas** (Wikilinks, Callouts, Frontmatter):
-  👉 Leer `.pi/skills/obsidian/obsidian-markdown.md`
-  
-- **Bases de Datos y Vistas Dinámicas** (Archivos .base, filtros, tablas):
-  👉 Leer `.pi/skills/obsidian/obsidian-bases.md`
-  
-- **Mapas Visuales y Diagramas de Flujo** (Archivos .canvas):
-  👉 Leer `.pi/skills/obsidian/json-canvas.md`
-  
-- **Investigación Web Optimizada** (Limpieza de URLs con Defuddle):
-  👉 Leer `.pi/skills/obsidian/defuddle.md`
+- **Sintaxis y estructura de notas** (wikilinks, callouts, frontmatter)
+  → `.pi/skills/obsidian/obsidian-markdown.md`
+- **Bases de datos y vistas dinámicas** (archivos `.base`, filtros, tablas)
+  → `.pi/skills/obsidian/obsidian-bases.md`
+- **Mapas visuales y diagramas** (archivos `.canvas`)
+  → `.pi/skills/obsidian/json-canvas.md`
+- **Investigación web** (extraer markdown limpio de una URL con Defuddle)
+  → `.pi/skills/obsidian/defuddle.md`
 
-**IMPORTANTE**: No cargues estos archivos si la tarea es de programación pura sin relación con la documentación del Vault.
+No cargues estos manuales si la tarea es de programación pura, sin relación con la documentación del vault.

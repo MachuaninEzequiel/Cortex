@@ -223,7 +223,10 @@ def test_codex_writes_toml_not_json_for_mcp(tmp_path: Path):
     assert config_toml.exists()
     parsed = tomllib.loads(config_toml.read_text(encoding="utf-8"))
     assert "mcp_servers" in parsed
-    assert parsed["mcp_servers"]["cortex"]["command"] == "cortex"
+    # command se resuelve a ruta absoluta (o nombre pelado si cortex no esta en
+    # PATH) — hardening 2026-05-30.
+    cmd = parsed["mcp_servers"]["cortex"]["command"]
+    assert Path(cmd).name.lower() in ("cortex", "cortex.exe")
 
 
 # ---------------------------------------------------------------------------

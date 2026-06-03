@@ -32,11 +32,15 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 // Bugfix mayo 2026: import desde .pi/lib/ (ver cortex-cockpit.ts y
 // docs/multi-ide-mcp-hardening/PI-COCKPIT-UX/README.md § 8).
 import {
   cortexState,
   CORTEX_ROLES,
+  getNetActions,
+  getTeamActions,
   type CortexRole,
 } from "../lib/cortex-state";
 
@@ -265,93 +269,102 @@ class CortexPanelComponent {
 // ── Sub-flows (acciones complejas) ─────────────────────────────────────────
 
 /**
- * Cascada de prompts para mandar un mensaje 1:1 a un peer.
- *
- * Si no hay peers conectados, el flow corta con notify. Si el usuario
- * cancela cualquier paso (esc en select), tampoco se manda nada.
- *
- * No invoca la tool MCP cortex_net_send directamente — sería duplicar
- * lógica que ya vive en cortex-net.ts. En su lugar imprime el comando
- * tool-ready que el agent debería invocar.
+ * Cascada para mandar un mensaje 1:1 a un peer y enviarlo DE VERDAD —sin
+ * LLM— vía el registro de acciones de red que publica cortex-net. Si el
+ * usuario cancela cualquier paso, no se manda nada.
  */
 async function sendMessageFlow(ctx: any): Promise<void> {
-  if (cortexState.peers.length === 0) {
+  const net = getNetActions();
+  if (!net || !net.isReady()) {
     ctx.ui.notify(
-      "No hay peers conectados a quien mandarle. Abrí otra terminal con `just role-*` primero.",
+      "cortex-net no está conectado en este proceso (¿estás en standby o en cortex-sync?).",
       "warning"
     );
     return;
   }
 
-  // 1. Destinatario
-  const peerOptions = cortexState.peers.map(
-    (p) =>
-      `${p.role}  (${p.status ?? "?"}${
-        p.role === cortexState.myRole ? " · vos mismo" : ""
-      })`
-  );
-  const peer = await ctx.ui.select(
-    "Destinatario:",
-    peerOptions
-  );
-  if (peer === undefined) return;
-  const toRole = peer.split(/\s+/)[0] as CortexRole;
-  if (toRole === cortexState.myRole) {
-    ctx.ui.notify("No tiene sentido mandarte un mensaje a vos mismo.", "warning");
+  // 1. Destinatario (excluyendo a uno mismo)
+  const peerOptions = cortexState.peers
+    .filter((p) => p.role !== cortexState.myRole)
+    .map((p) => `${p.role}  (${p.status ?? "?"})`);
+  if (peerOptions.length === 0) {
+    ctx.ui.notify(
+      "No hay otros peers conectados. Abrí el team con /cortex-team primero.",
+      "warning"
+    );
     return;
   }
+  const peer = await ctx.ui.select("Destinatario:", peerOptions);
+  if (peer === undefined) return;
+  const toRole = peer.split(/\s+/)[0] as CortexRole;
 
   // 2. Tipo
-  const msgType = await ctx.ui.select(
-    "Tipo de mensaje:",
-    [
-      "question  — pido aclaración",
-      "proposal  — propongo algo, espero accept/reject",
-      "blocker   — informo bloqueo (no espera reply)",
-      "handoff   — delego turno explícitamente",
-    ]
-  );
+  const msgType = await ctx.ui.select("Tipo de mensaje:", [
+    "question  — pido aclaración",
+    "proposal  — propongo algo, espero accept/reject",
+    "blocker   — informo bloqueo (no espera reply)",
+    "handoff   — delego turno explícitamente",
+  ]);
   if (msgType === undefined) return;
   const typeKey = msgType.split(/\s+/)[0];
 
-  // 3. Mensaje
+  // 3. Cuerpo (texto libre) + envío REAL.
+  const body = await ctx.ui.input(`Mensaje para ${toRole}:`, "Escribí el mensaje…");
+  if (body === undefined || body.trim() === "") {
+    ctx.ui.notify("Mensaje vacío — no se envió nada.", "info");
+    return;
+  }
+  const res = await net.send(toRole, typeKey, body.trim());
   ctx.ui.notify(
-    `Para enviar, tu agent debe invocar:\n` +
-      `  cortex_net_send(to_role="${toRole}", msg_type="${typeKey}", body="<tu mensaje>")\n` +
-      `(F4 todavía no invoca tools directamente; eso requeriría API pi.execTool no documentada.)`,
-    "info"
+    res.ok
+      ? `✓ Mensaje enviado a ${toRole} (${typeKey}).`
+      : `✗ No se pudo enviar: ${res.error ?? "error desconocido"}`,
+    res.ok ? "success" : "error"
   );
 }
 
 /**
- * Cascada para broadcast a todos los peers. Igual que sendMessageFlow
- * pero salta el paso "destinatario".
+ * Cascada para broadcast a todos los peers y enviarlo DE VERDAD vía el
+ * registro de acciones de red. Igual que sendMessageFlow pero sin el paso
+ * "destinatario".
  */
 async function broadcastFlow(ctx: any): Promise<void> {
+  const net = getNetActions();
+  if (!net || !net.isReady()) {
+    ctx.ui.notify("cortex-net no está conectado en este proceso.", "warning");
+    return;
+  }
   if (cortexState.peers.length === 0) {
     ctx.ui.notify(
-      "No hay peers conectados a quien broadcastear. El broadcast iría a 0 destinatarios.",
+      "No hay peers conectados — el broadcast iría a 0 destinatarios.",
       "warning"
     );
     return;
   }
 
-  const msgType = await ctx.ui.select(
-    "Tipo de mensaje (broadcast):",
-    [
-      "question  — pedido amplio",
-      "proposal  — propuesta general",
-      "blocker   — bloqueo a comunicar",
-      "observe   — notificación pasiva",
-    ]
-  );
+  const msgType = await ctx.ui.select("Tipo de mensaje (broadcast):", [
+    "question  — pedido amplio",
+    "proposal  — propuesta general",
+    "blocker   — bloqueo a comunicar",
+    "observe   — notificación pasiva",
+  ]);
   if (msgType === undefined) return;
   const typeKey = msgType.split(/\s+/)[0];
 
+  const body = await ctx.ui.input(
+    "Mensaje (broadcast a todos los peers):",
+    "Escribí el mensaje…"
+  );
+  if (body === undefined || body.trim() === "") {
+    ctx.ui.notify("Mensaje vacío — no se envió nada.", "info");
+    return;
+  }
+  const res = await net.broadcast(typeKey, body.trim());
   ctx.ui.notify(
-    `Para broadcast a ${cortexState.peers.length} peer(s), tu agent debe invocar:\n` +
-      `  cortex_net_broadcast(msg_type="${typeKey}", body="<tu mensaje>")`,
-    "info"
+    res.ok
+      ? `✓ Broadcast enviado (${typeKey}) a ${res.delivered ?? cortexState.peers.length} peer(s).`
+      : `✗ No se pudo broadcastear: ${res.error ?? "error desconocido"}`,
+    res.ok ? "success" : "error"
   );
 }
 
@@ -365,6 +378,21 @@ async function abandonSession(ctx: any): Promise<void> {
     'Tu agent debe invocar: cortex_close_session(status="abandoned", session_note_path=null, adrs_created=[])',
     "warning"
   );
+}
+
+/**
+ * Lee las últimas ``n`` líneas de un log de cortex-net en
+ * ``<cwd>/.pi/agent-sessions/<file>``. Best-effort: [] si no existe o falla.
+ */
+function tailLog(cwd: string, file: string, n: number): string[] {
+  if (!cwd) return [];
+  const p = join(cwd, ".pi", "agent-sessions", file);
+  if (!existsSync(p)) return [];
+  try {
+    return readFileSync(p, "utf-8").trim().split("\n").filter(Boolean).slice(-n);
+  } catch {
+    return [];
+  }
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
@@ -384,9 +412,10 @@ export default function (pi: ExtensionAPI) {
 
       if (selected === null || selected === "close") return;
 
-      // Despacho de acciones. Las que mapean a slash commands ya
-      // implementados en cortex-net.ts emiten notify con la instrucción
-      // (no duplicamos lógica).
+      // Despacho. send/broadcast/team_spawn EJECUTAN de verdad (vía los
+      // registros que publican cortex-net y cortex-team). view_* leen los
+      // logs. change_mode/change_role/switch_documenter apuntan a los slash
+      // commands cortos (Pi no permite invocarlos desde acá).
       switch (selected) {
         case "send_message":
           await sendMessageFlow(ctx);
@@ -396,21 +425,57 @@ export default function (pi: ExtensionAPI) {
           await broadcastFlow(ctx);
           break;
 
-        case "view_transcript":
-          ctx.ui.notify(
-            cortexState.myRole === "documenter"
-              ? "Como documenter, invocá la tool cortex_net_transcript para leer el transcript filtrado por session_id."
-              : "El transcript completo lo lee el documenter al cierre. Para ver el log crudo: `cat .pi/agent-sessions/cortex-net-transcript.log`",
-            "info"
-          );
+        case "view_transcript": {
+          const cwd = cortexState.cwd ?? ctx.cwd ?? "";
+          const lines = tailLog(cwd, "cortex-net-transcript.log", 8).filter((l) => {
+            try {
+              return JSON.parse(l).session_id === cortexState.sessionId;
+            } catch {
+              return true;
+            }
+          });
+          if (lines.length === 0) {
+            ctx.ui.notify("Transcript vacío para esta sesión todavía.", "info");
+            break;
+          }
+          const fmt = lines.map((l) => {
+            try {
+              const e = JSON.parse(l);
+              return `${e.from_role} → ${e.to_role ?? "all"} [${e.msg_type}]: ${String(
+                e.body ?? ""
+              ).slice(0, 80)}`;
+            } catch {
+              return l.slice(0, 100);
+            }
+          });
+          ctx.ui.notify("Transcript reciente:\n" + fmt.join("\n"), "info");
           break;
+        }
 
-        case "view_audit":
+        case "view_audit": {
+          const cwd = cortexState.cwd ?? ctx.cwd ?? "";
+          const lines = tailLog(cwd, "cortex-net.log", 8);
+          if (lines.length === 0) {
+            ctx.ui.notify("Audit log vacío o inexistente todavía.", "info");
+            break;
+          }
+          const fmt = lines.map((l) => {
+            try {
+              const e = JSON.parse(l);
+              const t = String(e.ts ?? "").slice(11, 19);
+              return `${t} ${e.op ?? "?"} ${e.from ?? e.role ?? ""}${
+                e.to ? " → " + e.to : ""
+              }${e.msg_type ? " [" + e.msg_type + "]" : ""}`;
+            } catch {
+              return l.slice(0, 100);
+            }
+          });
           ctx.ui.notify(
-            "Tipeá /cortex-net para ver status + audit log (últimas 5 entradas).",
+            "Audit log (últimas " + fmt.length + "):\n" + fmt.join("\n"),
             "info"
           );
           break;
+        }
 
         case "view_status":
           ctx.ui.notify(
@@ -424,14 +489,14 @@ export default function (pi: ExtensionAPI) {
 
         case "change_mode":
           ctx.ui.notify(
-            "Tipeá /cortex-mode para cambiar entre Full (red activa) y Solo (sin red).",
+            "Usá /cx-mode (o /cortex-mode) para cambiar entre Full (red activa) y Solo (sin red).",
             "info"
           );
           break;
 
         case "change_role":
           ctx.ui.notify(
-            "Tipeá /cortex-role para forzar un rol específico o volver a modo Auto.",
+            "Usá /cx-role (o /cortex-role) para forzar un rol específico o volver a modo Auto.",
             "info"
           );
           break;
@@ -447,13 +512,15 @@ export default function (pi: ExtensionAPI) {
           await abandonSession(ctx);
           break;
 
-        case "team_spawn":
-          ctx.ui.notify(
-            "Tipeá /cortex-team para abrir el spawner de terminales (auto-detecta " +
-              "Windows Terminal / tmux / iTerm / etc., con fallback a clipboard).",
-            "info"
-          );
+        case "team_spawn": {
+          const team = getTeamActions();
+          if (team) {
+            await team.spawn(ctx); // abre el spawner REAL (mismo flujo que /cortex-team)
+          } else {
+            ctx.ui.notify("cortex-team no está cargado en este proceso.", "warning");
+          }
           break;
+        }
 
         case "leave_network":
           ctx.ui.notify(

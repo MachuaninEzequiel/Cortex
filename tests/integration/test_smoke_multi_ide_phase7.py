@@ -122,7 +122,8 @@ def test_smoke_codex(project_with_canonical: Path):
     config_toml = project_with_canonical / ".codex" / "config.toml"
     assert config_toml.exists()
     parsed = tomllib.loads(config_toml.read_text(encoding="utf-8"))
-    assert parsed["mcp_servers"]["cortex"]["command"] == "cortex"
+    cmd = parsed["mcp_servers"]["cortex"]["command"]
+    assert Path(cmd).name.lower() in ("cortex", "cortex.exe")
     assert parsed["mcp_servers"]["cortex"]["enabled"] is True
 
     # NO debe generar paths obsoletos

@@ -24,7 +24,10 @@
       "Bash(python -m pytest tests/unit tests/integration tests/e2e --no-cov)",
       "Bash(python -c ' *)",
       "Bash(python *)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(grep -nA12 \"project.scripts\\\\|\\\\[project.scripts\\\\]\\\\|console_scripts\" pyproject.toml)",
+      "WebFetch(domain:opencode.ai)",
+      "WebSearch"
     ]
   }
 }

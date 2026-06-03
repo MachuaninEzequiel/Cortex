@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from cortex.ide import get_supported_ides
@@ -280,11 +281,76 @@ def test_codex_adapter_inject_mcp_uses_absolute_path(tmp_path: Path) -> None:
     assert args[idx + 1] == str(project_root)
     assert args[idx + 1] != "."
     assert cortex_cfg["enabled"] is True
-    assert cortex_cfg["env"] == {"PYTHONWARNINGS": "ignore"}
+    # Hardening del bloque (2026-05-30): env de stdio + warnings, command
+    # resuelto a ruta absoluta (o nombre pelado si cortex no esta en PATH),
+    # startup timeout generoso (el default de 10 s mata el server pesado).
+    assert cortex_cfg["env"] == {
+        "PYTHONWARNINGS": "ignore",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUNBUFFERED": "1",
+    }
+    assert Path(cortex_cfg["command"]).name.lower() in ("cortex", "cortex.exe")
+    assert cortex_cfg["startup_timeout_sec"] >= 30
     assert str(config_path) in files
 
     # Confirma que NO se genera el path obsoleto .codex/mcp.json
     assert not (project_root / ".codex" / "mcp.json").exists()
+
+    # Trust escrito en el config GLOBAL (CODEX_HOME aislado por fixture autouse).
+    global_cfg = Path(os.environ["CODEX_HOME"]) / "config.toml"
+    assert global_cfg.exists(), "la entrada de trust debe ir al config global"
+    gtext = global_cfg.read_text(encoding="utf-8")
+    assert "[projects." in gtext
+    assert 'trust_level = "trusted"' in gtext
+    assert str(global_cfg) in files
+
+
+def test_codex_inject_mcp_global_trust_is_merge_safe_and_reversible(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """El trust en el config global es merge no-destructivo, idempotente y
+    reversible por uninstall.
+
+    - Preserva el contenido previo del usuario en ~/.codex/config.toml.
+    - Re-inyectar NO duplica la tabla ``[projects."..."]``.
+    - ``uninstall`` remueve SOLO nuestra entrada de trust, dejando el resto del
+      config global intacto.
+    """
+    import tomllib
+
+    project_root = (tmp_path / "proj").resolve()
+    project_root.mkdir()
+
+    # Config global preexistente con contenido del usuario que NO se debe tocar.
+    global_cfg = Path(os.environ["CODEX_HOME"]) / "config.toml"
+    user_block = (
+        "[mcp_servers.node_repl]\n"
+        'command = "node_repl.exe"\n'
+        "startup_timeout_sec = 120\n\n"
+        "[desktop]\n"
+        'conversationDetailMode = "STEPS_COMMANDS"\n'
+    )
+    global_cfg.write_text(user_block, encoding="utf-8")
+
+    adapter = get_adapter("codex")
+    adapter.inject_mcp(project_root)
+    adapter.inject_mcp(project_root)  # idempotente
+
+    text = global_cfg.read_text(encoding="utf-8")
+    assert "[mcp_servers.node_repl]" in text  # contenido del usuario intacto
+    assert "[desktop]" in text
+    parsed = tomllib.loads(text)  # sigue siendo TOML valido
+    assert parsed["projects"][str(project_root)]["trust_level"] == "trusted"
+    assert text.count("BEGIN CORTEX TRUST") == 1  # no duplica la entrada
+
+    # uninstall desde el cwd del proyecto revierte SOLO el trust.
+    monkeypatch.chdir(project_root)
+    get_adapter("codex").uninstall()
+
+    after = global_cfg.read_text(encoding="utf-8")
+    assert "BEGIN CORTEX TRUST" not in after
+    assert "[mcp_servers.node_repl]" in after  # preservado
+    assert "[desktop]" in after
 
 
 def test_claude_code_adapter_inject_mcp_uses_absolute_path(tmp_path: Path) -> None:

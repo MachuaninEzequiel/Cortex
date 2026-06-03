@@ -44,6 +44,8 @@ import { join } from "path";
 // docs/multi-ide-mcp-hardening/PI-COCKPIT-UX/README.md § 8).
 import {
   cortexState,
+  agentForRole,
+  registerTeamActions,
   type CortexRole,
 } from "../lib/cortex-state";
 
@@ -144,14 +146,19 @@ function spawnTerminal(cwd: string, role: CortexRole): SpawnResult {
   // por env var. Antes corría `just role-<role>`, que (a) requería tener
   // `just` instalado y (b) cargaba un stack reducido SIN cockpit/UX.
   // cortex-net.resolveRole() respeta CORTEX_NET_ROLE.
-  const winCmd = `$env:CORTEX_NET_ROLE='${role}'; pi`; // PowerShell
-  const cmdCmd = `set "CORTEX_NET_ROLE=${role}" && pi`; // cmd.exe
-  const nixCmd = `CORTEX_NET_ROLE=${role} pi`; // bash
+  // CORTEX_NET_ROLE: lo lee cortex-net para el rol de red (registro).
+  // CORTEX_AGENT: lo lee system-select para auto-activar la PERSONA Pi del
+  // rol en la hija (sino el peer queda con "agent: (ninguno)" y persona
+  // default en vez de, p.ej., documenter).
+  const agent = agentForRole(role);
+  const winCmd = `$env:CORTEX_NET_ROLE='${role}'; $env:CORTEX_AGENT='${agent}'; pi`; // PowerShell
+  const cmdCmd = `set "CORTEX_NET_ROLE=${role}" && set "CORTEX_AGENT=${agent}" && pi`; // cmd.exe
+  const nixCmd = `CORTEX_NET_ROLE=${role} CORTEX_AGENT=${agent} pi`; // bash
   // Comando seguro para PEGAR a mano (clipboard fallback). PowerShell-safe
   // en Windows (cd /d y && fallan en PowerShell) — fix del hallazgo #14.
   const pasteCmd = isWin
-    ? `Set-Location '${cwd}'; $env:CORTEX_NET_ROLE='${role}'; pi`
-    : `cd '${cwd}' && CORTEX_NET_ROLE=${role} pi`;
+    ? `Set-Location '${cwd}'; $env:CORTEX_NET_ROLE='${role}'; $env:CORTEX_AGENT='${agent}'; pi`
+    : `cd '${cwd}' && CORTEX_NET_ROLE=${role} CORTEX_AGENT=${agent} pi`;
 
   // ── Terminal del usuario, detectada por env (cross-platform) ──
   // Respeta la terminal REAL (p.ej. WezTerm con tu config gráfica) en vez de
@@ -366,6 +373,10 @@ interface TeamEntry {
     spawned_at: string;
     mechanism: string;
   }>;
+  /** Coordinated shutdown: el master lo setea al cerrar (reason quit). Los
+   *  workers de la MISMA session_id lo detectan por polling y avisan. */
+  shutdown?: boolean;
+  shutdown_at?: string;
 }
 
 function teamFilePath(cwd: string): string {
@@ -436,16 +447,13 @@ const PRESETS: Preset[] = [
 // ── Extension ──────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("cortex-team", {
-    description:
-      "Spawnear terminales adicionales para los roles del medio (Pi 2.5+net multi-terminal)",
-    async handler(_args: string, ctx: any) {
+  /**
+   * Abre el selector de presets y spawnea las terminales elegidas. Lo
+   * llaman /cortex-team, su alias /cx-team y el panel /cortex (vía
+   * registerTeamActions). El cwd lo pasa el caller (cortexState.cwd ?? ctx.cwd).
+   */
+  async function openTeamSpawner(ctx: any, cwd: string): Promise<void> {
       // ── Guards ──
-      // ctx.cwd siempre está disponible en el handler. Usamos cortexState.cwd
-      // si está, sino fallback al ctx.cwd. Cubre el caso (raro pero observado)
-      // donde el singleton no tiene cwd cuando se invoca el comando, mientras
-      // que Pi sí sabe el cwd actual.
-      const cwd: string = cortexState.cwd ?? ctx.cwd ?? "";
       if (!cwd) {
         ctx.ui.notify(
           "⬢ /cortex-team: no se pudo determinar el cwd. ¿Pi arrancó sin proyecto?",
@@ -551,6 +559,8 @@ export default function (pi: ExtensionAPI) {
           });
         }
       }
+      team.shutdown = false; // equipo recién (re)spawneado: vivo
+      team.session_id = cortexState.sessionId ?? team.session_id; // refrescar
       writeTeamFile(cwd, team);
 
       // ── Reporte ──
@@ -590,7 +600,29 @@ export default function (pi: ExtensionAPI) {
           "warning"
         );
       }
+  }
+
+  pi.registerCommand("cortex-team", {
+    description:
+      "Spawnear terminales adicionales para los roles del medio (Pi 2.5+net multi-terminal)",
+    async handler(_args: string, ctx: any) {
+      await openTeamSpawner(ctx, cortexState.cwd ?? ctx.cwd ?? "");
     },
+  });
+
+  // Alias corto co-registrado ACÁ MISMO (Pi v0.77 no permite invocar slash
+  // commands programáticamente desde otra extensión; por eso el alias vive
+  // junto al handler real, así SÍ ejecuta en vez de mostrar un hint).
+  pi.registerCommand("cx-team", {
+    description: "Alias de /cortex-team (abre el spawner de terminales)",
+    async handler(_args: string, ctx: any) {
+      await openTeamSpawner(ctx, cortexState.cwd ?? ctx.cwd ?? "");
+    },
+  });
+
+  // Publicamos el spawner para que el panel /cortex lo dispare DE VERDAD.
+  registerTeamActions({
+    spawn: (ctx: any) => openTeamSpawner(ctx, cortexState.cwd ?? ctx.cwd ?? ""),
   });
 
   // ── /cortex-team-status ─ pequeño helper de debug ──────────────────
@@ -613,5 +645,53 @@ export default function (pi: ExtensionAPI) {
         "info"
       );
     },
+  });
+
+  // ── Coordinated shutdown (2c) ──────────────────────────────────────────
+  // El master, al cerrar de verdad (reason "quit"), marca shutdown en
+  // team.json. Los workers de la MISMA session_id lo detectan por polling y
+  // AVISAN (no se auto-cierran: matar la terminal del usuario sería agresivo).
+  let shutdownPoll: NodeJS.Timeout | null = null;
+  let shutdownNotified = false;
+
+  pi.on("session_start", async (_event, ctx) => {
+    shutdownNotified = false;
+    if (shutdownPoll) clearInterval(shutdownPoll);
+    shutdownPoll = setInterval(() => {
+      const cwd = cortexState.cwd;
+      if (!cwd || shutdownNotified) return;
+      // Solo nos importa si somos un worker registrado (el master no se avisa).
+      if (cortexState.isMaster || !cortexState.myRole) return;
+      const team = readTeamFile(cwd);
+      if (team?.shutdown === true && team.session_id === cortexState.sessionId) {
+        shutdownNotified = true;
+        try {
+          ctx.ui?.notify(
+            "⬢ cortex-team: el master cerró la sesión. Esta terminal (worker) " +
+              "quedó sin hub — podés cerrarla con Ctrl+D cuando quieras.",
+            "warning"
+          );
+        } catch {
+          /* best-effort */
+        }
+      }
+    }, 6000);
+  });
+
+  pi.on("session_shutdown", async (event: any) => {
+    if (shutdownPoll) {
+      clearInterval(shutdownPoll);
+      shutdownPoll = null;
+    }
+    // Solo el master, y solo en cierre real (quit), marca el shutdown del team.
+    if (event?.reason !== "quit") return;
+    if (!cortexState.isMaster) return;
+    const cwd = cortexState.cwd;
+    if (!cwd) return;
+    const team = readTeamFile(cwd);
+    if (!team) return;
+    team.shutdown = true;
+    team.shutdown_at = new Date().toISOString();
+    writeTeamFile(cwd, team);
   });
 }
