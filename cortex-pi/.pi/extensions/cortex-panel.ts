@@ -58,6 +58,7 @@ type Action =
   | "view_audit"
   | "view_status"
   | "leave_network"
+  | "configure_models"
   | "close";
 
 interface ActionItem {
@@ -86,6 +87,11 @@ const ACTIONS: ActionItem[] = [
   { id: "view_status", label: "Status de la red (peers + sesión)", masterOnly: false },
   { id: "change_mode", label: "Cambiar modo (Full / Solo)", masterOnly: true },
   { id: "change_role", label: "Cambiar de rol propio", masterOnly: false },
+  {
+    id: "configure_models",
+    label: "Modelo/thinking por rol (/cortex-model)",
+    masterOnly: false,
+  },
   {
     id: "abandon_session",
     label: "Cerrar sesión sin documenter (abandonar)",
@@ -368,6 +374,117 @@ async function broadcastFlow(ctx: any): Promise<void> {
   );
 }
 
+// ── T2 · Overlay de coordinación (atajo de teclado) ────────────────────────
+
+type CoordAction = "compose" | "broadcast" | null;
+
+/**
+ * Overlay compacto enfocado en coordinación: muestra peers + cola de inbound
+ * de un vistazo y deja componer un mensaje sin abrir el panel completo. Más
+ * directo que /cortex para el flujo "ver con quién estoy y mandar algo".
+ */
+class CoordinationOverlayComponent {
+  constructor(
+    private theme: any,
+    private done: (action: CoordAction) => void
+  ) {}
+
+  render(width: number): string[] {
+    const W = Math.max(40, Math.min(width || 80, 120));
+    const t = this.theme;
+    const lines: string[] = [];
+
+    lines.push(t.fg("accent", "⬡ CORTEX · Coordinación"));
+    if (cortexState.sessionId) {
+      lines.push(
+        t.fg("dim", "rol: ") +
+          t.fg("text", cortexState.myRole ?? "(ninguno)") +
+          t.fg("dim", " · ") +
+          (cortexState.isMaster ? t.fg("accent", "MASTER") : t.fg("muted", "WORKER"))
+      );
+    } else {
+      lines.push(t.fg("muted", "Sin Cortex Session activa."));
+    }
+    lines.push("");
+
+    // Peers
+    if (cortexState.peers.length > 0) {
+      lines.push(t.fg("dim", `Peers (${cortexState.peers.length}):`));
+      for (const p of cortexState.peers) {
+        const me = p.role === cortexState.myRole ? t.fg("accent", "→ ") : "  ";
+        const sc =
+          p.status === "idle"
+            ? "success"
+            : p.status === "busy"
+            ? "warning"
+            : p.status === "observe"
+            ? "accent"
+            : "muted";
+        lines.push("  " + me + t.fg("text", p.role.padEnd(15)) + t.fg(sc, p.status ?? "?"));
+      }
+    } else {
+      lines.push(t.fg("muted", "(sin peers — abrí el team con /cortex-team)"));
+    }
+    lines.push("");
+
+    // Cola de inbound
+    if (cortexState.inbound.length > 0) {
+      lines.push(t.fg("warning", `📨 Cola de inbound (${cortexState.inbound.length}):`));
+      for (const m of cortexState.inbound) {
+        lines.push(
+          "  " +
+            t.fg("text", m.from) +
+            t.fg("dim", ` ${m.type}: `) +
+            t.fg("muted", m.preview)
+        );
+      }
+      lines.push(t.fg("dim", "  liberá el próximo con /cx-inbox"));
+    } else {
+      lines.push(t.fg("dim", "Cola de inbound: vacía"));
+    }
+    lines.push("");
+    lines.push(
+      t.fg("dim", "[c] componer  ·  [b] broadcast  ·  [esc] cerrar")
+    );
+
+    return lines.map((l) => (visibleWidth(l) > W ? truncateToWidth(l, W) : l));
+  }
+
+  handleInput(data: string): void {
+    if (data === "\x1b" || data === "escape") {
+      this.done(null);
+      return;
+    }
+    if (data === "c" || data === "C") {
+      this.done("compose");
+      return;
+    }
+    if (data === "b" || data === "B") {
+      this.done("broadcast");
+      return;
+    }
+    // Cualquier otra tecla se ignora.
+  }
+
+  invalidate(): void {
+    /* render puro sobre cortexState */
+  }
+}
+
+/**
+ * Abre el overlay de coordinación y despacha la acción elegida a los flujos
+ * de envío que ya ejecutan de verdad (sendMessageFlow / broadcastFlow).
+ */
+async function openCoordinationOverlay(ctx: any): Promise<void> {
+  const action = await ctx.ui.custom<CoordAction>(
+    (_tui: any, theme: any, _kb: any, done: (v: CoordAction) => void) =>
+      new CoordinationOverlayComponent(theme, done),
+    { overlay: true }
+  );
+  if (action === "compose") await sendMessageFlow(ctx);
+  else if (action === "broadcast") await broadcastFlow(ctx);
+}
+
 async function abandonSession(ctx: any): Promise<void> {
   const confirmed = await ctx.ui.confirm(
     "Abandonar sesión",
@@ -398,6 +515,16 @@ function tailLog(cwd: string, file: string, n: number): string[] {
 // ── Extension ──────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+  // T2 · atajo para el overlay de coordinación (peers + cola + componer) sin
+  // abrir el panel completo. ctrl+shift+k está libre en WezTerm por defecto;
+  // si tu config lo intercepta, cambiá el KeyId por otro (ej. "ctrl+shift+j").
+  pi.registerShortcut("ctrl+shift+k", {
+    description: "Cortex: overlay de coordinación (peers + cola + componer mensaje)",
+    handler: async (ctx: any) => {
+      await openCoordinationOverlay(ctx);
+    },
+  });
+
   pi.registerCommand("cortex", {
     description:
       "Panel de control de Cortex Pi 2.5+net (sesión, peers, acciones)",
@@ -423,6 +550,15 @@ export default function (pi: ExtensionAPI) {
 
         case "broadcast":
           await broadcastFlow(ctx);
+          break;
+
+        case "configure_models":
+          // C1: el flujo real vive en system-select (/cortex-model). El panel
+          // sólo apunta al comando (Pi no permite invocarlo programáticamente).
+          ctx.ui.notify(
+            "Usá /cortex-model para setear modelo/thinking por rol.",
+            "info"
+          );
           break;
 
         case "view_transcript": {
@@ -489,14 +625,14 @@ export default function (pi: ExtensionAPI) {
 
         case "change_mode":
           ctx.ui.notify(
-            "Usá /cx-mode (o /cortex-mode) para cambiar entre Full (red activa) y Solo (sin red).",
+            "Usá /cortex-mode para cambiar entre Full (red activa) y Solo (sin red).",
             "info"
           );
           break;
 
         case "change_role":
           ctx.ui.notify(
-            "Usá /cx-role (o /cortex-role) para forzar un rol específico o volver a modo Auto.",
+            "Usá /cortex-role para forzar un rol específico o volver a modo Auto.",
             "info"
           );
           break;

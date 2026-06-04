@@ -142,6 +142,31 @@ esos roles en vivo por cortex-net.
 - Para **declarar trabajo completado** → eso es `cortex_session_checkpoint`.
 - Para **armar el equipo** → eso lo hace el humano con `/cortex-team` (abre una terminal por rol). cortex-net coordina a los roles que ya existen, no los crea.
 
+### Handoff con scope (anti-colisión de archivos)
+
+Cuando delegás trabajo de escritura a un implementer (o a varios), el `handoff`
+SIEMPRE lleva el **scope de archivos** que sale del File Ownership Map del
+design. Formato del body (≤1500 chars, instrucción+contexto, NUNCA código):
+
+```
+handoff → implementer
+TAREA: implementá U1 (auth core) según el design.
+SCOPE (sos dueño): src/auth/**, tests/auth/**
+NO TOQUES: src/api/** (U2, va después)
+DESIGN: vault/designs/<session_id>.md → sección U1
+ACEPTACIÓN: <criterios>
+```
+
+Reglas:
+
+- Delegá **una unidad a la vez**. Si U2 depende de U1, esperá el checkpoint de
+  U1 antes de mandar U2 (la cola serializa; no corras en paralelo unidades
+  cuyos scopes se tocan).
+- Si un escritor te manda un `blocker` pidiendo un archivo fuera de su scope:
+  **re-particioná** (cedele el archivo, avisá al otro escritor que lo evite) y
+  respondé con `cortex_net_send`. Nunca dejes que dos escritores toquen el mismo
+  archivo a la vez.
+
 ### ⚠️ Modo SDD Forzado
 
 Si el usuario pide explícitamente "vía SDD" / "usá SDD" / "mediante SDD", **usá DEEP TRACK obligatoriamente**.

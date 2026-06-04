@@ -449,7 +449,7 @@ const PRESETS: Preset[] = [
 export default function (pi: ExtensionAPI) {
   /**
    * Abre el selector de presets y spawnea las terminales elegidas. Lo
-   * llaman /cortex-team, su alias /cx-team y el panel /cortex (vía
+   * llaman /cortex-team y el panel /cortex (vía
    * registerTeamActions). El cwd lo pasa el caller (cortexState.cwd ?? ctx.cwd).
    */
   async function openTeamSpawner(ctx: any, cwd: string): Promise<void> {
@@ -605,16 +605,6 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("cortex-team", {
     description:
       "Spawnear terminales adicionales para los roles del medio (Pi 2.5+net multi-terminal)",
-    async handler(_args: string, ctx: any) {
-      await openTeamSpawner(ctx, cortexState.cwd ?? ctx.cwd ?? "");
-    },
-  });
-
-  // Alias corto co-registrado ACÁ MISMO (Pi v0.77 no permite invocar slash
-  // commands programáticamente desde otra extensión; por eso el alias vive
-  // junto al handler real, así SÍ ejecuta en vez de mostrar un hint).
-  pi.registerCommand("cx-team", {
-    description: "Alias de /cortex-team (abre el spawner de terminales)",
     async handler(_args: string, ctx: any) {
       await openTeamSpawner(ctx, cortexState.cwd ?? ctx.cwd ?? "");
     },

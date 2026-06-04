@@ -1068,7 +1068,18 @@ export default async function (pi: ExtensionAPI) {
 
   pi.registerMessageRenderer("cortex-net", (message, _options, theme) => {
     const content = typeof message.content === "string" ? message.content : "";
-    return new Text(theme.fg("accent", "⬢ net: ") + content, 0, 0);
+    // T3 · tarjeta de coordinación (card-ish con barra lateral). Width-safe:
+    // delega el wrapping/truncado a Text (no hacemos math de ancho manual). Si
+    // el emisor incluye `details: {from, type}`, los muestra en el header.
+    const d: any = (message as any).details ?? {};
+    const tag = (d.from ? String(d.from) : "") + (d.type ? ` · ${d.type}` : "");
+    const header =
+      theme.fg("accent", "╭─ ⬢ cortex-net") + (tag ? theme.fg("dim", " · " + tag) : "");
+    const body = content
+      .split("\n")
+      .map((ln: string) => theme.fg("accent", "│ ") + theme.fg("text", ln))
+      .join("\n");
+    return new Text(header + "\n" + body, 0, 0);
   });
 
   // Publicamos las acciones de red para que el panel /cortex (u otra
@@ -1257,7 +1268,29 @@ export default async function (pi: ExtensionAPI) {
    *
    * Idempotente: si ya tenemos hub o client, no-op.
    */
+  // Single-flight: evita la race donde dos llamadas concurrentes (la
+  // suscripción al singleton + el polling de 15s) pasan el guard antes de que
+  // cualquiera setee `hub`, y la 2da hace connect-test contra el hub que la 1ra
+  // RECIÉN creó → lo toma por "hub ajeno" y pisa `hub=null` / `isMaster=false`.
+  // Síntoma observado (jun-2026): el proceso es dueño del hub (pipe viva) pero
+  // queda como WORKER y no puede abrir /cortex-team. Con esto, las llamadas
+  // concurrentes esperan la MISMA init en vez de competir.
+  let initInFlight: Promise<boolean> | null = null;
+
   async function tryInitNetwork(ctx: any): Promise<boolean> {
+    if (hub !== null || client !== null) return true;
+    if (initInFlight) return initInFlight;
+    initInFlight = (async () => {
+      try {
+        return await doInitNetwork(ctx);
+      } finally {
+        initInFlight = null;
+      }
+    })();
+    return initInFlight;
+  }
+
+  async function doInitNetwork(ctx: any): Promise<boolean> {
     if (hub !== null || client !== null) return true;
     if (!cachedCwd) return false;
 
@@ -2036,7 +2069,7 @@ export default async function (pi: ExtensionAPI) {
   });
 
   // ── /cortex-mode — TUI selector de modo de operación ───────────────────
-  // Handler compartido por /cortex-mode y su alias corto /cx-mode
+  // Handler de /cortex-mode
   // (co-registrado abajo: Pi no permite invocar comandos programáticamente,
   // así que el alias apunta al MISMO handler para que SÍ ejecute).
   async function cortexModeHandler(_args: string, ctx: any) {
@@ -2107,13 +2140,9 @@ export default async function (pi: ExtensionAPI) {
     description: "Cambiar modo de operación de cortex-net (Full / Solo)",
     handler: cortexModeHandler,
   });
-  pi.registerCommand("cx-mode", {
-    description: "Alias de /cortex-mode (Full / Solo)",
-    handler: cortexModeHandler,
-  });
 
   // ── /cortex-role — TUI selector para forzar rol ────────────────────────
-  // Handler compartido por /cortex-role y su alias corto /cx-role.
+  // Handler de /cortex-role.
   async function cortexRoleHandler(_args: string, ctx: any) {
       const currentLabel = currentRegisteredRole
         ? `Actual: ${currentRegisteredRole}`
@@ -2172,10 +2201,6 @@ export default async function (pi: ExtensionAPI) {
     description: "Forzar rol cortex-net (escape hatch para multi-terminal)",
     handler: cortexRoleHandler,
   });
-  pi.registerCommand("cx-role", {
-    description: "Alias de /cortex-role (forzar rol)",
-    handler: cortexRoleHandler,
-  });
 
   // ── /cortex-net-shutdown — cierre limpio del hub si vos lo levantaste ──
   pi.registerCommand("cortex-net-shutdown", {
@@ -2210,4 +2235,67 @@ export default async function (pi: ExtensionAPI) {
       ctx.ui.notify("⬢ Hub cerrado · workspace sin red hasta nuevo session_start", "success");
     },
   });
+
+  // ── /cortex-make-master — promover este proceso a master del hub ──────────
+  // Recuperación SIN reiniciar: si el master anterior murió/cerró y este
+  // proceso quedó como worker huérfano, toma el hub (si el slot está libre).
+  // NO hijackea un hub VIVO (eso partiría el equipo): si hay otro master,
+  // avisa y te re-registra como cliente. Pensado como red de seguridad para el
+  // gap "isMaster stale" (la race ya está fixeada con el single-flight).
+  async function makeMasterFlow(ctx: any): Promise<void> {
+    lastCtx = ctx;
+    if (hub) {
+      ctx.ui.notify(
+        "Ya sos MASTER (este proceso tiene el hub). Nada que hacer.",
+        "info"
+      );
+      return;
+    }
+    if (!cachedSessionId) cachedSessionId = resolveSessionId(cachedCwd);
+    if (!cachedCwd || !cachedSessionId) {
+      ctx.ui.notify(
+        "No hay Cortex Session activa — no se puede tomar el hub todavía.",
+        "warning"
+      );
+      return;
+    }
+    // Bajar el cliente actual (estamos conectados a otro hub, quizá muerto).
+    if (client) {
+      try {
+        await client.stop();
+      } catch {
+        /* swallow */
+      }
+      client = null;
+      currentRegisteredRole = null;
+    }
+    // tryStart hace connect-test: pipe libre → creamos el hub (master); hub
+    // vivo → devuelve null y NO lo hijackeamos.
+    hub = await CortexNetHub.tryStart(cachedCwd);
+    if (!hub) {
+      ctx.ui.notify(
+        "No se pudo: hay un hub VIVO en este workspace (otro proceso es master). " +
+          "Cerrá esa terminal y reintentá, o reiniciá Pi.",
+        "warning"
+      );
+      if (cortexState.myRole) await ensureRegisteredAs(cortexState.myRole, ctx);
+      return;
+    }
+    updateCortexState({ isMaster: true });
+    // Re-registrarnos como cliente de NUESTRO propio hub (si tenemos rol).
+    if (cortexState.myRole) await ensureRegisteredAs(cortexState.myRole, ctx);
+    ctx.ui.notify(
+      "✓ Ahora sos MASTER del workspace. Ya podés abrir /cortex-team.",
+      "success"
+    );
+  }
+
+  pi.registerCommand("cortex-make-master", {
+    description:
+      "Tomar el hub cortex-net (master) si el slot está libre — recuperación sin reiniciar",
+    async handler(_args, ctx) {
+      await makeMasterFlow(ctx);
+    },
+  });
+
 }

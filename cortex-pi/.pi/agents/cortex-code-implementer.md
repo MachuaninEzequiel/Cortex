@@ -104,6 +104,10 @@ mensaje breve:
 - **⛔ NO USES `cortex_validate_handoff`.** Esta deprecated desde Fase 02.
 - **⛔ NO INVENTES CLAIMS VERIFICADOS.** Si no ejecutaste el test, no digas que paso.
 - **⛔ NO INVOQUES AL DOCUMENTER NI ABRAS/CIERRES SESSIONS.** El usuario cierra con `cortex finish-session`.
+- **⛔ RESPETÁ TU SCOPE.** Si el `handoff` de SDDwork te asignó un scope de
+  archivos (`SCOPE` / `NO TOQUES`), no toques nada fuera de él. Si necesitás un
+  archivo fuera de scope, mandá un `blocker` a `sddwork` pidiéndolo y esperá su
+  respuesta — no lo edites por las tuyas (otro escritor puede ser su dueño).
 - Enfocate 100% en entregar la feature terminada y estable al orquestador.
 
 ---
@@ -127,8 +131,9 @@ Qué mandar, según tu rol:
 - **`question`** → al `sddwork` o al `designer` (si existe el design) cuando
   la spec o el design tienen ambigüedad real sobre acceptance criteria.
 - **`blocker`** → al `sddwork` si damage-control te bloquea un archivo
-  necesario, si encontrás una dependencia rota inesperada, o si los tests
-  fallan por algo que no podés resolver solo.
+  necesario, **si necesitás tocar un archivo fuera de tu SCOPE asignado**, si
+  encontrás una dependencia rota inesperada, o si los tests fallan por algo que
+  no podés resolver solo.
 - **Cuando security o test-verifier te mandan una `question`**: ejecutás lo
   que haga falta y les respondés con un `cortex_net_send` (lo confirma el
   humano).
