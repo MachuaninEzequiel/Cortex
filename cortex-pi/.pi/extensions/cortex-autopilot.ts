@@ -55,10 +55,9 @@ import {
 // ``cx-`` (de "cortex") como aliases de las acciones más usadas. Pi
 // los manda al handler registrado garantizado.
 //
-// IMPORTANTE: los alias que mapean a comandos de OTRAS extensiones
-// (/cx-team → cortex-team; /cx-role, /cx-mode → cortex-net) se co-registran
-// EN esas extensiones (apuntando al mismo handler), porque Pi no permite
-// invocar un slash command desde otro handler. Acá sólo viven los propios:
+// Nota: los alias cx- DUPLICADOS (/cx-team, /cx-role, /cx-mode, /cx-model,
+// /cx-master) se eliminaron — usá los nombres completos (/cortex-team, etc.).
+// Acá sólo viven /cx-next y /cx-help, que NO tienen comando de nombre completo:
 //
 //   /cx-next  → anuncia la sugerencia activa
 //   /cx-help  → lista los atajos
@@ -119,7 +118,7 @@ function computeSuggestion(): Suggestion | null {
   // 5. Middle activo sin peers conectados
   if (cortexState.peers.length === 0) {
     return {
-      label: "Sin peers en la red — abrí el team con /cortex-team (o /cx-team)",
+      label: "Sin peers en la red — abrí el team con /cortex-team",
       hotkey: null,
       reason: "deep track requiere multi-terminal",
     };
@@ -178,9 +177,9 @@ export default function (pi: ExtensionAPI) {
         "Atajos Cortex Pi 2.5+net:\n" +
           "  /cortex      panel grande (todas las acciones)\n" +
           "  /cx-next     próxima acción sugerida\n" +
-          "  /cx-team     auto-spawn de terminales\n" +
-          "  /cx-role     cambiar rol\n" +
-          "  /cx-mode     cambiar modo (Full/Solo)\n" +
+          "  /cortex-team auto-spawn de terminales\n" +
+          "  /cortex-role cambiar rol\n" +
+          "  /cortex-mode cambiar modo (Full/Solo)\n" +
           "  /cx-help     esta ayuda\n" +
           "  /cortex-net  status detallado de la red\n" +
           "  /system      cambiar agent activo",
@@ -189,11 +188,8 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // Los alias /cx-team, /cx-role y /cx-mode YA NO viven acá: se co-registran
-  // en cortex-team.ts (/cx-team) y cortex-net.ts (/cx-role, /cx-mode)
-  // apuntando al handler REAL, así ejecutan en vez de mostrar un hint (Pi no
-  // permite invocar un slash command desde otra extensión). Acá quedan sólo
-  // /cx-next y /cx-help, que son propios de autopilot.
+  // Acá quedan sólo /cx-next y /cx-help (propios de autopilot, sin gemelo de
+  // nombre completo). Los alias cx- duplicados se eliminaron del bundle.
 
   // ── tool_call: gates de gobernanza ───────────────────────────────────
   pi.on("tool_call", async (event, ctx) => {

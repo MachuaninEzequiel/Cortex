@@ -10,7 +10,8 @@
     ".pi/extensions/cortex-panel.ts",
     ".pi/extensions/cortex-team.ts",
     ".pi/extensions/system-select.ts",
-    ".pi/extensions/damage-control.ts"
+    ".pi/extensions/damage-control.ts",
+    ".pi/extensions/cortex-footer.ts"
   ],
   "skills": [
     ".pi/skills/cortex-vault/SKILL.md",

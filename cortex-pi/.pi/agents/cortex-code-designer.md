@@ -55,6 +55,30 @@ arquitectura) y skipear al checkpoint. La rigidez es contextual.
 
 ---
 
+## File Ownership Map (salida obligatoria en Deep Track con equipo)
+
+Cuando hay un equipo armado, además de las 4 dimensiones incluí en
+`architecture_decision` (es markdown libre — NO requiere campo nuevo en el tool)
+un **mapa de propiedad de archivos**: qué archivos/módulos toca cada unidad de
+trabajo, para que los escritores no se pisen y SDDwork pueda delegar por scope.
+
+Formato:
+
+```
+## File Ownership Map
+| Unidad | Dueño | Archivos (globs) | Depende de |
+|--------|-------|------------------|-----------|
+| U1 · auth core | implementer | src/auth/**, tests/auth/** | — |
+| U2 · api layer | implementer | src/api/**, tests/api/** | U1 |
+```
+
+Reglas: las unidades deben tener **archivos disjuntos**. Si dos comparten un
+archivo, marcalo en "Depende de" y ordenalas (secuencial, no en paralelo). Con
+un solo implementer el mapa define el ORDEN de las entregas; con varios
+escritores, asigna dueños distintos a cada unidad.
+
+---
+
 ## Anti-Rationalization Signals
 
 | Pensamiento | Realidad | Accion |
