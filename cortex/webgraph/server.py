@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 from cortex.webgraph.config import WebGraphConfig
+from cortex.webgraph.contracts import WebGraphMode
+from cortex.webgraph.style import build_legend
 from cortex.webgraph.federation import FederatedWebGraphService
 from cortex.webgraph.openers import open_path, resolve_safe_vault_path
 from cortex.webgraph.service import WebGraphService
@@ -33,6 +35,18 @@ def create_app(project_root: Path | None = None, *, workspace_file: Path | None 
         service = WebGraphService(root, workspace_layout=layout)
         config = WebGraphConfig.load(root, workspace_layout=layout)
 
+    valid_modes = set(get_args(WebGraphMode))
+
+    def _validated_mode() -> Any:
+        raw_mode = request.args.get("mode", config.default_mode)
+        if raw_mode not in valid_modes:
+            from flask import jsonify
+
+            return jsonify(
+                {"error": f"Invalid mode '{raw_mode}'. Expected one of: {sorted(valid_modes)}"}
+            ), 400
+        return raw_mode
+
     app = Flask(__name__, template_folder="templates", static_folder="static")
     if Compress is not None:
         Compress(app)
@@ -49,22 +63,34 @@ def create_app(project_root: Path | None = None, *, workspace_file: Path | None 
 
     @app.get("/api/snapshot")
     def snapshot():
-        mode = request.args.get("mode", config.default_mode)
-        return jsonify(service.build_snapshot(mode=mode).model_dump())
+        validated = _validated_mode()
+        if isinstance(validated, tuple):
+            return validated
+        payload = service.build_snapshot(mode=validated).model_dump()
+        # Expose the DocType/edge legend so the UI can render the color key.
+        payload["legend"] = build_legend()
+        return jsonify(payload)
 
     @app.get("/api/node/<path:node_id>")
     def node_detail(node_id: str):
-        from typing import cast
-        mode = cast(Any, request.args.get("mode", config.default_mode))
-        return jsonify(service.get_node_detail(node_id, mode=mode).model_dump())
+        validated = _validated_mode()
+        if isinstance(validated, tuple):
+            return validated
+        detail = service.get_node_detail(node_id, mode=validated)
+        if detail is None:
+            return jsonify({"error": f"Unknown node: {node_id}"}), 404
+        return jsonify(detail.model_dump())
 
     @app.get("/api/subgraph")
     def subgraph():
+        validated = _validated_mode()
+        if isinstance(validated, tuple):
+            return validated
         node_id = request.args["node_id"]
         depth = int(request.args.get("depth", 1))
         raw_types = request.args.get("edge_types", "")
         edge_types = {value for value in raw_types.split(",") if value} or None
-        mode = request.args.get("mode", config.default_mode)
+        mode = validated
         return jsonify(
             service.get_subgraph(node_id, depth=depth, mode=mode, edge_types=edge_types).model_dump()
         )
@@ -76,6 +102,8 @@ def create_app(project_root: Path | None = None, *, workspace_file: Path | None 
         if not node_id:
             return jsonify({"error": "Missing node_id"}), 400
         detail = service.get_node_detail(node_id, mode="hybrid")
+        if detail is None:
+            return jsonify({"error": f"Unknown node: {node_id}"}), 404
         resolved_path = service.resolve_node_path(node_id, mode="hybrid")
         if resolved_path is None:
             return jsonify({"error": "Selected node has no local document"}), 400

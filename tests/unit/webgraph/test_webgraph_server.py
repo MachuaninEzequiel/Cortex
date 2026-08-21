@@ -1,6 +1,4 @@
 
-import pytest
-
 from cortex.webgraph.server import create_app
 
 
@@ -36,8 +34,44 @@ def test_webgraph_api_node_detail(tmp_path):
     client = app.test_client()
     headers = {"X-Cortex-WebGraph": "1"}
     
-    # Test invalid node (should fail with 404 or handled by service)
-    # Service throws KeyError if missing, but we should handle it in app
-    app.config["PROPAGATE_EXCEPTIONS"] = True
-    with pytest.raises(KeyError):
-        client.get("/api/node/missing", headers=headers)
+    # Unknown node must map to a clean 404 (service returns None).
+    response = client.get("/api/node/missing", headers=headers)
+    assert response.status_code == 404
+    assert "error" in response.get_json()
+
+
+def test_webgraph_api_rejects_invalid_mode(tmp_path):
+    (tmp_path / ".cortex").mkdir()
+    (tmp_path / "vault").mkdir()
+    app = create_app(tmp_path)
+    client = app.test_client()
+    headers = {"X-Cortex-WebGraph": "1"}
+
+    response = client.get("/api/snapshot?mode=bogus", headers=headers)
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_webgraph_api_node_detail_missing_returns_404(tmp_path):
+    (tmp_path / ".cortex").mkdir()
+    (tmp_path / "vault").mkdir()
+    app = create_app(tmp_path)
+    client = app.test_client()
+    headers = {"X-Cortex-WebGraph": "1"}
+
+    response = client.get("/api/node/missing-node", headers=headers)
+    assert response.status_code == 404
+    assert "error" in response.get_json()
+
+
+def test_webgraph_api_snapshot_includes_legend(tmp_path):
+    (tmp_path / ".cortex").mkdir()
+    (tmp_path / "vault").mkdir()
+    app = create_app(tmp_path)
+    client = app.test_client()
+    headers = {"X-Cortex-WebGraph": "1"}
+
+    response = client.get("/api/snapshot", headers=headers)
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert isinstance(payload.get("legend"), dict)

@@ -57,7 +57,7 @@ class WebGraphService:
             config_payload=self.config.model_dump(),
         )
         if use_cache:
-            cached = self.cache.load_snapshot(mode, fingerprint)
+            cached = self.cache.load_snapshot(mode, fingerprint, scope=scope)
             if cached is not None:
                 return cached
 
@@ -84,7 +84,7 @@ class WebGraphService:
 
         snapshot = _append_enterprise_nodes(snapshot, self.project_root, project_id=project_id, workspace_layout=self._layout)
         snapshot = _filter_snapshot_by_scope(snapshot, scope)
-        self.cache.store_snapshot(mode, snapshot)
+        self.cache.store_snapshot(mode, snapshot, scope=scope)
         return snapshot
 
     def export_snapshot(
@@ -113,10 +113,12 @@ class WebGraphService:
             path.write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
         return path
 
-    def get_node_detail(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> WebGraphNodeDetail:
+    def get_node_detail(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> WebGraphNodeDetail | None:
         snapshot = self.build_snapshot(mode=mode)
         nodes_by_id = {node.id: node for node in snapshot.nodes}
-        node = nodes_by_id[node_id]
+        node = nodes_by_id.get(node_id)
+        if node is None:
+            return None
         relations = [edge for edge in snapshot.edges if edge.source == node_id or edge.target == node_id]
         neighbor_ids = {
             edge.target if edge.source == node_id else edge.source
@@ -127,6 +129,8 @@ class WebGraphService:
 
     def resolve_node_path(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> Path | None:
         detail = self.get_node_detail(node_id, mode=mode)
+        if detail is None:
+            return None
         rel_path = detail.node.rel_path
         if not rel_path:
             return None

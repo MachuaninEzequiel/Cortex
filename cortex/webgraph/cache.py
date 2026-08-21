@@ -18,30 +18,38 @@ class WebGraphCache:
         self.cache_dir = self._layout.webgraph_cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def snapshot_path(self, mode: str) -> Path:
-        return self.cache_dir / f"snapshot-{mode}.json"
+    def snapshot_path(self, mode: str, scope: str | None = None) -> Path:
+        # Scope is part of the cache identity: a snapshot filtered to "local"
+        # or "enterprise" must never be served for a different scope.
+        if scope is None or scope == "all":
+            return self.cache_dir / f"snapshot-{mode}.json"
+        return self.cache_dir / f"snapshot-{mode}-{scope}.json"
 
     def meta_path(self) -> Path:
         return self.cache_dir / "meta.json"
 
-    def load_snapshot(self, mode: str, fingerprint: str) -> WebGraphSnapshot | None:
-        path = self.snapshot_path(mode)
+    @staticmethod
+    def _meta_key(mode: str, scope: str | None) -> str:
+        return mode if scope is None or scope == "all" else f"{mode}:{scope}"
+
+    def load_snapshot(self, mode: str, fingerprint: str, *, scope: str | None = None) -> WebGraphSnapshot | None:
+        path = self.snapshot_path(mode, scope)
         meta_path = self.meta_path()
         if not path.exists() or not meta_path.exists():
             return None
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if meta.get(mode) != fingerprint:
+        if meta.get(self._meta_key(mode, scope)) != fingerprint:
             return None
         return WebGraphSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
 
-    def store_snapshot(self, mode: str, snapshot: WebGraphSnapshot) -> Path:
-        path = self.snapshot_path(mode)
+    def store_snapshot(self, mode: str, snapshot: WebGraphSnapshot, *, scope: str | None = None) -> Path:
+        path = self.snapshot_path(mode, scope)
         path.write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
         meta_path = self.meta_path()
         meta: dict[str, Any] = {}
         if meta_path.exists():
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        meta[mode] = snapshot.fingerprint
+        meta[self._meta_key(mode, scope)] = snapshot.fingerprint
         meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         return path
 
