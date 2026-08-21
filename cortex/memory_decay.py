@@ -50,9 +50,6 @@ class DecayConfig:
     # Minimum age in hours to apply decay (memories younger are full score)
     min_age_hours: float = 24.0
     
-    # Maximum boost for multi-match items
-    max_multimatch_boost: float = 2.0
-    
     def __post_init__(self) -> None:
         """Calculate decay rate from half-life."""
         import math

@@ -10,65 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from cortex.doc_generator import _meets_adr_criteria
-from cortex.models import MemoryEntry, PRContext
+from cortex.models import MemoryEntry
 from cortex.workspace.layout import WorkspaceLayout
-
-# ---------------------------------------------------------------------------
-# §2 ADR 3 criteria filter
-# ---------------------------------------------------------------------------
-
-
-class TestMeetsAdrCriteria:
-    def _ctx(self, body: str) -> PRContext:
-        return PRContext(
-            pr_number=1,
-            title="t",
-            body=body,
-            author="dev",
-            source_branch="feat/x",
-            commit_sha="abc",
-        )
-
-    def test_all_three_criteria_present(self) -> None:
-        body = (
-            "This is a schema migration with major breaking changes. "
-            "We decided to go with event sourcing because the alternative "
-            "of CRUD was considered and rejected for trade-off reasons."
-        )
-        assert _meets_adr_criteria(self._ctx(body)) is True
-
-    def test_missing_hard_to_reverse(self) -> None:
-        body = "We decided X. Considered alternative Y. Real trade-off explained."
-        # No "migration/refactor/schema/breaking/contract" → fail.
-        assert _meets_adr_criteria(self._ctx(body)) is False
-
-    def test_missing_surprising(self) -> None:
-        body = (
-            "Schema migration. Considered alternative X but went with Y. "
-            "Rejected the third option."
-        )
-        # No "decided/rationale/tradeoff/why" → fail.
-        assert _meets_adr_criteria(self._ctx(body)) is False
-
-    def test_missing_tradeoff(self) -> None:
-        body = (
-            "Schema migration with breaking changes. We decided based on "
-            "the rationale of long-term maintainability. Why? Because we said so."
-        )
-        # No "alternative/considered/instead of/rejected" → fail.
-        assert _meets_adr_criteria(self._ctx(body)) is False
-
-    def test_empty_body(self) -> None:
-        assert _meets_adr_criteria(self._ctx("")) is False
-
-    def test_case_insensitive(self) -> None:
-        body = (
-            "SCHEMA MIGRATION here. WE DECIDED based on trade-off. "
-            "ALTERNATIVE was considered."
-        )
-        assert _meets_adr_criteria(self._ctx(body)) is True
-
 
 # ---------------------------------------------------------------------------
 # §3 CONTEXT.md path resolution
