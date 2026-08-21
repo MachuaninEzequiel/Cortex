@@ -1100,9 +1100,14 @@ class TestPiBundleHasTripartitaRefinada:
         assert "severity: block" in content
 
     def test_cortex_vault_skill_has_context_awareness(self, bundle_dir: Path) -> None:
+        """The vault skill must teach CONTEXT.md glossary awareness and the
+        trust-level distinction (verified vs asserted memories)."""
         content = (bundle_dir / "skills" / "cortex-vault" / "SKILL.md").read_text(encoding="utf-8")
-        assert "CONTEXT.md awareness" in content
-        assert "verified" in content.lower() and "asserted" in content.lower()
+        assert "CONTEXT.md" in content  # glossary awareness section
+        assert "glosario" in content.lower()
+        # Trust levels: labelled/verified memories vs unlabelled ones.
+        assert "verificación" in content.lower() or "verification" in content.lower()
+        assert "confianza" in content.lower() or "trust" in content.lower()
 
 
 def test_registry_accepts_common_aliases() -> None:

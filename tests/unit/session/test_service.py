@@ -79,7 +79,8 @@ class TestOpen:
         assert record.start_branch == "main"
         assert service.get_active().session_id == "2026-05-16_demo"  # type: ignore[union-attr]
 
-    def test_open_duplicate_id_appends_counter(self, service: SessionService) -> None:
+    def test_open_reopen_returns_same_session_while_open(self, service: SessionService) -> None:
+        """Re-opening an OPEN session is idempotent: same id, set active."""
         first = service.open(
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
@@ -88,11 +89,26 @@ class TestOpen:
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
         )
+        assert first.session_id == "2026-05-16_foo"
+        assert second.session_id == "2026-05-16_foo"
+
+    def test_open_after_close_appends_counter(self, service: SessionService) -> None:
+        """Once the previous session is closed, a new open appends -2, -3..."""
+        first = service.open(
+            spec_id="2026-05-16_foo",
+            spec_path=Path("vault/specs/2026-05-16_foo.md"),
+        )
+        from cortex.session.models import SessionStatus as _SS
+        service.close(session_id=first.session_id, status=_SS.CLOSED, documenter_decision=_SS.CLOSED)
+        second = service.open(
+            spec_id="2026-05-16_foo",
+            spec_path=Path("vault/specs/2026-05-16_foo.md"),
+        )
+        service.close(session_id=second.session_id, status=_SS.CLOSED, documenter_decision=_SS.CLOSED)
         third = service.open(
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
         )
-        assert first.session_id == "2026-05-16_foo"
         assert second.session_id == "2026-05-16_foo-2"
         assert third.session_id == "2026-05-16_foo-3"
 

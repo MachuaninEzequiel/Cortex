@@ -46,11 +46,11 @@ Antes de cualquier acción:
 1. `cortex_ping` — health check del backend.
    - `status == "ok"` → seguí normal.
    - `status == "degraded"` → **NO abortes**. `degraded` solo refleja errores
-     en los últimos 5 min (ver `recent_errors_count` y `last_error_seen`).
-     Avisá al usuario en una línea — "el server reporta degraded, último
-     error: <tool>" — y seguí con el flujo. Si la operación posterior
-     (`cortex_documenter_briefing`, `cortex_write_doc`, etc.) falla, ahí
-     sí abortás con detalle del fallo concreto.
+     en los últimos 5 min (ver `recent_errors_count` y `last_error_seen` en
+     el payload). Avisá al usuario en una línea — "el server reporta
+     degraded, último error: <tool>" — y seguí con el flujo. Si la
+     operación posterior (`cortex_documenter_briefing`, `cortex_write_doc`,
+     etc.) falla, ahí sí abortás con detalle del fallo concreto.
    - `status == "starting"` → esperá 2-3s y reintentá una vez antes de abortar.
    - Cualquier otro status desconocido → abortá con mensaje claro al usuario.
 
