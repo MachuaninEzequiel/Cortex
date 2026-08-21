@@ -1,9 +1,25 @@
 from __future__ import annotations
 
+import logging
+import re
 import shutil
 from pathlib import Path
 
 from cortex.ide.base import IDEAdapter
+
+logger = logging.getLogger(__name__)
+
+# Marcadores para localizar bloques Cortex dentro de archivos del project root
+# (AGENTS.md / README.md / justfile). Mismo patron que codex.py (referencia
+# del repo): uninstall solo extrae lo que esta entre los marcadores.
+_CORTEX_PI_MARKER_OPEN = "<!-- BEGIN CORTEX SECTION (auto-generated, do not edit) -->"
+_CORTEX_PI_MARKER_CLOSE = "<!-- END CORTEX SECTION -->"
+
+# Archivos del project root que el bundle cortex-pi copia verbatim. Uninstall
+# NUNCA debe borrarlos completos salvo que su contenido sea exactamente el del
+# bundle (o sea un bloque Cortex marcado) — podrian contener material propio
+# del adopter.
+_PI_ROOT_FILES = ("AGENTS.md", "README.md", "justfile")
 
 # Pi has no slash-skill distinction — every prompt lives under
 # ``.pi/agents/`` regardless of whether it acts as a top-level anchor
@@ -224,24 +240,88 @@ class PiAdapter(IDEAdapter):
         return []
 
     def uninstall(self, project_root: Path | None = None) -> list[str]:
-        """Uninstall Pi configuration."""
+        """Uninstall Pi configuration, conservador con archivos del adopter.
+
+        Comportamiento por archivo del project root (AGENTS.md / README.md /
+        justfile) — NUNCA se borra un archivo completo que pueda tener
+        contenido propio del usuario:
+
+        - Si tiene bloques entre los marcadores ``BEGIN/END CORTEX SECTION``
+          -> se extraen solo esos bloques. Si el resto queda vacio, el
+          archivo se elimina.
+        - Si el contenido es identico al del bundle ``cortex-pi/`` -> el
+          archivo fue creado integramente por Cortex y se borra.
+        - Cualquier otro caso (contenido mixto/desconocido) -> el archivo se
+          deja intacto y se reporta como ``skipped``.
+
+        ``.pi/`` es 100% Cortex y se elimina entera; de ``extensions/`` solo
+        se quitan los archivos del bundle (nunca el directorio completo).
+
+        Args:
+            project_root: Proyecto de donde desinstalar. Si es ``None`` NO
+                se toca nada: se loguea un warning explicito y se devuelve
+                una lista vacia (nunca un no-op silencioso).
+        """
         if project_root is None:
+            logger.warning(
+                "[Cortex][Pi] uninstall() llamado sin project_root: no-op. "
+                "Pasa el project root explicito para desinstalar."
+            )
             return []
-            
-        files_removed = []
+
+        files_removed: list[str] = []
         pi_dir = project_root / ".pi"
         if pi_dir.exists():
             shutil.rmtree(pi_dir)
             files_removed.append(".pi/")
-            
-        for f in ["AGENTS.md", "justfile", "README.md", "extensions"]:
-            path = project_root / f
-            if path.exists():
-                if path.is_dir():
-                    shutil.rmtree(path)
-                    files_removed.append(f"{f}/")
+
+        marker_pattern = re.compile(
+            re.escape(_CORTEX_PI_MARKER_OPEN)
+            + r".*?"
+            + re.escape(_CORTEX_PI_MARKER_CLOSE)
+            + r"\n?",
+            re.DOTALL,
+        )
+        bundle = _default_pi_bundle_dir()
+
+        for name in _PI_ROOT_FILES:
+            path = project_root / name
+            if not path.exists() or not path.is_file():
+                continue
+            existing = path.read_text(encoding="utf-8")
+            cleaned = marker_pattern.sub("", existing)
+            if cleaned != existing:
+                # Habia bloque(s) Cortex marcados: extraerlos solamente.
+                if cleaned.strip():
+                    path.write_text(cleaned, encoding="utf-8")
+                    files_removed.append(f"{name} (Cortex section removed)")
                 else:
                     path.unlink()
-                    files_removed.append(f)
-                    
+                    files_removed.append(name)
+                continue
+            bundle_src = bundle / name
+            if bundle_src.exists() and existing == bundle_src.read_text(
+                encoding="utf-8"
+            ):
+                # Archivo creado integramente por Cortex (copia verbatim del
+                # bundle, sin contenido previo del adopter): seguro borrar.
+                path.unlink()
+                files_removed.append(name)
+                continue
+            # Contenido mixto/desconocido: dejar intacto y reportarlo.
+            files_removed.append(
+                f"{name} (skipped: unknown/mixed content, left intact)"
+            )
+
+        # extensions/: solo borrar los archivos que trae el bundle; nunca el
+        # directorio completo (el adopter puede tener las suyas).
+        ext_dir = project_root / "extensions"
+        bundle_ext = bundle / "extensions"
+        if ext_dir.is_dir() and bundle_ext.is_dir():
+            for item in sorted(bundle_ext.iterdir()):
+                target = ext_dir / item.name
+                if target.is_file():
+                    target.unlink()
+                    files_removed.append(str(target.relative_to(project_root)))
+
         return files_removed

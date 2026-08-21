@@ -288,7 +288,7 @@ class CursorAdapter(IDEAdapter):
         mcp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return [str(mcp_file)]
 
-    def uninstall(self) -> list[str]:
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
         """Eliminar los subagents inyectados en ``.cursor/agents/`` y
         limpiar la entrada Cortex de ``~/.cursor/mcp.json``.
 
@@ -297,7 +297,9 @@ class CursorAdapter(IDEAdapter):
         adopter pueda tener.
         """
         removed: list[str] = []
-        cwd = Path.cwd()
+        # project_root SIEMPRE tiene prioridad; el fallback a cwd mantiene
+        # compatibilidad con llamadores legacy que invocan uninstall() a pelo.
+        cwd = Path(project_root).resolve() if project_root is not None else Path.cwd()
 
         # 1. Project-level subagents
         project_agents_dir = cwd / ".cursor" / "agents"
