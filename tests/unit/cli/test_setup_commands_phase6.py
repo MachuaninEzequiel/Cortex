@@ -137,3 +137,51 @@ def test_setup_full_calls_select_ide_helper():
         runner.invoke(app, ["setup", "full", "--non-interactive", "--git-depth", "50"])
 
     mock_helper.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# --dry-run: aceptado Y respetado en agent/pipeline/full/webgraph
+# ---------------------------------------------------------------------------
+
+import pytest
+
+_DRY_RUN_CASES = [
+    (
+        "agent",
+        ["setup", "agent", "--dry-run", "--non-interactive", "--git-depth", "50"],
+    ),
+    ("pipeline", ["setup", "pipeline", "--dry-run", "--non-interactive"]),
+    (
+        "full",
+        ["setup", "full", "--dry-run", "--non-interactive", "--git-depth", "50"],
+    ),
+    ("webgraph", ["setup", "webgraph", "--dry-run"]),
+]
+
+
+@pytest.mark.parametrize("name,args", _DRY_RUN_CASES)
+def test_setup_dry_run_creates_nothing(tmp_path, monkeypatch, name, args):
+    """Con --dry-run ningun modo setup debe escribir archivos ni llamar al orchestrator."""
+    monkeypatch.chdir(tmp_path)
+    fixture_artifacts = {".codex_home"}  # creado por el conftest, no por setup
+    before = {p.name for p in tmp_path.iterdir()} - fixture_artifacts
+    with patch("cortex.setup.orchestrator.SetupOrchestrator.run") as mock_run:
+        result = runner.invoke(app, args)
+
+    assert result.exit_code == 0, result.output
+    assert "[dry-run]" in result.output
+    mock_run.assert_not_called()
+    # Nada escrito por el setup en el proyecto objetivo (se ignoran
+    # artefactos de fixtures ajenos, p.ej. .codex_home del conftest).
+    after = {p.name for p in tmp_path.rglob("*") if ".codex_home" not in p.parts}
+    assert after == before
+
+
+def test_setup_pipeline_without_dry_run_writes_files(tmp_path, monkeypatch):
+    """Contraste: sin --dry-run, ``setup pipeline`` SI crea archivos (p.ej. config.yaml)."""
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["setup", "pipeline", "--non-interactive"])
+
+    assert result.exit_code == 0, result.output
+    created = [p for p in tmp_path.rglob("*") if p.is_file()]
+    assert created, "expected real setup to create files"

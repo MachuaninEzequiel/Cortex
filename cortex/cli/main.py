@@ -433,6 +433,16 @@ setup_app = typer.Typer(help="Project setup with specialized profiles (agent, pi
 app.add_typer(setup_app, name="setup")
 
 
+def _echo_dry_run_plan(profile: str, actions: list[str]) -> None:
+    """Print a ``[dry-run]`` action plan without touching the filesystem."""
+    typer.echo(f"🧠 Cortex — [dry-run] Setup {profile} profile (simulation)")
+    typer.echo("")
+    for action in actions:
+        typer.echo(f"[dry-run] crearía: {action}")
+    typer.echo("")
+    typer.echo("✅ Dry-run complete — no changes were made.")
+
+
 @setup_app.command(name="agent")
 def setup_agent(
     dry_run: bool = typer.Option(
@@ -455,6 +465,22 @@ def setup_agent(
     """
     from cortex.cli._setup_helpers import select_ide_interactive
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "agent",
+            [
+                ".cortex/ workspace directories",
+                "config.yaml (project config)",
+                ".cortex/org.yaml (enterprise org config)",
+                "vault docs (architecture.md, context.md, decisions.md, runbooks/)",
+                "enterprise vault structure",
+                "agent guidelines + skills install",
+                "memory init (git history indexing)",
+                *( [f"IDE config for '{ide}'"] if ide else [] ),
+            ],
+        )
+        return
 
     if git_depth is None:
         if non_interactive:
@@ -490,6 +516,18 @@ def setup_pipeline(
     Setup only CI/CD / DevOps components (Workflows, Scripts, Config).
     """
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "pipeline",
+            [
+                ".github/workflows/ CI workflows (ci-feature, ci-pull-request, cd-deploy)",
+                "scripts/ DevSecDocOps pipeline script",
+                "config.yaml (project config)",
+                "enterprise vault structure (CI/CD docs)",
+            ],
+        )
+        return
 
     typer.echo("🧠 Cortex — Setting up Pipeline profile...")
     typer.echo("")
@@ -532,6 +570,24 @@ def setup_full(
     """
     from cortex.cli._setup_helpers import select_ide_interactive
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "full",
+            [
+                ".cortex/ workspace directories",
+                "config.yaml (project config)",
+                ".cortex/org.yaml (enterprise org config)",
+                "vault docs (architecture.md, context.md, decisions.md, runbooks/)",
+                "enterprise vault structure",
+                ".github/workflows/ CI workflows + scripts/ DevSecDocOps script",
+                "agent guidelines + skills install",
+                "webgraph visualization module (.cortex/webgraph/)",
+                "memory init (git history indexing) + .gitignore update",
+                *( [f"IDE config for '{ide}'"] if ide else [] ),
+            ],
+        )
+        return
 
     if git_depth is None:
         if non_interactive:
@@ -576,7 +632,21 @@ def setup_webgraph(
     """
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
-    del dry_run
+    if dry_run:
+        _echo_dry_run_plan(
+            "webgraph",
+            [
+                "webgraph module files under .cortex/webgraph/",
+                ".cortex/webgraph/workspace.yaml",
+                *(
+                    [f"registration of project root '{attach_project_root}' in workspace.yaml"]
+                    if attach_project_root
+                    else []
+                ),
+            ],
+        )
+        return
+
     typer.echo("🧠 Cortex — Setting up WebGraph profile...")
     typer.echo("")
 
