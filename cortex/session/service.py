@@ -55,6 +55,7 @@ _CORTEX_SOURCES: frozenset[CheckpointSource] = frozenset(
         CheckpointSource.CORTEX_SDDWORK,
         CheckpointSource.CORTEX_CODE_EXPLORER,
         CheckpointSource.CORTEX_CODE_IMPLEMENTER,
+        CheckpointSource.CORTEX_CODE_DESIGNER,
     }
 )
 
@@ -241,22 +242,23 @@ class SessionService:
         note: str = "",
     ) -> SessionRecord:
         """Append a checkpoint to an OPEN session."""
-        record = self._storage.load(session_id)
-        if record.status is not SessionStatus.OPEN:
-            raise InvalidStateTransition(
-                f"Cannot append checkpoint to session in status {record.status.value!r}"
+
+        def _append(record: SessionRecord) -> None:
+            if record.status is not SessionStatus.OPEN:
+                raise InvalidStateTransition(
+                    f"Cannot append checkpoint to session in status {record.status.value!r}"
+                )
+            cp = Checkpoint(
+                timestamp=datetime.now(UTC),
+                source=source,
+                verified_claims=list(verified_claims),
+                unverified_claims=list(unverified_claims),
+                artifacts_touched=list(artifacts_touched),
+                note=note,
             )
-        cp = Checkpoint(
-            timestamp=datetime.now(UTC),
-            source=source,
-            verified_claims=list(verified_claims),
-            unverified_claims=list(unverified_claims),
-            artifacts_touched=list(artifacts_touched),
-            note=note,
-        )
-        record.checkpoints.append(cp)
-        self._storage.save(record)
-        return record
+            record.checkpoints.append(cp)
+
+        return self._storage.mutate(session_id, _append)
 
     def close(
         self,
@@ -288,7 +290,20 @@ class SessionService:
         if record.is_gitless:
             end_commit = GITLESS_COMMIT_PLACEHOLDER
         else:
-            end_commit = git.get_head_commit(self._repo_root)
+            try:
+                end_commit = git.get_head_commit(self._repo_root)
+            except git.GitError as exc:
+                # A session opened on a valid repo must stay closable even
+                # if git breaks afterwards (corrupted .git, timeout, ...).
+                # Fall back to the gitless sentinel so the documenter can
+                # still reconstruct from checkpoints.
+                end_commit = GITLESS_COMMIT_PLACEHOLDER
+                logger.warning(
+                    "Failed to capture HEAD while closing session %s (%s); "
+                    "using gitless placeholder for end_commit.",
+                    session_id,
+                    exc,
+                )
         mode = self.infer_mode(record.checkpoints)
 
         data = record.model_dump(mode="python")
@@ -341,16 +356,18 @@ class SessionService:
         OPEN, or :class:`ValueError` if a task with the same id already
         exists (task ids are unique within a session).
         """
-        record = self._storage.load(session_id)
-        if record.status is not SessionStatus.OPEN:
-            raise InvalidStateTransition(
-                f"Cannot add task to session in status {record.status.value!r}"
-            )
-        if any(t.id == task.id for t in record.tasks):
-            raise ValueError(f"Task id {task.id!r} already exists in session {session_id!r}")
-        record.tasks.append(task)
-        self._storage.save(record)
-        return record
+        def _append(record: SessionRecord) -> None:
+            if record.status is not SessionStatus.OPEN:
+                raise InvalidStateTransition(
+                    f"Cannot add task to session in status {record.status.value!r}"
+                )
+            if any(t.id == task.id for t in record.tasks):
+                raise ValueError(
+                    f"Task id {task.id!r} already exists in session {session_id!r}"
+                )
+            record.tasks.append(task)
+
+        return self._storage.mutate(session_id, _append)
 
     def update_task_status(
         self,
@@ -368,28 +385,29 @@ class SessionService:
         already set one — keeps the invariant ``Task.status='done' ⇒
         completed_at is not None`` enforced by the model.
         """
-        record = self._storage.load(session_id)
-        if record.status is not SessionStatus.OPEN:
-            raise InvalidStateTransition(
-                f"Cannot update task in session with status {record.status.value!r}"
-            )
-        for idx, task in enumerate(record.tasks):
-            if task.id != task_id:
-                continue
-            data = task.model_dump(mode="python")
-            data["status"] = new_status
-            if note:
-                data["note"] = note
-            if checkpoint_index is not None:
-                data["checkpoint_index"] = checkpoint_index
-            if new_status is TaskStatus.DONE:
-                data["completed_at"] = data.get("completed_at") or datetime.now(UTC)
-            elif new_status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS):
-                data["completed_at"] = None
-            record.tasks[idx] = Task.model_validate(data)
-            self._storage.save(record)
-            return record
-        raise ValueError(f"Task id {task_id!r} not found in session {session_id!r}")
+        def _update(record: SessionRecord) -> None:
+            if record.status is not SessionStatus.OPEN:
+                raise InvalidStateTransition(
+                    f"Cannot update task in session with status {record.status.value!r}"
+                )
+            for idx, task in enumerate(record.tasks):
+                if task.id != task_id:
+                    continue
+                data = task.model_dump(mode="python")
+                data["status"] = new_status
+                if note:
+                    data["note"] = note
+                if checkpoint_index is not None:
+                    data["checkpoint_index"] = checkpoint_index
+                if new_status is TaskStatus.DONE:
+                    data["completed_at"] = data.get("completed_at") or datetime.now(UTC)
+                elif new_status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS):
+                    data["completed_at"] = None
+                record.tasks[idx] = Task.model_validate(data)
+                return
+            raise ValueError(f"Task id {task_id!r} not found in session {session_id!r}")
+
+        return self._storage.mutate(session_id, _update)
 
     def list_tasks(
         self,
