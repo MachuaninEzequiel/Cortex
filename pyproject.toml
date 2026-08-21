@@ -28,7 +28,10 @@ dependencies = [
     # Vector DB (bundles onnxruntime — powers the default ONNX embedding backend)
     "chromadb>=0.5",
     # Model Context Protocol
-    "mcp>=1.2.0",
+    # PINNED <2: cortex/mcp/server.py usa la API 1.x (@server.list_tools()).
+    # mcp 2.x eliminó esa API → 77 tests rotos. Migración real: fase P9 post-split
+    # (docs/transformacion/01-PODA-Y-LIMPIEZA.md §3).
+    "mcp>=1.2.0,<2",
     # Canonical documentation writers (cortex/documentation/templates_engine.py)
     "jinja2>=3.0",
     # NOTE: sentence-transformers (PyTorch ~2.5 GB) is NOT a default dep.

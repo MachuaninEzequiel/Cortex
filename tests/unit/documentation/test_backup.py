@@ -83,3 +83,24 @@ def test_restore_roundtrip(tmp_path: Path) -> None:
 def test_restore_missing_backup_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         restore_backup(tmp_path / "no.tar.gz", tmp_path)
+
+
+def test_restore_rejects_path_traversal_members(tmp_path: Path) -> None:
+    """Security (tar slip): members escaping target_parent must be rejected."""
+    malicious = tmp_path / "malicious.tar.gz"
+    evil_file = tmp_path / "evil.txt"
+    evil_file.write_text("pwned", encoding="utf-8")
+    with tarfile.open(malicious, "w:gz") as tar:
+        # Absolute-style escape attempt via traversal.
+        tar.add(evil_file, arcname="../outside.txt")
+    with pytest.raises(ValueError, match="unsafe member"):
+        restore_backup(malicious, tmp_path / "restore-target")
+    assert not (tmp_path / "outside.txt").exists()
+
+
+def test_restore_safe_archive_still_extracts(tmp_path: Path) -> None:
+    """The data filter must not break normal vault restores."""
+    vault = _seed_vault(tmp_path)
+    backup = create_backup(vault)
+    restored = restore_backup(backup, tmp_path / "out")
+    assert (restored / "decisions" / "ADR-001.md").read_text(encoding="utf-8") == "body 1"

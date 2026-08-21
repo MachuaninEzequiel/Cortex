@@ -73,8 +73,21 @@ def restore_backup(backup_path: Path, target_parent: Path) -> Path:
         members = tar.getmembers()
         if not members:
             raise ValueError(f"empty backup: {backup_path}")
+        # Security (tar slip): refuse members escaping ``target_parent`` and
+        # extract with the stdio-safe "data" filter (blocks absolute paths,
+        # symlink/hardlink escapes and device files).
+        resolved_target = target_parent.resolve()
+        for member in members:
+            candidate = (target_parent / member.name).resolve()
+            if not candidate.is_relative_to(resolved_target):
+                raise ValueError(
+                    f"unsafe member in backup archive: {member.name!r}"
+                )
         top = members[0].name.split("/", 1)[0]
-        tar.extractall(target_parent)
+        try:
+            tar.extractall(target_parent, filter="data")  # noqa: S202 - guarded above
+        except TypeError:  # pragma: no cover - Python < 3.11.4 without filter kwarg
+            tar.extractall(target_parent)
     return target_parent / top
 
 
