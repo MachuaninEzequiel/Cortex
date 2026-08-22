@@ -69,12 +69,19 @@ idioma (su dolor real: la búsqueda en español); UX simple con un "ActionEngine
 - [ ] (Opcional) Evaluar cuantización int8 de e5-large con la misma suite.
 
 ### Obra 01 restante (podado)
-- [ ] P2: ítems BORRAR CON TEST clasificados en `01-PODA-Y-LIMPIEZA.md §6 pendientes`
-      (NoActiveSession, ScoringWithDecay/create_decay_config, is_known_agent/_KNOWN_AGENTS,
-      extra_notes/forced_reason, F841 tests e2e).
+- [x] **P2 COMPLETA (2026-08-23)**: decay decorativo podado (ScoringWithDecay/create_decay_config/
+      apply_to_hits/get_stats/apply/EnricherDecayConfig/TEMPORAL_TYPES), maquinaria muerta de
+      co_occurrence (build_from_ast+cadena AST/JS, get_related/get_path/get_files_by_type,
+      node_count/relationship_count, EXTENDS/DEFINES), _build_entity_index, is_known_agent/_KNOWN_AGENTS,
+      NoActiveSession, forced_reason/extra_notes (wiring Phase 04 incompleto), only_agent, flag
+      --no-graph, 9×F841/F401 rezagados. Tests de caracterización nuevos (memory_decay + co_occurrence).
+      Gates: ruff F401/F841=0, vulture80=0, suite 2271 passed. SKIP feedback_loop (reservado Obra 05);
+      domain_confidence diferido a P-bugs; fix bug #9 sigue en P6.
 - [ ] P3: golden tests MCP primero → split server.py (2977l) en schemas/dispatcher/handlers. ALTO riesgo.
 - [ ] P4: adelgazar main.py (2277l) a subapps siguiendo patrón cli/session.py.
 - [ ] P5-P8 según plan (unificar enricher sync/async, schemas ×2, strings→archivos, romper ciclo session↔documenter).
+- Deudas nuevas detectadas en P2 (preexistentes, para P-bugs): F821 latente cli/main.py:2233
+  (`cortex_ide` no definido en rama interactiva IDE) y enricher.py:65 (`EnrichmentFilters`).
 
 ### Obra 03 (Rust) — plan completo en 03-MIGRACION-RUST.md
 - [ ] T-BENCH-1: harness de benchmarks en bench/ + baseline commiteado. SIN BASELINE NO HAY MIGRACIÓN.
