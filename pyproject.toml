@@ -69,6 +69,7 @@ cortex = "cortex.cli.main:app"
     "agent_guidelines.md",
     "agent_guidelines_work.md",
     "skills/**/*.md",
+    "setup/workspace_files/*.md",
     "webgraph/templates/*.html",
     "webgraph/static/*",
 ]
