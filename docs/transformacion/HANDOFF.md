@@ -77,11 +77,17 @@ idioma (su dolor real: la búsqueda en español); UX simple con un "ActionEngine
       --no-graph, 9×F841/F401 rezagados. Tests de caracterización nuevos (memory_decay + co_occurrence).
       Gates: ruff F401/F841=0, vulture80=0, suite 2271 passed. SKIP feedback_loop (reservado Obra 05);
       domain_confidence diferido a P-bugs; fix bug #9 sigue en P6.
-- [ ] P3: golden tests MCP primero → split server.py (2977l) en schemas/dispatcher/handlers. ALTO riesgo.
+- [x] **P3 COMPLETA (2026-08-23)**: golden contract MCP primero (`ad97caf`: snapshot byte-a-byte de
+      los 32 tools + ruteo 32/32 con sentinelas) y DESPUÉS split de server.py en sub-commits:
+      `edfc243` vault_adapter único (V6), `7050391` schemas.py (defs de tools), `8be09b6` mixins por
+      dominio en cortex/mcp/tools/{search,sessions,documenter,workspace} + dispatcher tabla _TOOL_ROUTES.
+      server.py: 2977 → 491 líneas. Suite 2279 verde en cada commit; contrato intacto byte-a-byte.
+      Candidato de poda anotado: `_sync_vault_text` (0 callers producción).
 - [ ] P4: adelgazar main.py (2277l) a subapps siguiendo patrón cli/session.py.
 - [ ] P5-P8 según plan (unificar enricher sync/async, schemas ×2, strings→archivos, romper ciclo session↔documenter).
-- Deudas nuevas detectadas en P2 (preexistentes, para P-bugs): F821 latente cli/main.py:2233
+- Deudas nuevas detectadas en P2/P3 (preexistentes, para P-bugs): F821 latente cli/main.py:2233
   (`cortex_ide` no definido en rama interactiva IDE) y enricher.py:65 (`EnrichmentFilters`).
+- P9 (migración mcp 2.x) ahora evaluable: existe split + golden contract como red.
 
 ### Obra 03 (Rust) — plan completo en 03-MIGRACION-RUST.md
 - [ ] T-BENCH-1: harness de benchmarks en bench/ + baseline commiteado. SIN BASELINE NO HAY MIGRACIÓN.

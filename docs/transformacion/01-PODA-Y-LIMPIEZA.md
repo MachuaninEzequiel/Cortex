@@ -196,6 +196,39 @@ P-bugs puede correr en paralelo con P3-P8 (scopes disjuntos, commits separados).
 
 ## §7 Registro de ejecución
 
+### 2026-08-23 — Fase P3 (split server.py) — COMPLETA ✅
+
+**Commits**: `ad97caf` (golden contract) → `edfc243` (vault_adapter V6) →
+`7050391` (schemas.py) → `8be09b6` (mixins + tabla dispatcher).
+
+Red de seguridad PRIMERO:
+- `tests/unit/mcp/test_golden_contract.py` (8 tests): snapshot byte-a-byte de los 32 tools
+  anunciados (`golden/list_tools.json`, generado del código pre-split), tabla nombre→handler
+  del dispatcher verificada 32/32 con sentinelas, ruta especial `cortex_sync_vault`, mensaje
+  de tool desconocida, SERVER_VERSION.
+
+Split en sub-commits atómicos (suite verde en cada uno):
+- **V6**: `_PathVault` ×2 inline → `cortex/mcp/vault_adapter.py::PathVault` único.
+- **V1 parte 1**: definiciones de tools (~1050 l) → `cortex/mcp/schemas.py::build_tool_definitions()`;
+  `_CHECKPOINT_SOURCE_VALUES` viaja con ellas.
+- **V1 parte 2**: handlers → mixins por dominio (`tools/search|sessions|documenter|workspace.py`);
+  `_serialize_reconstruction` → documenter.py; if-chain del dispatcher → tabla `_TOOL_ROUTES`
+  con resolución de atributos (semántica idéntica incl. logging y mensajes).
+- Tests que scrapeaban FUENTE con regex (`TestNewMcpToolsRegistered`) convertidos a verificación
+  contra el handler real / ruteo conductual — más fieles y sobreviven al split.
+
+Resultado: `server.py` 2977 → **491 líneas** (core: init/logging/run/ping/dispatcher);
+paquete `cortex/mcp/` = server + schemas + vault_adapter + tools/{search,sessions,documenter,workspace}.
+
+Gates por cada commit: golden contract 8/8 byte-a-byte ✅ · suite completa 2279 passed ✅ ·
+ruff default en cortex/mcp limpio ✅ · vulture80 = 0 ✅.
+
+Notas:
+- Candidato de PODA registrado (no mezclado acá): `WorkspaceToolsMixin._sync_vault_text`
+  (0 callers en producción, solo test directo).
+- El split era prerequisito de P9 (migración mcp 2.x): ahora evaluable con red completa.
+  Pin `mcp<2` se mantiene hasta esa decisión.
+
 ### 2026-08-23 — Fase P2 (BORRAR CON TEST) — COMPLETA ✅
 
 **Commit**: ver git log `chore(poda P2)`.
