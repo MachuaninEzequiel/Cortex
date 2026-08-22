@@ -68,7 +68,26 @@ idioma (su dolor real: la búsqueda en español); UX simple con un "ActionEngine
 - [ ] Correr `cortex reindex` en el vault real del dueño y validar percepción de calidad.
 - [ ] (Opcional) Evaluar cuantización int8 de e5-large con la misma suite.
 
-### Obra 01 restante (podado)
+### Obra 01 — ESTADO: P1-P8 COMPLETAS + P-BUGS COMPLETOS (2026-08-23 tarde)
+
+Cierre completo de la obra de poda (detalle por commit en git log y §7 del plan 01):
+- P4 ✅ main.py 2540→1894 l: cli/{pr_context,hu,common,embedding,mcp_cmd,documenting}.py.
+  Patrón register(app) para comandos top-level; _parse_verification_hooks re-exportado.
+- P5 ✅ V3: _finalize_items fuente única fases 2-6. DOS bugs reales corregidos en async:
+  (1) closure de lambdas → todas las estrategias buscaban la última query;
+  (2) drift Fase 08 completa (filtros+DocIntent) — ahora paridad total con golden tests
+  (tests/unit/context_enricher/test_parity_sync_async.py).
+- P6 ✅ V5 mixins ×13 (test_schema_parity.py, 27 tests) · bug #9 decay_rate fix ·
+  V7 devsecdocops fuente única + sync test · V4 cerrada con evidencia (factory A6).
+- P7 ✅ V8: workspace_files/*.md (14 archivos package-data) + test_workspace_files_sync.py.
+  cortex_workspace.py 1670→207 l.
+- P8 ✅ V9 TYPE_CHECKING + guardia test_arquitectura_v9.py · V11 cerrada (evidencia:
+  lazy-deprecation ya implementada con test) · V12 GC tmps (save() barre >1h).
+- P-bugs ✅ todos: #3,#4,#5,#6 verificados resueltos (evidencia en commits);
+  #10 get_item_note HU-{external_id} fix+golden; #7 CI coverage/pip-audit fix;
+  #9 decay_rate fix.
+
+### Obra 01 restante (histórico — completado)
 - [x] **P2 COMPLETA (2026-08-23)**: decay decorativo podado (ScoringWithDecay/create_decay_config/
       apply_to_hits/get_stats/apply/EnricherDecayConfig/TEMPORAL_TYPES), maquinaria muerta de
       co_occurrence (build_from_ast+cadena AST/JS, get_related/get_path/get_files_by_type,
@@ -93,9 +112,12 @@ idioma (su dolor real: la búsqueda en español); UX simple con un "ActionEngine
 - [ ] T-BENCH-1: harness de benchmarks en bench/ + baseline commiteado. SIN BASELINE NO HAY MIGRACIÓN.
 - [ ] Después: Tramos A→E según gates G0-G6 (≥5× retrieve p99, etc.).
 
-### Obra 05 (UX/ActionEngine) — plan completo en 05-UX-TUI-ACTIONENGINE.md
-- [ ] Depende de: suite verde (✅), NO podar sus piezas reservadas (✅ respetado), Fase 3 CLI (✅).
-- [ ] Puede arrancar cuando se quiera: fases A-E del plan.
+### Obra 05 (UX/ActionEngine) — ARRANCADA (Fase A 1/4)
+- [x] Persistencia feedback: cortex/feedback_store.py (JSONL + rotación) +
+      FeedbackCollector(store=...) hook opcional. Tests incluidos.
+- [ ] Fase A restante: cablear observer= en ContextEnricher (core/MCP/CLI) + rotación;
+      APIs públicas SessionService para TUI; revivir guide_path (7 topics).
+- [ ] Fases B-E según plan 05 (ActionEngine core → consolidación → TUIs → aprendizaje).
 
 ### Obra 06 (LFM2.5) — FUTURO, investigación profunda primero (doc 06).
 

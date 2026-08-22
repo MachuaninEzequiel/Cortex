@@ -3,23 +3,29 @@
 > **HANDOFF DE SESIÓN**: leé primero `docs/transformacion/HANDOFF.md` — contiene el
 > contexto completo, commits, decisiones tomadas y los próximos pasos precisos.
 
-## Estado al cierre de esta sesión (2026-08-23, actualización intermedia)
+## Estado al cierre de esta sesión (2026-08-23, tarde)
 
-- TRAMO 0 ✅ · ola 1 ✅ · OBRA 02 ✅ · **OBRA 01: P2 ✅ P3 ✅ · P4 EN CURSO**
-  (pr-context/hu/common extraídos + embedding/mcp con register(); main.py 2540→2231;
-  falta trío documenting → cli/documenting.py).
-- **P-bugs**: #3 ✅ (verificado resuelto por Obra 02, marcadores pi) · #4 ✅ (ya resuelto
-  en TRAMO 1, test existente) · #5 ✅ (cache key con scope desde ola 1) · #6 ✅
-  (storage.mutate() verificado en los 3 puntos de mutación) · #7 ✅ fix commiteado
-  (coverage gate escribe/lee /tmp/test-output.txt vía tee+PIPESTATUS; pip-audit sin || true)
-  · #8 ✅ (TRAMO 0) · #10 ✅ fix commiteado (get_item_note HU-{external_id} + fallback slug,
-  tests golden nuevos). Queda solo #9 ✅ (fix decay_rate commiteado) — P-bugs COMPLETOS.
-- Bug #9 ✅: DecayConfig respeta decay_rate explícito ≠ default; path enrichers intacto.
-- Deudas: requirements.txt ELIMINADO (fuente única pyproject); _resolve_cache ya usaba
-  layout (cerrada con evidencia); CHANGELOG [Unreleased]×8 queda para el momento de
-  release (decisión de versión = del dueño).
-- Suite unit+integration: VERDE (**2290 passed**, 13 skipped). Rama:
+- TRAMO 0 ✅ · ola 1 ✅ · OBRA 02 ✅ · OBRA 01: **P2 ✅ P3 ✅ P4 ✅ P5 ✅ P6 ✅ P7 ✅ P8 ✅**
+  · **P-BUGS COMPLETOS** (#3,#4,#5,#6 verificados resueltos; #7,#9,#10 arreglados con test)
+  · Deudas: requirements.txt eliminado, _resolve_cache ya OK, V4 cerrada (factory), V7 ✅,
+  V11 cerrada (lazy-deprecation existente), V12 ✅ GC tmp.
+- **OBRA 03 A1 ✅**: bench/bench_harness.py + vault-synth-1k determinista commiteado +
+  baseline-2026-08-23.json (webgraph O(n²) n1000=3.2s · full_sync_1k=37s · retrieve p99=129ms).
+- **OBRA 04**: recomendación default global documentada (per-language; flip+reindex=dueño);
+  int8 con plan concreto pendiente de ejecución.
+- **OBRA 05 Fase A 1/4 ✅**: FeedbackStore JSONL + hook opcional en collector.
+  Restan: cablear observer=, APIs SessionService para TUI, revivir guide_path,
+  y Fases B-E del plan.
+- Refactors de este tramo: main.py 2540→1894 l (pr-context/hu/embedding/mcp/documenting);
+  enricher sync/async unificados vía _finalize_items (V3) con DOS bugs reales corregidos
+  (closure de lambdas: todas las estrategias buscaban la última query + drift Fase 08);
+  schemas ×13 → mixins (V5); skills embebidos → workspace_files/*.md (V8, -1400 l);
+  V9 ciclo session↔documenter roto con TYPE_CHECKING + guardia de arquitectura.
+- Suite unit+integration: VERDE (**2347 passed**, 13 skipped). Rama:
   feature/transformacion-2026-08. master sellado.
+- Deudas restantes registradas: F821 cli/main.py `cortex_ide` (P-bugs),
+  F821 ×5 WorkspaceLayout en templates.py (TYPE_CHECKING, cosmético),
+  `_sync_vault_text` candidato de poda, CHANGELOG para momento de release.
 
 ## Próximos pasos (detalle en HANDOFF.md §5)
 
