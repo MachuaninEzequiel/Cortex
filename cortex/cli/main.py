@@ -120,8 +120,9 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def _root_callback(
+    ctx: typer.Context,
     version: bool = typer.Option(
         False,
         "--version",
@@ -131,7 +132,14 @@ def _root_callback(
         is_eager=True,
     ),
 ) -> None:
-    """Cortex — hybrid cognitive memory for AI agents."""
+    """Cortex — hybrid cognitive memory for AI agents.
+
+    Sin argumentos abre el Home TUI (dashboard + acciones pendientes).
+    """
+    if ctx.invoked_subcommand is None and not version:
+        from cortex.tui.core import run_home
+
+        run_home()
 
 
 app.add_typer(webgraph_app, name="webgraph", hidden=True)
