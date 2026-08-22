@@ -1,0 +1,19 @@
+{
+  "model": "all-MiniLM-L6-v2",
+  "backend": "onnx",
+  "top_k": 10,
+  "languages": {
+    "es": {
+      "mrr10": 0.8821,
+      "recall5": 0.9038,
+      "recall1": 0.8077,
+      "num_queries": 26
+    },
+    "en": {
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 0.98,
+      "num_queries": 25
+    }
+  }
+}

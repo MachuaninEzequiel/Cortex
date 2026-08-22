@@ -1,0 +1,536 @@
+{
+  "language": "en",
+  "model": "all-MiniLM-L6-v2",
+  "backend": "onnx",
+  "num_queries": 25,
+  "mrr10": 1.0,
+  "recall5": 1.0,
+  "recall1": 0.98,
+  "per_query": [
+    {
+      "query": "why did they choose Stripe as the payment gateway",
+      "ranked": [
+        "decisions/ADR-001-payment-gateway.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-discount-coupons.md",
+        "runbooks/runbook-fraud-orders.md",
+        "decisions/ADR-002-session-cache.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-payment-gateway.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "checkout webhook reliability idempotency keys",
+      "ranked": [
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-abandoned-cart-email.md",
+        "runbooks/runbook-checkout-outage.md",
+        "runbooks/runbook-fraud-orders.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "specs/spec-product-reviews.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-discount-coupons.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-payment-gateway.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "how does the session cache work",
+      "ranked": [
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-shared-wishlist.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "specs/spec-discount-coupons.md",
+        "decisions/ADR-006-feature-flags.md",
+        "decisions/ADR-001-payment-gateway.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-session-cache.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "session TTL hours redis",
+      "ranked": [
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-one-page-checkout.md",
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-006-feature-flags.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "specs/spec-multi-currency.md",
+        "runbooks/runbook-fraud-orders.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-session-cache.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "product search filters category price",
+      "ranked": [
+        "decisions/ADR-003-product-search.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-product-reviews.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-shared-wishlist.md",
+        "runbooks/runbook-fraud-orders.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-product-search.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "why not Elasticsearch",
+      "ranked": [
+        "decisions/ADR-003-product-search.md",
+        "decisions/ADR-002-session-cache.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "specs/spec-shared-wishlist.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-abandoned-cart-email.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-product-search.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "real time inventory updates",
+      "ranked": [
+        "decisions/ADR-004-realtime-inventory.md",
+        "runbooks/runbook-fraud-orders.md",
+        "decisions/ADR-002-session-cache.md",
+        "specs/spec-abandoned-cart-email.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-push-notifications.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-003-product-search.md",
+        "specs/spec-product-reviews.md"
+      ],
+      "relevant": [
+        "decisions/ADR-004-realtime-inventory.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "cart abandonment one-page checkout",
+      "ranked": [
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-002-session-cache.md",
+        "specs/spec-discount-coupons.md",
+        "runbooks/runbook-db-migration.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-product-reviews.md"
+      ],
+      "relevant": [
+        "specs/spec-one-page-checkout.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "order status push notifications firebase",
+      "ranked": [
+        "specs/spec-push-notifications.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-shared-wishlist.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-product-reviews.md",
+        "runbooks/runbook-db-migration.md"
+      ],
+      "relevant": [
+        "specs/spec-push-notifications.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "discount coupons expiry usage limits",
+      "ranked": [
+        "specs/spec-discount-coupons.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-002-session-cache.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-product-reviews.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-shared-wishlist.md",
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "relevant": [
+        "specs/spec-discount-coupons.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "shareable wishlist short url",
+      "ranked": [
+        "specs/spec-shared-wishlist.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "decisions/ADR-003-product-search.md"
+      ],
+      "relevant": [
+        "specs/spec-shared-wishlist.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "checkout outage 502 errors",
+      "ranked": [
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-abandoned-cart-email.md",
+        "runbooks/runbook-fraud-orders.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-002-session-cache.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-push-notifications.md",
+        "decisions/ADR-004-realtime-inventory.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-checkout-outage.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "users randomly logged out seeing other data",
+      "ranked": [
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-abandoned-cart-email.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-shared-wishlist.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-multi-currency.md",
+        "runbooks/runbook-db-migration.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-stale-session-cache.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "database migration rollback procedure",
+      "ranked": [
+        "runbooks/runbook-db-migration.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-one-page-checkout.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-product-reviews.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-db-migration.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "product reviews moderation verified purchase",
+      "ranked": [
+        "specs/spec-product-reviews.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-push-notifications.md",
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-multi-currency.md"
+      ],
+      "relevant": [
+        "specs/spec-product-reviews.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "multi currency pricing conversion",
+      "ranked": [
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "decisions/ADR-003-product-search.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-discount-coupons.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-shared-wishlist.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-db-migration.md"
+      ],
+      "relevant": [
+        "specs/spec-multi-currency.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "abandoned cart email automation",
+      "ranked": [
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-push-notifications.md",
+        "decisions/ADR-002-session-cache.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-db-migration.md",
+        "runbooks/runbook-fraud-orders.md",
+        "runbooks/runbook-checkout-outage.md",
+        "runbooks/runbook-stale-session-cache.md"
+      ],
+      "relevant": [
+        "specs/spec-abandoned-cart-email.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "fraud flagged orders manual review",
+      "ranked": [
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-product-reviews.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-push-notifications.md",
+        "decisions/ADR-003-product-search.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-fraud-orders.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "where are product images served from",
+      "ranked": [
+        "decisions/ADR-005-product-images-cdn.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-shared-wishlist.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "decisions/ADR-003-product-search.md",
+        "specs/spec-discount-coupons.md",
+        "decisions/ADR-006-feature-flags.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-push-notifications.md",
+        "runbooks/runbook-fraud-orders.md"
+      ],
+      "relevant": [
+        "decisions/ADR-005-product-images-cdn.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "feature flags progressive rollout unleash",
+      "ranked": [
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-one-page-checkout.md",
+        "runbooks/runbook-db-migration.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-discount-coupons.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-push-notifications.md",
+        "decisions/ADR-002-session-cache.md"
+      ],
+      "relevant": [
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "payment webhooks retry dedupe",
+      "ranked": [
+        "decisions/ADR-001-payment-gateway.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-one-page-checkout.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "specs/spec-discount-coupons.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-product-reviews.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-payment-gateway.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "cache invalidation pub/sub desync",
+      "ranked": [
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-004-realtime-inventory.md",
+        "specs/spec-discount-coupons.md",
+        "specs/spec-abandoned-cart-email.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-one-page-checkout.md",
+        "specs/spec-shared-wishlist.md",
+        "specs/spec-push-notifications.md",
+        "runbooks/runbook-checkout-outage.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-stale-session-cache.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 0.5
+    },
+    {
+      "query": "SKU ceiling full text search postgres",
+      "ranked": [
+        "decisions/ADR-003-product-search.md",
+        "decisions/ADR-002-session-cache.md",
+        "runbooks/runbook-db-migration.md",
+        "runbooks/runbook-checkout-outage.md",
+        "specs/spec-product-reviews.md",
+        "specs/spec-shared-wishlist.md",
+        "runbooks/runbook-fraud-orders.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "specs/spec-abandoned-cart-email.md",
+        "specs/spec-one-page-checkout.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-product-search.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "sticky sessions websocket connections",
+      "ranked": [
+        "decisions/ADR-004-realtime-inventory.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-002-session-cache.md",
+        "specs/spec-push-notifications.md",
+        "specs/spec-one-page-checkout.md",
+        "decisions/ADR-006-feature-flags.md",
+        "decisions/ADR-005-product-images-cdn.md",
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-abandoned-cart-email.md"
+      ],
+      "relevant": [
+        "decisions/ADR-004-realtime-inventory.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "deferred queue mode gateway down",
+      "ranked": [
+        "runbooks/runbook-checkout-outage.md",
+        "decisions/ADR-001-payment-gateway.md",
+        "specs/spec-one-page-checkout.md",
+        "runbooks/runbook-stale-session-cache.md",
+        "decisions/ADR-002-session-cache.md",
+        "specs/spec-abandoned-cart-email.md",
+        "runbooks/runbook-fraud-orders.md",
+        "specs/spec-discount-coupons.md",
+        "runbooks/runbook-db-migration.md",
+        "specs/spec-push-notifications.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-checkout-outage.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    }
+  ]
+}
