@@ -475,7 +475,7 @@ def setup_agent(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be done without making changes."
     ),
-    git_depth: int = typer.Option(
+    git_depth: int | None = typer.Option(
         None, "--git-depth", help="Number of git commits to index for context."
     ),
     ide: str | None = typer.Option(
@@ -491,7 +491,6 @@ def setup_agent(
     Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
     """
     from cortex.cli._setup_helpers import select_ide_interactive
-    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
     if dry_run:
         _echo_dry_run_plan(
@@ -509,22 +508,28 @@ def setup_agent(
         )
         return
 
+    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
+    _run_setup_agent(git_depth=git_depth, ide=selected_ide, non_interactive=non_interactive)
+
+
+def _run_setup_agent(*, git_depth: int | None, ide: str | None, non_interactive: bool) -> None:
+    """Implementación llana (sin defaults Typer) — llamada por `init` también."""
+    typer.echo("🧠 Cortex — Setting up Agent profile...")
+    typer.echo("")
+
+    from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
     if git_depth is None:
         if non_interactive:
             git_depth = 50
         else:
-            git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
-
-    # Fase 6 plan multi-IDE & MCP hardening: la seleccion de IDE vive en
-    # cortex.cli._setup_helpers para evitar duplicacion entre setup_agent
-    # y setup_full. Respeta --ide explicito y --non-interactive.
-    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
-
-    typer.echo("🧠 Cortex — Setting up Agent profile...")
-    typer.echo("")
+            git_depth = typer.prompt(
+                "📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?",
+                default=50, type=int,
+            )
 
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth, ide=selected_ide)
+    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth, ide=ide)
     typer.echo(format_summary(summary))
 
 
@@ -776,9 +781,15 @@ def setup_enterprise(
 # ---------------------------------------------------------------------------
 
 @app.command()
-def init() -> None:
-    """Bootstrap cortex: Alias for `cortex setup agent`."""
-    setup_agent(dry_run=False)
+def init(
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Skip prompts (safe defaults). Required for CI/scripted setups.",
+    ),
+) -> None:
+    """Bootstrap cortex: Alias for `cortex setup agent` (nivel-0, flujo nuevo usuario)."""
+    _run_setup_agent(git_depth=None, ide=None, non_interactive=non_interactive)
 
 
 @app.command()
