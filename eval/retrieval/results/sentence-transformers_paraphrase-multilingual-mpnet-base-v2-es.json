@@ -1,0 +1,559 @@
+{
+  "language": "es",
+  "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+  "backend": "fastembed",
+  "num_queries": 26,
+  "mrr10": 0.9167,
+  "recall5": 0.9423,
+  "recall1": 0.8654,
+  "per_query": [
+    {
+      "query": "por qué eligieron Mercado Pago como pasarela de pagos",
+      "ranked": [
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-cupones.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "specs/spec-reviews.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-email-recuperacion.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-pasarela-pagos.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "costos de comisión del checkout",
+      "ranked": [
+        "decisions/ADR-001-pasarela-pagos.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-checkout.md",
+        "specs/spec-cupones.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-reviews.md",
+        "specs/spec-email-recuperacion.md",
+        "runbooks/runbook-fraude.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "runbooks/runbook-migracion-db.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-pasarela-pagos.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "cómo funciona el cache de sesiones",
+      "ranked": [
+        "decisions/ADR-002-cache-redis.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-cache-invalido.md",
+        "specs/spec-wishlist.md",
+        "specs/spec-email-recuperacion.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-checkout.md",
+        "specs/spec-cupones.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-cache-redis.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "TTL de las sesiones de usuario",
+      "ranked": [
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-email-recuperacion.md",
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-wishlist.md",
+        "specs/spec-checkout.md",
+        "runbooks/runbook-fraude.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-cache-redis.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "buscador de productos con filtros",
+      "ranked": [
+        "decisions/ADR-003-busquedas-postgres.md",
+        "specs/spec-reviews.md",
+        "specs/spec-cupones.md",
+        "specs/spec-notificaciones.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-005-imagenes-cdn.md",
+        "runbooks/runbook-cache-invalido.md",
+        "specs/spec-wishlist.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-busquedas-postgres.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "por qué no usan Elasticsearch",
+      "ranked": [
+        "decisions/ADR-003-busquedas-postgres.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-cupones.md",
+        "specs/spec-wishlist.md",
+        "decisions/ADR-005-imagenes-cdn.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-busquedas-postgres.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "stock en tiempo real",
+      "ranked": [
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-email-recuperacion.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-002-cache-redis.md",
+        "specs/spec-checkout.md",
+        "specs/spec-wishlist.md",
+        "specs/spec-cupones.md"
+      ],
+      "relevant": [
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-checkout.md"
+      ],
+      "mrr10": 0.5,
+      "recall5": 0.5,
+      "recall1": 0.0
+    },
+    {
+      "query": "abandono de carrito checkout una pantalla",
+      "ranked": [
+        "specs/spec-checkout.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-email-recuperacion.md",
+        "specs/spec-cupones.md",
+        "runbooks/runbook-fraude.md",
+        "specs/spec-reviews.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "relevant": [
+        "specs/spec-checkout.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "notificaciones push del pedido",
+      "ranked": [
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-email-recuperacion.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-migracion-db.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-wishlist.md"
+      ],
+      "relevant": [
+        "specs/spec-notificaciones.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "cupones de descuento caducidad",
+      "ranked": [
+        "specs/spec-cupones.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-email-recuperacion.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-reviews.md",
+        "specs/spec-checkout.md",
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-migracion-db.md"
+      ],
+      "relevant": [
+        "specs/spec-cupones.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "lista de deseos compartible",
+      "ranked": [
+        "specs/spec-wishlist.md",
+        "specs/spec-cupones.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-002-cache-redis.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-notificaciones.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-reviews.md",
+        "specs/spec-checkout.md"
+      ],
+      "relevant": [
+        "specs/spec-wishlist.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "checkout caído errores 502",
+      "ranked": [
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "runbooks/runbook-fraude.md",
+        "specs/spec-cupones.md",
+        "specs/spec-email-recuperacion.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-002-cache-redis.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-caida-checkout.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "usuarios deslogueados aleatoriamente",
+      "ranked": [
+        "runbooks/runbook-cache-invalido.md",
+        "specs/spec-email-recuperacion.md",
+        "decisions/ADR-002-cache-redis.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-cupones.md",
+        "specs/spec-wishlist.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-cache-invalido.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "migración de base de datos rollback",
+      "ranked": [
+        "runbooks/runbook-migracion-db.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-checkout.md",
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-fraude.md",
+        "specs/spec-email-recuperacion.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-migracion-db.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "reseñas de productos moderación",
+      "ranked": [
+        "specs/spec-reviews.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "specs/spec-cupones.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-email-recuperacion.md"
+      ],
+      "relevant": [
+        "specs/spec-reviews.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "precios en varias monedas conversión",
+      "ranked": [
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-cupones.md",
+        "specs/spec-reviews.md",
+        "runbooks/runbook-migracion-db.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-006-feature-flags.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-005-imagenes-cdn.md"
+      ],
+      "relevant": [
+        "specs/spec-multi-currency.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "carrito abandonado email automático",
+      "ranked": [
+        "specs/spec-email-recuperacion.md",
+        "runbooks/runbook-cache-invalido.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-fraude.md",
+        "decisions/ADR-002-cache-redis.md",
+        "specs/spec-notificaciones.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-005-imagenes-cdn.md"
+      ],
+      "relevant": [
+        "specs/spec-email-recuperacion.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "pedidos sospechosos de fraude revisión",
+      "ranked": [
+        "runbooks/runbook-fraude.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-checkout.md",
+        "specs/spec-email-recuperacion.md",
+        "runbooks/runbook-cache-invalido.md",
+        "specs/spec-cupones.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-notificaciones.md"
+      ],
+      "relevant": [
+        "runbooks/runbook-fraude.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "dónde se sirven las imágenes de producto",
+      "ranked": [
+        "decisions/ADR-005-imagenes-cdn.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-cupones.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "specs/spec-checkout.md",
+        "specs/spec-wishlist.md",
+        "specs/spec-notificaciones.md"
+      ],
+      "relevant": [
+        "decisions/ADR-005-imagenes-cdn.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "feature flags releases progresivas",
+      "ranked": [
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-cupones.md",
+        "specs/spec-checkout.md",
+        "specs/spec-reviews.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-notificaciones.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "runbooks/runbook-caida-checkout.md"
+      ],
+      "relevant": [
+        "decisions/ADR-006-feature-flags.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "webhooks de pago idempotencia",
+      "ranked": [
+        "decisions/ADR-001-pasarela-pagos.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-email-recuperacion.md",
+        "decisions/ADR-005-imagenes-cdn.md",
+        "specs/spec-multi-currency.md",
+        "decisions/ADR-002-cache-redis.md",
+        "specs/spec-wishlist.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "specs/spec-checkout.md"
+      ],
+      "relevant": [
+        "decisions/ADR-001-pasarela-pagos.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "invalidación de cache pub/sub",
+      "ranked": [
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-wishlist.md",
+        "specs/spec-cupones.md",
+        "specs/spec-notificaciones.md",
+        "specs/spec-checkout.md",
+        "runbooks/runbook-fraude.md"
+      ],
+      "relevant": [
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-cache-invalido.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 0.5
+    },
+    {
+      "query": "límite de SKUs del buscador",
+      "ranked": [
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-002-cache-redis.md",
+        "specs/spec-cupones.md",
+        "specs/spec-wishlist.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-checkout.md",
+        "specs/spec-notificaciones.md",
+        "specs/spec-reviews.md",
+        "decisions/ADR-001-pasarela-pagos.md"
+      ],
+      "relevant": [
+        "decisions/ADR-003-busquedas-postgres.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "sticky sessions balanceador",
+      "ranked": [
+        "specs/spec-checkout.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-cupones.md",
+        "runbooks/runbook-cache-invalido.md",
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-notificaciones.md",
+        "runbooks/runbook-fraude.md",
+        "specs/spec-reviews.md"
+      ],
+      "relevant": [
+        "decisions/ADR-004-websockets-stock.md"
+      ],
+      "mrr10": 0.3333333333333333,
+      "recall5": 1.0,
+      "recall1": 0.0
+    },
+    {
+      "query": "verificación de compra reseñas",
+      "ranked": [
+        "specs/spec-reviews.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-001-pasarela-pagos.md",
+        "runbooks/runbook-caida-checkout.md",
+        "specs/spec-cupones.md",
+        "runbooks/runbook-fraude.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "specs/spec-multi-currency.md",
+        "specs/spec-email-recuperacion.md"
+      ],
+      "relevant": [
+        "specs/spec-reviews.md"
+      ],
+      "mrr10": 1.0,
+      "recall5": 1.0,
+      "recall1": 1.0
+    },
+    {
+      "query": "cola diferida cuando la pasarela falla",
+      "ranked": [
+        "decisions/ADR-006-feature-flags.md",
+        "specs/spec-cupones.md",
+        "runbooks/runbook-cache-invalido.md",
+        "runbooks/runbook-caida-checkout.md",
+        "decisions/ADR-002-cache-redis.md",
+        "runbooks/runbook-migracion-db.md",
+        "specs/spec-checkout.md",
+        "decisions/ADR-004-websockets-stock.md",
+        "decisions/ADR-003-busquedas-postgres.md",
+        "runbooks/runbook-fraude.md"
+      ],
+      "relevant": [
+        "runbooks/caida-checkout.md"
+      ],
+      "mrr10": 0.0,
+      "recall5": 0.0,
+      "recall1": 0.0
+    }
+  ]
+}

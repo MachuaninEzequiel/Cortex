@@ -1,0 +1,19 @@
+{
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "backend": "fastembed",
+  "top_k": 10,
+  "languages": {
+    "es": {
+      "mrr10": 0.9038,
+      "recall5": 0.9423,
+      "recall1": 0.8077,
+      "num_queries": 26
+    },
+    "en": {
+      "mrr10": 0.98,
+      "recall5": 1.0,
+      "recall1": 0.94,
+      "num_queries": 25
+    }
+  }
+}
