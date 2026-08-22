@@ -330,12 +330,23 @@ Gates de las TUIs:
   BUG NUEVO hallado en el camino (#13 plan 01): SetupOrchestrator.run(dry_run=True)
   crea archivos reales — registrado para P-bugs.
 
-**Fase C — Consolidación de comandos**
-- [ ] Nivel-0: `cortex finish`, `cortex start`, aliases ocultos de los viejos.
-- [ ] Eliminar `save-session`, unificar inject/uninstall/sync → `setup ide`.
-- [ ] Unificar salida `--format`; fix B3/B4 dispatch de search.
-- [ ] Test E2E del flujo ≤3 comandos (§2.2) sobre repo temporal.
-- Gate salida: gates §2.4 verdes.
+**Fase C — Consolidación de comandos — COMPLETA ✅ 2026-08-23**
+- [x] Nivel-0: `cortex finish` y `cortex start` visibles; create-spec/finish-session
+      quedan como aliases ocultos (compat 2 versiones). init gana --non-interactive.
+- [x] save-session oculto + warning (checkpoints automáticos); legacy IDE root
+      (inject/install-ide/uninstall-ide/sync-ide) ocultos con warnings — la superficie
+      única es `cortex ide` (Obra 02).
+- [x] B3/B4 arreglados: scope/project-id reales en el dispatch; --format siempre
+      honrado (--json queda como alias legacy compat). Tests test_search_b3b4.py +
+      7 tests actualizados al nuevo comportamiento.
+- [x] Test E2E del flujo ≤3 comandos sobre repo temporal con git real
+      (tests/e2e/test_flujo_3_comandos.py): init→start→finish deja nota en vault.
+      Expuso y corrigió bug de familia #4: init/setup_agent pasaban OptionInfo
+      como valores al llamarse entre sí (impl llana _run_setup_agent extraída).
+- Gate salida ✅ parcial: help raíz = EXACTAMENTE 8 visibles (next, start, finish,
+  init, doctor, context, tutor, search); E2E verde. Pendiente para cierre total
+  de §2.4: auditoría completa de flags sin implementar y convención --format en
+  TODOS los comandos con salida de datos (quedan casos heredados en docs/pr-context).
 
 **Fase D — TUIs**
 - [ ] `cortex/tui/core.py` (patrón session_tui generalizado) + pantalla home.

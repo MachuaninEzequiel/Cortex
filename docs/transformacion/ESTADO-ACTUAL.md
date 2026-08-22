@@ -18,7 +18,10 @@
   + APIs públicas SessionService (cero ._storage externo), + guide_path revivido.
   **Fase B COMPLETA**: paquete cortex/action_engine/ (models/store/registry/
   scheduler/runner/learning) + catálogo v1 completo (10 acciones) + comando
-  `cortex next` (<2s gate). Sigue Fase C: consolidación de comandos.
+  **Fase C COMPLETA**: nivel-0 start/finish + aliases ocultos; help raíz = 8
+  visibles exacto; B3/B4 search arreglados (--format honrado siempre);
+  E2E ≤3 comandos verde (init/start/finish sobre repo temporal). Sigue
+  Fase D: TUIs (home dashboard).
 - Refactors de este tramo: main.py 2540→1894 l (pr-context/hu/embedding/mcp/documenting);
   enricher sync/async unificados vía _finalize_items (V3) con DOS bugs reales corregidos
   (closure de lambdas: todas las estrategias buscaban la última query + drift Fase 08);
