@@ -73,6 +73,57 @@ class SessionService:
         self._storage = storage
         self._repo_root = Path(repo_root)
 
+    # ── API pública para CLI/TUI (Obra 05 Fase A) ────────────────
+
+    def save_new_record(self, record: SessionRecord) -> Path:
+        """Persistir un record NUEVO sin tocar el puntero de sesión activa.
+
+        Sustituye el acceso privado ``service._storage.save_new(...)``
+        que hacía ``cortex.ci.review_session`` (bootstrap de CI).
+        """
+        return self._storage.save_new(record)
+
+    def path_for(self, session_id: str) -> Path:
+        """Ruta canónica del YAML de una sesión (para watchers/TUI)."""
+        return self._storage.file_path(session_id)
+
+    def active_pointer_path(self) -> Path:
+        """Ruta del puntero ``active.txt`` (para detectar cambios)."""
+        return self._storage.active_pointer_path()
+
+    def find_for_pr(
+        self,
+        *,
+        explicit_session_id: str | None = None,
+        base_commit: str | None = None,
+        head_branch: str | None = None,
+    ) -> tuple[SessionRecord | None, str]:
+        """Resolver la Session que posee un PR (prioridad explícito>commit>branch).
+
+        Sustituye el acceso privado ``service._storage`` que hacía
+        ``cortex.ci.validator``. Devuelve ``(record, match_kind)`` con
+        ``match_kind`` en {"explicit", "by_commit", "by_branch", "none"}.
+        """
+        if explicit_session_id:
+            try:
+                return self._storage.load(explicit_session_id), "explicit"
+            except Exception:  # noqa: BLE001 — "none" en vez de crash
+                return None, "none"
+
+        records = self._storage.list_all()
+
+        if base_commit:
+            for record in records:
+                if record.start_commit == base_commit:
+                    return record, "by_commit"
+
+        if head_branch:
+            for record in records:
+                if record.start_branch == head_branch:
+                    return record, "by_branch"
+
+        return None, "none"
+
     # ── Active-session lock for external IDE extensions ───────────
 
     def _write_session_lock(self, session_id: str | None) -> None:

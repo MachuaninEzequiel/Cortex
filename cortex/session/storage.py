@@ -146,6 +146,16 @@ class SessionStorage:
     def _file_for(self, session_id: str) -> Path:
         return self._dir / f"{session_id}{SESSION_FILE_SUFFIX}"
 
+    # ── Superficie pública (consumida fuera del paquete session) ──
+
+    def file_path(self, session_id: str) -> Path:
+        """Ruta canónica del YAML de una sesión (lectura/watchers)."""
+        return self._file_for(session_id)
+
+    def active_pointer_path(self) -> Path:
+        """Ruta del puntero de sesión activa (``active.txt``)."""
+        return self._active_pointer()
+
     def _tmp_file_for(self, session_id: str) -> Path:
         return self._dir / f"{session_id}{_TMP_SUFFIX}"
 

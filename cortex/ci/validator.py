@@ -16,7 +16,6 @@ from cortex.ci.result import (
     ValidationInput,
     ValidationResult,
 )
-from cortex.ci.session_matcher import find_session_for_pr
 from cortex.documenter.reconstruction import _scope_cross_check
 from cortex.documenter.spec_loader import LoadedSpec, load_spec
 from cortex.session.models import SessionRecord, SessionStatus
@@ -44,8 +43,7 @@ class CiValidator:
 
     def validate(self, payload: ValidationInput) -> ValidationResult:
         """Return a :class:`ValidationResult` for ``payload``."""
-        record, match_kind = find_session_for_pr(
-            self._sessions._storage,  # noqa: SLF001 — read-only access
+        record, match_kind = self._sessions.find_for_pr(
             explicit_session_id=payload.explicit_session_id,
             base_commit=payload.base_commit,
             head_branch=payload.head_branch,
