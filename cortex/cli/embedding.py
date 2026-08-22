@@ -22,7 +22,7 @@ def register(app) -> None:
     # embedding-status (Obra 04 Fase C / E2b)
     # ---------------------------------------------------------------------------
 
-    @app.command(name="embedding-status")
+    @app.command(name="embedding-status", hidden=True)
     def embedding_status(
         project_root: str = typer.Option(None, help="Project root (defaults to CWD discovery)."),
     ) -> None:
@@ -88,7 +88,7 @@ def register(app) -> None:
     # reindex (Obra 04 Fase E — model migration)
     # ---------------------------------------------------------------------------
 
-    @app.command(name="reindex")
+    @app.command(name="reindex", hidden=True)
     def reindex(
         project_root: str = typer.Option(None, help="Project root (defaults to CWD discovery)."),
         prune_old_caches: bool = typer.Option(
@@ -198,7 +198,7 @@ def register(app) -> None:
     # sync-vault
     # ---------------------------------------------------------------------------
 
-    @app.command(name="sync-vault")
+    @app.command(name="sync-vault", hidden=True)
     def sync_vault() -> None:
         """Re-index the markdown vault."""
         mem = _load_memory()

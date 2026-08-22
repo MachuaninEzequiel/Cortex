@@ -15,7 +15,7 @@ import typer
 def register(app) -> None:
     """Registra ``mcp-server`` y el alias oculto ``mcp-serve``."""
 
-    @app.command(name="mcp-server")
+    @app.command(name="mcp-server", hidden=True)
     def mcp_server(
         project_root: str = typer.Option(None, "--project-root", help="Ruta absoluta al directorio del proyecto Cortex (donde está config.yaml)."),
         stdio: bool = typer.Option(True, "--stdio", help="Use stdio transport (required for IDE integration)."),

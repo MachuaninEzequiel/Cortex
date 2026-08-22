@@ -71,7 +71,7 @@ def register(app) -> None:
     # save-session
     # ---------------------------------------------------------------------------
 
-    @app.command(name="save-session")
+    @app.command(name="save-session", hidden=True)
     def save_session(
         title: str = typer.Option(..., help="Session title."),
         spec_summary: str = typer.Option(..., help="Original specification or task summary."),
@@ -83,6 +83,9 @@ def register(app) -> None:
         no_sync: bool = typer.Option(False, "--no-sync", help="Skip vault sync after writing."),
     ) -> None:
         """Persist a structured session note into the vault."""
+        typer.echo(
+            "⚠ Deprecated: los checkpoints automáticos / `cortex session checkpoint` reemplazan este comando.", err=True
+        )
         mem = _load_memory()
         path = mem.save_session_note(
             title=title,
@@ -101,7 +104,6 @@ def register(app) -> None:
     # create-spec
     # ---------------------------------------------------------------------------
 
-    @app.command(name="create-spec")
     def create_spec(
         title: str = typer.Option(..., help="Specification title."),
         goal: str = typer.Option(..., help="Primary implementation goal."),
@@ -191,6 +193,9 @@ def register(app) -> None:
     # finish-session (Pluggable Middle — Phase 01)
     # ---------------------------------------------------------------------------
 
+    app.command(name="create-spec", hidden=True)(create_spec)
+    app.command(name="start")(create_spec)
+
     def _resolve_interactive_mode(mem: object, cli_flag: bool | None) -> bool:
         """Resolve whether ``finish-session`` should enter interactive mode.
 
@@ -209,7 +214,6 @@ def register(app) -> None:
             return False
 
 
-    @app.command(name="finish-session")
     def finish_session(
         session_id: str | None = typer.Argument(
             None, help="Session id (defaults to the active session)."
@@ -362,3 +366,6 @@ def register(app) -> None:
             "your IDE instead of this CLI command. This auto-persist path "
             "remains valid for scripting and CI.",
         )
+
+    app.command(name="finish-session", hidden=True)(finish_session)
+    app.command(name="finish")(finish_session)

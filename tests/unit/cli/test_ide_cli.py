@@ -346,11 +346,14 @@ class TestLegacyDeprecationAndParity:
         assert "setup es idempotente" in legacy.output
         assert relative_tree(old_root) == relative_tree(new_root)
 
-    def test_legacy_commands_still_visible_in_help(self, runner: CliRunner) -> None:
+    def test_legacy_commands_ocultos_pero_funcionales(self, runner: CliRunner) -> None:
+        """Fase C: los legacy salen del help raíz (nivel-2) pero siguen
+        funcionando como aliases ocultos con warning de deprecación."""
         result = invoke_main(runner, ["--help"])
         assert result.exit_code == 0
-        assert "inject" in result.output
-        assert "install-ide" in result.output
-        assert "uninstall-ide" in result.output
-        assert "sync-ide" in result.output
-        assert "ide" in result.output
+        for viejo_cmd in ("inject", "install-ide", "uninstall-ide", "sync-ide"):
+            assert viejo_cmd not in result.output, (
+                f"{viejo_cmd} debe estar oculto del help raíz (Fase C)"
+            )
+        # la superficie unificada `cortex ide` sigue funcional (ver parity
+        # tests arriba); su descubribilidad pasa por la TUI home en Fase D.

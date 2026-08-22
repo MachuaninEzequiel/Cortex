@@ -134,22 +134,22 @@ def _root_callback(
     """Cortex — hybrid cognitive memory for AI agents."""
 
 
-app.add_typer(webgraph_app, name="webgraph")
+app.add_typer(webgraph_app, name="webgraph", hidden=True)
 
 # Autopilot subcommand (Fase 3)
 from cortex.autopilot.cli import app as autopilot_app
 
-app.add_typer(autopilot_app, name="autopilot")
+app.add_typer(autopilot_app, name="autopilot", hidden=True)
 
 # Session subcommand (Pluggable Middle architecture — Phase 00 / T0.8)
 from cortex.cli.session import session_app
 
-app.add_typer(session_app, name="session")
+app.add_typer(session_app, name="session", hidden=True)
 
 # Unified IDE surface (Obra 02 / Fase 3) — `cortex ide list|setup|remove|status`.
 from cortex.cli.ide import ide_app
 
-app.add_typer(ide_app, name="ide")
+app.add_typer(ide_app, name="ide", hidden=True)
 
 _IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
 
@@ -176,18 +176,18 @@ _register_mcp(app)
 from cortex.cli.hu import hu_app
 from cortex.cli.pr_context import pr_context_app
 
-app.add_typer(pr_context_app, name="pr-context")
-app.add_typer(hu_app, name="hu")
+app.add_typer(pr_context_app, name="pr-context", hidden=True)
+app.add_typer(hu_app, name="hu", hidden=True)
 
 # CI subcommand (Pluggable Middle Phase 07)
 from cortex.cli.ci import ci_app
 
-app.add_typer(ci_app, name="ci")
+app.add_typer(ci_app, name="ci", hidden=True)
 
 # Canonical documentation system (Fase 02 of canonical-documentation initiative)
 from cortex.cli.docs_subcommand import app as docs_app
 
-app.add_typer(docs_app, name="docs")
+app.add_typer(docs_app, name="docs", hidden=True)
 
 _DEFAULT_CONFIG = {
     "episodic": {
@@ -457,7 +457,7 @@ def pr_context_full(
 # ---------------------------------------------------------------------------
 
 setup_app = typer.Typer(help="Project setup with specialized profiles (agent, pipeline, full).")
-app.add_typer(setup_app, name="setup")
+app.add_typer(setup_app, name="setup", hidden=True)
 
 
 def _echo_dry_run_plan(profile: str, actions: list[str]) -> None:
@@ -823,7 +823,7 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-@app.command(name="org-config")
+@app.command(name="org-config", hidden=True)
 def org_config(
     project_root: str | None = typer.Option(
         None,
@@ -934,7 +934,7 @@ def context(
 # verify-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="verify-docs")
+@app.command(name="verify-docs", hidden=True)
 def verify_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
     base_branch: str = typer.Option("main", help="Branch to diff against."),
@@ -991,7 +991,7 @@ def verify_docs(
 # validate-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="validate-docs")
+@app.command(name="validate-docs", hidden=True)
 def validate_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
     files: str = typer.Option(
@@ -1061,7 +1061,7 @@ def validate_docs(
 # index-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="index-docs")
+@app.command(name="index-docs", hidden=True)
 def index_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
 ) -> None:
@@ -1105,7 +1105,7 @@ def index_docs(
 # agent-guidelines
 # ---------------------------------------------------------------------------
 
-@app.command(name="agent-guidelines")
+@app.command(name="agent-guidelines", hidden=True)
 def agent_guidelines() -> None:
     """
     Display agent behavior guidelines.
@@ -1159,7 +1159,7 @@ def tutor(
 # hint
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def hint() -> None:
     """Tip contextual: qué hacer ahora con Cortex. Zero tokens.
 
@@ -1179,7 +1179,7 @@ def hint() -> None:
 # install-skills
 # ---------------------------------------------------------------------------
 
-@app.command(name="install-skills")
+@app.command(name="install-skills", hidden=True)
 def install_skills(
     dest: str = typer.Option(
         ".cortex/skills", help="Directory to install skills into."
@@ -1209,7 +1209,7 @@ def install_skills(
 # remember
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def remember(
     content: str = typer.Argument(..., help="What the agent did / what happened."),
     memory_type: str = typer.Option("general", "--type", "-t", help="Memory category."),
@@ -1458,7 +1458,7 @@ def search(
 # ---------------------------------------------------------------------------
 
 
-@app.command(name="promote-knowledge")
+@app.command(name="promote-knowledge", hidden=True)
 def promote_knowledge(
     project_root: str | None = typer.Option(
         None,
@@ -1521,10 +1521,10 @@ def promote_knowledge(
         typer.echo(f"  - {r.local_rel_path} -> {r.dest_rel_path}  ({r.origin_id})")
 
 
-app.add_typer(review_app, name="review-knowledge")
+app.add_typer(review_app, name="review-knowledge", hidden=True)
 
 
-@app.command(name="sync-enterprise-vault")
+@app.command(name="sync-enterprise-vault", hidden=True)
 def sync_enterprise_vault(
     project_root: str | None = typer.Option(
         None,
@@ -1608,7 +1608,7 @@ def sync_enterprise_vault(
 # IDE / MCP
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def install_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to configure (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Configure all IDE adapters (deprecated/experimental)."),
@@ -1630,7 +1630,7 @@ def install_ide(
     run_setup(ide, project_root=project_root)
     typer.echo(f"Supported IDEs: {', '.join(get_supported_ides())}")
 
-@app.command()
+@app.command(hidden=True)
 def uninstall_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to clean (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Clean all IDE adapters (deprecated/experimental)."),
@@ -1650,7 +1650,7 @@ def uninstall_ide(
 
     run_remove(ide, project_root=project_root)
 
-@app.command(name="inject")
+@app.command(name="inject", hidden=True)
 def inject(
     ide: str | None = typer.Option(None, "--ide", help="IDE to inject (canonical names or aliases such as claude-code / claude-desktop)."),
     sync_canonical: bool = typer.Option(
@@ -1714,7 +1714,7 @@ def inject(
             typer.echo(f"❌ Invalid selection. Supported IDEs: {', '.join(supported)}")
 
 
-@app.command(name="sync-ide")
+@app.command(name="sync-ide", hidden=True)
 def sync_ide(
     ide: str = typer.Option(..., "--ide", help="IDE to sync (required)."),
     force: bool = typer.Option(False, "--force", help="Ignored: setup is idempotent."),
@@ -1732,7 +1732,7 @@ def sync_ide(
     run_setup(ide, project_root=project_root)
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
 
-@app.command()
+@app.command(hidden=True)
 def stats(
     project_root: str | None = typer.Option(
         None,
@@ -1746,7 +1746,7 @@ def stats(
     typer.echo(json.dumps(s, indent=2))
 
 
-@app.command(name="memory-report")
+@app.command(name="memory-report", hidden=True)
 def memory_report(
     project_root: str | None = typer.Option(
         None,
@@ -1877,7 +1877,7 @@ def memory_report(
 # forget
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def forget(
     memory_id: str = typer.Argument(..., help="ID of the memory to delete (e.g. mem_abc123)."),
 ) -> None:
