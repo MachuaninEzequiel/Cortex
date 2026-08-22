@@ -32,8 +32,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
+import warnings
+
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from cortex.enterprise.config import describe_enterprise_topology, load_enterprise_config
 from cortex.enterprise.retrieval_service import EnterpriseRetrievalService, RetrievalSourceConfig
@@ -69,16 +71,109 @@ from cortex.workitems.service import WorkItemService
 
 
 class EpisodicConfig(BaseModel):
+    # NOTE (Obra 04 Fase C): embedding_model/embedding_backend remain valid
+    # but are LEGACY when a top-level `embedding:` block exists. If both are
+    # configured, CortexConfig emits a migration warning and the new block
+    # wins (see _migrate_embedding_config).
     persist_dir: str = "memory"
     collection_name: str = "cortex_episodic"
     embedding_model: str = "all-MiniLM-L6-v2"
-    embedding_backend: Literal["onnx", "local", "openai"] = "onnx"
+    embedding_backend: Literal["onnx", "local", "openai", "fastembed"] = "onnx"
     namespace_mode: Literal["project", "branch", "custom"] = "project"
     namespace_value: str = ""
 
 
 class SemanticConfig(BaseModel):
     vault_path: str = "vault"
+
+
+# ------------------------------------------------------------------
+# Embedding config (Obra 04 Fase C — per-language embeddings)
+# ------------------------------------------------------------------
+
+EmbeddingBackendName = Literal["onnx", "local", "openai", "fastembed"]
+
+
+class EmbeddingLanguageConfig(BaseModel):
+    """Per-language embedder override inside ``embedding.per_language``."""
+
+    model: str
+    backend: EmbeddingBackendName | None = None  # inherits effective default
+
+
+class EmbeddingConfig(BaseModel):
+    """Top-level ``embedding:`` block (semantic + episodic shared).
+
+    Retrocompat: an absent/empty block changes NOTHING — the legacy
+    ``episodic.embedding_model`` / ``episodic.embedding_backend`` keep
+    ruling. Only when this block carries model/backend/per_language data
+    does it take over (with a migration warning if legacy fields were
+    customized too).
+    """
+
+    model: str | None = None
+    backend: EmbeddingBackendName | None = None
+    language_detection: Literal["off", "heuristic"] = "off"
+    per_language: dict[str, EmbeddingLanguageConfig] = Field(default_factory=dict)
+
+    def is_configured(self) -> bool:
+        """True when the block actively selects models (not just detection)."""
+        return (
+            self.model is not None
+            or self.backend is not None
+            or bool(self.per_language)
+        )
+
+
+def embedding_block_active(config: CortexConfig) -> bool:
+    """Whether the new ``embedding:`` block rules over the legacy fields."""
+    return config.embedding.is_configured()
+
+
+def resolve_embedder(config: CortexConfig, lang: str | None = None) -> tuple[str, str]:
+    """Resolve ``(model, backend)`` for a language (or the default).
+
+    Resolution order:
+      1. New block inactive (default) → legacy ``episodic.*`` values,
+         byte-identical to pre-Fase-C behaviour.
+      2. New block active:
+         - ``per_language[lang]`` entry if ``lang`` given and known
+           (entry backend falls back to the effective default backend).
+         - otherwise the block's ``model``/``backend``, each falling back
+           to the legacy ``episodic.*`` value when omitted.
+    """
+    emb = config.embedding
+    if not emb.is_configured():
+        return config.episodic.embedding_model, config.episodic.embedding_backend
+
+    eff_model = emb.model or config.episodic.embedding_model
+    eff_backend = emb.backend or config.episodic.embedding_backend
+
+    if lang is not None:
+        entry = emb.per_language.get(lang.strip().lower())
+        if entry is not None:
+            return entry.model, entry.backend or eff_backend
+
+    return eff_model, eff_backend
+
+
+def resolve_language_for_text(
+    config: CortexConfig,
+    text: str,
+    *,
+    frontmatter_lang: str | None = None,
+) -> str | None:
+    """Effective language of a text under the active config.
+
+    Priority: frontmatter ``lang:`` > heuristic detection (only when
+    ``language_detection: heuristic``) > ``None`` (use default model).
+    Pure helper; heavy lifting lives in :mod:`cortex.embedders.language`.
+    """
+    from cortex.embedders.language import resolve_language
+
+    if config.embedding.language_detection != "heuristic" and not frontmatter_lang:
+        return None
+    return resolve_language(frontmatter_lang, text)
 
 
 class RetrievalConfig(BaseModel):
@@ -124,6 +219,30 @@ class CortexConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
     documenter: DocumenterConfig = Field(default_factory=DocumenterConfig)
+    # Obra 04 Fase C: shared per-language embedding config. Empty by default
+    # → strict retrocompat (episodic.* rules).
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
+
+    @model_validator(mode="after")
+    def _migrate_embedding_config(self) -> "CortexConfig":
+        """Warn when legacy ``episodic.embedding_*`` and the new
+        ``embedding:`` block are BOTH customized; the new block wins."""
+        if self.embedding.is_configured():
+            legacy_model_default = EpisodicConfig.model_fields["embedding_model"].default
+            legacy_backend_default = EpisodicConfig.model_fields["embedding_backend"].default
+            if (
+                self.episodic.embedding_model != legacy_model_default
+                or self.episodic.embedding_backend != legacy_backend_default
+            ):
+                warnings.warn(
+                    "Deprecated embedding config: both 'embedding:' (new) and "
+                    "'episodic.embedding_model/embedding_backend' (legacy) are set. "
+                    "The new 'embedding:' block wins; move the legacy values into "
+                    "'embedding: {model: ..., backend: ...}' to silence this warning.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        return self
 
 
 # ------------------------------------------------------------------
@@ -251,10 +370,15 @@ class AgentMemory:
         )
 
         # --- Infrastructure layer (wired here, injected into services) ---
+        # Obra 04 Fase C: single-model wiring. The effective (model, backend)
+        # comes from resolve_embedder() — legacy episodic.* fields when no
+        # `embedding:` block is configured, the new block otherwise.
+        _eff_model, _eff_backend = resolve_embedder(self.config)
+        self._effective_embedding = (_eff_model, _eff_backend)
         self.episodic = EpisodicMemoryStore(
             persist_dir=str(self._runtime_episodic_dir),
-            embedding_model=self.config.episodic.embedding_model,
-            embedding_backend=self.config.episodic.embedding_backend,
+            embedding_model=_eff_model,
+            embedding_backend=_eff_backend,
             collection_name=self.config.episodic.collection_name,
         )
         self.summarizer = Summarizer(
@@ -263,8 +387,8 @@ class AgentMemory:
         )
         self.semantic = VaultReader(
             vault_path=str(self._vault_path_resolved),
-            embedding_model=self.config.episodic.embedding_model,
-            embedding_backend=self.config.episodic.embedding_backend,
+            embedding_model=_eff_model,
+            embedding_backend=_eff_backend,
         )
         self.retriever = HybridSearch(
             episodic=self.episodic,
@@ -411,8 +535,8 @@ class AgentMemory:
                 local_vault_path=str(self._vault_path_resolved),
                 local_episodic_dir=str(self._runtime_episodic_dir),
                 local_collection_name=self.config.episodic.collection_name,
-                embedding_model=self.config.episodic.embedding_model,
-                embedding_backend=self.config.episodic.embedding_backend,
+                embedding_model=self._effective_embedding[0],
+                embedding_backend=self._effective_embedding[1],
                 workspace_root=self._layout.workspace_root,
                 source_config=RetrievalSourceConfig(
                     local_weight=self.enterprise_config.memory.retrieval_local_weight,
@@ -445,6 +569,39 @@ class AgentMemory:
     def forget(self, memory_id: str) -> bool:
         """Delete a specific episodic memory by ID."""
         return self.episodic.delete(memory_id)
+
+    # ------------------------------------------------------------------
+    # Embedding resolution (Obra 04 Fase C)
+    # ------------------------------------------------------------------
+
+    def resolve_embedder(self, lang: str | None = None) -> tuple[str, str]:
+        """Return ``(model, backend)`` for *lang* under the active config.
+
+        With no ``embedding:`` block this is exactly the legacy
+        ``episodic.embedding_model/embedding_backend`` pair.
+        """
+        return resolve_embedder(self.config, lang)
+
+    def resolve_embedder_for_text(
+        self,
+        text: str,
+        *,
+        frontmatter_lang: str | None = None,
+    ) -> tuple[str, str]:
+        """Resolve ``(model, backend)`` for a text.
+
+        Language priority: frontmatter ``lang:`` > heuristic detection
+        (only with ``language_detection: heuristic``) > default model.
+        """
+        lang = resolve_language_for_text(
+            self.config, text, frontmatter_lang=frontmatter_lang
+        )
+        return self.resolve_embedder(lang)
+
+    @property
+    def embedding_block_active(self) -> bool:
+        """True when the new ``embedding:`` block rules (not episodic.*)."""
+        return embedding_block_active(self.config)
 
     def stats(self) -> dict[str, Any]:
         """Return basic stats about both memory stores."""

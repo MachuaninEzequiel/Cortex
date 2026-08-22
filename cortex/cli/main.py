@@ -25,6 +25,7 @@ Memory + retrieval
 - ``cortex remember``           — store an episodic memory (with ``--branch``, ``--commit``, ``--repo``).
 - ``cortex forget``             — delete an episodic memory by id.
 - ``cortex stats``              — memory store statistics (``--project-root`` aware).
+- ``cortex embedding-status``   — active embedding model/backend + per-language config (Obra 04).
 - ``cortex sync-vault``         — re-index the semantic vault.
 
 Workflow (governance-guarded)
@@ -1909,8 +1910,8 @@ def sync_enterprise_vault(
     mem = _load_memory()
     reader = VaultReader(
         vault_path=str(enterprise_vault),
-        embedding_model=mem.config.episodic.embedding_model,
-        embedding_backend=mem.config.episodic.embedding_backend,
+        embedding_model=mem._effective_embedding[0],
+        embedding_backend=mem._effective_embedding[1],
     )
     indexed = reader.sync()
     payload["indexed_docs"] = indexed
@@ -1923,6 +1924,71 @@ def sync_enterprise_vault(
         f"Enterprise vault synced ({indexed} docs indexed, {payload['warning_count']} warning(s)). "
         f"Validation report: {output}"
     )
+
+
+# ---------------------------------------------------------------------------
+# embedding-status (Obra 04 Fase C / E2b)
+# ---------------------------------------------------------------------------
+
+@app.command(name="embedding-status")
+def embedding_status(
+    project_root: str = typer.Option(None, help="Project root (defaults to CWD discovery)."),
+) -> None:
+    """Show active embedding model/backend and per-language config.
+
+    Diagnostic for post-migration checks: prints the effective single-model
+    pair, whether the new ``embedding:`` block rules over legacy
+    ``episodic.embedding_*``, detection mode and per-language entries.
+    Does NOT instantiate embedders (no model download/load).
+    """
+    from cortex.core import CortexConfig, embedding_block_active, resolve_embedder
+    from cortex.workspace import WorkspaceLayout
+
+    start = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
+    layout = WorkspaceLayout.discover(start)
+    config_path = layout.config_path
+    if not config_path.exists():
+        typer.echo(
+            f"❌ No Cortex config found at `{config_path}`.\n"
+            "   Run `cortex setup full --non-interactive` first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    try:
+        config = CortexConfig.model_validate(raw)
+    except Exception as exc:  # noqa: BLE001 — CLI surface: show a clean error
+        typer.echo(f"❌ Invalid config in {config_path}: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    emb = config.embedding
+    model, backend = resolve_embedder(config)
+    typer.echo("Embedding configuration")
+    typer.echo(f"  config file:    {config_path}")
+    typer.echo(f"  mode:           {'per-language block' if embedding_block_active(config) else 'legacy single-model'}")
+    typer.echo(f"  active model:   {model}")
+    typer.echo(f"  active backend: {backend}")
+    typer.echo(f"  detection:      {emb.language_detection}")
+    if emb.per_language:
+        typer.echo("  per_language:")
+        for lang in sorted(emb.per_language):
+            entry = emb.per_language[lang]
+            eff_backend = entry.backend or emb.backend or config.episodic.embedding_backend
+            typer.echo(f"    {lang}: model={entry.model} backend={eff_backend}")
+    else:
+        typer.echo("  per_language:   (empty → single-model mode)")
+    if (
+        embedding_block_active(config)
+        and (
+            config.episodic.embedding_model != "all-MiniLM-L6-v2"
+            or config.episodic.embedding_backend != "onnx"
+        )
+    ):
+        typer.echo(
+            "  ⚠ Both 'embedding:' and legacy 'episodic.embedding_*' are set; "
+            "the 'embedding:' block wins."
+        )
 
 
 # ---------------------------------------------------------------------------

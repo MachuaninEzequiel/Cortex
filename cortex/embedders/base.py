@@ -13,7 +13,9 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, runtime_checkable
 
-EmbeddingBackend = Literal["onnx", "local", "openai"]
+# Obra 04 Fase B/C: "fastembed" added as generic ONNX backend (non-MiniLM
+# models such as intfloat/multilingual-e5-large) via cortex.embedders.fastembedder.
+EmbeddingBackend = Literal["onnx", "local", "openai", "fastembed"]
 
 
 @runtime_checkable
