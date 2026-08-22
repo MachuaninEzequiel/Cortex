@@ -310,12 +310,25 @@ Gates de las TUIs:
 - Gate salida ✅: suite completa verde (2358 passed); sin cambios visibles para el usuario
   (telemetría escribe bajo .cortex/ con opt-out por config).
 
-**Fase B — ActionEngine core**
-- [ ] Paquete `cortex/action_engine/`: models, registry, scheduler on-open/on-event, runner
-      con action_log.jsonl, aprendizaje v0 (preferencias aceptar/saltar/nunca).
-- [ ] Catálogo v1: las 10 acciones de §3.3, cada una con dry-run nativo y tests.
-- [ ] Comando `cortex next` (lista acciones sin TUI — para agentes/scripts).
-- Gate salida: `cortex next` corre <2s en repo mediano; toda acción ejecuta y deshace en test.
+**Fase B — ActionEngine core — COMPLETA ✅ 2026-08-23**
+- [x] Paquete `cortex/action_engine/`: models.py (contrato §3.2 con validación dura:
+      auto_ok solo reversible+instant; reversible exige undo), store.py (ActionLog JSONL
+      con rotación + PreferencesStore actions.yaml), registry.py, scheduler.py
+      (precondiciones antes de ofrecer + explain_why_not + score impacto×frescura−costo,
+      max 5 visibles), runner.py (irreversible exige approved; dry-run nativo; TODO se
+      registra), learning.py (Learner v0: skip −15%, accept compensa 2 skips, never suprime).
+- [x] Catálogo v1: las 10 acciones de §3.3 sobre servicios existentes
+      (setup.finish_bootstrap→SetupOrchestrator · session.close_stale/checkpoint_now→
+      SessionService · vault.reindex→sync_vault · vault.validate_docs→DocValidator ·
+      quality.run_gates→review_checkpoint · learn.topic→TutorEngine+guide_path ·
+      knowledge.promote · memory.prune→feedback persistido · ide.resync→cortex.ide.inject_all).
+      Dry-run nativo en todas; report-only ⇒ reversible formal con undo no-op.
+- [x] Comando `cortex next` (--json/--explain-why-not/--all): contexto perezoso
+      (sin ChromaDB salvo necesidad), salida humana numerada + machine-readable.
+- Gate salida ✅: subprocess mide <2s en repo mediano (50 docs); toda acción ejecuta
+  dry-run en test y las mutadoras reales tienen asserts contra servicios.
+  BUG NUEVO hallado en el camino (#13 plan 01): SetupOrchestrator.run(dry_run=True)
+  crea archivos reales — registrado para P-bugs.
 
 **Fase C — Consolidación de comandos**
 - [ ] Nivel-0: `cortex finish`, `cortex start`, aliases ocultos de los viejos.

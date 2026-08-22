@@ -16,8 +16,9 @@
 - **OBRA 05 Fase A 1/4 ✅**: FeedbackStore JSONL + hook opcional en collector.
   **Fase A COMPLETA 4/4**: + telemetría cableada (rotación JSONL),
   + APIs públicas SessionService (cero ._storage externo), + guide_path revivido.
-  Sigue Fase B: ActionEngine core (models/registry/scheduler/runner + catálogo v1
-  + `cortex next`).
+  **Fase B COMPLETA**: paquete cortex/action_engine/ (models/store/registry/
+  scheduler/runner/learning) + catálogo v1 completo (10 acciones) + comando
+  `cortex next` (<2s gate). Sigue Fase C: consolidación de comandos.
 - Refactors de este tramo: main.py 2540→1894 l (pr-context/hu/embedding/mcp/documenting);
   enricher sync/async unificados vía _finalize_items (V3) con DOS bugs reales corregidos
   (closure de lambdas: todas las estrategias buscaban la última query + drift Fase 08);
