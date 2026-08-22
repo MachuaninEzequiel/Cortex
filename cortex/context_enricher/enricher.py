@@ -19,6 +19,7 @@ from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.models import EnrichedContext, EnrichedItem, EpisodicHit
 
 if TYPE_CHECKING:
+    from cortex.context_enricher.filters import EnrichmentFilters
     from cortex.context_enricher.telemetry import PersistentObserver
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.models import WorkContext
