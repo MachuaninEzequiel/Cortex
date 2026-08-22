@@ -133,7 +133,48 @@ class SetupOrchestrator:
         self._create_devsecdocops_script()
         self._create_enterprise_workspace()
 
+    def _simulate_flow(self, mode: SetupMode) -> None:
+        """Bug #13 fix: dry-run NO escribe nada — registra el plan y vuelve.
+
+        Antes ``run(dry_run=True)`` ejecutaba los pasos mutadores igual y
+        creaba archivos reales. Los perfiles usan este simulador genérico;
+        ENTERPRISE conserva su simulador específico.
+        """
+        planes: dict[SetupMode, list[str]] = {
+            SetupMode.AGENT: [
+                ".cortex/ workspace directories",
+                "config.yaml",
+                ".cortex/org.yaml",
+                "vault docs (architecture.md, context.md, decisions.md, runbooks/)",
+                "enterprise vault structure",
+                "agent guidelines + skills install",
+                "memory init (git history indexing)",
+            ],
+            SetupMode.PIPELINE: [
+                ".github/workflows/ CI workflows (ci-feature, ci-pull-request, cd-deploy)",
+                "scripts/ DevSecDocOps pipeline script",
+                "config.yaml",
+                "enterprise vault structure (CI/CD docs)",
+            ],
+            SetupMode.WEBGRAPH: [".cortex/webgraph/ install"],
+            SetupMode.FULL: [
+                ".cortex/ workspace directories",
+                "config.yaml",
+                ".cortex/org.yaml",
+                "vault docs + enterprise vault structure",
+                ".github/workflows/ CI workflows",
+                "scripts/ DevSecDocOps pipeline script",
+                "agent guidelines + skills install",
+                "memory init",
+            ],
+        }
+        for item in planes.get(mode, []):
+            self.created.append(f"[dry-run] {item}")
+
     def _run_agent_flow(self) -> None:
+        if self.dry_run:
+            self._simulate_flow(SetupMode.AGENT)
+            return
         """Setup only local agent/cognitive components."""
         self._create_directories()
         self._create_config()
@@ -147,6 +188,9 @@ class SetupOrchestrator:
             self._install_ide()
 
     def _run_pipeline_flow(self) -> None:
+        if self.dry_run:
+            self._simulate_flow(SetupMode.PIPELINE)
+            return
         """Setup only CI/CD / DevOps components."""
         self._check_vault_pipeline_interactive()
         self._create_config()
@@ -162,6 +206,9 @@ class SetupOrchestrator:
         agentic workspace + WebGraph visualization + DevSecDocOps pipeline.
         Idempotent — running twice does not duplicate state.
         """
+        if self.dry_run:
+            self._simulate_flow(SetupMode.FULL)
+            return
         self._create_directories()
         self._create_config()
         self._create_enterprise_org_config()
@@ -218,6 +265,9 @@ class SetupOrchestrator:
         self.created.append(f".gitignore (+ {len(missing)} pattern(s))")
 
     def _run_webgraph_flow(self) -> None:
+        if self.dry_run:
+            self._simulate_flow(SetupMode.WEBGRAPH)
+            return
         """Setup only the webgraph module with minimal supporting files."""
         self._install_webgraph()
 
