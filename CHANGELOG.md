@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## [Unreleased] — Obra 04: multilingual embeddings (per-language, e5-large for Spanish)
+
+Measured migration off the English-only default embedder. All quality
+claims are backed by the new evaluation suite (`eval/retrieval/`),
+not by vendor claims. See `docs/transformacion/04-VECTORIZACION-E-IDIOMA.md`.
+
+### Fixed
+- **Silent empty-search bug**: a vector-cache failure mid-batch produced
+  empty results with no error. Now fails fast with chunk context; cache
+  errors degrade to a WARNING and indexing continues without cache.
+- `update_note` destroyed frontmatter; it is now preserved verbatim.
+- Duplicate section titles collided into one chunk id (sections lost);
+  positional suffixes are added only on real collisions.
+- `create_note` did not persist index metadata.
+
+### Added
+- Per-language embedding config block (`embedding:` with
+  `per_language`, heuristic ES/EN detection, strict retrocompat).
+- Generic `fastembed` ONNX backend (any fastembed model, no PyTorch),
+  with automatic E5 `query:/passage:` prefixes.
+- `cortex reindex` command: backup -> rebuild vector cache with the
+  active model -> optional `--prune-old-caches`; automatic rollback of
+  the backup if the rebuild fails.
+- `cortex embedding-status` diagnostic command.
+- Retrieval evaluation suite `eval/retrieval/` (ES/EN dataset, MRR@10 /
+  Recall@k metrics) with the committed MiniLM baseline.
+- Vector cache model identity: fingerprints salted with model name,
+  schema v2 header, automatic invalidation when the model changes;
+  parametric embedding dimension (no more hardwired 384).
+
+### Changed
+- Consolidated duplicate embedder stacks (`episodic/embedder` now
+  delegates to `EmbedderFactory`); OpenAI embeddings batch per request
+  instead of one HTTP call per text.
+- Setup template generates bilingual defaults: Spanish uses
+  `intfloat/multilingual-e5-large` via fastembed (+9% MRR@10,
+  +14% Recall@1 measured vs MiniLM), English keeps all-MiniLM-L6-v2.
+- Deprecated legacy `episodic.embedding_model/embedding_backend` in
+  favour of the `embedding:` block (still functional, emits a warning).
+
+# CHANGELOG
+
 ## [Unreleased] — Phase 07: CI plugin (3 levels)
 
 Provider-agnostic CLI to validate pull requests against the matching

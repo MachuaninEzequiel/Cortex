@@ -56,9 +56,20 @@ episodic:
   persist_dir: {persist_dir}
   collection_name: cortex_episodic
   embedding_model: all-MiniLM-L6-v2
-  embedding_backend: onnx  # onnx | local | openai
+  embedding_backend: onnx  # onnx | local | openai | fastembed
   namespace_mode: project  # project | branch | custom
   namespace_value: ""
+
+# Obra 04: per-language embeddings. Spanish gets multilingual-e5-large
+# (measured +9% MRR / +14% R@1 vs MiniLM on eval/retrieval); English keeps
+# the lightweight default. Remove this block to fall back to single-model.
+embedding:
+  backend: fastembed
+  language_detection: heuristic
+  per_language:
+    es:
+      model: intfloat/multilingual-e5-large
+      backend: fastembed
 
 semantic:
   vault_path: {vault_path}
