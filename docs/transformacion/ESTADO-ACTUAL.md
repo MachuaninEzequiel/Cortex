@@ -14,8 +14,10 @@
 - **OBRA 04**: recomendación default global documentada (per-language; flip+reindex=dueño);
   int8 con plan concreto pendiente de ejecución.
 - **OBRA 05 Fase A 1/4 ✅**: FeedbackStore JSONL + hook opcional en collector.
-  Restan: cablear observer=, APIs SessionService para TUI, revivir guide_path,
-  y Fases B-E del plan.
+  **Fase A COMPLETA 4/4**: + telemetría cableada (rotación JSONL),
+  + APIs públicas SessionService (cero ._storage externo), + guide_path revivido.
+  Sigue Fase B: ActionEngine core (models/registry/scheduler/runner + catálogo v1
+  + `cortex next`).
 - Refactors de este tramo: main.py 2540→1894 l (pr-context/hu/embedding/mcp/documenting);
   enricher sync/async unificados vía _finalize_items (V3) con DOS bugs reales corregidos
   (closure de lambdas: todas las estrategias buscaban la última query + drift Fase 08);

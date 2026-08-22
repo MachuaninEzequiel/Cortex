@@ -294,12 +294,21 @@ Gates de las TUIs:
 
 ### 5.3 Fases (orden interno de Obra 05)
 
-**Fase A — Fundaciones (tras TRAMO 1 de Obras 01+02)**
-- [ ] Persistir feedback_loop (`.cortex/feedback.jsonl`) + tests.
-- [ ] Cablear observer= en ContextEnricher (core/MCP/CLI) + rotación JSONL.
-- [ ] APIs públicas en SessionService usadas por CLI/TUI (eliminar accesos `_storage`).
-- [ ] Revivir `guide_path` en tutor topics (7 topics).
-- Gate salida: tests de las 4 piezas verdes; ningún comportamiento de usuario cambia aún.
+**Fase A — Fundaciones (tras TRAMO 1 de Obras 01+02) — COMPLETA ✅ 2026-08-23**
+- [x] Persistir feedback_loop: `cortex/feedback_store.py` (JSONL + rotación + fsync)
+      + hook opcional `FeedbackCollector(store=...)`. Tests: test_feedback_store.py.
+- [x] Cablear observer=: make_observer() en los 4 sitios de ContextEnricher
+      (core/MCP/cli context/docs_search) + rotación JSONL en PersistentObserver
+      (_MAX_BYTES 5MB → .1.jsonl; iter_events lee vivo+rotado). Tests: test_observer_wiring.py.
+- [x] APIs públicas SessionService: save_new_record(), path_for(),
+      active_pointer_path(), find_for_pr(). Cero accesos `_storage` fuera del
+      paquete session (ci/review_session, ci/validator y session_tui migrados).
+      Tests: test_public_api_v9.py.
+- [x] Revivir guide_path: TutorEngine._render_topic muestra '📖 Guía extendida'
+      cuando el topic define ruta; guardia de que las rutas existen.
+      Tests: test_tutor/test_guide_path.py.
+- Gate salida ✅: suite completa verde (2358 passed); sin cambios visibles para el usuario
+  (telemetría escribe bajo .cortex/ con opt-out por config).
 
 **Fase B — ActionEngine core**
 - [ ] Paquete `cortex/action_engine/`: models, registry, scheduler on-open/on-event, runner
