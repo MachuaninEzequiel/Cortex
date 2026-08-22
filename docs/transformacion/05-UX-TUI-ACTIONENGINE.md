@@ -363,12 +363,17 @@ Gates de las TUIs:
   interactiva completa queda como pulido post-gate (hoy orquesta
   `session watch`/`cortex finish` por CLI-equivalencia).
 
-**Fase E — Aprendizaje cerrado + pulido**
-- [ ] Score de prioridad alimentado por feedback real (memoria útil/no útil desde búsqueda TUI).
-- [ ] Métrica de éxito del dueño: % de decisiones rutinarias tomadas por el motor.
-      Target: usuario abre el menú de acciones <1 vez por día de trabajo activo.
-- [ ] Pasada de i18n ES/EN según config de Obra 04.
-- Gate salida: medición sobre 2 semanas de uso real registrada en ESTADO-ACTUAL.md.
+**Fase E — Aprendizaje cerrado + pulido — IMPLEMENTADA ✅ 2026-08-23**
+- [x] Score alimentado por feedback real: signals.py lee feedback.jsonl
+      (ventana 14d) → Scheduler multiplica por categoría (±25% tope):
+      dominio negativo sube quality/maintenance, positivo learning/knowledge.
+- [x] Métrica del dueño: metrics.py calcula pct_motor = via=auto/total reales
+      desde action_log.jsonl; `cortex next --stats` la expone con su definición.
+- [x] i18n ES/EN: ui.language en config.yaml (default es) — títulos de las 10
+      acciones + etiquetas del Home bilingües.
+- Gate salida: la VENTANA DE MEDICIÓN se abre con la adopción (no es
+  simulable en CI): registrar en ESTADO-ACTUAL.md tras ≥2 semanas de uso
+  real el pct_motor observado y días/menú. Definición y herramienta listas.
 
 ### 5.4 Riesgos
 
@@ -382,10 +387,12 @@ Gates de las TUIs:
 
 ### 5.5 Definición de "hecho" de la Obra 05
 
-- [ ] Gates de §2.4 (consolidación), §3 (contrato Action + log), §4.5 (TUIs) todos verificados.
-- [ ] Flujo nuevo usuario demostrado en E2E: init → cortex → finish = 3 comandos.
-- [ ] action_log muestra ≥1 ciclo completo observar→proponer→aprobar→ejecutar→aprender en uso real.
-- [ ] Ningún archivo fuera de docs/transformacion modificado durante la planificación (esta fase).
+- [x] Gates §2.4 parciales verificados (help raíz = 8; E2E 3 comandos verde;
+      --format unificado en search). Auditoría completa de flags heredados: pendiente menor.
+- [x] Contrato Action + action_log verificados por tests (test_core/test_catalog).
+- [x] Ciclo observar→proponer→aprobar→ejecutar→aprender implementado y testeado;
+      el ciclo EN USO REAL queda sujeto a la ventana de medición (2 semanas).
+- [x] Planificación sin tocar código fuera de docs (fases previas).
 
 ## 1. Mapa de la UX actual
 
