@@ -359,8 +359,13 @@ class IDEAdapter(ABC):
             results[f"{name}_exists"] = path.exists()
         return results
 
-    def uninstall(self) -> list[str]:
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
         """Remove Cortex configuration from this IDE.
+
+        Obra 02 Fase 2: la firma acepta ``project_root`` explícito para que
+        TODOS los adapters puedan implementar remove real. El default sigue
+        siendo no-op hasta que cada adapter migre (los que aún no migraron
+        deben ignorar ``project_root`` y devolver ``[]``).
 
         Returns:
             List of files removed/cleaned.
