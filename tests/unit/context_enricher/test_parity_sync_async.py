@@ -16,7 +16,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
-import pytest
 
 from cortex.context_enricher.async_enricher import AsyncContextEnricher
 from cortex.context_enricher.config import ContextEnricherConfig
@@ -156,7 +155,6 @@ class TestParidadScoring:
 
     def test_filtros_fase08_aplicados_en_ambos(self) -> None:
         """Drift V3: pre-fix el path async ignoraba los filtros estructurales."""
-        config = _config()
         script = {
             Q1: [_hit("reciente_ok", 0.9, age_days=2), _hit("viejo_fuera", 0.95, age_days=900)],
         }

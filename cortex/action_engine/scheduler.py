@@ -51,9 +51,9 @@ class Scheduler:
     ) -> list[ProposedAction]:
         """Acciones ofrecibles ahora mismo.
 
-        ``deep=False`` (on-open): snapshot barato — las acciones pueden
-        declarar checks costosos con ``deep_only=True`` en la razón
-        (convención: descripción que empieza con "deep:") para omitirlos.
+        ``deep=False`` (on-open): snapshot barato — los checks marcados
+        ``deep_only`` se omiten. ``deep=True`` (--all/on-schedule): escaneo
+        completo incluyendo los costosos.
         """
         propuestas: list[ProposedAction] = []
         for action in registry.all():
@@ -63,7 +63,7 @@ class Scheduler:
             fallidas = [
                 check.description
                 for check in action.preconditions
-                if not check.cumple()
+                if not check.cumple(deep=deep)
             ]
             if fallidas:
                 continue
@@ -91,7 +91,7 @@ class Scheduler:
             fallidas = [
                 check.description
                 for check in action.preconditions
-                if not check.cumple()
+                if not check.cumple(deep=deep)
             ]
             if fallidas:
                 detalle[action.id] = fallidas

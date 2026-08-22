@@ -13,8 +13,6 @@ import pytest
 
 from cortex.action_engine.actions import build_default_registry
 from cortex.action_engine.context import ActionContext
-from cortex.action_engine.models import ActionResult
-from cortex.action_engine.registry import Registry
 from cortex.action_engine.runner import Runner
 
 

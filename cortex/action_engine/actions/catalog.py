@@ -195,7 +195,6 @@ def session_checkpoint_now(ctx: ActionContext) -> Action:
 
 def vault_reindex(ctx: ActionContext) -> Action:
     def _hay_vault() -> bool:
-        vault = getattr(ctx.mem, "workspace_root", None)
         return True  # sync_vault es idempotente; se ofrece siempre
 
     def _run(dry_run: bool) -> ActionResult:

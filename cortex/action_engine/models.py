@@ -42,12 +42,20 @@ def _ahora() -> datetime:
 
 @dataclass(frozen=True)
 class Check:
-    """Precondición pura: predicado sin efectos + razón legible si falla."""
+    """Precondición pura: predicado sin efectos + razón legible si falla.
+
+    ``deep_only=True``: el check es costoso (escaneos completos) y SOLO se
+    evalúa en modo deep (``cortex next --all`` / on-schedule). En snapshot
+    on-open se asume cumplido y no bloquea la propuesta.
+    """
 
     description: str
     predicate: Callable[[], bool]
+    deep_only: bool = False
 
-    def cumple(self) -> bool:
+    def cumple(self, *, deep: bool = False) -> bool:
+        if self.deep_only and not deep:
+            return True
         try:
             return bool(self.predicate())
         except Exception:  # noqa: BLE001 — un check roto nunca ofrece la acción

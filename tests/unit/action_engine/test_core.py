@@ -99,13 +99,15 @@ class TestActionLog:
             run=lambda dr: ActionResult(ok=True, message="boom"),
         )
         runner = Runner(directory=tmp_path)
+        deshechos: list[str] = []
         runner.execute(accion, dry_run=True)
         runner.execute(accion)
         runner.execute(irreversible, approved=True)
 
         resultado = runner.undo_last()
         # la última real es la irreversible (sin undo) → deshace la anterior
-        assert resultado is not None and resultado.message == "back"
+        deshechos.append(resultado.message if resultado else None)
+        assert deshechos == ["back"] and len(runner._historial) == 1
 
 
 class TestSchedulerYPreferencias:

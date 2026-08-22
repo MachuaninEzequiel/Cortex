@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from cortex.context_enricher.telemetry import (
