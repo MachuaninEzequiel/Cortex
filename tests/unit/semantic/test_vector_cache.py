@@ -11,15 +11,16 @@ import pytest
 
 from cortex.semantic.vector_cache import (
     CACHE_SCHEMA_VERSION,
-    VECTOR_DIM,
     CacheStats,
     VectorCache,
 )
 
+_DIM = 384  # all-MiniLM-L6-v2 (local: the module constant was removed by A1)
+
 
 def _rand_vec(seed: int = 0) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    return rng.random(VECTOR_DIM).astype(np.float32)
+    return rng.random(_DIM).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +240,8 @@ def test_cache_stats_hit_rate_zero_when_no_calls() -> None:
 
 
 def test_put_invalid_dimension_raises(tmp_path: Path) -> None:
-    cache = VectorCache(tmp_path / "vectors")
+    # A1: dim is parametric; the cache enforces the configured dimension.
+    cache = VectorCache(tmp_path / "vectors", model_name="m", dim=384)
     bad = np.random.rand(100).astype(np.float32)
     with pytest.raises(ValueError, match="384"):
         cache.put("fp", "c", bad)
@@ -247,7 +249,7 @@ def test_put_invalid_dimension_raises(tmp_path: Path) -> None:
 
 def test_put_coerces_float64_to_float32(tmp_path: Path) -> None:
     cache = VectorCache(tmp_path / "vectors")
-    vec_f64 = np.random.rand(VECTOR_DIM).astype(np.float64)
+    vec_f64 = np.random.rand(_DIM).astype(np.float64)
     cache.put("fp", "c", vec_f64)
     out = cache.get("fp")
     assert out.dtype == np.float32

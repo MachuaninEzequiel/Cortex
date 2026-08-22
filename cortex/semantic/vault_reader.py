@@ -19,7 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from cortex.documentation.common import compute_fingerprint
+from cortex.documentation.common import compute_fingerprint, yaml_dump_safe
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.inventory import classify_path
 from cortex.episodic.embedder import Embedder
@@ -27,12 +27,16 @@ from cortex.models import SemanticDocument
 from cortex.security.paths import resolve_safe, validate_under_root
 from cortex.semantic.chunker import Chunk, chunk_document
 from cortex.semantic.markdown_parser import MarkdownParser
-from cortex.semantic.vector_cache import VectorCache
+from cortex.semantic.vector_cache import DEFAULT_MODEL_NAME, VectorCache, cache_fingerprint
 
 logger = logging.getLogger(__name__)
 
 # Index file persisted alongside the vault
 _INDEX_FILE = ".cortex_index.json"
+
+# Fallback model identity used to salt cache fingerprints when the embedder
+# object does not expose ``model_name`` (Fix A2/A3 wiring).
+DEFAULT_EMBEDDING_MODEL = DEFAULT_MODEL_NAME
 
 
 class VaultReader:
@@ -258,6 +262,18 @@ class VaultReader:
     # Cache-aware embedding helpers (Fase 06)
     # ------------------------------------------------------------------
 
+    def _drop_vector_cache(self, reason: str) -> None:
+        """Degrade to direct embedding after a cache failure (Fix A2).
+
+        Loudly visible (WARNING): a broken cache must slow things down or
+        cost re-embeddings, but it must never corrupt results silently.
+        """
+        logger.warning(
+            "Vector cache unusable (%s); continuing WITHOUT cache "
+            "(vectors will be recomputed on next run)", reason,
+        )
+        self._vector_cache = None
+
     def _embed_single_with_cache(
         self, rel_path: str, search_text: str
     ) -> list[float]:
@@ -265,7 +281,8 @@ class VaultReader:
         if self._vector_cache is None:
             return self._embedder.embed(search_text)
 
-        fp = compute_fingerprint(search_text)
+        model_name = getattr(self._embedder, "model_name", DEFAULT_EMBEDDING_MODEL)
+        fp = cache_fingerprint(model_name, search_text)
         cached = self._vector_cache.get(fp)
         if cached is not None:
             return cached.tolist()
@@ -275,8 +292,10 @@ class VaultReader:
             import numpy as _np
             arr = _np.asarray(vec, dtype=_np.float32)
             self._vector_cache.put(fp, rel_path, arr)
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.debug("Vector cache put failed for %s: %s", rel_path, exc)
+        except Exception as exc:
+            # Fix A2: cache write failures are degraded loudly to no-cache;
+            # the freshly computed vector is still returned.
+            self._drop_vector_cache(f"put failed for {rel_path}: {exc}")
         return vec
 
     def _embed_batch_with_cache(
@@ -284,12 +303,23 @@ class VaultReader:
     ) -> list[list[float]]:
         """Batch embed, hitting the cache for known fingerprints first.
 
-        Returns vectors in the same order as ``rel_paths``/``search_texts``.
+        Fix A2 semantics:
+        - An embedder error is infrastructure failure → propagate wrapped
+          ``RuntimeError`` with chunk context. Never return partial vectors.
+        - A cache-write error is degradation → WARNING + continue without
+          cache. Every result slot is still filled with a real vector.
         """
         if self._vector_cache is None:
-            return list(self._embedder.embed_batch(list(search_texts)))
+            try:
+                return list(self._embedder.embed_batch(list(search_texts)))
+            except Exception as exc:
+                raise RuntimeError(
+                    f"embedding failed for {len(search_texts)} chunks "
+                    f"(first: {rel_paths[0] if rel_paths else '?'})"
+                ) from exc
 
-        fingerprints = [compute_fingerprint(text) for text in search_texts]
+        model_name = getattr(self._embedder, "model_name", DEFAULT_EMBEDDING_MODEL)
+        fingerprints = [cache_fingerprint(model_name, text) for text in search_texts]
 
         # Resolve cache hits.
         results: list[list[float] | None] = [None] * len(rel_paths)
@@ -304,19 +334,44 @@ class VaultReader:
         # Batch embed the misses.
         if miss_indices:
             miss_texts = [search_texts[i] for i in miss_indices]
-            miss_vectors = self._embedder.embed_batch(miss_texts)
+            first_miss_rel = rel_paths[miss_indices[0]]
+            try:
+                miss_vectors = self._embedder.embed_batch(miss_texts)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"embedding failed for chunk {first_miss_rel}"
+                    f" (+{len(miss_texts) - 1} more)"
+                ) from exc
+            if len(miss_vectors) != len(miss_texts):
+                raise RuntimeError(
+                    f"embedder returned {len(miss_vectors)} vectors for "
+                    f"{len(miss_texts)} chunks (first missing: {first_miss_rel})"
+                )
+
+            # Transactional cache write (all-or-nothing via batch_put).
             try:
                 import numpy as _np
-                for idx, vec in zip(miss_indices, miss_vectors, strict=False):
-                    arr = _np.asarray(vec, dtype=_np.float32)
-                    self._vector_cache.put(fingerprints[idx], rel_paths[idx], arr)
+                items = [
+                    (fingerprints[idx], rel_paths[idx],
+                     _np.asarray(vec, dtype=_np.float32))
+                    for idx, vec in zip(miss_indices, miss_vectors)
+                ]
+                self._vector_cache.batch_put(items)
+                for idx, vec in zip(miss_indices, miss_vectors):
                     results[idx] = vec
-            except Exception as exc:  # pragma: no cover - defensive
-                logger.debug("Vector cache batch put failed: %s", exc)
-                for idx, vec in zip(miss_indices, miss_vectors, strict=False):
-                    results[idx] = vec
+            except Exception as exc:
+                # Degrade loudly: keep going without cache, but every slot
+                # still gets its freshly computed vector below.
+                self._drop_vector_cache(f"batch_put failed at {first_miss_rel}: {exc}")
+                for idx, vec in zip(miss_indices, miss_vectors):
+                    results[idx] = list(vec)
 
-        return [v if v is not None else [] for v in results]
+        # Fail-fast guard: an incomplete result can never leave this method.
+        if any(v is None for v in results):
+            missing = [rel_paths[i] for i, v in enumerate(results) if v is None]
+            raise RuntimeError(f"internal error: vectors missing for {missing[:3]}")
+
+        return [v for v in results if v is not None]
 
     # ------------------------------------------------------------------
     # Chunking helpers (Fase 07)
@@ -451,19 +506,13 @@ class VaultReader:
         except OSError:
             logger.debug("Could not persist index meta to %s", meta_path)
 
-    def _load_index_meta(self) -> bool:
-        """Load BM25 index metadata if available. Returns True on success."""
-        meta_path = self.vault_path / _INDEX_FILE
-        if not meta_path.exists():
-            return False
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            self._doc_lengths = meta.get("doc_lengths", {})
-            self._avgdl = meta.get("avgdl", 1.0)
-            self._idf = meta.get("idf", {})
-            return True
-        except (json.JSONDecodeError, OSError):
-            return False
+    # Decision (Fix A5): ``_load_index_meta`` was REMOVED, not wired.
+    # Rationale: ``sync()`` recomputes BM25 stats from already-parsed docs on
+    # every cold start, and embeddings are never restored from disk either,
+    # so a meta-only restore would produce an inconsistent half-index while
+    # saving nothing measurable. The saved meta stays useful as a diagnostic
+    # artifact and for future Fase C/E consumers; it is written through
+    # :meth:`_persist_after_write` after every vault write.
 
     # ------------------------------------------------------------------
     # Read / search (public)
@@ -556,7 +605,7 @@ class VaultReader:
             self._compute_idf()
             
             # Save lightweight meta (without full sync)
-            self._save_index_meta()
+            self._persist_after_write()
             return True
         except Exception as e:
             logger.error("Failed to index file %s: %s", relative_path, e)
@@ -618,16 +667,48 @@ class VaultReader:
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
         # Update IDF
         self._compute_idf()
+        self._persist_after_write()
 
         logger.info("Note created: %s", path)
         return path
 
+    @staticmethod
+    def _merge_frontmatter(existing_text: str, new_content: str) -> str:
+        """Merge ``new_content`` into ``existing_text`` keeping frontmatter (A5).
+
+        The existing YAML frontmatter block (title, tags, custom keys) is
+        preserved verbatim; only the body is replaced. If ``new_content``
+        already carries its own frontmatter it is treated as a complete
+        document and written as-is.
+        """
+        if new_content.lstrip("﻿").startswith("---"):
+            return new_content
+        match = re.match(r"\A---\s*\n(.*?)\n---\s*\n", existing_text, re.DOTALL)
+        if not match:
+            return new_content
+        return f"---\n{match.group(1)}\n---\n\n{new_content}"
+
+    def _persist_after_write(self) -> None:
+        """Persist index metadata after ANY vault write (Fix A5).
+
+        Single funnel so a new write path cannot forget to sync BM25 meta.
+        """
+        self._save_index_meta()
+
     def update_note(self, relative_path: str, new_content: str) -> bool:
-        """Overwrite the body of an existing note. Returns True on success."""
+        """Overwrite the body of an existing note, preserving frontmatter.
+
+        Fix A5: previously this wrote ``new_content`` raw over the whole
+        file, destroying the original title/tags frontmatter.
+        Returns True on success.
+        """
         path = resolve_safe(self.vault_path, relative_path)
         if not path.exists():
             return False
-        path.write_text(new_content, encoding="utf-8")
+        existing = path.read_text(encoding="utf-8")
+        path.write_text(
+            self._merge_frontmatter(existing, new_content), encoding="utf-8"
+        )
         self._index[relative_path] = self._parser.parse(path)
 
         # Re-embed (chunk-aware + cache-aware).
@@ -647,11 +728,8 @@ class VaultReader:
         docs = list(self._doc_lengths.values())
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
         self._compute_idf()
+        self._persist_after_write()
 
         return True
 
 
-def yaml_dump_safe(data: dict) -> str:
-    """Dump a dict to YAML string safely (handles special characters)."""
-    import yaml
-    return yaml.dump(data, default_flow_style=False, allow_unicode=True)

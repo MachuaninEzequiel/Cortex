@@ -17,6 +17,10 @@ Invalidation triggers:
     2. ``schema_version`` bump (cache layout changed).
     3. Explicit ``invalidate(fp)`` or ``invalidate_by_chunk_id(prefix)``.
 
+4. Model identity mismatch (``model_name`` in header differs from the
+   configured model) or dimension change — vectors of another model are
+   never reused.
+
 The cache is thread-safe (single-process, RLock). It is **not** safe for
 concurrent processes; that's a deliberate trade-off for MVP simplicity.
 
@@ -26,6 +30,7 @@ When invalidations accumulate, call ``compact()`` to reclaim space. The
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import threading
@@ -36,10 +41,20 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-CACHE_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 2
 VECTOR_DTYPE = np.float32
-VECTOR_DIM = 384  # all-MiniLM-L6-v2
-_BYTES_PER_VECTOR = VECTOR_DIM * 4  # float32 = 4 bytes
+DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
+
+
+def cache_fingerprint(model_name: str, embedding_text: str) -> str:
+    """Content fingerprint salted with model identity (Fix A3).
+
+    ``sha256(model_name + "\x00" + schema_version + "\x00" + embedding_text)``
+    so the same text embedded by a different model never collides: changing
+    ``embedding_model`` invalidates cached vectors by construction.
+    """
+    payload = f"{model_name}\x00{CACHE_SCHEMA_VERSION}\x00{embedding_text}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -85,9 +100,14 @@ class VectorCache:
 
     Args:
         cache_dir: directory where ``index.json`` and ``chunks.bin`` live.
+        model_name: identity of the embedding model. Stored in the index
+            header; opening the same directory with a different model resets
+            the cache (Fix A3).
+        dim: expected vector dimension. When ``None``, it is derived from
+            the first stored vector and enforced afterwards (Fix A1).
 
     Example:
-        >>> cache = VectorCache(Path(".cortex/vectors"))
+        >>> cache = VectorCache(Path(".cortex/vectors"), model_name="m", dim=768)
         >>> vec = np.random.rand(384).astype(np.float32)
         >>> cache.put("fingerprint-hash", "decisions/ADR-007.md", vec)
         >>> got = cache.get("fingerprint-hash")
@@ -97,10 +117,16 @@ class VectorCache:
         self,
         cache_dir: Path,
         *,
+        model_name: str = DEFAULT_MODEL_NAME,
+        dim: int | None = None,
         auto_compact: bool = True,
         auto_compact_threshold: float = 0.30,
     ) -> None:
+        if dim is not None and dim <= 0:
+            raise ValueError(f"dim must be a positive int, got {dim!r}")
         self.cache_dir = Path(cache_dir)
+        self.model_name = model_name
+        self._dim: int | None = dim
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._index_path = self.cache_dir / "index.json"
         self._bin_path = self.cache_dir / "chunks.bin"
@@ -159,11 +185,26 @@ class VectorCache:
             self._reset_corrupt()
             return
 
+        header_model = raw.get("model_name")
+        if header_model is not None and header_model != self.model_name:
+            logger.warning(
+                "Vector cache built with model %r but configured for %r; "
+                "resetting (vectors are not reusable across models)",
+                header_model, self.model_name,
+            )
+            self._reset_corrupt()
+            return
+
         try:
             self._index = {
                 fp: CacheEntry(**entry) for fp, entry in raw.get("entries", {}).items()
             }
             self._invalidated = set(raw.get("invalidated", []))
+            # Restore the dimension recorded when the cache was built so
+            # puts stay validated after a reload.
+            header_dim = raw.get("dim")
+            if self._dim is None and isinstance(header_dim, int) and header_dim > 0:
+                self._dim = header_dim
         except (KeyError, TypeError) as exc:
             logger.warning("Vector cache index malformed, resetting: %s", exc)
             self._reset_corrupt()
@@ -181,6 +222,8 @@ class VectorCache:
         """Persist index.json atomically (tmp + rename)."""
         data = {
             "schema_version": CACHE_SCHEMA_VERSION,
+            "model_name": self.model_name,
+            "dim": self._dim,
             "entries": {fp: asdict(e) for fp, e in self._index.items()},
             "invalidated": sorted(self._invalidated),
         }
@@ -223,9 +266,13 @@ class VectorCache:
         """
         if vector.dtype != VECTOR_DTYPE:
             vector = vector.astype(VECTOR_DTYPE)
-        if vector.shape != (VECTOR_DIM,):
+        if self._dim is None:
+            # Fix A1: dimension derived from the first stored vector.
+            self._dim = int(vector.shape[0])
+            logger.debug("Vector cache dim inferred from first vector: %d", self._dim)
+        if vector.shape != (self._dim,):
             raise ValueError(
-                f"Expected vector shape ({VECTOR_DIM},), got {vector.shape}"
+                f"Expected vector shape ({self._dim},), got {vector.shape}"
             )
 
         with self._lock:
@@ -244,7 +291,7 @@ class VectorCache:
                 fingerprint=fingerprint,
                 chunk_id=chunk_id,
                 offset=offset,
-                dim=VECTOR_DIM,
+                dim=self._dim,
                 schema_version=CACHE_SCHEMA_VERSION,
             )
             self._invalidated.discard(fingerprint)
@@ -260,9 +307,20 @@ class VectorCache:
         return results
 
     def batch_put(self, items: list[tuple[str, str, np.ndarray]]) -> None:
-        """Bulk put. items = list of (fingerprint, chunk_id, vector)."""
-        for fp, cid, vec in items:
-            self.put(fp, cid, vec)
+        """Bulk put. items = list of (fingerprint, chunk_id, vector).
+
+        Transactional (Fix A2): every vector is validated *before* anything
+        is written; on validation error nothing is persisted.
+        """
+        with self._lock:
+            if self._dim is not None:
+                for fp, _cid, vec in items:
+                    if vec.shape != (self._dim,):
+                        raise ValueError(
+                            f"Expected vector shape ({self._dim},), got {vec.shape}"
+                        )
+            for fp, cid, vec in items:
+                self.put(fp, cid, vec)
 
     def invalidate(self, fingerprint: str) -> bool:
         """Mark an entry as invalidated. Returns ``True`` if it existed."""
@@ -364,7 +422,7 @@ class VectorCache:
                             fingerprint=fp,
                             chunk_id=valid[fp].chunk_id,
                             offset=offset,
-                            dim=VECTOR_DIM,
+                            dim=vec.shape[0],
                             schema_version=CACHE_SCHEMA_VERSION,
                         )
                 tmp_bin.replace(self._bin_path)
@@ -434,8 +492,9 @@ class VectorCache:
 
 __all__ = [
     "CACHE_SCHEMA_VERSION",
-    "VECTOR_DIM",
+    "DEFAULT_MODEL_NAME",
     "VECTOR_DTYPE",
+    "cache_fingerprint",
     "CacheEntry",
     "CacheStats",
     "VectorCache",

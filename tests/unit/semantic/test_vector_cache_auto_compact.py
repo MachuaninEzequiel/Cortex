@@ -8,12 +8,14 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from cortex.semantic.vector_cache import VECTOR_DIM, VectorCache
+from cortex.semantic.vector_cache import VectorCache
+
+_DIM = 384  # all-MiniLM-L6-v2 (local: the module constant was removed by A1)
 
 
 def _rand_vec(seed: int = 0) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    return rng.random(VECTOR_DIM).astype(np.float32)
+    return rng.random(_DIM).astype(np.float32)
 
 
 def _seed(cache: VectorCache, count: int) -> list[str]:
