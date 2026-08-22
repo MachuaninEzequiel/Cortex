@@ -153,6 +153,7 @@ Fuente: docs/reviews/2026-08-deep-review/README.md "Top bugs".
 | 8 | tar slip en restore_backup sin filter="data" (documentation/backup.py:71-77) | CORREGIR YA en P-bugs (1 línea + test de seguridad, prioridad alta) | P-bugs |
 | 9 | memory_decay ignora decay_rate configurado (memory_decay.py:56-60) | Ligado a §1 (ScoringWithDecay muerto): decidir podar rama decorativa Y arreglar __post_init__ del config vivo | Fase P6 + Obra 04 |
 | 10 | WorkItemService.get_item_note nunca encuentra notas (hu/{slug}.md vs HU-{external_id}.md, workitems/service.py:81-85 vs routing.py:290) | CORREGIR en P-bugs con test golden de naming | P-bugs |
+| 13 | NUEVO (2026-08-23): SetupOrchestrator.run(dry_run=True) crea archivos reales (46 ítems en AGENT); los CLI lo esquivan con early-return pero el orquestador no respeta el flag | CORREGIR en P-bugs: propagar dry_run a los pasos mutadores + test tmp_path | P-bugs |
 
 Regla: ningún bug se marca corregido sin test que falle antes y pase después.
 
