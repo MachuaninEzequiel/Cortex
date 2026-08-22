@@ -40,7 +40,7 @@ class _SessionFields(BaseModel):
     cortex_telemetry: CortexTelemetry | None = None
 
 
-class SessionFrontmatter(CommonFrontmatter):
+class _SessionSpecific(BaseModel):
     doc_type: DocType = DocType.SESSION
     session_id: str = Field(min_length=1)
     pr: str | None = None
@@ -49,10 +49,9 @@ class SessionFrontmatter(CommonFrontmatter):
     cortex_telemetry: CortexTelemetry | None = None
 
 
-class SessionFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.SESSION
-    session_id: str = Field(min_length=1)
-    pr: str | None = None
-    branch: str | None = None
-    commit: str | None = None
-    cortex_telemetry: CortexTelemetry | None = None
+class SessionFrontmatter(_SessionSpecific, CommonFrontmatter):
+    """Session frontmatter — campos específicos vía _SessionSpecific (V5)."""
+
+
+class SessionFrontmatterEnterprise(_SessionSpecific, EnterpriseFrontmatter):
+    """Session frontmatter enterprise — hereda _SessionSpecific + gobernanza."""

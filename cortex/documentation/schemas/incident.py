@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
@@ -24,7 +24,7 @@ def _validate_tz(v: datetime | None) -> datetime | None:
     return v
 
 
-class IncidentFrontmatter(CommonFrontmatter):
+class _IncidentSpecific(BaseModel):
     doc_type: DocType = DocType.INCIDENT
     incident_number: int = Field(ge=1)
     severity: str
@@ -38,15 +38,9 @@ class IncidentFrontmatter(CommonFrontmatter):
     _validate_closed = field_validator("closed_at")(_validate_tz)
 
 
-class IncidentFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.INCIDENT
-    incident_number: int = Field(ge=1)
-    severity: str
-    opened_at: datetime
-    closed_at: datetime | None = None
-    affected_services: list[str] = Field(default_factory=list)
-    root_cause_postmortem: str | None = None
+class IncidentFrontmatter(_IncidentSpecific, CommonFrontmatter):
+    """Incident frontmatter — campos específicos vía _IncidentSpecific (V5)."""
 
-    _validate_severity = field_validator("severity")(_validate_severity)
-    _validate_opened = field_validator("opened_at")(_validate_tz)
-    _validate_closed = field_validator("closed_at")(_validate_tz)
+
+class IncidentFrontmatterEnterprise(_IncidentSpecific, EnterpriseFrontmatter):
+    """Incident frontmatter enterprise — hereda _IncidentSpecific + gobernanza."""

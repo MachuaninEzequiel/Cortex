@@ -9,19 +9,21 @@ both the originating spec and the open Session via ``spec_path`` and
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
 
 
-class DesignFrontmatter(CommonFrontmatter):
+class _DesignSpecific(BaseModel):
     doc_type: DocType = DocType.DESIGN
     session_id: str = Field(min_length=1)
     spec_path: str = Field(min_length=1)
 
 
-class DesignFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.DESIGN
-    session_id: str = Field(min_length=1)
-    spec_path: str = Field(min_length=1)
+class DesignFrontmatter(_DesignSpecific, CommonFrontmatter):
+    """Design frontmatter — campos específicos vía _DesignSpecific (V5)."""
+
+
+class DesignFrontmatterEnterprise(_DesignSpecific, EnterpriseFrontmatter):
+    """Design frontmatter enterprise — hereda _DesignSpecific + gobernanza."""

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
 from cortex.session.models import VerificationHook
 
 
-class SpecFrontmatter(CommonFrontmatter):
+class _SpecSpecific(BaseModel):
     doc_type: DocType = DocType.SPEC
     # Pluggable Middle (Phase 01 / T1.1).
     # An empty list is accepted only as a backward-compatible read path for
@@ -18,6 +18,9 @@ class SpecFrontmatter(CommonFrontmatter):
     verification_hooks: list[VerificationHook] = Field(default_factory=list)
 
 
-class SpecFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.SPEC
-    verification_hooks: list[VerificationHook] = Field(default_factory=list)
+class SpecFrontmatter(_SpecSpecific, CommonFrontmatter):
+    """Spec frontmatter — campos específicos vía _SpecSpecific (V5)."""
+
+
+class SpecFrontmatterEnterprise(_SpecSpecific, EnterpriseFrontmatter):
+    """Spec frontmatter enterprise — hereda _SpecSpecific + gobernanza."""
