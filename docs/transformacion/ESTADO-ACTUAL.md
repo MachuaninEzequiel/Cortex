@@ -3,24 +3,29 @@
 > **HANDOFF DE SESIÓN**: leé primero `docs/transformacion/HANDOFF.md` — contiene el
 > contexto completo, commits, decisiones tomadas y los próximos pasos precisos.
 
-## Estado al cierre de esta sesión (2026-08-23)
+## Estado al cierre de esta sesión (2026-08-23, actualización intermedia)
 
-- TRAMO 0 ✅ · TRAMO 1 ola 1 ✅ · OBRA 02 COMPLETA ✅ · OBRA 04 COMPLETA (falta cierre) ·
-  **OBRA 01: P2 ✅ + P3 ✅** (split server.py completo: golden contract MCP byte-a-byte,
-  vault_adapter único, schemas.py, mixins por dominio en tools/, dispatcher tabla;
-  server.py 2977 → 491 líneas; -609 l netas adicionales por poda P2).
-- Suite unit+integration: VERDE (2279 passed, 13 skipped). Rama:
-  feature/transformacion-2026-08. master sellado con v0.5.0-baseline-seal.
-- Modelo elegido y documentado: e5-large (ES) / MiniLM (EN) vía backend fastembed.
-- Deudas nuevas para P-bugs (preexistentes, detectadas en P2/P3): F821 latente
-  cli/main.py:2233 (`cortex_ide`) y enricher.py:65 (`EnrichmentFilters`).
-  Candidato de poda: `_sync_vault_text` (mcp/tools/workspace.py, solo test directo).
+- TRAMO 0 ✅ · ola 1 ✅ · OBRA 02 ✅ · **OBRA 01: P2 ✅ P3 ✅ · P4 EN CURSO**
+  (pr-context/hu/common extraídos + embedding/mcp con register(); main.py 2540→2231;
+  falta trío documenting → cli/documenting.py).
+- **P-bugs**: #3 ✅ (verificado resuelto por Obra 02, marcadores pi) · #4 ✅ (ya resuelto
+  en TRAMO 1, test existente) · #5 ✅ (cache key con scope desde ola 1) · #6 ✅
+  (storage.mutate() verificado en los 3 puntos de mutación) · #7 ✅ fix commiteado
+  (coverage gate escribe/lee /tmp/test-output.txt vía tee+PIPESTATUS; pip-audit sin || true)
+  · #8 ✅ (TRAMO 0) · #10 ✅ fix commiteado (get_item_note HU-{external_id} + fallback slug,
+  tests golden nuevos). Queda solo #9 ✅ (fix decay_rate commiteado) — P-bugs COMPLETOS.
+- Bug #9 ✅: DecayConfig respeta decay_rate explícito ≠ default; path enrichers intacto.
+- Deudas: requirements.txt ELIMINADO (fuente única pyproject); _resolve_cache ya usaba
+  layout (cerrada con evidencia); CHANGELOG [Unreleased]×8 queda para el momento de
+  release (decisión de versión = del dueño).
+- Suite unit+integration: VERDE (**2290 passed**, 13 skipped). Rama:
+  feature/transformacion-2026-08. master sellado.
 
 ## Próximos pasos (detalle en HANDOFF.md §5)
 
-1. Cierre Obra 04: reindex del vault real del dueño + decisión default global + int8 opcional.
-2. Obra 01: P4 (adelgazar main.py a subapps) → P5-P8. P-bugs puede correr en paralelo.
-   P9 (mcp 2.x) ahora evaluable con split+golden como red.
-3. Obra 03: benchmarks (T-BENCH-1) antes de cualquier porteo a Rust.
-4. Obra 05: puede arrancar (dependencias cumplidas). feedback_loop reservado intacto.
-5. Obra 06 (LFM2.5): futuro; investigación profunda pendiente (doc 06).
+1. Obra 01: terminar P4 (documenting trio) → P5 → P6 (mixins schemas; V7 devsecdocops;
+   cerrar V4) → P7 → P8.
+2. Obra 03: T-BENCH-1 harness + baseline.
+3. Cierre Obra 04 CON EL DUEÑO: reindex vault real + flip default global (int8 pendiente).
+4. Obra 05: arrancar fases A-B.
+5. Obra 06 (LFM2.5): futuro.
