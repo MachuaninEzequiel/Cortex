@@ -29,7 +29,12 @@ def test_install_skills_uses_dest_argument(monkeypatch, tmp_path: Path) -> None:
 def test_install_ide_specific_target_uses_adapter_layer(monkeypatch) -> None:
     called: dict[str, object] = {}
 
-    def fake_inject(ide_name: str, project_root: Path | None = None) -> list[str]:
+    def fake_inject(
+        ide_name: str,
+        project_root: Path | None = None,
+        *,
+        sync_canonical: bool = True,
+    ) -> list[str]:
         called["ide_name"] = ide_name
         called["project_root"] = project_root
         return ["ok"]

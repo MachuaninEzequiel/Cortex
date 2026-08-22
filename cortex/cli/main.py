@@ -148,6 +148,13 @@ from cortex.cli.session import session_app
 
 app.add_typer(session_app, name="session")
 
+# Unified IDE surface (Obra 02 / Fase 3) — `cortex ide list|setup|remove|status`.
+from cortex.cli.ide import ide_app
+
+app.add_typer(ide_app, name="ide")
+
+_IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
+
 # CI subcommand (Pluggable Middle Phase 07)
 from cortex.cli.ci import ci_app
 
@@ -1938,32 +1945,43 @@ def sync_vault() -> None:
 def install_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to configure (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Configure all IDE adapters (deprecated/experimental)."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Install Cortex agent profiles and MCP config in supported IDEs."""
-    from cortex.ide import get_supported_ides, inject, inject_all
+    """(Deprecated) Install Cortex agent profiles and MCP config in supported IDEs.
 
+    Delegates to the unified `cortex ide setup` implementation.
+    """
+    from cortex.cli.ide import DEPRECATION_SETUP, run_bulk_inject, run_setup
+    from cortex.ide import get_supported_ides
+
+    typer.echo(f"Warning: {DEPRECATION_SETUP}")
     if all_ides or ide is None:
-        typer.echo("Warning: --all uses deprecated/experimental bulk installation. Prefer --ide <name>.")
-        inject_all(project_root=Path.cwd())
+        typer.echo("Warning: --all uses deprecated/experimental bulk installation. Prefer `cortex ide setup --ide <name>`.")
+        run_bulk_inject(project_root)
         return
 
-    inject(ide, project_root=Path.cwd())
+    run_setup(ide, project_root=project_root)
     typer.echo(f"Supported IDEs: {', '.join(get_supported_ides())}")
 
 @app.command()
 def uninstall_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to clean (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Clean all IDE adapters (deprecated/experimental)."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Remove Cortex agent profiles and MCP config from supported IDEs."""
-    from cortex.ide import uninstall, uninstall_all
+    """(Deprecated) Remove Cortex profiles and MCP config from supported IDEs.
 
+    Delegates to the unified `cortex ide remove` implementation.
+    """
+    from cortex.cli.ide import DEPRECATION_REMOVE, run_bulk_uninstall, run_remove
+
+    typer.echo(f"Warning: {DEPRECATION_REMOVE}")
     if all_ides or ide is None:
-        typer.echo("Warning: --all uses deprecated/experimental bulk removal. Prefer --ide <name>.")
-        uninstall_all()
+        typer.echo("Warning: --all uses deprecated/experimental bulk removal. Prefer `cortex ide remove --ide <name>`.")
+        run_bulk_uninstall(project_root)
         return
 
-    uninstall(ide)
+    run_remove(ide, project_root=project_root)
 
 @app.command(name="mcp-server")
 def mcp_server(
@@ -2010,6 +2028,7 @@ def inject(
             "to copy the bundle as-is (snapshot mode)."
         ),
     ),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
     """Inject Cortex agent profiles into the specified IDE.
 
@@ -2023,11 +2042,14 @@ def inject(
     - Markdown files: Writes with autogeneration header (never overwrites manual edits)
     - Automatic backup created before any modification
     """
-    import cortex.ide as cortex_ide
+    from cortex.cli.ide import DEPRECATION_SETUP, resolve_project_root, run_setup
+
+    typer.echo(f"Warning: {DEPRECATION_SETUP}")
+    resolved_root = resolve_project_root(project_root)
 
     if ide:
-        # Direct injection for specified IDE
-        cortex_ide.inject(ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
+        # Direct injection for specified IDE — delegates to `cortex ide setup`.
+        run_setup(ide, project_root=resolved_root, sync_canonical=sync_canonical)
         typer.echo(f"\n✅ Successfully configured {ide}")
         typer.echo("Run 'cortex inject' again to configure another IDE.")
     else:
@@ -2051,7 +2073,7 @@ def inject(
             selected_ide = choice
 
         if selected_ide:
-            cortex_ide.inject(selected_ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
+            run_setup(selected_ide, project_root=resolved_root, sync_canonical=sync_canonical)
             typer.echo(f"\n✅ Successfully configured {selected_ide}")
             typer.echo("Run 'cortex inject' again to configure another IDE.")
         else:
@@ -2061,22 +2083,20 @@ def inject(
 @app.command(name="sync-ide")
 def sync_ide(
     ide: str = typer.Option(..., "--ide", help="IDE to sync (required)."),
-    force: bool = typer.Option(False, "--force", help="Force regeneration even if file exists."),
+    force: bool = typer.Option(False, "--force", help="Ignored: setup is idempotent."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Sync IDE configuration with current .cortex/skills/ content.
+    """(Deprecated) Sync IDE configuration with current .cortex/skills/ content.
 
-    This regenerates the IDE configuration files from the current .cortex/skills/
-    and .cortex/subagents/ content. Use this after modifying Cortex skills to
-    update your IDE configuration.
-
-    The generated files include an autogeneration header with the command to
-    regenerate them manually.
+    `cortex ide setup` is idempotent and re-syncs on every run; this command
+    only delegates to it.
     """
-    import cortex.ide as cortex_ide
+    from cortex.cli.ide import DEPRECATION_SETUP, run_setup
 
-    cortex_ide.inject(ide, project_root=Path.cwd())
+    typer.echo("Notice: sync-ide is deprecated; setup es idempotente. "
+               f"Use `cortex ide setup --ide {ide}` (Warning: {DEPRECATION_SETUP})")
+    run_setup(ide, project_root=project_root)
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
-    typer.echo("Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
 
 @hu_app.command("import")
 def hu_import(
