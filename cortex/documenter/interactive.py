@@ -22,7 +22,7 @@ Design:
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -63,8 +63,6 @@ class InteractiveResult:
     edited_note_title: str | None = None
     edited_note_body: str | None = None
     forced_status: SessionStatus | None = None
-    forced_reason: str = ""
-    extra_notes: list[str] = field(default_factory=list)
 
     @property
     def cancelled(self) -> bool:
@@ -201,7 +199,6 @@ class InteractiveSession:
                 return InteractiveResult(
                     action=InteractiveAction.HANDOFF,
                     forced_status=SessionStatus.HANDOFF,
-                    forced_reason=reason,
                 )
             if choice is InteractiveAction.EDIT:
                 # EDIT loop mutates these and then re-prompts the main menu.
@@ -219,7 +216,6 @@ class InteractiveSession:
                     return InteractiveResult(
                         action=InteractiveAction.HANDOFF,
                         forced_status=SessionStatus.HANDOFF,
-                        forced_reason=reason,
                         edited_note_title=title_override,
                         edited_note_body=body_override,
                         approved_adr_indices=approved_adrs,

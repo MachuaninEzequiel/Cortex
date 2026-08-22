@@ -81,7 +81,6 @@ class TestSetupOnFixtures:
         project = copy_fixture_project("legacy-cortex-project", tmp_path)
 
         # Guardar contenido original
-        original_config = (project / "config.yaml").read_text(encoding="utf-8")
         original_vault = (project / "vault" / "legacy_doc.md").read_text(encoding="utf-8")
 
         import subprocess

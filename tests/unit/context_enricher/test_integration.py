@@ -131,7 +131,6 @@ class TestCLIContext:
         assert "format" in params
         assert "output" in params
         assert "expand" in params
-        assert "no_graph" in params
 
 
 class TestConfigValidation:

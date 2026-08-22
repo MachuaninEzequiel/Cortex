@@ -46,7 +46,3 @@ class SessionStorageCorrupted(SessionError):
     so the user can inspect the offending file. Storage list/scan
     operations log and skip corrupted files instead of raising.
     """
-
-
-class NoActiveSession(SessionError):
-    """Raised when an operation needs an active session and none is set."""

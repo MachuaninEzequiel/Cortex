@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from cortex.session.errors import (
     InvalidStateTransition,
-    NoActiveSession,
     SessionAlreadyExists,
     SessionError,
     SessionNotFound,
@@ -39,7 +38,6 @@ __all__ = [
     "Checkpoint",
     "CheckpointSource",
     "InvalidStateTransition",
-    "NoActiveSession",
     "SessionAlreadyExists",
     "SessionError",
     "SessionMode",

@@ -62,18 +62,6 @@ class ArtifactProduced(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-_KNOWN_AGENTS = {
-    "cortex-sync",
-    "cortex-SDDwork",
-    "cortex-code-explorer",
-    "cortex-code-implementer",
-    "cortex-documenter",
-    # Pi-only agents (allowed because they participate in agent-chain.yaml)
-    "cortex-security-auditor",
-    "cortex-test-verifier",
-}
-
-
 class AgentHandoff(BaseModel):
     """Structured handoff produced by every subagent at completion.
 
@@ -131,8 +119,3 @@ class AgentHandoff(BaseModel):
         if not isinstance(data, dict):
             raise ValueError("Handoff YAML must be a mapping at the root")
         return cls.model_validate(data)
-
-
-def is_known_agent(name: str) -> bool:
-    """Return True when *name* matches one of the canonical agent names."""
-    return name in _KNOWN_AGENTS

@@ -875,9 +875,6 @@ def context(
     expand: bool = typer.Option(
         False, "--expand", "-e", help="Show full content of items."
     ),
-    no_graph: bool = typer.Option(
-        False, "--no-graph", help="Skip graph expansion."
-    ),
 ) -> None:
     """
     Get enriched context for current work.
@@ -1188,7 +1185,7 @@ def finish_session(
     # Resolve interactive mode: CLI flag wins; otherwise config default
     # (documenter.default_mode, see cortex.core.DocumenterConfig).
     use_interactive = _resolve_interactive_mode(mem, interactive)
-    overrides = FinishOverrides(forced_status=forced_status, forced_reason=reason)
+    overrides = FinishOverrides(forced_status=forced_status)
     if use_interactive and not (handoff or abandon):
         from cortex.documenter.interactive import InteractiveAction, InteractiveSession
 
@@ -1206,7 +1203,6 @@ def finish_session(
             edited_note_title=verdict.edited_note_title,
             edited_note_body=verdict.edited_note_body,
             forced_status=verdict.forced_status or forced_status,
-            forced_reason=verdict.forced_reason or reason,
         )
 
     persister = DocumenterPersister(

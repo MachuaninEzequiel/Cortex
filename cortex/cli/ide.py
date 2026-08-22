@@ -226,7 +226,6 @@ def run_bulk_uninstall(project_root: Path | None = None) -> dict[str, list[str]]
     """Legacy bulk removal used only by the deprecated commands."""
     import cortex.ide as cortex_ide
 
-    root = resolve_project_root(project_root)
     results = cortex_ide.uninstall_all()
     return results
 

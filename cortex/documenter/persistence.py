@@ -83,7 +83,6 @@ class FinishOverrides:
     edited_note_title: str | None = None
     edited_note_body: str | None = None
     forced_status: SessionStatus | None = None
-    forced_reason: str = ""
 
 
 @dataclass(frozen=True)

@@ -2545,7 +2545,7 @@ class CortexMCPServer:
         )
         result = persister.finalize(
             out,
-            overrides=FinishOverrides(forced_status=forced_status, forced_reason=reason),
+            overrides=FinishOverrides(forced_status=forced_status),
         )
 
         payload = {

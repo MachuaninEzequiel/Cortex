@@ -19,7 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from cortex.documentation.common import compute_fingerprint, yaml_dump_safe
+from cortex.documentation.common import yaml_dump_safe
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.inventory import classify_path
 from cortex.episodic.embedder import Embedder

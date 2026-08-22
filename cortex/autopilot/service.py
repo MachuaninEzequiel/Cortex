@@ -377,7 +377,7 @@ class AutopilotService:
         )
         result = persister.finalize(
             out,
-            overrides=FinishOverrides(forced_status=forced, forced_reason=request.reason),
+            overrides=FinishOverrides(forced_status=forced),
         )
 
         # Reload the session to capture the now-closed state.

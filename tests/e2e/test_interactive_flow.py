@@ -136,7 +136,6 @@ class TestInteractiveFlow:
             InteractiveResult(
                 action=InteractiveAction.HANDOFF,
                 forced_status=SessionStatus.HANDOFF,
-                forced_reason="needs more eyes",
             )
         )
         r = runner.invoke(app, ["finish-session", "--interactive", "--json"])

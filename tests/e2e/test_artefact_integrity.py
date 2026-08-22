@@ -48,7 +48,7 @@ class TestPiConsistency:
 
     def test_justfile_references_existing_agents(self):
         justfile = REPO_ROOT / "cortex-pi" / "justfile"
-        content = justfile.read_text(encoding="utf-8")
+        justfile.read_text(encoding="utf-8")
 
         # Extraer referencias a agentes en comandos como: pi -e {{EXT}}/agent-chain.ts
         # No hay refs directas a .md en justfile, pero verificamos que EXT exista

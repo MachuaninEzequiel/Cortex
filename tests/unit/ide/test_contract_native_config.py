@@ -300,7 +300,7 @@ def test_opencode_uninstall_preserves_foreign_keys(
 def test_opencode_install_uninstall_install_consistent(
     tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    home = _opencode_home(tmp_path, monkeypatch)
+    _opencode_home(tmp_path, monkeypatch)
     adapter = OpenCodeAdapter()
 
     first_files = set(adapter.inject_all(project_root, PROMPTS))
@@ -363,7 +363,7 @@ def test_claude_code_uninstall_preserves_foreign_content(
     adapter = ClaudeCodeAdapter()
     adapter.inject_profiles(project_root, PROMPTS)
     adapter.inject_mcp(project_root)
-    report = adapter.uninstall(project_root)
+    adapter.uninstall(project_root)
 
     assert claude_md.exists(), "CLAUDE.md debe restaurarse del backup"
     assert user_intro in claude_md.read_text(encoding="utf-8")

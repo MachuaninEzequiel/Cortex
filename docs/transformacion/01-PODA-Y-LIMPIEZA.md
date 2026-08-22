@@ -45,9 +45,9 @@ De [1-core-entrypoints.md](../reviews/2026-08-deep-review/1-core-entrypoints.md)
 |---|---|---|---|
 | `is_known_agent` + `_KNOWN_AGENTS` (solo tests) | handoff.py:65-74,136-138 | BORRAR CON TEST | borrar función+constante+su test |
 | `_meets_adr_criteria` ("for future use") | doc_generator.py:184-210 | BORRAR SEGURO | declaradamente no usado |
-| `FeedbackEnricherIntegration`, `parse_github_reaction` (0 callers en cortex/) | feedback_loop | BORRAR CON TEST | confirmar con grep antes; borrar también tests dedicados |
+| `FeedbackEnricherIntegration`, `parse_github_reaction` (0 callers en cortex/) | feedback_loop | ~~BORRAR CON TEST~~ SKIP | Reservado: feedback_loop es pieza dormida de Obra 05 (HANDOFF decisión #5) — NO podar |
 | `DocVerifier._git_diff_files` | doc_verifier.py:179-186 | BORRAR SEGURO | solo se usa `_git_diff_status` |
-| `MemoryDecay.apply_to_hits/get_stats`, `ScoringWithDecay`, `create_decay_config` | memory_decay | INVESTIGAR | review dice "decorativo"; decidir si se poda o se conecta (relacionado bug #9 decay). Default: podar y dejar `calculate_decay_factor` |
+| `MemoryDecay.apply_to_hits/get_stats`, `ScoringWithDecay`, `create_decay_config` | memory_decay | PODADO en P2 | Podado en fase P2 (ver §7); se conservó `calculate_decay_factor`. Bug #9 (`__post_init__` ignora decay_rate configurado) sigue pendiente para P6/Obra 04 |
 | `DecayConfig.max_multimatch_boost` nunca leído | memory_decay.py:54 | BORRAR SEGURO | boost real hardcodeado en ScoringWithDecay:337-342 |
 | `time.monotonic()` descartado + `if TYPE_CHECKING: pass` | pipeline/orchestrator.py:90,29-30 | BORRAR SEGURO | trivial |
 | ramas elif muertas en parser git log | setup/cold_start.py:196-235 | BORRAR SEGURO (rama) + BUG aparte | el parser frágil es bug #11-setup, no poda |
@@ -65,7 +65,7 @@ De otros informes:
 | segundo `re.compile` descartado + require() pattern sin uso | context_enricher/co_occurrence.py:530-532 | BORRAR SEGURO | trivial |
 | `build_from_ast`, `get_path`, `get_related`, `get_files_by_type`, `node_count`, `DEFINES/EXTENDS` sin caller | co_occurrence.py | BORRAR CON TEST | solo se usan `build_from_memories` + `calculate_relationship_score` (enricher.py:565,209); grep antes |
 | `_build_entity_index` sin caller (haría full-scan costoso) | enricher.py:506-527 | BORRAR SEGURO | grep confirma 0 callers |
-| knob `domain_confidence` nunca consultado | ContextObserver observer.py:69 / config.py:22-23 | BORRAR CON TEST | o conectar el knob o sacarlo de config; default: conectar (es feature prometida) → si se conecta, mover a fase de bugs |
+| knob `domain_confidence` nunca consultado | ContextObserver observer.py:69 / config.py:22-23 | DEFERIDO a P-bugs | Default del plan: conectar (feature prometida) → pertenece a fase de bugs; NO se saca de config en P2 |
 | ADMIN_TEAM checks casi-muertos (solo 2 headers hardcodeados) | enterprise ide adapter l.50,64,96 | INVESTIGAR | gobernanza: decidir en Obra 02, no podar ahora |
 | `CORTEX_CONFIG_PATH` variable muerta (0 lecturas en cortex/**.py) | cortex-pi + docs | BORRAR CON TEST | eliminar del plugin TS y docs, o implementar lectura |
 | `cortex-pi/extensions/` completo (~muerto/roto), `cortex-subagent-widget.ts`, hooks inexistentes en plugin.json, `handoffRules` muertas | cortex-pi/ | BORRAR SEGURO | review 12: ~1300 líneas muertas; borrar dir + corregir manifiestos + widget + rules |
@@ -196,7 +196,48 @@ P-bugs puede correr en paralelo con P3-P8 (scopes disjuntos, commits separados).
 
 ## §7 Registro de ejecución
 
-_(vacío — completar al ejecutar: fecha, fase, commit hash, resultado del gate)_
+### 2026-08-23 — Fase P2 (BORRAR CON TEST) — COMPLETA ✅
 
-## §7 Registro de ejecución
-_(vacío hasta que arranque la ejecución)_
+**Commit**: ver git log `chore(poda P2)`.
+
+Ejecutado:
+- Tests de caracterización NUEVOS primero (módulos sin red): `tests/unit/test_memory_decay.py`
+  y `tests/unit/context_enricher/test_co_occurrence.py` — fijan la superficie que sobrevive
+  (DecayConfig/calculate_decay_factor; build_from_memories/get_strongest_relationship/
+  calculate_relationship_score).
+- `memory_decay.py` (410→177 l): podados `ScoringWithDecay`, `create_decay_config`,
+  `MemoryDecay.apply/apply_to_hits/get_stats`, `TEMPORAL_TYPES`, `EnricherDecayConfig`.
+- `handoff.py`: `_KNOWN_AGENTS` + `is_known_agent` + su test.
+- `session/errors.py`: `NoActiveSession` + export + test (la real es `autopilot.errors.NoActiveSessionError`).
+- `co_occurrence.py` (612→322 l): `build_from_ast` + cadena AST/JS (`_extract_relationships`,
+  `_extract_python/js_relationships`, `_find_related_file`), `get_related`, `get_path`,
+  `_get_all_outgoing`, `get_files_by_type`, properties `node_count`/`relationship_count`,
+  enum+weights `EXTENDS`/`DEFINES`, docstring actualizado.
+- `enricher.py`: `_build_entity_index` (rezago P1, 0 callers confirmados).
+- Wiring incompleto Phase 04: `FinishOverrides.forced_reason` (write-only),
+  `InteractiveResult.forced_reason` + `.extra_notes`; actualizados los 4 sitios de
+  construcción (cli/main.py ×2, autopilot/service.py, mcp/server.py) + tests unit/e2e.
+  `forced_status` SÍ queda conectado (se lee en persistence.finalize).
+- `setup/orchestrator.py`: parámetro muerto `only_agent` (+ call site).
+- CLI flag muerto `--no-graph` del comando `context` (rezago P1) + su aserción de firma.
+- `webgraph/cli.py serve`: colapsado if/else con `layout` muerto (investigado:
+  `_discover_layout` es pura, sin side-effects).
+- F841/F401 rezagados: `cli/ide.py run_bulk_uninstall` (root), import `compute_fingerprint`
+  en vault_reader, `sys` en test_embedder_delegation, unassign `home`/`report` en
+  test_contract_native_config, `original_config`/`content`/`src` en tests e2e/unit.
+
+Desviaciones del plan original (documentadas arriba en §1):
+- SKIP: `FeedbackEnricherIntegration`/`parse_github_reaction` → reservado Obra 05.
+- DEFERIDO: knob `domain_confidence` → P-bugs (default: conectar).
+- Adelantado desde P6: poda de la rama decorativa decay (mandato HANDOFF §5-P2);
+  el fix de bug #9 queda en P6.
+
+Gates: `ruff check --select F401,F841 cortex tests` = 0 ✅ ·
+`vulture cortex --min-confidence 80` = 0 ✅ ·
+`.venv/bin/python -m pytest tests/unit tests/integration` = **2271 passed, 13 skipped, exit 0** ✅
+
+Deudas NUEVAS detectadas durante P2 (preexistentes, no regresiones → P-bugs):
+- F821 latente `cortex/cli/main.py:2233`: `cortex_ide` no definido en rama interactiva de
+  selección IDE (NameError si se pisa ese camino).
+- F821 latente `cortex/context_enricher/enricher.py:65`: anotación `EnrichmentFilters`
+  no resuelta en tiempo estático (runtime OK por `from __future__ import annotations`).

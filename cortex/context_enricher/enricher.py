@@ -503,29 +503,6 @@ class ContextEnricher:
         self._co_occurrence_cache[store_id] = (cache_token, co_occurrence)
         return co_occurrence
 
-    def _build_entity_index(self) -> dict[str, dict[str, list[str]]]:
-        """
-        Build an entity index from existing episodic memories.
-        
-        Returns:
-            {entity_type: {entity_value: [memory_ids, ...]}, ...}
-        """
-        entity_index: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
-        
-        try:
-            # Get all episodic memories to build entity index
-            all_hits = self.episodic.search("", top_k=1000)
-            for hit in all_hits:
-                entry = hit.entry
-                entities = entry.metadata.get("entities", {})
-                for entity_type, values in entities.items():
-                    for value in values:
-                        entity_index[entity_type][value].append(entry.id)
-        except Exception as exc:
-            logger.debug("Could not build entity index: %s", exc)
-
-        return entity_index
-
     def _build_typed_graph(self):
         """
         Build a typed co-occurrence graph from project files.

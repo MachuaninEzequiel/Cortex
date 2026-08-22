@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from cortex.handoff import AgentHandoff, ArtifactProduced, is_known_agent
+from cortex.handoff import AgentHandoff, ArtifactProduced
 
 
 class TestArtifactProduced:
@@ -78,14 +78,3 @@ class TestAgentHandoff:
         yaml_text = h.to_yaml()
         # Unicode characters preserved (not \u escapes)
         assert "línea" in yaml_text
-
-
-class TestIsKnownAgent:
-    def test_canonical_names(self) -> None:
-        assert is_known_agent("cortex-sync") is True
-        assert is_known_agent("cortex-documenter") is True
-        assert is_known_agent("cortex-security-auditor") is True
-
-    def test_unknown_name(self) -> None:
-        assert is_known_agent("cortex-random") is False
-        assert is_known_agent("") is False

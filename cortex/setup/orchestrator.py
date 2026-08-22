@@ -135,7 +135,7 @@ class SetupOrchestrator:
 
     def _run_agent_flow(self) -> None:
         """Setup only local agent/cognitive components."""
-        self._create_directories(only_agent=True)
+        self._create_directories()
         self._create_config()
         self._create_enterprise_org_config()
         self._create_vault_docs()
@@ -221,7 +221,7 @@ class SetupOrchestrator:
         """Setup only the webgraph module with minimal supporting files."""
         self._install_webgraph()
 
-    def _create_directories(self, only_agent: bool = False) -> None:
+    def _create_directories(self) -> None:
         """Create the workspace directory structure.
 
         In new layout all directories go inside ``.cortex/``.
