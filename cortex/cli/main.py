@@ -1332,6 +1332,10 @@ def search(
 
     from cortex.cli._search_filters import build_enrichment_filters_from_cli, has_any_filter
 
+    # B3: scope/project_id REALES del usuario (antes hardcodeados → el
+    # dispatch cambiaba según combinación de flags).
+    # B4: --format distinto de text también activa el path estructural —
+    # un solo convenio de salida (--format); --json queda como legacy compat.
     structural_mode = has_any_filter(
         doc_type=doc_type,
         exclude_doc_type=exclude_doc_type,
@@ -1339,10 +1343,10 @@ def search(
         tag=tag,
         tag_any=tag_any,
         max_age_days=max_age_days,
-        project_id=None,
+        project_id=project_id,
         strict=strict,
-        scope="local",
-    )
+        scope=scope or "local",
+    ) or output_format != "text"
 
     if structural_mode:
         if output_format not in {"text", "json", "compact"}:
