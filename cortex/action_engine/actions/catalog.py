@@ -220,12 +220,13 @@ def vault_reindex(ctx: ActionContext) -> Action:
 
 def vault_validate_docs(ctx: ActionContext) -> Action:
     def _hay_docs() -> bool:
-        return any(Path(ctx.layout.vault_path).rglob("*.md")) if Path(ctx.layout.vault_path).exists() else False
+        vault = ctx.vault_path
+        return vault.exists() and any(vault.rglob("*.md"))
 
     def _run(dry_run: bool) -> ActionResult:
         from cortex.doc_validator import DocValidator
 
-        vault = Path(ctx.layout.vault_path)
+        vault = ctx.vault_path
         validator = DocValidator(vault)
         errores = 0
         revisados = 0

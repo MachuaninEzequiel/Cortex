@@ -153,6 +153,11 @@ app.add_typer(ide_app, name="ide")
 
 _IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
 
+# ActionEngine (Obra 05 Fase B)
+from cortex.cli.next import register as _register_next
+
+_register_next(app)
+
 # Documenting trio (extraído del monolito — Obra 01 P4)
 import cortex.cli.documenting as _documenting_mod
 
