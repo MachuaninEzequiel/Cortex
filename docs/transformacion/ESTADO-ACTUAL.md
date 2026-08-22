@@ -25,7 +25,7 @@
 
 1. Obra 01: terminar P4 (documenting trio) → P5 → P6 (mixins schemas; V7 devsecdocops;
    cerrar V4) → P7 → P8.
-2. Obra 03: T-BENCH-1 harness + baseline.
+2. Obra 03: **T-BENCH-1 ✅** (baseline-2026-08-23.json commiteado). Sigue T-EVAL-1 (queries anotadas, junto Obra 04) y T-CARGO-1 (workspace rust).
 3. Cierre Obra 04 CON EL DUEÑO: reindex vault real + flip default global (int8 pendiente).
 4. Obra 05: arrancar fases A-B.
 5. Obra 06 (LFM2.5): futuro.

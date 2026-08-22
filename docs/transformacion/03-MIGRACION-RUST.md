@@ -265,7 +265,7 @@ Dependencias externas:
 
 Orden estricto de arriba a abajo; una tarea no empieza sin la anterior verificada.
 
-- [ ] T-BENCH-1 (A1): `bench/bench_harness.py` + dataset sintético determinista + `baseline-<fecha>.json` commiteado. Validación: `python -m bench.bench_harness --suite all --out bench/results/baseline-test.json` corre verde.
+- [x] T-BENCH-1 (A1) ✅ 2026-08-23: harness + dataset (vault-synth-1k seed 42) + `bench/results/baseline-2026-08-23.json` commiteados. Validación corrida verde (todas las suites). Números clave: webgraph O(n²) n1000=3.2s · full_sync_1k=37s · retrieve p99=129ms · import=872ms · bm25 p50=5.6ms.
 - [ ] T-CARGO-1 (A2): workspace `rust/` con crates vacíos compilando (`cargo test` verde) + job CI cargo. Validación: `cd rust && cargo clippy -D warnings && cargo test`.
 - [ ] T-EVAL-1 (A3): `datasets/queries-es-en.jsonl` con ≥100 queries anotadas (junto a Obra 04). Validación: script que puntúa baseline actual y persiste resultados.
 - [ ] T-PY-1 (B1): crate `cortex-core::scoring` + binding batch `cosine_scores(query, matrix) -> Vec<f32>`; `VaultReader.search` usa flag feature `CORTEX_NATIVE=1`. Gate G1: benchmark compare ≥5× p99 y paridad.
