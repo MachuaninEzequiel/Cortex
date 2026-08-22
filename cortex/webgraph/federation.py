@@ -125,13 +125,14 @@ class FederatedWebGraphService:
         use_cache: bool = True,
         scope: str | None = None,
     ) -> WebGraphSnapshot:
-        del use_cache
         nodes: list[WebGraphNode] = []
         edges: list[WebGraphEdge] = []
         fingerprints: list[str] = []
 
         for project_id, service in self._services.items():
-            snapshot = service.build_snapshot(mode=mode, use_cache=True, scope=scope)
+            # Bug fix (review 9 #6): use_cache ahora SÍ se propaga — antes
+            # se descartaba y cada request reconstruía el snapshot completo.
+            snapshot = service.build_snapshot(mode=mode, use_cache=use_cache, scope=scope)
             fingerprints.append(f"{project_id}:{snapshot.fingerprint}")
 
             for node in snapshot.nodes:

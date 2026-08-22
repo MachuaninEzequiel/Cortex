@@ -19,7 +19,10 @@ Available skills
 from __future__ import annotations
 
 import importlib.resources
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SKILL_NAMES = [
     "obsidian-markdown",
@@ -67,8 +70,9 @@ def install_skills(target_dir: Path) -> list[str]:
                 dest.write_text(src_ref.read_text(encoding="utf-8"), encoding="utf-8")
 
             installed.append(skill_name)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Installs parciales observables (review 9 #8): nunca tragar silencio.
+            logger.warning("Skill '%s' no pudo instalarse: %s", skill_name, exc)
 
     return installed
 
@@ -79,7 +83,8 @@ def _copy_tree(src_ref, dest: Path) -> None:
 
     try:
         entries = list(src_ref.iterdir())
-    except Exception:
+    except Exception as exc:
+        logger.warning("No se pudo listar %s: %s", src_ref, exc)
         return
 
     for entry_ref in entries:
@@ -89,5 +94,5 @@ def _copy_tree(src_ref, dest: Path) -> None:
                 _copy_tree(entry_ref, target)
             else:
                 target.write_text(entry_ref.read_text(encoding="utf-8"), encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Archivo de skill fallido %s: %s", entry_ref.name, exc)
