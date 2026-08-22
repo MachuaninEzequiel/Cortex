@@ -42,6 +42,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
 from cortex.context_enricher.config import ContextEnricherConfig
+from cortex.context_enricher.filters import EnrichmentFilters
 from cortex.context_enricher.enricher import ContextEnricher
 from cortex.models import EnrichedContext
 
@@ -91,6 +92,7 @@ class AsyncContextEnricher(ContextEnricher):
         work: WorkContext,
         *,
         top_k: int | None = None,
+        filters: "EnrichmentFilters | None" = None,
     ) -> EnrichedContext:
         """
         Synchronous entry point — runs parallel strategies and blocks.
@@ -118,15 +120,16 @@ class AsyncContextEnricher(ContextEnricher):
             logger.debug(
                 "AsyncContextEnricher: event loop running, falling back to sequential"
             )
-            return super().enrich(work, top_k=top_k)
+            return super().enrich(work, top_k=top_k, filters=filters)
 
-        return asyncio.run(self.enrich_async(work, top_k=top_k))
+        return asyncio.run(self.enrich_async(work, top_k=top_k, filters=filters))
 
     async def enrich_async(
         self,
         work: WorkContext,
         *,
         top_k: int | None = None,
+        filters: "EnrichmentFilters | None" = None,
     ) -> EnrichedContext:
         """
         Async entry point — run strategies in parallel, then process results.
@@ -178,8 +181,8 @@ class AsyncContextEnricher(ContextEnricher):
                 strategy_results[name] = result
                 logger.debug("Strategy '%s' completed: %d hits", name, len(result))
 
-        # -- Phase 2-6: Delegate to parent for dedup/boost/budget -------
-        return self._process_results(strategy_results, work, max_items)
+        # -- Phase 2-6: fuente única del padre -------------------------
+        return self._process_results(strategy_results, work, max_items, filters=filters)
 
     # ------------------------------------------------------------------
     # Private — strategy builder
@@ -201,21 +204,20 @@ class AsyncContextEnricher(ContextEnricher):
         tasks: dict[str, Callable[[], Any]] = {}
         queries = work.search_queries
 
+        # Bug latente detectado por los golden de paridad P5: las lambdas
+        # capturaban ``q`` por referencia y TODAS terminaban buscando la
+        # última query. Se bindea como default arg.
         if self.config.topic and len(queries) >= 1:
-            q = queries[0]
-            tasks["topic_search"] = lambda: self._search_hybrid(q, fetch_k)
+            tasks["topic_search"] = lambda q=queries[0]: self._search_hybrid(q, fetch_k)
 
         if self.config.files and len(queries) >= 2:
-            q = queries[1]
-            tasks["file_search"] = lambda: self._search_hybrid(q, fetch_k)
+            tasks["file_search"] = lambda q=queries[1]: self._search_hybrid(q, fetch_k)
 
         if self.config.keywords and len(queries) >= 3:
-            q = queries[2]
-            tasks["keyword_search"] = lambda: self._search_hybrid(q, fetch_k)
+            tasks["keyword_search"] = lambda q=queries[2]: self._search_hybrid(q, fetch_k)
 
         if self.config.pr_title and len(queries) >= 4:
-            q = queries[3]
-            tasks["pr_title_search"] = lambda: self._search_hybrid(q, fetch_k)
+            tasks["pr_title_search"] = lambda q=queries[3]: self._search_hybrid(q, fetch_k)
 
         if self.config.entity_search and (
             work.function_names or work.class_names or work.keywords
@@ -276,127 +278,12 @@ class AsyncContextEnricher(ContextEnricher):
         strategy_results: dict[str, list],
         work: WorkContext,
         max_items: int,
+        filters: "EnrichmentFilters | None" = None,
     ) -> EnrichedContext:
+        """Delega las fases 2-6 en la fuente única del padre (V3).
+
+        Antes duplicaba ~130 líneas del pipeline y había drift-eado:
+        se saltaba Fase 08 (filtros estructurales + DocIntent boost).
         """
-        Run phases 2-6 from the parent enricher on parallelised results.
+        return self._finalize_items(strategy_results, work, max_items, filters=filters)
 
-        Injects the pre-computed strategy_results dict into the parent's
-        phase 2 conversion loop by temporarily monkey-patching the
-        work.search_queries to be empty (so the parent's Phase 1 is skipped).
-        Instead, we call the parent's internal conversion and boost methods
-        directly for clarity and correctness.
-        """
-        from collections import defaultdict
-
-        from cortex.models import EnrichedItem
-
-        total_raw_hits = sum(len(v) for v in strategy_results.values())
-
-        # Phase 2: Convert to EnrichedItem
-        all_items: dict[str, EnrichedItem] = {}
-        item_strategies: dict[str, list[str]] = defaultdict(list)
-
-        for strategy_name, hits in strategy_results.items():
-            for hit in hits:
-                item = self._hit_to_enriched_item(hit, strategy_name)
-                if item is None:
-                    continue
-                item_strategies[item.source_id].append(strategy_name)
-                if item.source_id in all_items:
-                    existing = all_items[item.source_id]
-                    if item.score > existing.score:
-                        all_items[item.source_id] = item
-                else:
-                    all_items[item.source_id] = item
-
-        # Phase 3: Multi-match boost
-        for source_id, item in all_items.items():
-            unique_strategies = list(set(item_strategies[source_id]))
-            item.matched_by = unique_strategies
-            boost_factor = 1.0
-            if len(unique_strategies) > 1:
-                boost_factor = self.config.multi_match_boost ** (len(unique_strategies) - 1)
-            item.enriched_score = item.score * boost_factor
-
-        # Phase 4: Co-occurrence boost
-        if self.config.graph_expansion and work.changed_files:
-            co_occurrence = self._build_co_occurrence()
-            for item in all_items.values():
-                co_score = self._co_occurrence_score(
-                    work.changed_files, item.files_mentioned, co_occurrence
-                )
-                item.enriched_score += co_score * self.config.co_occurrence_boost
-
-        # Phase 4b: Typed graph boost
-        if self.config.typed_graph and work.changed_files:
-            typed_graph = self._build_typed_graph()
-            for item in all_items.values():
-                if item.files_mentioned:
-                    typed_score = typed_graph.calculate_relationship_score(
-                        work.changed_files, item.files_mentioned
-                    )
-                    item.enriched_score += typed_score * self.config.co_occurrence_boost * 0.5
-
-        # Phase 4c: Temporal decay
-        if self.config.memory_decay:
-            from cortex.memory_decay import DecayConfig, MemoryDecay
-            decay_calc = MemoryDecay(config=DecayConfig(
-                decay_rate=0.995,
-                half_life_hours=self.config.decay_half_life_hours,
-                floor=self.config.decay_floor,
-            ))
-            for item in all_items.values():
-                if item.source == "episodic" and item.date:
-                    factor = decay_calc.calculate_decay_factor(
-                        memory_type="general", tags=item.tags, timestamp=item.date
-                    )
-                    item.enriched_score *= factor
-
-        # Phase 4d: Feedback loop boost
-        if self.config.feedback_loop and work.changed_files:
-            from cortex.feedback_loop import FeedbackCollector
-            work_ctx = {
-                "keywords": work.keywords[:10],
-                "files":    work.changed_files,
-                "entities": work.function_names + work.class_names,
-            }
-            items_dicts = [
-                {"id": i.source_id, "content": i.content,
-                 "title": i.title, "files": i.files_mentioned}
-                for i in all_items.values()
-            ]
-            collector = FeedbackCollector()
-            implicit = collector.process_implicit(work_ctx, items_dicts)
-            for item in all_items.values():
-                fb = implicit.get(item.source_id)
-                if fb and fb.is_useful:
-                    item.enriched_score *= (1.0 + self.config.implicit_boost)
-
-        # Phase 5: Threshold filter + sort
-        filtered = sorted(
-            [i for i in all_items.values() if i.enriched_score >= self.config.min_score],
-            key=lambda x: x.enriched_score,
-            reverse=True,
-        )
-
-        # Phase 6: Budget enforcement
-        budget_items: list[EnrichedItem] = []
-        total_chars = 0
-        for item in filtered:
-            item_chars = len(item.content) + len(item.title) + 50
-            if len(budget_items) >= max_items:
-                break
-            if total_chars + item_chars > self.config.max_chars and budget_items:
-                break
-            budget_items.append(item)
-            total_chars += item_chars
-
-        return EnrichedContext(
-            work=work,
-            items=budget_items,
-            total_searches=len(strategy_results),
-            total_raw_hits=total_raw_hits,
-            total_items=len(budget_items),
-            total_chars=total_chars,
-            within_budget=total_chars <= self.config.max_chars,
-        )
