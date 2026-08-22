@@ -30,6 +30,9 @@ def register(app) -> None:
         explain: bool = typer.Option(
             False, "--explain-why-not", help="Incluye por qué NO se propone cada acción."
         ),
+        stats: bool = typer.Option(
+            False, "--stats", help="Métrica del motor: % decisiones automáticas (Fase E)."
+        ),
         project_root: str | None = typer.Option(
             None, "--project-root", help="Project root (default: descubrir desde cwd)."
         ),
@@ -53,6 +56,32 @@ def register(app) -> None:
                 err=True,
             )
             raise typer.Exit(1)
+
+        if stats:
+            from cortex.action_engine.metrics import calcular_metricas
+            from cortex.action_engine.store import ActionLog
+
+            metricas = calcular_metricas(ActionLog(ctx.dot_cortex))
+            typer.echo(
+                json.dumps(
+                    {
+                        "total_ejecuciones": metricas.total_ejecuciones,
+                        "via_auto": metricas.via_auto,
+                        "via_usuario": metricas.via_usuario,
+                        "pct_motor": metricas.pct_motor,
+                        "dias_con_interaccion": len(metricas.dias_con_interaccion),
+                        "por_accion": metricas.acciones_por_id,
+                        "definicion": (
+                            "pct_motor alto + volumen estable = el motor toma "
+                            "las decisiones rutinarias (target dueño: abrir el "
+                            "menú <1 vez/día activo)"
+                        ),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return
 
         registry = build_default_registry(ctx)
         scheduler = Scheduler(preferences=__import__(
