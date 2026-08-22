@@ -448,22 +448,30 @@ class TestNewMcpToolsRegistered:
     """Plan 07 §3 — the cierre del bloque MCP requires confirming that
     ``cortex_validate_handoff`` and ``cortex_verify_session_claims`` are
     actually wired into the server's ``list_tools`` handler. We assert
-    by parsing the source file (same pattern as the CLI alignment test
-    in ``tests/e2e/test_artefact_integrity.py``) so the test does not
-    need to spin up an async event loop or load ChromaDB.
+    against the REAL registered handler (same path any MCP client hits)
+    so the test neither spins up a full server nor breaks when the tool
+    definitions move between modules of the ``cortex.mcp`` package.
     """
 
     def _registered_tool_names(self) -> set[str]:
-        import re
-        from pathlib import Path
+        import asyncio
+        from collections import deque
 
-        source = (
-            Path(__file__).resolve().parents[2]
-            / "cortex"
-            / "mcp"
-            / "server.py"
-        ).read_text(encoding="utf-8")
-        return set(re.findall(r'name="(cortex_[\w_]+)"', source))
+        import mcp.types as types
+        from mcp.server.lowlevel import Server
+
+        from cortex.mcp.server import CortexMCPServer
+
+        s = CortexMCPServer.__new__(CortexMCPServer)
+        s.server = Server("test")
+        s._called_tools = set()
+        s._tool_call_history = []
+        s._error_history = deque(maxlen=10)
+        s._setup_tools()
+        handler = s.server.request_handlers[types.ListToolsRequest]
+        req = types.ListToolsRequest(method="tools/list", params=None)
+        res = asyncio.run(handler(req))
+        return {t["name"] for t in res.model_dump(mode="json")["tools"]}
 
     def test_validate_handoff_tool_registered(self) -> None:
         assert "cortex_validate_handoff" in self._registered_tool_names()
