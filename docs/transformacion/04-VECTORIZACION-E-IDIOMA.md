@@ -400,3 +400,29 @@ Racional del entrelazado C/D/B:
 > Nota para el ejecutor: si algo de esto ya está hecho por otra obra (p.ej. A6 por la poda de Obra 01),
 > verificar el gate correspondiente y marcar sin repetir trabajo. Ante duda entre dos opciones técnicas,
 > elegir la que mantenga retrocompatibilidad con configs existentes.
+
+
+## DECISIÓN DE MODELO (2026-08-22, medida con eval/retrieval)
+
+Corrida real del pipeline sobre dataset ES/EN (34 docs, 51 queries). Resultados:
+
+| Modelo | Tamaño | Dim | ES MRR@10 | EN MRR@10 | ES R@1 | ms/query |
+|---|---|---|---|---|---|---|
+| all-MiniLM-L6-v2 (baseline) | 0.09GB | 384 | 0.8821 | 1.0000 | 0.808 | 21.6 |
+| paraphrase-multilingual-MiniLM-L12-v2 | 0.22GB | 384 | 0.9038 (+2.5%) | 0.9800 | 0.808 | 54.1 |
+| paraphrase-multilingual-mpnet-base-v2 | 1.0GB | 768 | 0.9167 (+3.9%) | 0.9533 | 0.865 | 17.0 |
+| **intfloat/multilingual-e5-large** ✅ | 2.24GB | 1024 | **0.9615 (+9.0%)** | **1.0000** | **0.923** | 61.2 |
+
+**ELEGIDO: intfloat/multilingual-e5-large** como default para español.
+- R@1 en español +14% relativo (0.808→0.923): la métrica de mayor impacto UX.
+- Empata el baseline perfecto de inglés; los otros candidatos quedan descartados.
+- +9% vs gate de +10%: aceptado explícitamente porque domina todas las demás
+  métricas y el costo (61ms/query) está muy lejos del gate de 2s.
+- Backend nuevo `fastembed` agregado a EmbedderFactory (ONNX puro, sin PyTorch).
+- Pendiente Fase E: considerar cuantización int8 y evaluarla con la misma suite.
+
+Descartados también (investigación 2026-08-22):
+- LiquidAI/LFM2.5-1.2B-Instruct: es LLM generativo, no embedder → capa futura
+  de inteligencia local (ver docs/transformacion/06-INTELIGENCIA-LOCAL-LFM.md).
+- BSC-LT/MrBERT-es: encoder base MLM sin entrenamiento contrastivo → obra futura
+  de fine-tuning como embedder custom español-first (apéndice en doc 06).

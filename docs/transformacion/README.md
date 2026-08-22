@@ -21,6 +21,7 @@
 | [03](03-MIGRACION-RUST.md) | Migración a Rust | Estrategia honesta e incremental para rendimiento/eficiencia (batería); benchmarks primero, porteo después |
 | [04](04-VECTORIZACION-E-IDIOMA.md) | Vectorización + configuración por idioma | Investigación de modelos nuevos; config por idioma (ES/EN/multilingüe); corregir bugs silenciosos del stack vectorial |
 | [05](05-UX-TUI-ACTIONENGINE.md) | UX simplificada + ActionEngine | TUIs simples, comandos consolidados, motor de acciones que automatiza el aprendizaje (el usuario solo elige de vez en cuando) |
+| [06](06-INTELIGENCIA-LOCAL-LFM.md) | Inteligencia local LFM2.5 [FUTURO] | LLM edge local (Liquid) como reranker/summarizer/cerebro del ActionEngine — investigación profunda pendiente antes de implementar |
 
 ## Orden de tramos (con racional)
 
