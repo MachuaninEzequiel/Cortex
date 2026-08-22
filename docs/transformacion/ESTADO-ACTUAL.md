@@ -2,24 +2,27 @@
 
 > Actualizar SIEMPRE al terminar una sesión de trabajo. Máximo ~40 líneas.
 
-## Sesión 2026-08-22 — OBRA 02 COMPLETA (Fases 0-1, 2 y 3)
+## Sesión 2026-08-22 (cont.) — OBRA 04: Fases A, B(parcial), C, D completas
 
-- Sello: v0.5.0-baseline-seal @ a64e350. Rama: feature/transformacion-2026-08. Suite unit VERDE (exit 0).
-- TRAMO 0 + TRAMO 1 ola 1: commits 788c5c4..bf5bd3b.
-- OBRA 02 (estándar único de CLIs/IDEs) CERRADA:
-  - Fase 0-1 (640ca20): helpers marcadores en base.py + caracterización 11 adapters.
-  - Fase 2 (42adfe1..13c7ff1): uninstall(project_root) real en los 11; restore-de-backup;
-    merge inverso JSON/TOML; fix skills huérfanas cursor; fix _unique_backup.
-  - Fase 3 (f8a6ec0): CLI unificada `cortex ide list|setup|remove|status` (--project-root,
-    --dry-run real, --json) + deprecation funcional de install-ide/uninstall-ide/inject/sync-ide
-    con paridad legacy testeada. 22 tests nuevos.
-- Backlog Obra 02 (no bloqueante):
-  - Byte-equality de re-run requiere timestamp congelado en _generate_autogen_header.
-  - Docs/skills que mencionan comandos viejos ("Regenerate: cortex sync-ide").
-  - Hooks dentro de `ide setup` (--no-hooks/--keep-hooks).
+- Sello: v0.5.0-baseline-seal @ a64e350. Rama: feature/transformacion-2026-08. Suite VERDE.
+- Obra 02 cerrada (fases 0-3). Ver histórico en git.
+- OBRA 04:
+  - Fase A fixes A1-A6 (2df3ce2, 73cdde5, 92383ce): stack vectorial sin fallos silenciosos.
+  - Backend 'fastembed' genérico (b9ccd43): modelos no-MiniLM vía ONNX sin PyTorch.
+  - Fase D eval suite + BASELINE (c5f40a7): MiniLM EN MRR@10=1.0 / ES=0.8821.
+  - Fase B/D corrida de candidatos: ELEGIDO intfloat/multilingual-e5-large
+    (ES MRR@10 0.9615 = R@1 ES +14%; EN intacto). Decisión documentada en doc 04.
+  - Fase C (065fed5): bloque embedding {model, backend, language_detection,
+    per_language} con retrocompat estricta, heurística ES/EN pura,
+    cortex embedding-status. 17 tests nuevos.
+- NUEVA obra documentada: 06-INTELIGENCIA-LOCAL-LFM.md (LFM2.5 como capa local
+  futura: reranker/summarizer/ActionEngine; investigación profunda pendiente).
+- MrBERT-es anotado como futuro embedder custom (fine-tune contrastivo).
 
-## Próximo paso (elegir)
+## Próximo paso
 
-1. P3: golden tests MCP -> split server.py 2977l en schemas/dispatcher/handlers (ALTO riesgo).
-2. Tramo 2 = Obra 04: fixes vectoriales A1-A6 -> suite eval ES/EN -> modelo nuevo + config por idioma.
-3. P4: adelgazar cli/main.py (los 4 comandos IDE viejos ya delegan; quedan ~15 comandos top-level por migrar a subapps).
+- OBRA 04 FASE E (migración): default del modelo → e5-large para ES
+  (`embedding.per_language.es` o single-model), comando `cortex reindex`
+  (+--prune-old-caches), procedimiento con backup y rollback, docs+CHANGELOG.
+- Después: P3 golden tests MCP + split server.py; P4 adelgazar main.py;
+  Tramo 4 = Obra 05 UX/ActionEngine (ahora con LFM2.5 documentado como su cerebro).
