@@ -60,7 +60,7 @@ def ctx(tmp_path: Path) -> ActionContext:
 
     sessions.list.return_value = [_record()]
 
-    ctx = ActionContext(mem=mem, sessions=sessions, layout=layout)
+    ctx = ActionContext(layout=layout, _mem=mem, _sessions=sessions)
     # config.yaml NO existe → setup.finish_bootstrap ofrecible
     return ctx
 
