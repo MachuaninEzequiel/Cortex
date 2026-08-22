@@ -1365,10 +1365,13 @@ def search(
         from cortex.models import WorkContext
 
         mem = _load_memory()
+        from cortex.context_enricher.telemetry import make_observer
+
         enricher = ContextEnricher(
             episodic=mem.episodic,
             semantic=mem.semantic,
             config=ContextEnricherConfig(),
+            observer=make_observer(project_root=mem.workspace_root),
         )
         work = WorkContext(
             source="manual",

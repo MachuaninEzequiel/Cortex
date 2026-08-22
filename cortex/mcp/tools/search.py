@@ -211,10 +211,14 @@ class SearchToolsMixin:
         except ValueError as exc:
             return f"cortex_search: invalid filter — {exc}"
 
+        from cortex.context_enricher.telemetry import make_observer
+
+        ws_root = getattr(self.memory, "workspace_root", None)
         enricher = ContextEnricher(
             episodic=self.memory.episodic,
             semantic=self.memory.semantic,
             config=ContextEnricherConfig(),
+            observer=make_observer(project_root=ws_root) if ws_root else None,
         )
         work = WorkContext(
             source="manual",

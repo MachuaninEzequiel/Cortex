@@ -1009,10 +1009,13 @@ class AgentMemory:
         )
 
         enricher_config = self._get_enricher_config()
+        from cortex.context_enricher.telemetry import make_observer
+
         enricher = ContextEnricher(
             episodic=self.episodic,
             semantic=self.semantic,
             config=enricher_config,
+            observer=make_observer(self._layout, config=self.config),
         )
         return enricher.enrich(work, top_k=top_k)
 

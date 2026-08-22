@@ -111,10 +111,13 @@ def _build_enricher(project_root: str | None) -> ContextEnricher:
     from cortex.core import AgentMemory
     mem = AgentMemory.from_config(project_root=root)
     config = ContextEnricherConfig()
+    from cortex.context_enricher.telemetry import make_observer
+
     return ContextEnricher(
         episodic=mem.episodic,
         semantic=mem.semantic,
         config=config,
+        observer=make_observer(project_root=root),
     )
 
 
