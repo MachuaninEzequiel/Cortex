@@ -10,7 +10,9 @@ import numpy as np
 from typer.testing import CliRunner
 
 from cortex.cli.docs_vectorization import app
-from cortex.semantic.vector_cache import VECTOR_DIM, VectorCache
+from cortex.semantic.vector_cache import VectorCache
+
+_DIM = 384  # all-MiniLM-L6-v2 (local: the module constant was removed by A1)
 
 runner = CliRunner()
 
@@ -34,7 +36,7 @@ def test_stats_empty_cache(tmp_path: Path) -> None:
 
 def test_stats_json_output(tmp_path: Path) -> None:
     cache, p = _patch_resolve(tmp_path)
-    vec = np.random.rand(VECTOR_DIM).astype(np.float32)
+    vec = np.random.rand(_DIM).astype(np.float32)
     cache.put("fp1", "c1", vec)
     with p:
         result = runner.invoke(app, ["stats", "--json"])
@@ -46,7 +48,7 @@ def test_stats_json_output(tmp_path: Path) -> None:
 def test_compact_runs(tmp_path: Path) -> None:
     cache, p = _patch_resolve(tmp_path)
     for i in range(3):
-        vec = np.random.rand(VECTOR_DIM).astype(np.float32)
+        vec = np.random.rand(_DIM).astype(np.float32)
         cache.put(f"fp{i}", f"c{i}", vec)
     cache.invalidate("fp0")
     with p:
@@ -57,7 +59,7 @@ def test_compact_runs(tmp_path: Path) -> None:
 
 def test_clear_with_confirmation_yes(tmp_path: Path) -> None:
     cache, p = _patch_resolve(tmp_path)
-    vec = np.random.rand(VECTOR_DIM).astype(np.float32)
+    vec = np.random.rand(_DIM).astype(np.float32)
     cache.put("fp1", "c1", vec)
     with p:
         result = runner.invoke(app, ["clear", "--yes"])
@@ -68,7 +70,7 @@ def test_clear_with_confirmation_yes(tmp_path: Path) -> None:
 
 def test_clear_aborts_without_confirmation(tmp_path: Path) -> None:
     cache, p = _patch_resolve(tmp_path)
-    vec = np.random.rand(VECTOR_DIM).astype(np.float32)
+    vec = np.random.rand(_DIM).astype(np.float32)
     cache.put("fp1", "c1", vec)
     with p:
         result = runner.invoke(app, ["clear"], input="n\n")
