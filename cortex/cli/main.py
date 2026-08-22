@@ -96,7 +96,6 @@ warnings.filterwarnings("ignore")
 import asyncio
 import getpass
 import json
-import subprocess
 from enum import Enum
 from pathlib import Path
 
@@ -104,7 +103,6 @@ import typer
 import yaml
 
 from cortex.cli.review_knowledge import review_app
-from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
 from cortex.workspace.layout import WorkspaceLayout
 
@@ -156,6 +154,13 @@ app.add_typer(ide_app, name="ide")
 
 _IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
 
+# pr-context + hu (extraídos del monolito — Obra 01 P4)
+from cortex.cli.hu import hu_app
+from cortex.cli.pr_context import pr_context_app
+
+app.add_typer(pr_context_app, name="pr-context")
+app.add_typer(hu_app, name="hu")
+
 # CI subcommand (Pluggable Middle Phase 07)
 from cortex.cli.ci import ci_app
 
@@ -198,10 +203,6 @@ class DoctorScope(str, Enum):
 # pr-context  (DevSecDocOps subcommand group)
 # ---------------------------------------------------------------------------
 
-pr_context_app = typer.Typer(help="PR documentation pipeline (DevSecDocOps).")
-app.add_typer(pr_context_app, name="pr-context")
-hu_app = typer.Typer(help="Tracked work item management (read-only external import).")
-app.add_typer(hu_app, name="hu")
 
 
 @pr_context_app.command("capture")
@@ -2271,44 +2272,6 @@ def sync_ide(
     run_setup(ide, project_root=project_root)
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
 
-@hu_app.command("import")
-def hu_import(
-    external_id: str = typer.Argument(..., help="External item key, for example PROJ-123."),
-    provider: str = typer.Option("jira", "--provider", help="External provider name."),
-    no_remember: bool = typer.Option(False, "--no-remember", help="Skip episodic summary storage."),
-) -> None:
-    """Import one external tracked item into ``vault/hu/``."""
-    mem = _load_memory()
-    path = mem.import_work_item(external_id, provider=provider, remember=not no_remember)
-    typer.echo(f"Tracked item imported -> {path}")
-
-
-@hu_app.command("list")
-def hu_list() -> None:
-    """List tracked item notes already stored in ``vault/hu/``."""
-    mem = _load_memory()
-    notes = mem.list_work_item_notes()
-    if not notes:
-        typer.echo("No tracked items imported yet.")
-        return
-    for note in notes:
-        typer.echo(str(note))
-
-
-@hu_app.command("show")
-def hu_show(
-    item_id: str = typer.Argument(..., help="Tracked item ID, for example PROJ-123."),
-) -> None:
-    """Show the local vault note path for one tracked item."""
-    mem = _load_memory()
-    try:
-        note = mem.get_work_item_note(item_id)
-    except FileNotFoundError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
-    typer.echo(str(note))
-
-
 @app.command()
 def stats(
     project_root: str | None = typer.Option(
@@ -2474,66 +2437,10 @@ def forget(
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Internal helpers (implementación en cortex.cli.common)
 # ---------------------------------------------------------------------------
 
-def _load_memory(project_root: str | Path | None = None) -> AgentMemory:  # noqa: F821
-    """Return an ``AgentMemory`` rooted at *project_root* (or CWD if None).
-
-    Accepts ``--project-root`` from any CLI command so that adopters
-    don't need to ``cd`` into their workspace just to run a query.
-    """
-    from cortex.core import AgentMemory
-    from cortex.workspace import WorkspaceLayout
-
-    start = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
-    layout = WorkspaceLayout.discover(start)
-    config_path = layout.config_path
-    if not config_path.exists():
-        typer.echo(
-            f"❌ Cortex no está configurado en {start}.\n"
-            f"   No encuentro `{config_path}`.\n"
-            "   Ejecutá `cortex setup full --non-interactive` para inicializar el workspace,\n"
-            "   o pasá `--project-root <ruta>` apuntando a un repo ya configurado.",
-            err=True,
-        )
-        sys.exit(1)
-    return AgentMemory(config_path=config_path)
-
-
-def _get_staged_files() -> list[str]:
-    """Get list of staged (and modified) files from git."""
-
-    files: list[str] = []
-    try:
-        # Staged files
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "--cached"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.stdout.strip():
-            files.extend(f for f in result.stdout.strip().split("\n") if f)
-
-        # Modified (not staged)
-        result2 = subprocess.run(
-            ["git", "diff", "--name-only"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result2.stdout.strip():
-            files.extend(f for f in result2.stdout.strip().split("\n") if f)
-
-        # Untracked
-        result3 = subprocess.run(
-            ["git", "ls-files", "--others", "--exclude-standard"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result3.stdout.strip():
-            files.extend(f for f in result3.stdout.strip().split("\n") if f)
-
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
-    return list(dict.fromkeys(files))  # Deduplicate preserving order
+from cortex.cli.common import _get_staged_files, _load_memory  # noqa: E402
 
 
 if __name__ == "__main__":
