@@ -79,10 +79,16 @@ class WorkItemService:
         return path
 
     def get_item_note(self, item_id: str) -> Path:
-        path = resolve_safe(self._vault_path, Path("hu") / f"{self._slug(item_id)}.md")
-        if not path.exists():
-            raise FileNotFoundError(f"Tracked item not found in vault: {item_id}")
-        return path
+        # Naming canónico: el writer usa el template "HU-{external_id}.md"
+        # (routing.py DocType.HU). Se conserva el fallback al slug legacy
+        # para notas escritas antes del fix del bug #10 (deep review 2026-08).
+        canonical = resolve_safe(self._vault_path, Path("hu") / f"HU-{item_id}.md")
+        if canonical.exists():
+            return canonical
+        legacy = resolve_safe(self._vault_path, Path("hu") / f"{self._slug(item_id)}.md")
+        if legacy.exists():
+            return legacy
+        raise FileNotFoundError(f"Tracked item not found in vault: {item_id}")
 
     def list_item_notes(self) -> list[Path]:
         hu_dir = self._vault_path / "hu"
