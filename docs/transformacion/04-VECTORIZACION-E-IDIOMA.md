@@ -421,6 +421,37 @@ Corrida real del pipeline sobre dataset ES/EN (34 docs, 51 queries). Resultados:
 - Backend nuevo `fastembed` agregado a EmbedderFactory (ONNX puro, sin PyTorch).
 - Pendiente Fase E: considerar cuantización int8 y evaluarla con la misma suite.
 
+### RECOMENDACIÓN default global (2026-08-23, sesión P-bugs/P4-P8)
+
+**Mantener PER-LANGUAGE como política por defecto** (EN=all-MiniLM-L6-v2 onnx ·
+ES=intfloat/multilingual-e5-large fastembed), NO flip a single-model global.
+
+Fundamento medido:
+- EN-only con MiniLM: MRR@10=1.0 y R@1 perfecto en el dataset — forzar e5-large
+  global cobraría 2.2GB RAM + dim 1024 (×2.7 de store) + ~61ms/query a proyectos
+  que no lo necesitan.
+- ES con MiniLM era EL dolor del dueño (MRR 0.8821); per-language ya lo resuelve
+  (0.9615). El template de proyectos nuevos ya genera el bloque per-language.
+- Single-model e5-large queda como OPCIÓN documentada para proyectos
+  multilingüe-first (misma config, un solo modelo): cambiar
+  `embedding.model` global; el código ya lo soporta.
+
+**Flip final + reindex del vault real: requieren al dueño** (validación de
+percepción de calidad). Comando listo: `cortex reindex --prune-old-caches`.
+
+### int8 — plan concreto de seguimiento (NO ejecutado aún)
+
+fastembed no publica variante int8 de e5-large (catálogo: solo fp32 2.24GB).
+Pasos cuando se ejecute:
+1. `onnxruntime.quantization.quantize_dynamic` sobre el ONNX descargado
+   (~560MB esperado) → modelo local.
+2. Nuevo backend `fastembed-int8` o carga directa ORT en EmbedderFactory
+   (dim 1024, prefijos query:/passage:).
+3. Correr `eval/retrieval/run_eval.py` con ese backend; gate: ES MRR ≥ 0.93
+   (-3% tolerado vs fp32) y latencia p50 ≤ 61ms×0.5.
+4. Decidir adopción con la tabla comparativa nueva junto a esta sección.
+
+
 Descartados también (investigación 2026-08-22):
 - LiquidAI/LFM2.5-1.2B-Instruct: es LLM generativo, no embedder → capa futura
   de inteligencia local (ver docs/transformacion/06-INTELIGENCIA-LOCAL-LFM.md).
