@@ -39,10 +39,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from cortex.documenter.spec_loader import LoadedSpec
 from cortex.session.models import Checkpoint
+
+if TYPE_CHECKING:  # pragma: no cover - solo hints; rompe acople session→documenter (V9)
+    from cortex.documenter.spec_loader import LoadedSpec
 
 ReviewAction = Literal["accept", "redelegate", "warn"]
 
