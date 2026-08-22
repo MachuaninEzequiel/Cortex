@@ -52,6 +52,8 @@ logger = logging.getLogger(__name__)
 SESSION_FILE_SUFFIX = ".yaml"
 ACTIVE_POINTER_FILENAME = "active.txt"
 _TMP_SUFFIX = ".yaml.tmp"
+# Edad máxima de un tmp antes de considerarlo huérfano de un crash (V12).
+_TMP_MAX_AGE_SECONDS = 3600.0
 
 # Per-final-path locks. Granularity is the destination file (not the
 # session_id), so two different sessions can write in parallel; only the
@@ -147,6 +149,26 @@ class SessionStorage:
     def _tmp_file_for(self, session_id: str) -> Path:
         return self._dir / f"{session_id}{_TMP_SUFFIX}"
 
+    def _gc_orphan_tmps(self) -> None:
+        """Eliminar ``*.yaml.tmp`` con más de ``_TMP_MAX_AGE_SECONDS``.
+
+        Un crash entre ``open(tmp)`` y ``os.replace`` deja un tmp huérfano
+        que vivía para siempre (deuda V12). Los recientes se conservan:
+        puede haber un writer activo a mitad de su ventana de escritura.
+        """
+        ahora = time.time()
+        try:
+            huerfanos = list(self._dir.glob(f"*{_TMP_SUFFIX}"))
+        except OSError:
+            return
+        for tmp_path in huerfanos:
+            try:
+                if ahora - tmp_path.stat().st_mtime > _TMP_MAX_AGE_SECONDS:
+                    tmp_path.unlink()
+                    logger.debug("GC: tmp huérfano eliminado: %s", tmp_path.name)
+            except OSError:  # carrera benigna con otro worker
+                continue
+
     def _active_pointer(self) -> Path:
         return self._dir / ACTIVE_POINTER_FILENAME
 
@@ -158,6 +180,7 @@ class SessionStorage:
         Returns the final file path.
         """
         self._ensure_dir()
+        self._gc_orphan_tmps()
         final = self._file_for(record.session_id)
         tmp = self._tmp_file_for(record.session_id)
 
