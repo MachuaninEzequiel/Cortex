@@ -482,17 +482,27 @@ class TestNewMcpToolsRegistered:
     def test_dispatcher_routes_to_helpers(self) -> None:
         """Smoke: the call_tool dispatcher must route both new tools to
         the two helpers added in Plan 02. Detects accidental wiring loss."""
-        from pathlib import Path
+        from collections import deque
 
-        source = (
-            Path(__file__).resolve().parents[2]
-            / "cortex"
-            / "mcp"
-            / "server.py"
-        ).read_text(encoding="utf-8")
-        # The dispatcher branches must call the helpers.
-        assert "self._validate_handoff_text(arguments)" in source
-        assert "self._verify_session_claims_text(arguments)" in source
+        from mcp.server.lowlevel import Server
+
+        s = CortexMCPServer.__new__(CortexMCPServer)
+        s.server = Server("test")
+        s._called_tools = set()
+        s._tool_call_history = []
+        s._error_history = deque(maxlen=10)
+
+        llamados: list[str] = []
+        s._validate_handoff_text = (  # type: ignore[method-assign]
+            lambda arguments=None: llamados.append("_validate_handoff_text") or "ok-validate"
+        )
+        s._verify_session_claims_text = (  # type: ignore[method-assign]
+            lambda arguments=None: llamados.append("_verify_session_claims_text") or "ok-claims"
+        )
+
+        assert s._dispatch_tool_sync("cortex_validate_handoff", {}) == "ok-validate"
+        assert s._dispatch_tool_sync("cortex_verify_session_claims", {}) == "ok-claims"
+        assert llamados == ["_validate_handoff_text", "_verify_session_claims_text"]
 
 
 class TestSaveSessionHandoffArguments:
