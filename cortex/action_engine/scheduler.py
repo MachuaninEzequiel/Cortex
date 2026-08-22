@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from cortex.action_engine.models import (
     IMPACTO_BASE,
     COSTO_PENALIZACION,
+    Action,
     ProposedAction,
 )
 from cortex.action_engine.registry import Registry

@@ -1696,6 +1696,7 @@ def inject(
     - Automatic backup created before any modification
     """
     from cortex.cli.ide import DEPRECATION_SETUP, resolve_project_root, run_setup
+    import cortex.ide as cortex_ide  # F821 fix: rama interactiva lo usa
 
     typer.echo(f"Warning: {DEPRECATION_SETUP}")
     resolved_root = resolve_project_root(project_root)

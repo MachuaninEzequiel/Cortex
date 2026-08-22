@@ -201,7 +201,3 @@ class WorkspaceToolsMixin:
         path = self.memory.get_work_item_note(arguments.get("item_id", ""))
         return f"Tracked item note -> {path}"
 
-    def _sync_vault_text(self) -> str:
-        count = self.memory.sync_vault()
-        return f"Vault synced - {count} documents indexed."
-

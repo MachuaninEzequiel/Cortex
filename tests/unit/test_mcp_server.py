@@ -205,13 +205,6 @@ class TestGovernanceGuard:
             assert marker in helper_msg_2
 
 
-def test_cortex_sync_vault_tool() -> None:
-    server = CortexMCPServer.__new__(CortexMCPServer)
-    server.memory = FakeMemory()  # type: ignore[assignment]
-
-    assert server._sync_vault_text() == "Vault synced - 3 documents indexed."
-
-
 def test_cortex_import_hu_tool() -> None:
     server = CortexMCPServer.__new__(CortexMCPServer)
     server.memory = FakeMemory()  # type: ignore[assignment]

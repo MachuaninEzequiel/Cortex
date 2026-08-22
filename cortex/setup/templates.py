@@ -12,6 +12,11 @@ Generates project-aware defaults for:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover — solo hints; evita import en runtime
+    from cortex.workspace.layout import WorkspaceLayout
+
 from cortex.enterprise.config import build_enterprise_org_config, render_enterprise_config_yaml
 from cortex.git_policy import recommended_gitignore_snippet
 from cortex.setup.detector import ProjectContext
