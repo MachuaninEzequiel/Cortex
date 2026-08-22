@@ -96,3 +96,24 @@ class TestPantallaAcciones:
         assert (
             "auto-ok" in texto or "reversible" in texto or "irreversible" in texto
         )
+
+
+class TestI18n:
+    def test_default_es(self, tmp_path: Path) -> None:
+        repo = _repo(tmp_path)
+        state = snapshot_home(repo)
+        assert state.idioma == "es"
+        console = _console()
+        console.print(render_home(state))
+        assert "SESIÓN" in console.export_text()
+
+    def test_config_en_cambia_etiquetas(self, tmp_path: Path) -> None:
+        repo = _repo(tmp_path)
+        cfg = repo / ".cortex" / "config.yaml"
+        cfg.write_text(cfg.read_text(encoding="utf-8") + "ui:\n  language: en\n", encoding="utf-8")
+        state = snapshot_home(repo)
+        assert state.idioma == "en"
+        console = _console()
+        console.print(render_home(state))
+        texto = console.export_text()
+        assert "SESSION" in texto and "PENDING" in texto

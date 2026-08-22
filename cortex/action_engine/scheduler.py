@@ -15,6 +15,7 @@ from cortex.action_engine.models import (
     ProposedAction,
 )
 from cortex.action_engine.registry import Registry
+from cortex.action_engine.signals import MemorySignals, multiplicador_categoria
 from cortex.action_engine.store import PreferencesStore
 
 MAX_VISIBLE_DEFAULT = 5
@@ -31,12 +32,16 @@ class Scheduler:
     # prioridad (evita proponer lo mismo recién hecho). v0: fijo.
     frescura: float = 1.0
     extra_reasons: dict[str, list[str]] = field(default_factory=dict)
+    # Señales de feedback real (Fase E): dominio negativo sube quality/
+    # maintenance; positivo sube learning/knowledge. Tope ±25%.
+    senales: MemorySignals | None = None
 
     def _score(self, action: Action) -> float:
         impacto = IMPACTO_BASE.get(action.category, 2.0)
         penalizacion_costo = COSTO_PENALIZACION.get(action.cost, 1.0)
         multiplicador_aprendido = self.preferences.penalizacion_skips(action.id)
-        return (impacto * self.frescura - penalizacion_costo) * multiplicador_aprendido
+        base = (impacto * self.frescura - penalizacion_costo) * multiplicador_aprendido
+        return base * multiplicador_categoria(action.category, self.senales)
 
     def propose(
         self,

@@ -51,6 +51,7 @@ class Runner:
         *,
         dry_run: bool = False,
         approved: bool = False,
+        via: str = "user",
     ) -> ActionResult:
         """Ejecuta (o simula) una acción y la registra.
 
@@ -65,7 +66,7 @@ class Runner:
                     f"{action.id} es irreversible — requiere aprobación explícita"
                 ),
                 0,
-                dry_run=True,
+                True,
             )
 
         t0 = time.perf_counter()
@@ -75,7 +76,7 @@ class Runner:
             logger.exception("Acción %s falló", action.id)
             result = ActionResult.fail(f"{action.id}: {exc}")
         duration = int((time.perf_counter() - t0) * 1000)
-        return self._registrar(action, result, duration, dry_run)
+        return self._registrar(action, result, duration, dry_run, via=via)
 
     def undo_last(self) -> ActionResult | None:
         """Deshace la última ejecución real y reversible. None si no hay."""
@@ -109,6 +110,7 @@ class Runner:
         result: ActionResult,
         duration_ms: int,
         dry_run: bool,
+        via: str = "user",
     ) -> ActionResult:
         self.log.append(
             {
@@ -119,6 +121,7 @@ class Runner:
                 "ok": result.ok,
                 "message": result.message,
                 "duration_ms": duration_ms,
+                "via": via,
             }
         )
         if not dry_run:

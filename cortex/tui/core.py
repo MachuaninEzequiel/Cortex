@@ -20,6 +20,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from cortex.action_engine.context import ActionContext
+from cortex.action_engine.i18n import DEFAULT_LANG, etiquetas, idioma_de
 from cortex.action_engine.learning import Learner
 from cortex.action_engine.models import ProposedAction
 from cortex.action_engine.runner import Runner
@@ -40,6 +41,7 @@ class HomeState:
     doctor_items: tuple[tuple[str, str], ...]
     elapsed_ms: int = 0
     errores: tuple[str, ...] = field(default=())
+    idioma: str = "es"
 
 
 # ── snapshot ───────────────────────────────────────────────────────────────
@@ -83,6 +85,7 @@ def snapshot_home(project_root: Path | None = None) -> HomeState:
             doctor_items=(("init", "pendiente"),),
             elapsed_ms=int((time.perf_counter() - t0) * 1000),
             errores=(str(exc),),
+            idioma=DEFAULT_LANG,
         )
 
     root = ctx.layout.workspace_root.parent  # repo root para rama/doctor-lite
@@ -101,12 +104,18 @@ def snapshot_home(project_root: Path | None = None) -> HomeState:
         registry = __import__(
             "cortex.action_engine.actions", fromlist=["build_default_registry"]
         ).build_default_registry(ctx)
-        sched = Scheduler(preferences=PreferencesStore(ctx.dot_cortex))
+        from cortex.action_engine.signals import leer_senales
+
+        sched = Scheduler(
+            preferences=PreferencesStore(ctx.dot_cortex),
+            senales=leer_senales(ctx.dot_cortex),
+        )
         propuestas = sched.propose(registry)
     except Exception as exc:  # noqa: BLE001 — el home nunca revienta
         propuestas = []
         errores.append(f"action engine: {exc}")
 
+    idioma = idioma_de(ctx.layout.config_path)
     state = HomeState(
         proyecto=root.name,
         rama=_rama_actual(root),
@@ -116,6 +125,7 @@ def snapshot_home(project_root: Path | None = None) -> HomeState:
         vault_sin_validar=None,
         doctor_items=tuple(doctor_items),
         errores=tuple(errores),
+        idioma=idioma,
     )
     # dataclass frozen → reconstruir con elapsed real
     return HomeState(
@@ -125,6 +135,7 @@ def snapshot_home(project_root: Path | None = None) -> HomeState:
         doctor_items=state.doctor_items,
         elapsed_ms=int((time.perf_counter() - t0) * 1000),
         errores=state.errores,
+        idioma=state.idioma,
     )
 
 
@@ -132,19 +143,20 @@ def snapshot_home(project_root: Path | None = None) -> HomeState:
 
 
 def render_home(state: HomeState) -> Panel:
+    et = etiquetas(state.idioma)
     tabla = Table(show_header=False, box=None, padding=(0, 1), expand=True)
     tabla.add_column("k", style="bold cyan", width=11)
     tabla.add_column("v")
 
-    tabla.add_row("SESIÓN", state.sesion_line or "ninguna activa")
+    tabla.add_row(et["sesion"], state.sesion_line or et["ninguna"])
     n_acc = len(state.acciones)
     tabla.add_row(
-        "PENDIENTE",
-        f"{n_acc} acción(es) sugeridas" if n_acc else "nada pendiente ✓",
+        et["pendiente"],
+        f"{n_acc} {et['acciones_sugeridas']}" if n_acc else et["sin_pendiente"],
     )
-    tabla.add_row("VAULT", f"{state.vault_notas} notas")
+    tabla.add_row(et["vault"], f"{state.vault_notas} {et['notas']}")
     doctor = "  ".join(f"{k}: {v}" for k, v in state.doctor_items)
-    tabla.add_row("SALUD", doctor)
+    tabla.add_row(et["salud"], doctor)
     if state.errores:
         tabla.add_row("AVISO", "; ".join(state.errores))
 
@@ -180,7 +192,8 @@ def render_actions_screen(proposals: list[ProposedAction]) -> Panel:
 
     return Panel(
         tabla,
-        title="Acciones sugeridas",
+        title="Acciones sugeridas / Suggested actions",
+
         subtitle=(
             "[dim]a=ejecutar todas las auto-ok · N=elegir · "
             "s=saltar la elegida · n=nunca más · q=volver[/dim]"
@@ -192,9 +205,9 @@ def render_actions_screen(proposals: list[ProposedAction]) -> Panel:
 # ── loop interactivo ───────────────────────────────────────────────────────
 
 
-def _ejecutar_accion(ctx: ActionContext, proposal: ProposedAction, *, approved: bool) -> None:
+def _ejecutar_accion(ctx: ActionContext, proposal: ProposedAction, *, approved: bool, via: str = "user") -> None:
     runner = Runner(directory=ctx.dot_cortex)
-    resultado = runner.execute(proposal.action, approved=approved)
+    resultado = runner.execute(proposal.action, approved=approved, via=via)
     console = Console()
     icono = "✅" if resultado.ok else "❌"
     console.print(f"{icono} [{proposal.action.id}] {resultado.message}")
@@ -221,7 +234,7 @@ def _pantalla_acciones(ctx: ActionContext, console: Console) -> None:
         for p in proposals:
             if p.action.auto_ok:
                 learner.registrar_decision(p.action.id, "accept")
-                _ejecutar_accion(ctx, p, approved=False)
+                _ejecutar_accion(ctx, p, approved=False, via="auto")
         return
 
     if eleccion.isdigit() and 1 <= int(eleccion) <= len(proposals):

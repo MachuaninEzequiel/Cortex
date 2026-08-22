@@ -33,6 +33,9 @@ class ActionLog:
         return self._path
 
     def append(self, entry: dict[str, object]) -> None:
+        from cortex.action_engine.models import ahora_iso
+
+        entry = {**entry, "ts": entry.get("ts") or ahora_iso()}
         self._dir.mkdir(parents=True, exist_ok=True)
         self._rotar_si_corresponde()
         with self._path.open("a", encoding="utf-8") as fh:
