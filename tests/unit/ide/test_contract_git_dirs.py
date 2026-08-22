@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import stat
 from pathlib import Path
 
 import pytest
@@ -182,15 +181,32 @@ class TestCursorAdapter:
         assert "cortex" not in data.get("mcpServers", {})
         assert any("cortex entry removed" in r for r in removed)
 
-    # KNOWN-BUG: CursorAdapter.uninstall() no elimina los slash skills
-    # instalados por inject_profiles en .cursor/skills/<n>/SKILL.md ni sus
-    # directorios; quedan huerfanos tras el uninstall.
-    @pytest.mark.xfail(reason="# KNOWN-BUG: uninstall deja .cursor/skills/", strict=True)
     def test_uninstall_removes_slash_skills(self, project_root: Path):
+        """FIX KNOWN-BUG: uninstall tambien elimina los slash skills."""
         adapter = CursorAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
-        adapter.uninstall(project_root)
+        removed = adapter.uninstall(project_root)
         assert not (project_root / ".cursor" / "skills").exists()
+        for name in ("cortex-sync", "cortex-sddwork", "cortex-documenter"):
+            assert not (project_root / ".cursor" / "skills" / name).exists()
+            assert any(name in r for r in removed), (name, removed)
+        assert not (project_root / ".cursor").exists(), (
+            ".cursor queda vacio tras uninstall"
+        )
+
+    def test_uninstall_removes_skills_keeps_foreign_skill(
+        self, project_root: Path
+    ):
+        adapter = CursorAdapter()
+        adapter.inject_profiles(project_root, PROMPTS)
+        foreign = project_root / ".cursor" / "skills" / "my-skill"
+        foreign.mkdir(parents=True)
+        (foreign / "SKILL.md").write_text("mine", encoding="utf-8")
+
+        adapter.uninstall(project_root)
+
+        assert foreign.exists(), "skill del usuario intacto"
+        assert (foreign / "SKILL.md").read_text(encoding="utf-8") == "mine"
 
     def test_double_install_is_idempotent(self, project_root: Path, fake_home: Path):
         adapter = CursorAdapter()
@@ -240,13 +256,70 @@ class TestVSCodeAdapter:
         assert cfg["type"] == "stdio"
         assert "${workspaceFolder}" in cfg["args"]
 
-    def test_uninstall_is_noop_base_default(self, project_root: Path):
+    def test_uninstall_removes_cortex_files_and_mcp_entry(
+        self, project_root: Path, fake_home: Path
+    ):
         adapter = VSCodeAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
         adapter.inject_mcp(project_root)
-        assert adapter.uninstall() == []
-        # Caracterizacion: todo lo escrito sigue en disco.
-        assert (project_root / ".vscode" / "mcp.json").exists()
+
+        removed = adapter.uninstall(project_root)
+
+        for path in (
+            project_root / ".github" / "agents" / "cortex-sync.agent.md",
+            project_root / ".github" / "agents" / "cortex-SDDwork.agent.md",
+            project_root / ".claude" / "agents" / "cortex-code-explorer.md",
+            project_root / ".claude" / "agents" / "cortex-code-implementer.md",
+            project_root / ".claude" / "agents" / "cortex-documenter.md",
+        ):
+            assert not path.exists(), path
+            assert any(str(path) == r or str(path) in r for r in removed), removed
+        assert not (project_root / ".github" / "agents").exists()
+        assert not (project_root / ".claude" / "agents").exists()
+
+        mcp_data = json.loads(
+            (project_root / ".vscode" / "mcp.json").read_text(encoding="utf-8")
+        )
+        assert "cortex" not in mcp_data.get("servers", {})
+        assert any("cortex entry removed" in r for r in removed)
+
+    def test_uninstall_preserves_foreign_agents_and_servers(
+        self, project_root: Path, fake_home: Path
+    ):
+        adapter = VSCodeAdapter()
+        adapter.inject_profiles(project_root, PROMPTS)
+        adapter.inject_mcp(project_root)
+
+        user_agent = project_root / ".github" / "agents" / "mine.agent.md"
+        user_agent.write_text("mine", encoding="utf-8")
+        claude_user = project_root / ".claude" / "agents" / "own-subagent.md"
+        claude_user.write_text("user", encoding="utf-8")
+        mcp_path = project_root / ".vscode" / "mcp.json"
+        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+        data["servers"]["other"] = {"command": "foo"}
+        mcp_path.write_text(json.dumps(data), encoding="utf-8")
+
+        adapter.uninstall(project_root)
+
+        assert user_agent.exists() and claude_user.exists()
+        # Los dirs siguen porque contienen archivos del usuario.
+        assert (project_root / ".github" / "agents").exists()
+        assert (project_root / ".claude" / "agents").exists()
+        final = json.loads(mcp_path.read_text(encoding="utf-8"))
+        assert final["servers"]["other"] == {"command": "foo"}
+        assert "cortex" not in final["servers"]
+
+    def test_uninstall_without_project_root_warns_no_cwd_touch(
+        self, project_root: Path, caplog: pytest.LogCaptureFixture
+    ):
+        import logging
+
+        adapter = VSCodeAdapter()
+        adapter.inject_profiles(project_root, PROMPTS)
+        with caplog.at_level(logging.WARNING, logger="cortex.ide.adapters.vscode"):
+            assert adapter.uninstall() == []
+        assert caplog.records
+        # Nada fue borrado por el no-op explicito.
         assert (project_root / ".github" / "agents" / "cortex-sync.agent.md").exists()
 
     def test_double_install_is_idempotent(self, project_root: Path):
@@ -291,12 +364,52 @@ class TestWindsurfAdapter:
         cfg = json.loads(mcp_file.read_text(encoding="utf-8"))["mcpServers"]["cortex"]
         assert cfg["args"][-1] == str(project_root)
 
-    def test_uninstall_is_noop(self, project_root: Path, fake_home: Path):
+    def test_uninstall_restores_agents_md_from_backup(
+        self, project_root: Path, fake_home: Path
+    ):
+        """AGENTS.md fue sobrescrito CON backup → restaurar del backup."""
+        (project_root / "AGENTS.md").write_text("USER RULES", encoding="utf-8")
         adapter = WindsurfAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
         adapter.inject_mcp(project_root)
-        assert adapter.uninstall() == []
-        assert (project_root / "AGENTS.md").exists()
+
+        removed = adapter.uninstall(project_root)
+
+        text = (project_root / "AGENTS.md").read_text(encoding="utf-8")
+        assert text == "USER RULES", "restaura el contenido previo del usuario"
+        assert any("restored from" in r for r in removed), removed
+        assert not list(project_root.glob("AGENTS.md.cortex_backup_*")), (
+            "los backups (artefactos Cortex) se eliminan tras restaurar"
+        )
+        mcp_file = fake_home / ".codeium" / "windsurf" / "mcp_config.json"
+        data = json.loads(mcp_file.read_text(encoding="utf-8"))
+        assert "cortex" not in data.get("mcpServers", {})
+
+    def test_uninstall_deletes_agents_md_created_entirely_by_cortex(
+        self, project_root: Path, fake_home: Path
+    ):
+        adapter = WindsurfAdapter()
+        adapter.inject_profiles(project_root, PROMPTS)
+        # Simular que no hubo contenido previo: sin backups.
+        for backup in project_root.glob("AGENTS.md.cortex_backup_*"):
+            backup.unlink()
+
+        adapter.uninstall(project_root)
+
+        assert not (project_root / "AGENTS.md").exists()
+
+    def test_uninstall_leaves_mixed_agents_md_intact(
+        self, project_root: Path, fake_home: Path
+    ):
+        (project_root / "AGENTS.md").write_text(
+            "# Mine\ncontenido propio desconocido\n", encoding="utf-8"
+        )
+
+        removed = WindsurfAdapter().uninstall(project_root)
+
+        text = (project_root / "AGENTS.md").read_text(encoding="utf-8")
+        assert text == "# Mine\ncontenido propio desconocido\n"
+        assert any("skipped" in r and "AGENTS.md" in r for r in removed), removed
 
 
 # ---------------------------------------------------------------------------
@@ -337,11 +450,27 @@ class TestZedAdapter:
     def test_inject_mcp_is_stub(self, project_root: Path):
         assert ZedAdapter().inject_mcp(project_root) == []
 
-    def test_uninstall_is_noop(self, project_root: Path, fake_home: Path):
+    def test_uninstall_removes_only_cortex_agents(
+        self, project_root: Path, fake_home: Path
+    ):
+        agents_path = fake_home / ".zed" / "agents.json"
+        agents_path.parent.mkdir(parents=True)
+        agents_path.write_text(
+            json.dumps({"agents": {"mine": {"name": "Mine"}}}), encoding="utf-8"
+        )
         adapter = ZedAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
-        assert adapter.uninstall() == []
-        assert (fake_home / ".zed" / "agents.json").exists()
+
+        removed = adapter.uninstall(project_root)
+
+        data = json.loads(agents_path.read_text(encoding="utf-8"))
+        assert set(data["agents"]) == {"mine"}, "solo claves Cortex eliminadas"
+        assert data["agents"]["mine"] == {"name": "Mine"}
+        assert len(removed) == 2
+        assert all("removed" in r for r in removed)
+
+    def test_uninstall_when_agents_json_missing(self, fake_home: Path):
+        assert ZedAdapter().uninstall(Path("/tmp/whatever")) == []
 
 
 # ---------------------------------------------------------------------------
@@ -383,11 +512,42 @@ class TestAntigravityAdapter:
         assert cfg["args"] == ["mcp-server", "--stdio"]
         assert cfg["env"]["PYTHONPATH"] == str(project_root)
 
-    def test_uninstall_is_noop(self, project_root: Path, fake_home: Path):
+    def test_uninstall_restores_instructions_from_backup(
+        self, project_root: Path, fake_home: Path
+    ):
+        settings = fake_home / ".gemini" / "settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text(
+            json.dumps({"system_instructions": "OLD USER RULES"}), encoding="utf-8"
+        )
         adapter = AntigravityAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
-        assert adapter.uninstall() == []
-        assert (fake_home / ".gemini" / "settings.json").exists()
+        adapter.inject_mcp(project_root)
+
+        removed = adapter.uninstall(project_root)
+
+        data = json.loads(settings.read_text(encoding="utf-8"))
+        assert data["system_instructions"] == "OLD USER RULES", (
+            "restaura las instrucciones previas del backup"
+        )
+        assert "cortex" not in data.get("mcp_servers", {})
+        assert any("restored from" in r for r in removed), removed
+        assert any("cortex entry removed" in r for r in removed)
+        assert not list(settings.parent.glob("settings.json.cortex_backup_*"))
+
+    def test_uninstall_without_backup_clears_cortex_instructions(
+        self, project_root: Path, fake_home: Path
+    ):
+        settings = fake_home / ".gemini" / "settings.json"
+        settings.parent.mkdir(parents=True)
+        AntigravityAdapter().inject_profiles(project_root, PROMPTS)
+        for backup in settings.parent.glob("settings.json.cortex_backup_*"):
+            backup.unlink()
+
+        AntigravityAdapter().uninstall(project_root)
+
+        data = json.loads(settings.read_text(encoding="utf-8"))
+        assert data["system_instructions"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -420,12 +580,91 @@ class TestHermesAdapter:
         assert cfg["env"]["PYTHONPATH"] == str(project_root)
         assert "--project-root" not in cfg["args"]
 
-    def test_uninstall_is_noop(self, project_root: Path, fake_home: Path):
+    def test_uninstall_removes_prompts_and_mcp_keeps_rest(
+        self, project_root: Path, fake_home: Path
+    ):
+        config = fake_home / ".config" / "hermes" / "config.json"
+        config.parent.mkdir(parents=True)
+        config.write_text(
+            json.dumps({"prompts": {"mine": "M"}, "other_key": [1, 2]}),
+            encoding="utf-8",
+        )
         adapter = HermesAdapter()
         adapter.inject_profiles(project_root, PROMPTS)
-        assert adapter.uninstall() == []
-        assert (fake_home / ".config" / "hermes" / "config.json").exists()
+        adapter.inject_mcp(project_root)
 
+        removed = adapter.uninstall(project_root)
+
+        data = json.loads(config.read_text(encoding="utf-8"))
+        assert data["prompts"] == {"mine": "M"}, "merge inverso preserva ajenas"
+        assert data["other_key"] == [1, 2]
+        assert "cortex" not in data.get("mcp", {})
+        assert len(removed) == 3
+        assert any("cortex entry removed" in r for r in removed)
+
+    def test_uninstall_when_config_missing(self, fake_home: Path):
+        assert HermesAdapter().uninstall(Path("/tmp/whatever")) == []
+
+
+# ---------------------------------------------------------------------------
+# Contrato V2 transversal: idempotencia de uninstall x2
+# (uninstall -> uninstall: el segundo devuelve [] sin errores)
+# ---------------------------------------------------------------------------
+
+
+class TestUninstallIdempotency:
+    """Contrato Fase 2: uninstall es remove real e idempotente."""
+
+    def _setup(self, adapter, project_root: Path) -> None:
+        if isinstance(adapter, VSCodeAdapter):
+            adapter.inject_profiles(project_root, PROMPTS)
+            adapter.inject_mcp(project_root)
+        else:
+            adapter.inject_profiles(project_root, PROMPTS)
+            adapter.inject_mcp(project_root)
+
+    @pytest.mark.parametrize(
+        "adapter_cls",
+        [CursorAdapter, VSCodeAdapter, WindsurfAdapter, ZedAdapter,
+         AntigravityAdapter, HermesAdapter],
+    )
+    def test_uninstall_twice_second_returns_empty(
+        self, adapter_cls, project_root: Path, fake_home: Path
+    ):
+        adapter = adapter_cls()
+        self._setup(adapter, project_root)
+
+        first = adapter.uninstall(project_root)
+        assert first, f"{adapter_cls.__name__}: primer uninstall debe remover algo"
+
+        second = adapter.uninstall(project_root)
+        assert second == [], (
+            f"{adapter_cls.__name__}: segundo uninstall debe ser no-op: {second}"
+        )
+
+    @pytest.mark.parametrize(
+        "adapter_cls",
+        [CursorAdapter, VSCodeAdapter, WindsurfAdapter, ZedAdapter,
+         AntigravityAdapter, HermesAdapter],
+    )
+    def test_install_uninstall_install_same_state_as_first_install(
+        self, adapter_cls, project_root: Path, fake_home: Path
+    ):
+        adapter = adapter_cls()
+        first = sorted(adapter.inject_all(project_root, PROMPTS))
+        snapshot = {
+            p: Path(p).read_text(encoding="utf-8")
+            for p in first
+            if Path(p).is_file()
+        }
+
+        adapter.uninstall(project_root)
+        second = sorted(adapter.inject_all(project_root, PROMPTS))
+
+        assert second == first
+        # Windsurf sobrescribe AGENTS.md con contenido canonico identico.
+        for p, expected_text in snapshot.items():
+            assert Path(p).read_text(encoding="utf-8") == expected_text
 
 # ---------------------------------------------------------------------------
 # Registry: names, aliases, tiers

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,16 @@ from cortex.ide.base import (
     _generate_autogen_header,
 )
 from cortex.ide.prompts import get_subagent_prompt, strip_markdown_frontmatter
+
+logger = logging.getLogger(__name__)
+
+# Agents canonicos que este adapter escribe (SSoT para install y uninstall).
+_VSCODE_TOP_AGENTS: tuple[str, ...] = ("cortex-sync", "cortex-SDDwork")
+_CLAUDE_SUBAGENTS: tuple[str, ...] = (
+    "cortex-code-explorer",
+    "cortex-code-implementer",
+    "cortex-documenter",
+)
 
 
 def _render_vscode_agent(frontmatter: list[str], header: str, body: str) -> str:
@@ -154,3 +165,56 @@ class VSCodeAdapter(IDEAdapter):
 
         mcp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return [str(mcp_path)]
+
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
+        """Eliminar lo inyectado por Cortex en VS Code:
+
+        - ``.github/agents/{cortex-sync,cortex-SDDwork}.agent.md``.
+        - ``.claude/agents/{explorer,implementer,documenter}.md``.
+        - Entrada ``servers.cortex`` de ``<project>/.vscode/mcp.json``.
+
+        SOLO se borra lo que Cortex creo (archivos por nombre canonico);
+        los directorios solo se eliminan si quedan vacios. Sin
+        ``project_root`` no se toca nada y se emite un warning explicito
+        (nunca ``Path.cwd()``).
+        """
+        if project_root is None:
+            logger.warning(
+                "[Cortex][VSCode] uninstall() llamado sin project_root: "
+                "no-op. Pasa el project root explicito para desinstalar."
+            )
+            return []
+
+        removed: list[str] = []
+        root = Path(project_root).resolve()
+
+        for dir_key, names in (
+            ("agents_dir", _VSCODE_TOP_AGENTS),
+            ("claude_agents_dir", _CLAUDE_SUBAGENTS),
+        ):
+            agents_dir = root / self.get_config_paths()[dir_key]
+            for agent_name in names:
+                suffix = ".agent.md" if dir_key == "agents_dir" else ".md"
+                agent_path = agents_dir / f"{agent_name}{suffix}"
+                if agent_path.exists():
+                    agent_path.unlink()
+                    removed.append(str(agent_path))
+            if agents_dir.exists() and not any(agents_dir.iterdir()):
+                agents_dir.rmdir()
+                removed.append(str(agents_dir))
+
+        # Entrada cortex de .vscode/mcp.json (merge inverso, preservando
+        # otros servers del adopter).
+        mcp_path = root / self.get_config_paths()["mcp"]
+        if mcp_path.exists():
+            with contextlib.suppress(Exception):
+                data = json.loads(mcp_path.read_text(encoding="utf-8"))
+                servers = data.get("servers")
+                if isinstance(servers, dict) and "cortex" in servers:
+                    del servers["cortex"]
+                    mcp_path.write_text(
+                        json.dumps(data, indent=2), encoding="utf-8"
+                    )
+                    removed.append(f"{mcp_path} (cortex entry removed)")
+
+        return removed
