@@ -139,18 +139,26 @@ class TutorEngine:
 
     # -- Topic display ------------------------------------------------------
 
+    def _render_topic(self, topic: TutorTopic) -> None:
+        """Render topic + hint de guía extendida (revive guide_path, O05 A4)."""
+        topic.render(self.console)
+        if topic.guide_path:
+            self.console.print(
+                f"\n[dim]📖 Guía extendida: [underline]{topic.guide_path}[/underline][/dim]"
+            )
+
     def show_topic(self, index: int) -> None:
         """Render a single topic by its 0-based index."""
         if 0 <= index < len(self.topics):
             self.console.clear()
-            self.topics[index].render(self.console)
+            self._render_topic(self.topics[index])
 
     def show_topic_by_slug(self, slug: str) -> bool:
         """Render a topic by its slug name. Returns True if found."""
         slug_lower = slug.lower().strip()
         for topic in self.topics:
             if topic.slug == slug_lower:
-                topic.render(self.console)
+                self._render_topic(topic)
                 return True
         return False
 
