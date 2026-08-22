@@ -21,6 +21,20 @@ class TestDecayConfig:
         esperado = math.pow(0.5, 1.0 / 168.0)
         assert config.decay_rate == pytest.approx(esperado)
 
+    def test_decay_rate_explcito_distinto_del_default_se_respeta(self) -> None:
+        """Bug #9 (deep review 2026-08): __post_init__ pisaba SIEMPRE
+        decay_rate con la derivación de half_life. Un decay_rate explícito
+        distinto del default es una intención del caller y se respeta."""
+        assert DecayConfig(decay_rate=0.9).decay_rate == 0.9
+
+    def test_path_del_enricher_no_cambia(self) -> None:
+        """Los enrichers pasan decay_rate=default + half_life de config:
+        la derivación desde half_life debe seguir gobernando (igual que
+        antes del fix)."""
+        config = DecayConfig(decay_rate=0.995, half_life_hours=720.0)
+        esperado = math.pow(0.5, 1.0 / 720.0)
+        assert config.decay_rate == pytest.approx(esperado)
+
     def test_defaults_sensatos(self) -> None:
         config = DecayConfig()
         assert config.floor == 0.10

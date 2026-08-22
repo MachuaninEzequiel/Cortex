@@ -20,6 +20,10 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
+# Default compartido entre el campo de :class:`DecayConfig` y su validación
+# en ``__post_init__`` (ver bug #9).
+_DEFAULT_DECAY_RATE = 0.995
+
 
 # ---------------------------------------------------------------------------
 # Decay Configuration
@@ -37,7 +41,7 @@ class DecayConfig:
     """
     
     # Decay rate per hour (0.99 = ~10% per day, ~50% per week)
-    decay_rate: float = 0.995
+    decay_rate: float = _DEFAULT_DECAY_RATE
     
     # Half-life in hours (time to reach 50% of original score)
     # Default: 7 days = 168 hours
@@ -48,11 +52,18 @@ class DecayConfig:
     
     # Minimum age in hours to apply decay (memories younger are full score)
     min_age_hours: float = 24.0
-    
+
     def __post_init__(self) -> None:
-        """Calculate decay rate from half-life."""
+        """Derive decay rate from half-life unless explicitly overridden.
+
+        Bug #9 (deep review 2026-08): antes se derivaba SIEMPRE, pisando
+        cualquier ``decay_rate`` explícito. Regla actual: un decay_rate
+        distinto del default se interpreta como intención del caller y se
+        respeta; con el default (o sin pasarlo), manda ``half_life_hours``
+        — que es el knob que usan los enrichers.
+        """
         import math
-        if self.half_life_hours > 0:
+        if self.decay_rate == _DEFAULT_DECAY_RATE and self.half_life_hours > 0:
             self.decay_rate = math.pow(0.5, 1.0 / self.half_life_hours)
 
 
