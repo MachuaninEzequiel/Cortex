@@ -106,7 +106,6 @@ def test_claude_code_mcp_preserves_foreign_servers(project_root: Path) -> None:
     assert set(data["mcpServers"]) == {"other", "cortex"}
 
 
-@pytest.mark.xfail(strict=True, reason="# KNOWN-BUG: claude_code hereda uninstall() no-op de base")
 def test_claude_code_uninstall_removes_written_files(project_root: Path) -> None:
     adapter = ClaudeCodeAdapter()
     written = adapter.inject_profiles(project_root, PROMPTS)
@@ -181,7 +180,6 @@ def test_opencode_mcp_local_type_with_project_root(
     assert str(project_root.resolve()) in cortex["command"]
 
 
-@pytest.mark.xfail(strict=True, reason="# KNOWN-BUG: opencode hereda uninstall() no-op de base")
 def test_opencode_uninstall_removes_written_files(
     tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -243,3 +241,207 @@ def test_codex_mcp_project_scoped_toml(project_root: Path) -> None:
     toml = (project_root / ".codex" / "config.toml").read_text(encoding="utf-8")
     assert "BEGIN CORTEX MCP" in toml
     assert "--project-root" in toml
+
+# ---------------------------------------------------------------------------
+# uninstall: idempotencia, preservación de lo ajeno, install→uninstall→install
+# ---------------------------------------------------------------------------
+
+_TIMESTAMP_RE = None  # normalización se hace inline con re
+
+
+def _normalize_timestamps(text: str) -> str:
+    import re as _re
+
+    return _re.sub(r"Last sync: .*", "Last sync: <ts>", text).replace("\r\n", "\n")
+
+
+# ── opencode ───────────────────────────────────────────────────────────────
+
+
+def test_opencode_uninstall_idempotent_twice(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _opencode_home(tmp_path, monkeypatch)
+    adapter = OpenCodeAdapter()
+    adapter.inject_profiles(project_root, PROMPTS)
+    adapter.inject_mcp(project_root)
+    first = adapter.uninstall(project_root)
+    assert first, "first uninstall should remove Cortex artifacts"
+    second = adapter.uninstall(project_root)
+    assert second == []
+
+
+def test_opencode_uninstall_preserves_foreign_keys(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = _opencode_home(tmp_path, monkeypatch)
+    config_file = home / ".config" / "opencode" / "opencode.json"
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    foreign = {
+        "agent": {"my-own-agent": {"mode": "primary", "description": "mine"}},
+        "mcp": {"other-server": {"type": "local", "command": ["foo"]}},
+        "theme": "dark",
+    }
+    config_file.write_text(json.dumps(foreign), encoding="utf-8")
+
+    adapter = OpenCodeAdapter()
+    adapter.inject_profiles(project_root, PROMPTS)
+    adapter.inject_mcp(project_root)
+    report = adapter.uninstall(project_root)
+    assert any("skipped" not in r for r in report)
+
+    data = json.loads(config_file.read_text(encoding="utf-8"))
+    assert data["agent"] == foreign["agent"]
+    assert data["mcp"] == foreign["mcp"]
+    assert data["theme"] == "dark"
+    assert not any(k.startswith("cortex-") for k in json.dumps(data))
+
+
+def test_opencode_install_uninstall_install_consistent(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = _opencode_home(tmp_path, monkeypatch)
+    adapter = OpenCodeAdapter()
+
+    first_files = set(adapter.inject_all(project_root, PROMPTS))
+    snapshot1 = {
+        p: _normalize_timestamps(Path(p).read_text(encoding="utf-8"))
+        for p in first_files
+    }
+
+    removed = adapter.uninstall(project_root)
+    assert removed
+    for path_str in first_files:
+        if "opencode.json" in path_str:
+            continue  # quedó vacío → unlink (ver test de keys ajenas)
+        assert not Path(path_str).exists()
+
+    second_files = set(adapter.inject_all(project_root, PROMPTS))
+    snapshot2 = {
+        p: _normalize_timestamps(Path(p).read_text(encoding="utf-8"))
+        for p in second_files
+    }
+    assert second_files == first_files
+    assert snapshot1 == snapshot2
+
+
+# ── claude_code ────────────────────────────────────────────────────────────
+
+
+def test_claude_code_uninstall_idempotent_twice(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    adapter = ClaudeCodeAdapter()
+    adapter.inject_profiles(project_root, PROMPTS)
+    adapter.inject_mcp(project_root)
+    first = adapter.uninstall(project_root)
+    assert first, "first uninstall should remove Cortex artifacts"
+    second = adapter.uninstall(project_root)
+    assert second == []
+
+
+def test_claude_code_uninstall_preserves_foreign_content(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    # Contenido ajeno PREVIO al install → install crea backup → uninstall restaura.
+    claude_md = project_root / "CLAUDE.md"
+    user_intro = "# My project notes (user-owned)"
+    claude_md.write_text(user_intro + "\n", encoding="utf-8")
+    mcp_file = project_root / ".mcp.json"
+    mcp_file.write_text(
+        json.dumps({"mcpServers": {"other": {"command": "foo"}}}), encoding="utf-8"
+    )
+    settings_file = project_root / ".claude" / "settings.json"
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    settings_file.write_text(
+        json.dumps({"enabledMcpjsonServers": ["other"], "model": "sonnet"}),
+        encoding="utf-8",
+    )
+
+    adapter = ClaudeCodeAdapter()
+    adapter.inject_profiles(project_root, PROMPTS)
+    adapter.inject_mcp(project_root)
+    report = adapter.uninstall(project_root)
+
+    assert claude_md.exists(), "CLAUDE.md debe restaurarse del backup"
+    assert user_intro in claude_md.read_text(encoding="utf-8")
+    assert "AUTOGENERATED BY CORTEX" not in claude_md.read_text(encoding="utf-8")
+
+    mcp_data = json.loads(mcp_file.read_text(encoding="utf-8"))
+    assert set(mcp_data["mcpServers"]) == {"other"}
+
+    settings_data = json.loads(settings_file.read_text(encoding="utf-8"))
+    assert settings_data["enabledMcpjsonServers"] == ["other"]
+    assert settings_data["model"] == "sonnet"
+
+
+def test_claude_code_uninstall_skips_mixed_unknown_claude_md(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    adapter = ClaudeCodeAdapter()
+    adapter.inject_profiles(project_root, PROMPTS)
+    claude_md = project_root / "CLAUDE.md"
+    # Usuario agrega contenido propio DESPUÉS del install (sin backup nuevo).
+    claude_md.write_text(
+        claude_md.read_text(encoding="utf-8") + "\n## User appendix\n",
+        encoding="utf-8",
+    )
+    report = adapter.uninstall(project_root)
+    assert any("skipped" in r and "CLAUDE.md" in r for r in report)
+    content = claude_md.read_text(encoding="utf-8")
+    assert "## User appendix" in content
+
+
+def test_claude_code_install_uninstall_install_consistent(
+    tmp_path: Path, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    adapter = ClaudeCodeAdapter()
+
+    first_files = set(adapter.inject_all(project_root, PROMPTS))
+    snapshot1 = {
+        p: _normalize_timestamps(Path(p).read_text(encoding="utf-8"))
+        for p in first_files
+    }
+    assert adapter.uninstall(project_root)
+    second_files = set(adapter.inject_all(project_root, PROMPTS))
+    snapshot2 = {
+        p: _normalize_timestamps(Path(p).read_text(encoding="utf-8"))
+        for p in second_files
+    }
+    assert second_files == first_files
+    assert snapshot1 == snapshot2
+
+
+# ── claude_desktop ─────────────────────────────────────────────────────────
+
+
+def test_claude_desktop_uninstall_removes_cortex_preserves_others(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    adapter = ClaudeDesktopAdapter()
+    proj = home / "proj"
+
+    adapter.inject_mcp(proj)
+    config_file = adapter.get_config_paths()["mcp"]
+    # Server ajeno instalado después de Cortex.
+    data = json.loads(config_file.read_text(encoding="utf-8"))
+    data["mcpServers"]["other"] = {"command": "foo"}
+    data["globalShortcut"] = "Ctrl+Space"
+    config_file.write_text(json.dumps(data), encoding="utf-8")
+
+    first = adapter.uninstall(proj)
+    assert first
+    after = json.loads(config_file.read_text(encoding="utf-8"))
+    assert "cortex" not in after["mcpServers"]
+    assert after["mcpServers"]["other"] == {"command": "foo"}
+    assert after["globalShortcut"] == "Ctrl+Space"
+
+    assert adapter.uninstall(proj) == []
+
