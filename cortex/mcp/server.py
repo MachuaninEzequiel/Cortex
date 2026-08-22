@@ -18,6 +18,7 @@ from mcp.server.models import InitializationOptions
 from cortex.autopilot.mcp_tools import AutopilotMCPTools
 from cortex.autopilot.service import AutopilotService
 from cortex.core import AgentMemory
+from cortex.mcp.vault_adapter import PathVault
 from cortex.models import EnrichedContext
 from cortex.security.paths import PathSecurityError, resolve_safe
 from cortex.session.models import CheckpointSource
@@ -2220,18 +2221,7 @@ class CortexMCPServer:
         vault_root = layout.vault_path
         vault_root.mkdir(parents=True, exist_ok=True)
 
-        class _PathVault:
-            def __init__(self, root: Path) -> None:
-                self._root = root
-
-            @property
-            def path(self) -> Path:
-                return self._root
-
-            def index_file(self, rel_path: str) -> bool:  # noqa: ARG002
-                return False
-
-        vault: VaultLike = _PathVault(vault_root)
+        vault: VaultLike = PathVault(vault_root)
         try:
             path = write_design_note_canonical(data, vault=vault)
         except SchemaValidationError as exc:
@@ -2348,18 +2338,7 @@ class CortexMCPServer:
         vault_root = layout.vault_path
         vault_root.mkdir(parents=True, exist_ok=True)
 
-        class _PathVault:
-            def __init__(self, root: Path) -> None:
-                self._root = root
-
-            @property
-            def path(self) -> Path:
-                return self._root
-
-            def index_file(self, rel_path: str) -> bool:  # noqa: ARG002
-                return False
-
-        vault: VaultLike = _PathVault(vault_root)
+        vault: VaultLike = PathVault(vault_root)
 
         # Build the dataclass from the payload, dropping unknown fields
         # so an over-eager LLM that includes extras doesn't crash the call.
