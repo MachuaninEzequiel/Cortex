@@ -1,9 +1,10 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
-> **HANDOFF DE SESIÓN**: leé primero `docs/transformacion/HANDOFF.md` — contiene el
-> contexto completo, commits, decisiones tomadas y los próximos pasos precisos.
+> **PRÓXIMA SESIÓN = MIGRACIÓN RUST.** Leé primero `HANDOFF.md` §TAREA-RUST (tarea
+> explícita con pasos R0-R6) + `07-AUDITORIA-2026-08-24.md` (auditoría de realidad
+> con todos los hallazgos resueltos). Plan técnico: `03-MIGRACION-RUST.md`.
 
-## Estado al cierre de esta sesión (2026-08-23, tarde)
+## Estado al cierre de la sesión de auditoría y pulido (2026-08-24)
 
 - TRAMO 0 ✅ · ola 1 ✅ · OBRA 02 ✅ · OBRA 01: **P2 ✅ P3 ✅ P4 ✅ P5 ✅ P6 ✅ P7 ✅ P8 ✅**
   · **P-BUGS COMPLETOS** (#3,#4,#5,#6 verificados resueltos; #7,#9,#10 arreglados con test)
