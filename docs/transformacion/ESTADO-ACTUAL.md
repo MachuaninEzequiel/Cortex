@@ -2,25 +2,25 @@
 
 > Actualizar SIEMPRE al terminar una sesión de trabajo. Máximo ~40 líneas.
 
-## Sesión 2026-08-21/22 — TRAMO 0 completo + TRAMO 1 fase P-bugs/P1 completa
+## Sesión 2026-08-21/22 — TRAMO 0 + TRAMO 1 ola 1 + OBRA 02 FASE 0-1 completos
 
-- Deep review 12/12: docs/reviews/2026-08-deep-review/. Sello: tag v0.5.0-baseline-seal @ a64e350 (pusheado).
-- Rama del programa: feature/transformacion-2026-08.
-- Planes ejecutables 01..05 completos en docs/transformacion/.
-- TRAMO 0 (commits 798775c, 788c5c4): pin mcp<2, fix tar-slip, suite verde (86 -> 0).
-- TRAMO 1 primera ola (5 commits e9b3e4e..bf5bd3b, suite unit+integration exit 0):
-  - ide uninstall seguro (pi/codex/cursor) + tests de caracterización TDD
-  - session: mutate() transaccional anti lost-update + designer MANAGED + close con fallback git
-  - webgraph: cache por scope + 404 limpios + mode validado + legend en API
-  - cli: --dry-run real en los 4 setups
-  - poda P1: 6 ítems muertos eliminados
-- Pendientes P2 clasificados por fix-p1-deadcode: NoActiveSession, ScoringWithDecay/decay API,
-  is_known_agent/_KNOWN_AGENTS, extra_notes/forced_reason, F841 de tests e2e.
+- Sello: tag v0.5.0-baseline-seal @ a64e350 (pusheado). master intacto.
+- Rama: feature/transformacion-2026-08. Suite unit+integration: VERDE.
+- TRAMO 0 (788c5c4): pin mcp<2 + tar-slip fix. 86 -> 0 fallos.
+- TRAMO 1 ola 1 (e9b3e4e..bf5bd3b): ide uninstall seguro, session mutate() anti
+  lost-update, webgraph cache/404/mode, cli --dry-run real, poda P1 (6 ítems).
+- OBRA 02 FASE 0-1 (640ca20):
+  - base.py: helpers compartidos de marcadores (extract/strip/upsert/is_cortex_owned) + 22 tests
+  - Caracterización completa de los 11 adapters: test_contract_git_dirs.py (62 tests)
+    + test_contract_native_config.py (17 tests)
+  - KNOWN-BUGS documentados con xfail strict: uninstall no-op heredado en
+    claude_code/opencode/vscode/windsurf/zed/antigravity/hermes; cursor deja skills huérfanos
 
 ## Próximo paso
 
-- Obra 02 Fase 0-1: caracterización de los 11 adapters + helpers compartidos de marcadores en base.py
-  (los bugs #3/#6 ya resueltos facilitan la Fase 2 de migración al contrato IDEAdapterV2).
-- Después: P3 golden tests MCP + split server.py (ALTO riesgo, congelación hasta entonces).
-- Nota flake: test_setup_dry_run_creates_nothing mostró 1 fallo no reproducible (pollution de orden);
-  vigilar en próximas corridas.
+- OBRA 02 FASE 2: migrar adapters al contrato IDEAdapterV2 uno por uno usando los
+  helpers de base.py (orden sugerido: codex→opencode→claude_code→pi→cursor→resto),
+  haciendo pasar los xfail. Cada adapter = 1 commit con su suite verde.
+- FASE 3: superficie CLI unificada `cortex ide setup|status|remove|list` + deprecation.
+- Después de Obra 02: P3 golden tests MCP + split server.py; luego Tramo 2 (Obra 04 embeddings).
+- Nota flake: test_setup_dry_run_creates_nothing mostró 1 fallo no reproducible (orden/pollution); vigilar.
