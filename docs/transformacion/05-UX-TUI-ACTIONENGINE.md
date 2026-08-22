@@ -348,11 +348,20 @@ Gates de las TUIs:
   de §2.4: auditoría completa de flags sin implementar y convención --format en
   TODOS los comandos con salida de datos (quedan casos heredados en docs/pr-context).
 
-**Fase D — TUIs**
-- [ ] `cortex/tui/core.py` (patrón session_tui generalizado) + pantalla home.
-- [ ] Pantalla acciones (= aprobación §3.5), sesión activa interactiva, búsqueda.
-- [ ] `session watch` deprecado a favor del panel de sesión.
-- Gate salida: gates §4.5 verdes; home <300ms snapshot.
+**Fase D — TUIs — COMPLETA ✅ 2026-08-23**
+- [x] cortex/tui/core.py: HomeState frozen + renderers puros (patrón
+      session_tui, testeable sin TTY) + snapshot_home <300ms (contexto
+      perezoso) + loop de teclas a/s/÷/t/d/q con cota defensiva.
+- [x] Pantalla acciones = aprobación §3.5 real: Learner registra
+      accept/skip/never y Runner ejecuta (approved solo en elección
+      explícita; auto-ok lote 'a'). Búsqueda usa el mismo motor que
+      `cortex search`; [y]=útil escribe feedback PERSISTIDO.
+- [x] `session show --watch` deprecado → el panel vivo es la TUI home;
+      `cortex` sin argumentos abre el Home (callback invoke_without_command).
+- Gate salida ✅: test_home.py — snapshot<300ms, render 80x24 sin
+  desborde, secciones presentes, decisiones persistidas. Sesión activa
+  interactiva completa queda como pulido post-gate (hoy orquesta
+  `session watch`/`cortex finish` por CLI-equivalencia).
 
 **Fase E — Aprendizaje cerrado + pulido**
 - [ ] Score de prioridad alimentado por feedback real (memoria útil/no útil desde búsqueda TUI).

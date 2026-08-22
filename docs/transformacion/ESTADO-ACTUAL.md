@@ -20,8 +20,10 @@
   scheduler/runner/learning) + catálogo v1 completo (10 acciones) + comando
   **Fase C COMPLETA**: nivel-0 start/finish + aliases ocultos; help raíz = 8
   visibles exacto; B3/B4 search arreglados (--format honrado siempre);
-  E2E ≤3 comandos verde (init/start/finish sobre repo temporal). Sigue
-  Fase D: TUIs (home dashboard).
+  **Fase D COMPLETA**: cortex/tui/core.py (Home <300ms + pantallas
+  acciones/búsqueda, decisión→Learner→Runner reales), `cortex` sin
+  argumentos abre el Home, session --watch deprecado. Sigue Fase E:
+  aprendizaje cerrado + pulido i18n.
 - Refactors de este tramo: main.py 2540→1894 l (pr-context/hu/embedding/mcp/documenting);
   enricher sync/async unificados vía _finalize_items (V3) con DOS bugs reales corregidos
   (closure de lambdas: todas las estrategias buscaban la última query + drift Fase 08);
