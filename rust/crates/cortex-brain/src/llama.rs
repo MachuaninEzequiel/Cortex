@@ -39,6 +39,24 @@ pub struct LlamaChatBackend {
     model: LlamaModel,
     template: LlamaChatTemplate,
     history: Vec<LlamaChatMessage>,
+    /// Temperatura de muestreo; 0 = greedy determinista (default v1).
+    temp: f32,
+    /// Semilla para el muestreo estocástico (sólo si temp > 0).
+    seed: u32,
+}
+
+impl LlamaChatBackend {
+    /// Fija temperatura (>0 activa muestreo estocástico con dist).
+    pub fn with_temp(mut self, temp: f32) -> Self {
+        self.temp = temp;
+        self
+    }
+
+    /// Fija semilla del muestreo estocástico.
+    pub fn with_seed(mut self, seed: u32) -> Self {
+        self.seed = seed;
+        self
+    }
 }
 
 impl LlamaChatBackend {
@@ -62,6 +80,8 @@ impl LlamaChatBackend {
             model,
             template,
             history: Vec::new(),
+            temp: 0.0,
+            seed: 42,
         };
         if let Some(sys) = system {
             this.history.push(
@@ -129,6 +149,16 @@ impl LlamaChatBackend {
             ));
         }
 
+        // Sampler: greedy (determinista, default) o temp+top_k+dist si temp>0.
+        let mut sampler = if self.temp > 0.0 {
+            Some(llama_cpp_2::sampling::LlamaSampler::chain_simple([
+                llama_cpp_2::sampling::LlamaSampler::temp(self.temp),
+                llama_cpp_2::sampling::LlamaSampler::top_k(40),
+                llama_cpp_2::sampling::LlamaSampler::dist(self.seed),
+            ]))
+        } else {
+            None
+        };
         let mut generados: Vec<String> = Vec::with_capacity(max_tokens);
         let mut batch = LlamaBatch::new(tokens.len().max(8), 0);
         for (i, t) in tokens.iter().enumerate() {
@@ -142,14 +172,19 @@ impl LlamaChatBackend {
 
         let mut pos = tokens.len() as i32;
         while generados.len() < max_tokens && pos < N_CTX as i32 - 1 {
-            // Greedy: mayor logit de los candidatos expuestos por el decode.
-            let mejor: Option<LlamaTokenData> = ctx
-                .candidates()
-                .max_by(|a, b| a.logit().total_cmp(&b.logit()));
-            let Some(mejor) = mejor else {
-                return Err(String::from("sin logits"));
+            // Greedy (temp=0) o muestreo temp+top_k+dist (temp>0).
+            let tok: LlamaToken = if self.temp > 0.0 {
+                let s = sampler.as_mut().expect("sampler activo si temp > 0");
+                s.sample(&ctx, pos - 1)
+            } else {
+                let mejor: Option<LlamaTokenData> = ctx
+                    .candidates()
+                    .max_by(|a, b| a.logit().total_cmp(&b.logit()));
+                match mejor {
+                    Some(m) => m.id(),
+                    None => return Err(String::from("sin logits")),
+                }
             };
-            let tok = mejor.id();
             if tok == eos {
                 break;
             }
