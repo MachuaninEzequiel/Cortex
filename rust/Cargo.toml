@@ -4,6 +4,7 @@ members = [
     "crates/cortex-core",
     "crates/cortex-embed",
     "crates/cortex-py",
+    "crates/cortex-brain",
 ]
 
 [workspace.package]

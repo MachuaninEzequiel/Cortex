@@ -116,6 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (shape, data) = outputs[0].try_extract_tensor::<f32>()?;
     let attention_mask = &attention_mask_for_pool;
     if std::env::var("G5_DEBUG").is_ok() {
+        #[allow(unused_variables)]
         let seq_w = width;
         let head: Vec<f32> = data[384..388].to_vec(); // flat = [doc0][token1][dim0..4]
         println!("DEBUG hidden[0][1][0..4]={head:?}");
