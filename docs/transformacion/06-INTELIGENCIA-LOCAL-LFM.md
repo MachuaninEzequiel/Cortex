@@ -51,6 +51,57 @@ Regla dura propuesta: NINGÚN componente de Cortex puede invocar al LLM en
 hot-path de búsqueda salvo el reranker opt-in; todo uso debe ser explícito
 o asíncrono.
 
+## BRAIN v1 — `cortex brain` (diseño CERRADO por el dueño, 2026-08-23)
+
+> El dueño activó esta obra con decisiones explícitas. Esto ya no es "futuro":
+> es el spec ejecutable del asistente local.
+
+### Decisiones cerradas (dueño)
+1. Runtime: **llama.cpp + GGUF** (llama-cpp-python), sin Ollama ni PyTorch.
+2. Comando: **`cortex brain`** — nivel-0, experto de LA CARPETA donde se ejecuta.
+3. Permisos ESTRICTOS en dos niveles:
+   - `READ` (default): search, doctor, stats, sesión, webgraph info. Solo lectura.
+   - `SAFE_ACTION`: webgraph serve, acciones ActionEngine reversibles+instant.
+     **Mutantes NUNCA se ejecutan desde el brain**: se PROPONEN con el comando
+     CLI exacto para que el usuario lo corra ("propone, no ejecuta").
+4. Embeddings OPT-IN por consulta: ante búsquedas de relación, el brain pregunta
+   ¿preciso (e5-large, ~2GB RAM) o rápido (MiniLM, liviano)? y usa lo elegido
+   solo para esa sesión.
+
+### Arquitectura
+- Proceso corto: modelo carga a RAM al abrir la terminal y muere con ella
+  (sin daemon — coherente con §reglas del programa).
+- Fallback determinista SIN modelo (`--no-model`): router por keywords mapea
+  intents a las mismas herramientas; cero RAM, respuesta instantánea.
+- Tool-calling con contrato: el LLM elige entre herramientas YA gobernadas;
+  anti-alucinación estructural: toda respuesta cita rutas reales del retrieval;
+  sin hits ⇒ "no encontré nada en este repo". Nunca opina sin herramienta.
+- Slash commands: /help /doctor /search <q> /webgraph /stats /session /actions /quit.
+
+### Herramientas v1 (todas read/safe sobre servicios existentes)
+| tool | tier | delega en |
+|---|---|---|
+| memory.search | READ | mem.retrieve (RRF híbrido) |
+| docs.related | READ | VaultReader.search (embeddings opt-in) |
+| cortex.health | READ | doctor-lite (config/git/vault/sesión) |
+| vault.stats | READ | conteos vault |
+| session.current | READ | SessionService |
+| webgraph.serve | SAFE_ACTION | spawn detached + reporta puerto |
+| actions.propose | READ | ActionEngine scheduler (lista + comando CLI exacto) |
+
+### Fases
+- **BRAIN-1** (esta entrega): núcleo sin LLM — tools + router determinista +
+  chat loop + banner + slash commands. Testeable sin TTY y sin modelo.
+- **BRAIN-2**: backend llama.cpp/GGUF (LFM2.5) + tool-calling + carga/descarga
+  por ciclo de vida. CI testea con backend falso scriptado.
+- **BRAIN-3**: lanzador de ventana dedicada multiplataforma + logo cerebro
+  (banner rich v1) + i18n completo.
+
+### Investigación que sigue abierta (para BRAIN-2)
+1. Eval reranker medible (MRR@10 post-rerank vs latencia).
+2. GGUF Q4 exacto a usar + benchmark tok/s en hardware del dueño.
+3. Licencia LFM1.0: releer LICENSE completo antes de distribuir.
+
 ## Investigación profunda pendiente (ANTES de implementar)
 
 1. **Eval de reranking medible**: extender eval/retrieval/ con métrica

@@ -19,7 +19,7 @@ from cortex.action_engine.scheduler import Scheduler
 def register(app) -> None:
     """Registra ``cortex next`` en el app principal."""
 
-    @app.command(name="next")
+    @app.command(name="next", hidden=True)
     def next_action(
         all_: bool = typer.Option(
             False, "--all", help="Escaneo completo (incluye checks costosos)."

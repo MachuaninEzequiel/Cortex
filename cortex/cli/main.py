@@ -161,6 +161,11 @@ app.add_typer(ide_app, name="ide", hidden=True)
 
 _IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
 
+# Brain — asistente local experto del proyecto (Obra 06 BRAIN v1)
+from cortex.brain.cli import register as _register_brain
+
+_register_brain(app)
+
 # ActionEngine (Obra 05 Fase B)
 from cortex.cli.next import register as _register_next
 
