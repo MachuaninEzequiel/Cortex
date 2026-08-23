@@ -7,8 +7,8 @@
 //! sale del propio modelo (`output shape`), jamás una constante. El bug
 //! `VECTOR_DIM=384` hardcodeado en vector_cache.py:41 queda prohibido acá.
 //!
-//! La implementación real (ort vs candle vs pre/post-en-Rust) se decide en
-//! T-EMB-1 con spike + ADR; este esqueleto solo fija el contrato.
+//! La implementación productiva vive en `onnx` (feature `onnx`); el spike
+//! original quedó como example (`examples/g5_spike.rs`).
 
 /// Dimensión de embedding reportada por el modelo cargado. Paramétrica por diseño.
 ///
@@ -18,10 +18,6 @@ pub struct EmbeddingDim(usize);
 
 impl EmbeddingDim {
     /// Construye desde el shape de salida del modelo. Falla ruidosa si es inválida.
-    ///
-    /// ```ignore
-    /// EmbeddingDim::from_model_output(shape)?  // p.ej. [batch, 384] o [batch, 1024]
-    /// ```
     pub fn from_model_output(last_dim: usize) -> Result<Self, String> {
         if last_dim == 0 {
             return Err("dim de embedding = 0: modelo ONNX con salida inválida".into());
@@ -33,6 +29,9 @@ impl EmbeddingDim {
         self.0
     }
 }
+
+#[cfg(feature = "onnx")]
+pub mod onnx;
 
 #[cfg(test)]
 mod tests {

@@ -17,6 +17,9 @@ use cortex_core::bm25::Bm25Index;
 use cortex_core::store::VectorStore;
 use cortex_core::webgraph;
 
+#[cfg(feature = "onnx")]
+use cortex_embed::onnx::OnnxEmbedder as RustOnnxEmbedder;
+
 /// Versión del núcleo Rust (cortex-core).
 #[pyfunction]
 fn core_version() -> &'static str {
@@ -346,6 +349,50 @@ fn cross_source_build(
     .collect())
 }
 
+/// Embedder ONNX productivo (Gate G5-integración): all-MiniLM-L6-v2 sobre
+/// los artefactos chroma cacheados. Paridad demostrada cos=1.0 vs OnnxEmbedder
+/// (ADR-EMBEDDINGS.md). dim paramétrica, sale del modelo.
+#[cfg(feature = "onnx")]
+#[pyclass]
+struct NativeEmbedder {
+    inner: Mutex<RustOnnxEmbedder>,
+}
+
+#[cfg(feature = "onnx")]
+#[pymethods]
+impl NativeEmbedder {
+    /// `model_dir` contiene tokenizer.json + model.onnx (layout de cache chroma).
+    /// `intra_threads`: None = default ORT (1-4 recomendado para queries cortas).
+    #[new]
+    #[pyo3(signature = (model_dir, intra_threads = None))]
+    fn new(model_dir: &str, intra_threads: Option<usize>) -> PyResult<Self> {
+        let emb = RustOnnxEmbedder::open_with_threads(Path::new(model_dir), intra_threads)
+            .map_err(PyValueError::new_err)?;
+        Ok(Self {
+            inner: Mutex::new(emb),
+        })
+    }
+
+    /// Dimensión del modelo; None hasta la primera inferencia.
+    fn dim(&self) -> Option<usize> {
+        self.inner.lock().expect("embedder lock").dim()
+    }
+
+    fn embed(&self, text: String) -> Vec<f64> {
+        self.embed_batch(vec![text]).pop().unwrap_or_default()
+    }
+
+    /// API GRUESA: un lote completo por llamada (sub-lotes internos de 32,
+    /// igual que chroma).
+    fn embed_batch(&self, texts: Vec<String>) -> Vec<Vec<f64>> {
+        self.inner
+            .lock()
+            .expect("embedder lock")
+            .embed_batch(&texts)
+            .unwrap_or_else(|e| panic!("NativeEmbedder.embed_batch falló: {e}"))
+    }
+}
+
 /// Módulo nativo. Se importa como `cortex_core._native`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -355,6 +402,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cross_source_build, m)?)?;
     m.add_class::<NativeVectorStore>()?;
     m.add_class::<NativeBm25Index>()?;
+    #[cfg(feature = "onnx")]
+    m.add_class::<NativeEmbedder>()?;
     Ok(())
 }
 

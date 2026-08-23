@@ -176,11 +176,15 @@ def suite_cold_start(queries: list[str]) -> dict:
             embedding_backend=BACKEND,
             vector_cache=_VC(cache_dir=str(vc_warm_dir), model_name=MODEL)).sync()
 
-        def correr(cache_dir: Path) -> list[dict]:
+        def correr(cache_dir: Path, fresco_por_corrida: bool = False) -> list[dict]:
+            # FIX (G5-integración): "sync_empty_cache" exige cache VACÍO en cada
+            # corrida. Reusar el mismo dir hacía que las corridas 2-3 fueran
+            # hits de cache (~0.5s) y la mediana mintiera el costo frío real.
             out = []
-            for _ in range(3):
+            for i in range(3):
+                cdir = cache_dir / f"run-{i}" if fresco_por_corrida else cache_dir
                 proc = subprocess.run(
-                    [sys.executable, "-c", COLD_SNIPPET, str(cache_dir),
+                    [sys.executable, "-c", COLD_SNIPPET, str(cdir),
                      str(DATASET_DIR), MODEL, BACKEND, queries[0]],
                     capture_output=True, text=True, timeout=900,
                 )
@@ -190,7 +194,7 @@ def suite_cold_start(queries: list[str]) -> dict:
             return out
 
         calido = correr(vc_warm_dir)
-        frio = correr(tmp_p / "cache-empty")
+        frio = correr(tmp_p / "cache-empty", fresco_por_corrida=True)
 
     metrics["import"] = stats([r["import_s"] * 1000 for r in calido])
     metrics["sync_warm_cache"] = stats([r["sync_s"] * 1000 for r in calido])

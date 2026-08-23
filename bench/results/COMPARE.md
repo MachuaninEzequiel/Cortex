@@ -36,6 +36,40 @@ Regla: paridad ANTES que velocidad · un gate por commit · JSON inmutables por 
 
 <!-- Próximos gates se agregan acá arriba como nuevas secciones. -->
 
+## G5-integración — T-EMB-1 embedder ONNX nativo productivo (CORTEX_NATIVE=1)
+
+| Métrica | baseline Python (chromadb) | fase5-post (nativo) | Δ | Gate |
+|---|---|---|---|---|
+| **Paridad embeddings** (batch 5 textos ES+EN + texto 300 palabras) | — | cos = **1.0000000000** | — | ✅ ≥0.999 |
+| **Batch 100 textos** (gate formal doc03 §4-G5) | 3102 ms | **1482 ms** | **2.1×** | ✅ ≥ paridad de velocidad |
+| retrieve end-to-end p50 | 88.9 ms | 20.5 ms | **4.3×** | informativo |
+| retrieve end-to-end p99 | 129.3 ms | 57.8 ms | 2.2× | ⚠ ver nota 2 |
+| first_query_cold (proceso nuevo) | 457 ms | **22 ms** | **20.8×** | informativo |
+| search() scoring sub-path (ya nativo desde G1) | — | 1.1 ms | — | estable |
+
+### Notas
+
+1. **Gate formal G5 (doc03 §4): CUMPLE** — “embed batch 512 textos: ≥paridad de
+   velocidad Y similitud coseno ≥0.999”: 2.1× más rápido y cos idéntico
+   (también con textos >128 tokens: truncation 256 replicada).
+2. **El ≥5× end-to-end en retrieve NO se alcanza** (4.3× p50 / 2.2× p99):
+   causa raíz medida = la inferencia ONNX por-query tiene un piso físico de
+   **~13.8 ms** en este hardware (secuencia corta, 6 capas, powersave); el resto
+   de la ruta (scoring 1.1ms + agregación) ya es marginal. El viejo piso Python
+   era ~23.5ms. Palancas reales para bajar el piso: cuantización int8 (deuda
+   H-9 con plan en Obra 04), aceleración GPU/NPU, o re-arquitectura. No hay
+   código que lo resuelva solo.
+3. **Fix de harness descubierto por esta integración**: `sync_empty_cache`
+   reutilizaba el mismo directorio de cache en sus 3 corridas ⇒ corridas 2-3
+   eran hits (~0.5s) y la mediana mentía (baseline p50=0.8s cuando el costo frío
+   real era su p99=42.6s). Ahora cada corrida usa un dir vacío nuevo:
+   medición honesta 38.3s nativo vs ~42.6s chroma (el grueso es parse+
+   tokenización+inferencia; consistente con el 2.1× del embed).
+4. Wiring: `OnnxEmbedder._get_native()` singleton class-level (misma semántica
+   que el lock de carga chroma) tras flag + modelo presente; WARNING+fallback si
+   falta módulo o modelo. Tests: tests/unit/embedders/test_native_embedding.py
+   (paridad, truncation larga, ValueError, singleton, top-k end-to-end real).
+
 ## G4 — T-WG-1 webgraph nativo (CORTEX_NATIVE=1)
 
 | Métrica | baseline Python | fase4-post (nativo) | Δ | Gate |

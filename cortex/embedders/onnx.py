@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from pathlib import Path
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,12 @@ class OnnxEmbedder:
     _load_lock: threading.Lock = threading.Lock()
     _onnx_fn: Any = None
 
+    # Ruta nativa Rust (Obra 03, Gate G5-integración): singleton class-level
+    # análogo (la sesión ort también es process-wide). Activa SOLO con
+    # CORTEX_NATIVE=1 y cortex_core._native compilado; default = chromadb.
+    _native_embedder: Any = None
+    _native_warned: bool = False
+
     def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
         self._model_name = model_name
 
@@ -62,15 +69,57 @@ class OnnxEmbedder:
         text = text.strip()
         if not text:
             raise ValueError("Cannot embed empty text.")
+        native = self._get_native()
+        if native is not None:
+            return [float(x) for x in native.embed(text)]
         fn = self._get_onnx_fn()
         result = fn([text])
         return [float(x) for x in result[0]]
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple strings efficiently (single ONNX session call)."""
+        native = self._get_native()
+        if native is not None:
+            raw = native.embed_batch(list(texts))
+            return [[float(x) for x in v] for v in raw]
         fn = self._get_onnx_fn()
         result = fn(texts)
         return [[float(x) for x in v] for v in result]
+
+    @classmethod
+    def _get_native(cls) -> Any:
+        """Embedder nativo Rust (o ``None`` → ruta chromadb).
+
+        Paridad demostrada cos=1.00000000 (ADR-EMBEDDINGS.md). El default es la
+        ruta chromadb (flag apagado). Con flag activo sin módulo compilado:
+        WARNING una vez + fallback silencioso a chroma.
+        """
+        import os
+
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return None
+        if cls._native_embedder is not None:
+            return cls._native_embedder
+        try:
+            from cortex_core import _native
+        except ImportError:
+            if not cls._native_warned:
+                logger.warning(
+                    "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                    "se usa el embedder chromadb."
+                )
+                cls._native_warned = True
+            return None
+        model_dir = Path.home() / ".cache" / "chroma" / "onnx_models" / "all-MiniLM-L6-v2" / "onnx"
+        if not (model_dir / "model.onnx").exists():
+            logger.warning(
+                "CORTEX_NATIVE=1 pero no existe %s; se usa el embedder chromadb.",
+                model_dir / "model.onnx",
+            )
+            cls._native_warned = True
+            return None
+        cls._native_embedder = _native.NativeEmbedder(str(model_dir))
+        return cls._native_embedder
 
     @classmethod
     def _get_onnx_fn(cls) -> Any:

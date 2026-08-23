@@ -162,6 +162,7 @@ name = "cortex-py"
 version = "0.1.0"
 dependencies = [
  "cortex-core",
+ "cortex-embed",
  "numpy",
  "pyo3",
 ]

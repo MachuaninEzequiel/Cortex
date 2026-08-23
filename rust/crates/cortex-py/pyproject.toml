@@ -19,3 +19,5 @@ requires-python = ">=3.11"
 [tool.maturin]
 python-source = "."
 module-name = "cortex_core._native"
+# El embedder ONNX (G5-integración) va con el wheel nativo.
+features = ["extension-module"]
