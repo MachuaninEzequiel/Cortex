@@ -1,5 +1,61 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
+> **PRÓXIMA SESIÓN = CONTINUAR OBRA 03**: quedan **G5-integración** (embedder ort
+> productivo conectado a VaultReader), **G6** (CLI clap) y **T-BRAIN** (nativo).
+> Leé `HANDOFF.md` §ESTADO-GATES-2026-08-24b + los ADRs en docs/transformacion/.
+> Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
+> verificada en G1/G2/G3/G4). Compilado nativo:
+> `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
+
+## Estado al cierre de la sesión de migración Rust (2026-08-24b)
+
+**GATES COMPLETADOS Y COMMITEADOS (uno por commit, suite verde en cada uno):**
+
+- **I-1 ✅** `.github/workflows/ci-gates.yml`: gate bloqueante pytest+ruff
+  F401/F841/F821+vulture80 + cargo clippy/test (condicional a rust/) + bench
+  nocturno con compare >10%.
+- **R2/T-CARGO-1 ✅** workspace `rust/`: cortex-core (PURO), cortex-embed,
+  cortex-py (`cortex_core._native`). pyproject dedicado del crate (mixed layout)
+  para NO pisar el build setuptools raíz. Dev loop:
+  `maturin develop --release -m rust/crates/cortex-py/Cargo.toml`.
+- **G1/T-PY-1 ✅** scoring batch cosine f64+Neumaier (= `sum()` CPython ≥3.12 →
+  paridad BIT-exacta): scoring sub-path 51.1ms → 1.85ms (**27.6×**, gate ≥5× vs
+  "baseline del path"); search() completo p50 89→26ms. Piso ONNX embed (~23ms)
+  es de G5. Falsas regresiones index/cpu_energy investigadas y descartadas
+  (-0.5% atribuible, experimento stash). Ver bench/results/COMPARE.md §G1.
+- **G2/T-PY-2 ✅** store binario v3 append-only (`NativeVectorCache` drop-in;
+  wiring flag en `_resolve_cache` + `embedding reindex`): cold load 5k
+  **31.6→5.0ms (6.4×)** · ingesta 5k **50s→13.6ms (3684×**, O(N²) eliminada) ·
+  hits bit-idénticos en 5000 fps.
+- **G3/T-BM25-1 ✅** BM25 casero Rust (ADR-BM25.md: tantivy NO puede replicar tf
+  por substring): p99 **10.09→1.85ms ≤2ms** · p50 5.56→1.19ms · ranking
+  bit-idéntico 200/200 queries-synth (`bench/parity_check.py --bm25`).
+- **G4/T-WG-1 ✅** webgraph nativo: vecinos rayon + cross-source con merge/dedupe
+  en Rust + memoización pre-cómputos: n1000 **3162→345ms (9.2×**; 255–276 aislado
+  ≤300) · edges IDÉNTICOS n∈{250,500,1000}.
+- **G5-spike/T-EMB-1 ✅ decisión** (ADR-EMBEDDINGS.md): **ort elegido**, candle
+  descartado. Paridad cos=**1.00000000** 5/5 textos ES+EN vs OnnxEmbedder;
+  batch 100 textos 2871→1305ms (**2.2×**). Feature `onnx` no default.
+  ⏳ INTEGRACIÓN productiva a VaultReader pendiente.
+- **C1/T-DEC-1 ✅ decisión** (ADR-EPISODIC.md): chromadb QUEDA (crossover HNSW
+  ~2-3k vectores, lejos del volumen episódico); criterios de re-evaluación
+  explícitos (>50k memorias / Obra E).
+
+- Suite: **2451 passed, 13 skipped** · ruff/vulture en 0 · cargo clippy/test
+  verde · commits atómicos un-gate-por-commit.
+
+**PENDIENTE (próxima sesión, EN ORDEN):**
+
+1. **G5-integración [M-L]**: envolver el spike en embedder productivo
+   (`cortex-embed`, API embed/embed_batch) + factory/VaultReader tras flag +
+   bench end-to-end retrieve (re-medir ≥5× completo ahora sin piso Python:
+   ver COMPARE.md §G1 nota 1).
+2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json).
+3. **T-BRAIN [XL]**: crate cortex-brain nativo (llama.cpp GGUF LFM2.5) con los
+   13 tests de tests/unit/brain/ como especificación conductual; requiere
+   decidir binding (llama-cpp-rs vs FFI) y descarga del GGUF.
+4. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
+
 > **PRÓXIMA SESIÓN = MIGRACIÓN RUST.** Leé primero `HANDOFF.md` §TAREA-RUST (tarea
 > explícita con pasos R0-R6) + `07-AUDITORIA-2026-08-24.md` (auditoría de realidad
 > con todos los hallazgos resueltos). Plan técnico: `03-MIGRACION-RUST.md`.
