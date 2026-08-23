@@ -249,6 +249,9 @@ def suite_bm25(queries: list[str]) -> dict:
         del tmp
         reader = _reader(DATASET_DIR)
         reader.sync()
+        # warm-up sin medir (misma metodología que suite_retrieve): la primera
+        # query paga lazy-init de la ruta nativa y no representa el estado tibio.
+        reader.search(queries[0], top_k=5, use_embeddings=False)
         for q in queries:
             t0 = time.perf_counter()
             reader.search(q, top_k=5, use_embeddings=False)

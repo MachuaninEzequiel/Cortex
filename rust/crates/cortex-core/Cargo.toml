@@ -6,4 +6,4 @@ license.workspace = true
 description = "Dominio puro de Cortex en Rust: scoring, store vectorial, BM25, webgraph."
 
 [dependencies]
-# Intencionalmente VACÍO: cortex-core es dominio puro, sin pyo3 ni bindings.
+rayon = "1"

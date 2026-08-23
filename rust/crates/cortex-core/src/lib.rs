@@ -17,6 +17,7 @@
 /// Versión del núcleo nativo (reportada por `cortex_core._native.core_version()`).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub mod bm25;
 pub mod scoring;
 pub mod store;
 

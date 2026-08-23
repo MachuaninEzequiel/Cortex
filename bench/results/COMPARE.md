@@ -36,6 +36,30 @@ Regla: paridad ANTES que velocidad · un gate por commit · JSON inmutables por 
 
 <!-- Próximos gates se agregan acá arriba como nuevas secciones. -->
 
+## G3 — T-BM25-1 BM25 nativo (CORTEX_NATIVE=1) · ADR: docs/transformacion/ADR-BM25.md
+
+| Métrica | baseline Python | fase3-post (nativo) | Δ | Gate |
+|---|---|---|---|---|
+| **bm25_search p99** | 10.09 ms | **1.85 ms** | 5.4× | ✅ ≤2 ms |
+| bm25_search p50 | 5.56 ms | 1.19 ms | 4.7× | informativa |
+| Paridad ranking + scores (200 queries) | — | **BIT-IDÉNTICA** (`parity_check --bm25`) | — | ✅ exigente |
+
+### Notas
+
+1. **Decisión (ADR-BM25.md): casero en Rust, NO tantivy** — el scorer Python cuenta
+   tf por SUBSTRING sobre texto bajado (`text.count(term)`); un índice invertido
+   tokenizante produce otro ranking por construcción ⇒ violaría la regla de paridad.
+   La réplica Rust es bit-exacta (mismo orden f64, match_indices == str.count).
+2. Optimización con salida idéntica: top-k seleccionado EN RUST (desempate estable
+   replicado: a igual score gana menor índice) + model_copy diferido al top-k final.
+3. Warm-up del pool rayon dentro del rebuild (fuera del timing) + warm-up sin medir
+   en suite_bm25 (misma metodología que retrieve, §5.2). Sin esto la primera query
+   pagaba ~6 ms de spawn de threads y contaminaba el p99.
+4. Falsas regresiones del compare fase2→fase3 investigadas: `webgraph n250` +24% y
+   `first_query_after_sync` +11% son deriva ambiental (rutas no tocadas por este gate;
+   webgraph aislado midió 98 ms minutos después — el mismo código oscila 98–3200 ms
+   entre corridas en esta máquina con governor powersave). Sin regresión real.
+
 ## G2 — T-PY-2 store binario schema v3 (CORTEX_NATIVE=1)
 
 | Métrica | VectorCache Python v2 | NativeVectorCache Rust v3 | Δ | Gate |

@@ -13,6 +13,7 @@ use pyo3::prelude::*;
 use std::path::Path;
 use std::sync::Mutex;
 
+use cortex_core::bm25::Bm25Index;
 use cortex_core::store::VectorStore;
 
 /// Versión del núcleo Rust (cortex-core).
@@ -196,12 +197,91 @@ impl NativeVectorStore {
     }
 }
 
+/// Índice BM25 nativo (Gate G3): corpus + snapshot IDF en memoria.
+///
+/// Los textos llegan YA en minúsculas desde Python (paridad Unicode); los
+/// scores salen alineados al orden interno — la fachada reconstruye el índice
+/// completo si el vault mutó (dirty flag).
+#[pyclass]
+struct NativeBm25Index {
+    inner: Mutex<Bm25Index>,
+}
+
+#[pymethods]
+impl NativeBm25Index {
+    #[new]
+    fn new() -> Self {
+        Self {
+            inner: Mutex::new(Bm25Index::new()),
+        }
+    }
+
+    /// Snapshot de IDF (claves+valores alineados) y avgdl.
+    fn set_stats(&self, idf_keys: Vec<String>, idf_vals: Vec<f64>, avgdl: f64) -> PyResult<()> {
+        self.inner
+            .lock()
+            .expect("bm25 lock")
+            .set_stats(&idf_keys, &idf_vals, avgdl)
+            .map_err(PyValueError::new_err)
+    }
+
+    /// Agrega documentos por lote; textos YA en minúsculas.
+    fn add_batch(
+        &self,
+        paths: Vec<String>,
+        texts: Vec<String>,
+        doc_lens: Vec<u64>,
+    ) -> PyResult<()> {
+        self.inner
+            .lock()
+            .expect("bm25 lock")
+            .add_batch(&paths, &texts, &doc_lens)
+            .map_err(PyValueError::new_err)
+    }
+
+    fn remove_batch(&self, paths: Vec<String>) -> usize {
+        self.inner.lock().expect("bm25 lock").remove_batch(&paths)
+    }
+
+    fn clear(&self) {
+        self.inner.lock().expect("bm25 lock").clear();
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.lock().expect("bm25 lock").len()
+    }
+
+    /// Scores de todo el corpus para UNA query — API GRUESA por query.
+    /// Réplica bit a bit del loop `+= idf * (num/den)` de `_bm25_search`.
+    fn search<'py>(
+        &self,
+        py: Python<'py>,
+        terms: Vec<String>,
+        k1: f64,
+        b: f64,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let scores = self.inner.lock().expect("bm25 lock").search(&terms, k1, b);
+        Ok(scores.into_pyarray(py))
+    }
+
+    /// Top-K directo con desempate idéntico al sort estable de Python:
+    /// devuelve `[(score, índice_de_documento)]` en orden final. Evita cruzar
+    /// al Python una lista de N scores para re-filtrarla y re-ordenarla ahí.
+    fn top_k(&self, terms: Vec<String>, k1: f64, b: f64, k: usize) -> Vec<(f64, u32)> {
+        self.inner
+            .lock()
+            .expect("bm25 lock")
+            .top_k(&terms, k1, b, k)
+    }
+}
+
 /// Módulo nativo. Se importa como `cortex_core._native`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(cosine_scores, m)?)?;
     m.add_class::<NativeVectorStore>()?;
+    m.add_class::<NativeBm25Index>()?;
     Ok(())
 }
 

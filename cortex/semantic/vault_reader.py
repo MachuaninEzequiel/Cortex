@@ -90,6 +90,11 @@ class VaultReader:
         # APIs batch/gruesas). Se invalida en cada mutación de _embeddings.
         self._native_matrix: Any = None  # np.ndarray | None (import diferido)
         self._native_warned = False
+        # Índice BM25 nativo (G3): corpus + snapshot IDF en Rust. Se reconstruye
+        # completo cuando ``_native_bm25_dirty`` (cualquier mutación del vault).
+        self._native_bm25_index: Any = None
+        self._native_bm25_paths: list[str] = []  # alineado con el índice Rust
+        self._native_bm25_dirty = True
 
     # ------------------------------------------------------------------
     # Index management
@@ -108,7 +113,7 @@ class VaultReader:
         self._chunks.clear()
         self._doc_lengths.clear()
         self._idf.clear()
-        self._invalidate_native_matrix()
+        self._invalidate_native_caches()
 
         if not self.vault_path.exists():
             logger.warning("Vault path does not exist: %s", self.vault_path)
@@ -142,7 +147,7 @@ class VaultReader:
                 self._embeddings[cid] = vec
 
         # Pre-compute BM25 IDF
-        self._invalidate_native_matrix()
+        self._invalidate_native_caches()
         self._compute_idf()
         docs = list(self._doc_lengths.values())
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
@@ -231,6 +236,20 @@ class VaultReader:
             return []
 
         max(len(self._index), 1)
+
+        # Ruta nativa Rust (Obra 03, Gate G3): top-k directo desde Rust con
+        # scores bit-idénticos y desempate estable replicado (a igual score
+        # gana el menor índice de inserción); model_copy diferido al top-k.
+        # None ⇒ ruta Python pura (default, paridad).
+        pares = self._native_bm25_topk(terms, k1, b, top_k)
+        if pares is not None:
+            return [
+                self._index[self._native_bm25_paths[i]].model_copy(
+                    update={"score": score}
+                )
+                for score, i in pares
+            ]
+
         scored: list[tuple[float, SemanticDocument]] = []
 
         for rel_path, doc in self._index.items():
@@ -282,17 +301,18 @@ class VaultReader:
     # Native Rust scoring (Obra 03, Gate G1) — opt-in vía CORTEX_NATIVE=1
     # ------------------------------------------------------------------
 
-    def _invalidate_native_matrix(self) -> None:
-        """Marca la matriz empacada como obsoleta (llamar tras mutar _embeddings).
+    def _invalidate_native_caches(self) -> None:
+        """Marca los cachés nativos como obsoletos (llamar tras mutar el índice).
 
-        El re-empacado es lazy: ocurre en la próxima query nativa, una sola vez
-        por estado del índice.
+        Cubre la matriz empacada del scoring (G1) y el índice BM25 nativo (G3).
+        Ambos se reconstruyen lazy: una sola vez por estado del índice, en la
+        próxima query nativa.
         """
         self._native_matrix = None
+        self._native_bm25_dirty = True
 
     def _native_scores(self, query_vec: list[float]) -> list[float] | None:
         """Scores cosine batch vía Rust para TODOS los chunks (o ``None``).
-
         Devuelve ``None`` cuando la ruta nativa no aplica (flag apagado,
         módulo ausente o índice vacío) y la llamante usa la ruta Python pura —
         comportamiento idéntico al default (regla R5.6 del HANDOFF).
@@ -335,6 +355,85 @@ class VaultReader:
         return _native.cosine_scores(
             np.asarray(query_vec, dtype=np.float64), self._native_matrix
         ).tolist()
+
+    def _native_bm25_ready(self) -> bool:
+        """Garantiza índice BM25 nativo sincronizado; False sin módulo/flag.
+
+        Reconstrucción completa y lazy ante cualquier mutación del vault
+        (dirty flag). Devuelve True sólo con CORTEX_NATIVE=1 y módulo presente.
+        """
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return False
+        try:
+            from cortex_core import _native
+        except ImportError:
+            if not self._native_warned:
+                logger.warning(
+                    "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                    "se usa la ruta Python pura. Compilá con: .venv/bin/python -m "
+                    "maturin develop --release -m rust/crates/cortex-py/Cargo.toml"
+                )
+                self._native_warned = True
+            return False
+
+        if not self._index:
+            return False
+
+        if (
+            self._native_bm25_dirty
+            or self._native_bm25_index is None
+            or len(self._native_bm25_index) != len(self._index)
+        ):
+            ix = _native.NativeBm25Index()
+            paths = list(self._index.keys())
+            batch = 500  # API gruesa: lotes grandes, jamás llamada-por-doc
+            for i in range(0, len(paths), batch):
+                lote = paths[i : i + batch]
+                textos = [
+                    f"{self._index[p].title} {self._index[p].content}".lower()
+                    for p in lote
+                ]
+                lens = [self._doc_lengths.get(p, 1) for p in lote]
+                ix.add_batch(lote, textos, lens)
+            ix.set_stats(list(self._idf.keys()), list(self._idf.values()), float(self._avgdl))
+            # Calentar el pool de threads de rayon FUERA de cualquier medición:
+            # si no, la primera query paga el spawn (~ms) y contamina el p99.
+            ix.search([], 0.0, 0.0)
+            self._native_bm25_index = ix
+            # Snapshot de rutas alineado con el orden interno del índice Rust:
+            # top_k devuelve índices de documento, no rutas.
+            self._native_bm25_paths = paths
+            self._native_bm25_dirty = False
+        return True
+
+    def _native_bm25_scores(
+        self, terms: list[str], k1: float, b: float
+    ) -> list[float] | None:
+        """Scores BM25 de TODO el corpus vía Rust (o ``None`` → ruta Python).
+
+        Réplica bit a bit del bucle de ``_bm25_search`` (tf por substring,
+        skip de idf==0, acumulación f64 secuencial). Usado por los tests de
+        paridad; la ruta de búsqueda usa `_native_bm25_topk`.
+        """
+        if not self._native_bm25_ready():
+            return None
+        return self._native_bm25_index.search(terms, k1, b).tolist()
+
+    def _native_bm25_topk(
+        self, terms: list[str], k1: float, b: float, top_k: int
+    ) -> list[tuple[float, int]] | None:
+        """Top-K BM25 directo desde Rust (o ``None`` → ruta Python pura).
+
+        Desempate replicado exactamente: a igual score gana el menor índice
+        de inserción (equivale al sort estable descendente de Python sobre el
+        orden de ``_index`` en el momento del rebuild).
+        """
+        if not self._native_bm25_ready():
+            return None
+        return [
+            (score, int(i))
+            for score, i in self._native_bm25_index.top_k(terms, k1, b, max(top_k, 1))
+        ]
 
     # ------------------------------------------------------------------
     # Cache-aware embedding helpers (Fase 06)
@@ -512,7 +611,7 @@ class VaultReader:
         for cid in stale:
             self._chunks.pop(cid, None)
             self._embeddings.pop(cid, None)
-        self._invalidate_native_matrix()
+        self._invalidate_native_caches()
 
     @staticmethod
     def _resolve_doc_type(rel_path: str) -> DocType | None:
@@ -670,7 +769,7 @@ class VaultReader:
                 vectors = self._embed_batch_with_cache(chunk_ids, texts)
                 for cid, vec in zip(chunk_ids, vectors, strict=False):
                     self._embeddings[cid] = vec
-            self._invalidate_native_matrix()
+            self._invalidate_native_caches()
 
             # Update BM25 metadata for this file
             search_text = f"{doc.title} {doc.content}"
@@ -739,7 +838,7 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
-        self._invalidate_native_matrix()
+        self._invalidate_native_caches()
         search_text = f"{title} {content}"
         word_count = len(search_text.split())
         self._doc_lengths[rel] = word_count
@@ -804,7 +903,7 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
-        self._invalidate_native_matrix()
+        self._invalidate_native_caches()
         search_text = f"{doc.title} {doc.content}"
         self._doc_lengths[relative_path] = len(search_text.split())
         docs = list(self._doc_lengths.values())
