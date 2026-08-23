@@ -16,7 +16,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from cortex.action_engine.context import ActionContext
 
@@ -133,8 +132,7 @@ def build_tools(ctx: ActionContext) -> dict[str, ToolSpec]:
     def webgraph_serve() -> str:
         from cortex.webgraph.config import WebGraphConfig
 
-        config = WebGraphConfig.load(ctx.layout.workspace_root.parent if False else Path.cwd(),
-                                     )
+        config = WebGraphConfig.load(Path.cwd())
         puerto = config.server_port or 8000
         subprocess.Popen(
             [sys.executable, "-m", "cortex.cli.main", "webgraph", "serve", "--no-open"],

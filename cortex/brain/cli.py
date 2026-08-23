@@ -23,6 +23,13 @@ def register(app) -> None:
         """🧠 Asistente local experto de ESTE proyecto (solo lectura + safe-actions)."""
         from cortex.brain.chat import run_brain
 
+        if not no_model:
+            # BRAIN-1: el backend LLM (llama.cpp/GGUF, nativo en Rust) todavía
+            # no existe; el flag --model se honra avisando y degradando.
+            typer.echo(
+                "--model: backend LLM aún no disponible (BRAIN-2 nativo en Rust "
+                "pendiente). Se usa el router determinista."
+            )
         run_brain(
             Path(project_root).resolve() if project_root else None,
         )
