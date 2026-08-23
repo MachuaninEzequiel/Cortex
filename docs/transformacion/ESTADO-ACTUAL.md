@@ -36,6 +36,15 @@
   F821 ×5 WorkspaceLayout en templates.py (TYPE_CHECKING, cosmético),
   `_sync_vault_text` candidato de poda, CHANGELOG para momento de release.
 
+## NUEVO (2026-08-24): Obra 06 ACTIVADA — `cortex brain` BRAIN-1 ✅
+
+- Diseño cerrado por el dueño: llama.cpp/GGUF · comando `cortex brain` ·
+  permisos estrictos (mutaciones=propone, no ejecuta) · embeddings opt-in.
+- BRAIN-1 entregado: tools.py (7 tools READ/SAFE), router determinista,
+  chat loop testeable sin TTY/modelo. `cortex brain` visible nivel-0;
+  `next` oculto-funcional.
+- Sigue: BRAIN-2 (llama.cpp/GGUF + tool-calling) y BRAIN-3 (ventana+logo).
+
 ## Próximos pasos (detalle en HANDOFF.md §5)
 
 1. Obra 01: terminar P4 (documenting trio) → P5 → P6 (mixins schemas; V7 devsecdocops;
