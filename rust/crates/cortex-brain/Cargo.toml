@@ -1,0 +1,17 @@
+[package]
+name = "cortex-brain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Asistente local nativo de Cortex (Obra 06 BRAIN-2/3 en Rust)."
+
+[[bin]]
+name = "cortex-brain"
+path = "src/main.rs"
+
+[dependencies]
+regex = "1"
+serde_json = "1"
+
+[dev-dependencies]
+# sin dependencias: los tests usan CORTEX_BIN=/bin/echo o un stub
