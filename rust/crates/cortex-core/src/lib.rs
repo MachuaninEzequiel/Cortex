@@ -17,6 +17,8 @@
 /// Versión del núcleo nativo (reportada por `cortex_core._native.core_version()`).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub mod scoring;
+
 #[cfg(test)]
 mod tests {
     use super::VERSION;

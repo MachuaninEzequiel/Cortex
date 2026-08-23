@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
@@ -82,6 +83,13 @@ class VaultReader:
         # metadata for the corresponding entry in ``_embeddings``.
         # ``chunk_id`` falls back to ``rel_path`` for single-chunk docs.
         self._chunks: dict[str, Chunk] = {}
+        # Ruta nativa Rust (Obra 03, Gate G1). Activa SOLO con CORTEX_NATIVE=1
+        # y el módulo compilado; el default es la ruta Python pura (paridad).
+        # ``_native_matrix`` es la matriz f64 C-contigua (n_chunks × dim)
+        # empacada UNA vez por estado del índice — jamás por query (regla de
+        # APIs batch/gruesas). Se invalida en cada mutación de _embeddings.
+        self._native_matrix: Any = None  # np.ndarray | None (import diferido)
+        self._native_warned = False
 
     # ------------------------------------------------------------------
     # Index management
@@ -100,6 +108,7 @@ class VaultReader:
         self._chunks.clear()
         self._doc_lengths.clear()
         self._idf.clear()
+        self._invalidate_native_matrix()
 
         if not self.vault_path.exists():
             logger.warning("Vault path does not exist: %s", self.vault_path)
@@ -133,6 +142,7 @@ class VaultReader:
                 self._embeddings[cid] = vec
 
         # Pre-compute BM25 IDF
+        self._invalidate_native_matrix()
         self._compute_idf()
         docs = list(self._doc_lengths.values())
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
@@ -173,10 +183,20 @@ class VaultReader:
             return self._bm25_search(query, top_k)
 
         query_vec = self._embedder.embed(query)
+        # Fuente de scores: nativa Rust (CORTEX_NATIVE=1) o Python pura.
+        # AMBAS producen los mismos bits; la agregación max-por-doc es UNA sola
+        # ruta → paridad estructural del top-k.
+        native_scores = self._native_scores(query_vec)
+        if native_scores is not None:
+            score_source: Iterable[float] = native_scores
+        else:
+            score_source = (
+                self._cosine_similarity(query_vec, vec)
+                for vec in self._embeddings.values()
+            )
         # Aggregate chunks -> parent doc with max score.
         best_per_doc: dict[str, tuple[float, str]] = {}
-        for chunk_id, vec in self._embeddings.items():
-            score = self._cosine_similarity(query_vec, vec)
+        for chunk_id, score in zip(self._embeddings.keys(), score_source, strict=True):
             if score <= 0:
                 continue
             chunk = self._chunks.get(chunk_id)
@@ -257,6 +277,64 @@ class VaultReader:
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot / (norm_a * norm_b)
+
+    # ------------------------------------------------------------------
+    # Native Rust scoring (Obra 03, Gate G1) — opt-in vía CORTEX_NATIVE=1
+    # ------------------------------------------------------------------
+
+    def _invalidate_native_matrix(self) -> None:
+        """Marca la matriz empacada como obsoleta (llamar tras mutar _embeddings).
+
+        El re-empacado es lazy: ocurre en la próxima query nativa, una sola vez
+        por estado del índice.
+        """
+        self._native_matrix = None
+
+    def _native_scores(self, query_vec: list[float]) -> list[float] | None:
+        """Scores cosine batch vía Rust para TODOS los chunks (o ``None``).
+
+        Devuelve ``None`` cuando la ruta nativa no aplica (flag apagado,
+        módulo ausente o índice vacío) y la llamante usa la ruta Python pura —
+        comportamiento idéntico al default (regla R5.6 del HANDOFF).
+
+        Paridad bit-a-bit: el núcleo Rust replica la suma compensada de Neumaier
+        del builtin ``sum()`` de CPython ≥3.12 (ver cortex-core::scoring).
+        La matriz se empaca preservando el orden de inserción de ``_embeddings``
+        y se cachea hasta la próxima mutación del índice.
+        """
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return None
+        try:
+            from cortex_core import _native
+            import numpy as np
+        except ImportError:
+            if not self._native_warned:
+                logger.warning(
+                    "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                    "se usa la ruta Python pura. Compilá con: .venv/bin/python -m "
+                    "maturin develop --release -m rust/crates/cortex-py/Cargo.toml"
+                )
+                self._native_warned = True
+            return None
+
+        if not self._embeddings:
+            return None
+
+        dim = len(query_vec)
+        if self._native_matrix is None or self._native_matrix.shape != (
+            len(self._embeddings),
+            dim,
+        ):
+            # Empacado UNA vez por estado de índice (orden de inserción del dict,
+            # determinista desde sync()). C-contigua float64 → vista zero-copy en Rust.
+            self._native_matrix = np.asarray(
+                list(self._embeddings.values()), dtype=np.float64
+            ).reshape(len(self._embeddings), -1)
+        # El query es chico (dim floats): conversión explícita; la matriz grande
+        # pasa como vista sin copia.
+        return _native.cosine_scores(
+            np.asarray(query_vec, dtype=np.float64), self._native_matrix
+        ).tolist()
 
     # ------------------------------------------------------------------
     # Cache-aware embedding helpers (Fase 06)
@@ -434,6 +512,7 @@ class VaultReader:
         for cid in stale:
             self._chunks.pop(cid, None)
             self._embeddings.pop(cid, None)
+        self._invalidate_native_matrix()
 
     @staticmethod
     def _resolve_doc_type(rel_path: str) -> DocType | None:
@@ -591,6 +670,7 @@ class VaultReader:
                 vectors = self._embed_batch_with_cache(chunk_ids, texts)
                 for cid, vec in zip(chunk_ids, vectors, strict=False):
                     self._embeddings[cid] = vec
+            self._invalidate_native_matrix()
 
             # Update BM25 metadata for this file
             search_text = f"{doc.title} {doc.content}"
@@ -659,6 +739,7 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
+        self._invalidate_native_matrix()
         search_text = f"{title} {content}"
         word_count = len(search_text.split())
         self._doc_lengths[rel] = word_count
@@ -723,6 +804,7 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
+        self._invalidate_native_matrix()
         search_text = f"{doc.title} {doc.content}"
         self._doc_lengths[relative_path] = len(search_text.split())
         docs = list(self._doc_lengths.values())
