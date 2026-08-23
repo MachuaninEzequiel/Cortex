@@ -20,6 +20,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod bm25;
 pub mod scoring;
 pub mod store;
+pub mod webgraph;
 
 #[cfg(test)]
 mod tests {

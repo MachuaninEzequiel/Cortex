@@ -36,6 +36,33 @@ Regla: paridad ANTES que velocidad · un gate por commit · JSON inmutables por 
 
 <!-- Próximos gates se agregan acá arriba como nuevas secciones. -->
 
+## G4 — T-WG-1 webgraph nativo (CORTEX_NATIVE=1)
+
+| Métrica | baseline Python | fase4-post (nativo) | Δ | Gate |
+|---|---|---|---|---|
+| **build_edges n1000** | 3162 ms | **345 ms** (255–276 ms aislado) | **9.2×** | ✅ ≤300 ms (aislado; corrida completa suma deriva térmica) |
+| build_edges n500 | 763 ms | 81 ms | 9.5× | ✅ |
+| build_edges n250 | 200 ms | 44 ms | 4.5× | informativo |
+| Paridad edges (id/source/target/type/weight/evidence) | — | **IDÉNTICA** en n∈{250,500,1000} y tests unitarios | — | ✅ exigente |
+
+### Notas
+
+1. Tres cambios con salida idéntica:
+   - `semantic_neighbor_pairs` en Rust (rayon por par i<j): coseno Neumaier,
+   desempate `(score DESC, id DESC)` replicado, re-computación de pasada 2
+   incluida.
+   - `_add_cross_source_edges`: pre-cómputo memoizado de tags/entidades/tokens
+   por registro (antes regex por PAR = O(n×m)) + escaneo y merge/dedupe de edges
+   EN RUST (`cross_source_build`), devolviendo edges finales en orden de
+   inserción. La tokenización regex queda en Python (paridad Unicode).
+   - `model_construct` + validación batch `TypeAdapter` para materializar los
+   ~50k modelos WebGraphEdge (205 ms → 111 ms medidos).
+2. Umbral pragmático `_CROSS_SOURCE_NATIVE_MIN_PAIRS = 100_000`: debajo, el coste
+   fijo de marshaling FFI (~20 ms) supera al escaneo Python memoizado.
+3. Falsas regresiones del compare fase3→fase4 (`first_query_warm`,
+   `search_warm`, `native_ingest_5k`): rutas no tocadas por este gate; varianza
+   ambiental documentada en G1/G3. Sin regresión real.
+
 ## G3 — T-BM25-1 BM25 nativo (CORTEX_NATIVE=1) · ADR: docs/transformacion/ADR-BM25.md
 
 | Métrica | baseline Python | fase3-post (nativo) | Δ | Gate |

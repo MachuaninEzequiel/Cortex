@@ -15,6 +15,7 @@ use std::sync::Mutex;
 
 use cortex_core::bm25::Bm25Index;
 use cortex_core::store::VectorStore;
+use cortex_core::webgraph;
 
 /// Versión del núcleo Rust (cortex-core).
 #[pyfunction]
@@ -275,11 +276,83 @@ impl NativeBm25Index {
     }
 }
 
+/// Pares `semantic_neighbor` del webgraph (Gate G4) — API GRUESA: UNA llamada
+/// procesa las O(n²) comparaciones con rayon. Réplica exacta de la semántica
+/// del relation builder Python (desempates, orden de emisión, umbrales).
+#[pyfunction]
+fn semantic_neighbor_pairs(
+    ids: Vec<String>,
+    embeddings: Vec<Option<Vec<f64>>>,
+    threshold: f64,
+    max_edges_per_node: usize,
+) -> Vec<(usize, usize, f64)> {
+    webgraph::semantic_neighbor_pairs(&ids, &embeddings, threshold, max_edges_per_node)
+}
+
+/// Escaneo cross-source COMPLETO (Gate G4): genera los edges finales con el
+/// merge/dedupe de `_add_edge` ya aplicado EN RUST (incluye same_file_reference
+/// intercalado antes de los pares de cada episódico). Devuelve tuplas
+/// `(id, source, target, edge_type, weight, evidence)` en orden de inserción.
+type BuiltEdgeTuples = Vec<(String, String, String, String, f64, Vec<String>)>;
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+fn cross_source_build(
+    epi_ids: Vec<String>,
+    epi_files_targets: Vec<Vec<(String, String)>>,
+    epi_tags: Vec<Vec<String>>,
+    epi_entities: Vec<Vec<String>>,
+    epi_tokens: Vec<Vec<String>>,
+    sem_ids: Vec<String>,
+    sem_tags: Vec<Vec<String>>,
+    sem_entities: Vec<Vec<String>>,
+    sem_tokens: Vec<Vec<String>>,
+    sem_is_spec: Vec<bool>,
+) -> PyResult<BuiltEdgeTuples> {
+    let n_epi = epi_ids.len();
+    if epi_files_targets.len() != n_epi
+        || epi_tags.len() != n_epi
+        || epi_entities.len() != n_epi
+        || epi_tokens.len() != n_epi
+    {
+        return Err(PyValueError::new_err(
+            "cross_source_build: listas epis\u{f3}dicas desalineadas",
+        ));
+    }
+    let n_sem = sem_ids.len();
+    if sem_tags.len() != n_sem
+        || sem_entities.len() != n_sem
+        || sem_tokens.len() != n_sem
+        || sem_is_spec.len() != n_sem
+    {
+        return Err(PyValueError::new_err(
+            "cross_source_build: listas sem\u{e1}nticas desalineadas",
+        ));
+    }
+    Ok(webgraph::cross_source_build(
+        &epi_ids,
+        &epi_files_targets,
+        &epi_tags,
+        &epi_entities,
+        &epi_tokens,
+        &sem_ids,
+        &sem_tags,
+        &sem_entities,
+        &sem_tokens,
+        &sem_is_spec,
+    )
+    .into_iter()
+    .map(|e| (e.id, e.source, e.target, e.edge_type, e.weight, e.evidence))
+    .collect())
+}
+
 /// Módulo nativo. Se importa como `cortex_core._native`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(cosine_scores, m)?)?;
+    m.add_function(wrap_pyfunction!(semantic_neighbor_pairs, m)?)?;
+    m.add_function(wrap_pyfunction!(cross_source_build, m)?)?;
     m.add_class::<NativeVectorStore>()?;
     m.add_class::<NativeBm25Index>()?;
     Ok(())
