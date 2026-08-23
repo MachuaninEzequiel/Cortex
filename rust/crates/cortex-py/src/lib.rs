@@ -7,9 +7,13 @@
 //! Este módulo SOLO adapta tipos: toda la lógica vive en `cortex-core`.
 
 use numpy::prelude::*;
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use std::path::Path;
+use std::sync::Mutex;
+
+use cortex_core::store::VectorStore;
 
 /// Versión del núcleo Rust (cortex-core).
 #[pyfunction]
@@ -51,11 +55,153 @@ fn cosine_scores<'py>(
     Ok(scores.into_pyarray(py))
 }
 
+/// Store vectorial binario nativo (Gate G2) — log append-only schema v3.
+///
+/// API GRUESA: get_many/put_many/invalidate_many procesan lotes completos por
+/// llamada. Los fingerprints son claves opacas calculadas en Python
+/// (`cache_fingerprint`) → paridad de fingerprints por construcción.
+#[pyclass]
+struct NativeVectorStore {
+    inner: Mutex<VectorStore>,
+}
+
+fn store_err(e: cortex_core::store::StoreError) -> PyErr {
+    PyValueError::new_err(e.to_string())
+}
+
+#[pymethods]
+impl NativeVectorStore {
+    #[new]
+    fn new(dir: &str, model_name: &str) -> PyResult<Self> {
+        let st = VectorStore::open(Path::new(dir), model_name).map_err(store_err)?;
+        Ok(Self {
+            inner: Mutex::new(st),
+        })
+    }
+
+    /// True si la carga conservó solo un prefijo válido (cola truncada/corrupta).
+    #[getter]
+    fn truncated_tail(&self) -> bool {
+        self.inner.lock().expect("store lock").truncated_tail
+    }
+
+    /// Dimensión del store; None si aún no se guardó ningún vector.
+    pub fn dim(&self) -> Option<usize> {
+        self.inner.lock().expect("store lock").dim()
+    }
+
+    pub fn __len__(&self) -> usize {
+        self.inner.lock().expect("store lock").len()
+    }
+
+    /// Batch get: devuelve ``(matriz (n, dim) f32, presentes: list[bool])``.
+    /// Filas ausentes van en cero con presente=False. Una llamada por lote.
+    fn get_many<'py>(
+        &self,
+        py: Python<'py>,
+        fingerprints: Vec<String>,
+    ) -> PyResult<(Bound<'py, PyArray2<f32>>, Vec<bool>)> {
+        let n = fingerprints.len();
+        let dim = {
+            let inner = self.inner.lock().expect("store lock");
+            match inner.dim() {
+                None => {
+                    // Store vacío: todo miss sin error (paridad cache Python).
+                    let empty = numpy::PyArray2::<f32>::zeros(py, (n, 0), false);
+                    return Ok((empty, vec![false; n]));
+                }
+                Some(d) => d,
+            }
+        };
+
+        let mut matrix = vec![0f32; n * dim];
+        let mut present = vec![false; n];
+        {
+            let lock = self.inner.lock().expect("store lock");
+            lock.get_many(&fingerprints, &mut matrix, &mut present)
+                .map_err(store_err)?;
+        }
+        let arr = matrix
+            .into_pyarray(py)
+            .reshape([n, dim])
+            .map_err(|e| PyValueError::new_err(format!("reshape del resultado falló: {e}")))?;
+        Ok((arr, present))
+    }
+
+    /// Batch put transaccional: valida TODO antes de escribir nada.
+    fn put_many(
+        &self,
+        fingerprints: Vec<String>,
+        chunk_ids: Vec<String>,
+        vectors: PyReadonlyArray2<f32>,
+    ) -> PyResult<()> {
+        if fingerprints.len() != chunk_ids.len() {
+            return Err(PyValueError::new_err(format!(
+                "put_many: {} fingerprints vs {} chunk_ids",
+                fingerprints.len(),
+                chunk_ids.len()
+            )));
+        }
+        let dim = *vectors
+            .shape()
+            .get(1)
+            .ok_or_else(|| PyValueError::new_err("vectors debe ser 2D"))?;
+        let flat = vectors
+            .as_slice()
+            .map_err(|e| PyValueError::new_err(format!("vectors debe ser C-contigua: {e}")))?;
+        self.inner
+            .lock()
+            .expect("store lock")
+            .put_many(&fingerprints, &chunk_ids, flat, dim)
+            .map_err(store_err)
+    }
+
+    /// Tombstones batch. Devuelve cuántos fueron invalidaciones nuevas.
+    fn invalidate_many(&self, fingerprints: Vec<String>) -> PyResult<usize> {
+        self.inner
+            .lock()
+            .expect("store lock")
+            .invalidate_many(&fingerprints)
+            .map_err(store_err)
+    }
+
+    /// fps vivos cuyo chunk_id está exactamente en el conjunto dado.
+    fn fps_for_chunk_ids(&self, chunk_ids: Vec<String>) -> Vec<String> {
+        self.inner
+            .lock()
+            .expect("store lock")
+            .fps_for_chunk_ids(&chunk_ids)
+    }
+
+    /// fps vivos cuyo chunk_id empieza con el prefijo dado.
+    fn fps_with_chunk_prefix(&self, prefix: &str) -> Vec<String> {
+        self.inner
+            .lock()
+            .expect("store lock")
+            .fps_with_chunk_prefix(prefix)
+    }
+
+    /// Export batch de metadatos: (fps, chunk_ids) de entradas vivas.
+    fn entries_export(&self) -> (Vec<String>, Vec<String>) {
+        self.inner.lock().expect("store lock").entries_export()
+    }
+
+    /// Compacta (tmp + rename atómico). Devuelve entradas finales.
+    fn compact(&self) -> PyResult<usize> {
+        self.inner
+            .lock()
+            .expect("store lock")
+            .compact()
+            .map_err(store_err)
+    }
+}
+
 /// Módulo nativo. Se importa como `cortex_core._native`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(cosine_scores, m)?)?;
+    m.add_class::<NativeVectorStore>()?;
     Ok(())
 }
 

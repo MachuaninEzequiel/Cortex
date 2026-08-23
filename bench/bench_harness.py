@@ -43,7 +43,7 @@ QUERIES_PATH = REPO_ROOT / "bench" / "datasets" / "queries-synth.json"
 MODEL = __import__("os").environ.get("CORTEX_BENCH_MODEL", "all-MiniLM-L6-v2")
 BACKEND = __import__("os").environ.get("CORTEX_BENCH_BACKEND", "onnx")
 
-SUITES = ("cold_start", "retrieve", "index", "webgraph", "bm25")
+SUITES = ("cold_start", "retrieve", "index", "webgraph", "bm25", "vector_store")
 
 
 # ── estadística ────────────────────────────────────────────────────────────
@@ -256,6 +256,128 @@ def suite_bm25(queries: list[str]) -> dict:
     return {"metrics": {"bm25_search": stats(muestras)}}
 
 
+def suite_vector_store(_: list[str]) -> dict:
+    """Gate G2 (Obra 03): store binario Rust schema v3 vs VectorCache Python v2.
+
+    Dataset sintético determinista (seed 42): 5000 chunks × dim 384 f32.
+    Mide ingesta completa y cold load + lectura de TODOS los vectores en ambas
+    implementaciones y EXIGE mismos hits bit-idénticos (regla dura R5.2).
+
+    Cold load = mediana de 5 reaperturas completas (plan §5.3: n=1 en escala
+    ms es ruido). Ingesta = corrida única (dominada por trabajo O(N²) vs O(N),
+    estable). Sin CORTEX_NATIVE=1 o sin módulo registra ``disponible: false``.
+    """
+    import hashlib
+    import os
+    import tempfile
+    from pathlib import Path as _Path
+
+    import numpy as np
+
+    N, DIM = 5000, 384
+    rng = np.random.default_rng(42)
+    fps = [hashlib.sha256(f"chunk-text-{i}".encode()).hexdigest() for i in range(N)]
+    cids = [f"docs/doc-{i // 5}.md#{i % 5}" for i in range(N)]
+    vectores = rng.standard_normal((N, DIM)).astype(np.float32)
+
+    from cortex.semantic.vector_cache import VectorCache
+
+    # ── Ruta Python (schema v2): ingesta O(N²) + cold load lazy ──
+    with tempfile.TemporaryDirectory(prefix="store-py-") as d:
+        t0 = time.perf_counter()
+        cache = VectorCache(_Path(d), model_name="bench-g2", dim=DIM)
+        cache.batch_put(list(zip(fps, cids, vectores)))
+        py_ingest_ms = (time.perf_counter() - t0) * 1000
+        del cache
+
+        def carga_python():
+            """Reabre índice y lee los N vectores; devuelve (ms, hits dict)."""
+            t = time.perf_counter()
+            c = VectorCache(_Path(d), model_name="bench-g2", dim=DIM)
+            hits = {fp: c.get(fp) for fp in fps}
+            return (time.perf_counter() - t) * 1000, hits
+
+        corridas_py = [carga_python()[0] for _ in range(5)]
+        _, hits_py = carga_python()  # referencia de paridad (dir vivo)
+    py_load_ms = statistics.median(corridas_py)
+
+    metrics: dict = {
+        "python_ingest_5k": stats([py_ingest_ms]),
+        "python_cold_load_5k": {
+            "n": len(corridas_py),
+            "mean_ms": round(statistics.fmean(corridas_py), 3),
+            "p50_ms": round(py_load_ms, 3),
+        },
+    }
+
+    nativo_disponible = False
+    if os.environ.get("CORTEX_NATIVE") == "1":
+        try:
+            from cortex_core import _native  # noqa: F401
+            from cortex.semantic.native_vector_cache import NativeVectorCache
+
+            nativo_disponible = True
+        except ImportError:
+            pass
+
+    if not nativo_disponible:
+        return {
+            "metrics": metrics,
+            "disponible": False,
+            "nota": "lado nativo requiere CORTEX_NATIVE=1 + cortex_core._native",
+        }
+
+    from cortex.semantic.native_vector_cache import NativeVectorCache
+
+    # ── Ruta nativa (schema v3): log append-only, carga de una pasada ──
+    with tempfile.TemporaryDirectory(prefix="store-nat-") as d:
+        t0 = time.perf_counter()
+        native = NativeVectorCache(_Path(d), model_name="bench-g2")
+        native.batch_put(list(zip(fps, cids, vectores)))
+        n_ingest_ms = (time.perf_counter() - t0) * 1000
+        del native
+
+        def carga_nativa():
+            t = time.perf_counter()
+            c = NativeVectorCache(_Path(d), model_name="bench-g2")
+            res = c._store.get_many(fps)
+            return (time.perf_counter() - t) * 1000, res
+
+        corridas_nat = [carga_nativa()[0] for _ in range(5)]
+        _, (matrix, present) = carga_nativa()  # referencia de paridad
+    n_load_ms = statistics.median(corridas_nat)
+
+    metrics["native_ingest_5k"] = stats([n_ingest_ms])
+    metrics["native_cold_load_5k"] = {
+        "n": len(corridas_nat),
+        "mean_ms": round(statistics.fmean(corridas_nat), 3),
+        "p50_ms": round(n_load_ms, 3),
+    }
+
+    # ── Paridad de hits (regla dura R5.2) ────────────────────────────────
+    divergencias = []
+    for i, fp in enumerate(fps):
+        vec_py = hits_py.get(fp)
+        if not present[i]:
+            divergencias.append((fp[:12], "falta en nativo"))
+        elif vec_py is None or not np.array_equal(vec_py, matrix[i]):
+            divergencias.append((fp[:12], "bits distintos o miss python"))
+        if len(divergencias) >= 5:
+            break
+    if divergencias:
+        raise SystemExit(
+            f"[bench] ❌ PARIDAD ROTA en vector_store: {divergencias}"
+        )
+
+    return {
+        "metrics": metrics,
+        "disponible": True,
+        "paridad_hits": "bit-idéntica",
+        "chunks": N,
+        "dim": DIM,
+    }
+
+
 _WEBGRAPH_NS = (250, 500, 1000)
 
 
@@ -311,6 +433,7 @@ SUITE_FNS = {
     "index": suite_index,
     "webgraph": suite_webgraph,
     "bm25": suite_bm25,
+    "vector_store": suite_vector_store,
 }
 
 

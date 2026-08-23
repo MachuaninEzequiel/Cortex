@@ -35,3 +35,29 @@ Regla: paridad ANTES que velocidad · un gate por commit · JSON inmutables por 
    tests Python y dataset real de 200 queries. f32/SIMD queda prohibido sin ADR nuevo.
 
 <!-- Próximos gates se agregan acá arriba como nuevas secciones. -->
+
+## G2 — T-PY-2 store binario schema v3 (CORTEX_NATIVE=1)
+
+| Métrica | VectorCache Python v2 | NativeVectorCache Rust v3 | Δ | Gate |
+|---|---|---|---|---|
+| **Cold load completo** (índice + leer 5000×384 f32) | 31.6 ms | **5.0 ms** | **6.4×** (mediana de 5) | ✅ ≥5× carga índice · <100 ms |
+| Ingesta 5000 chunks (batch_put) | 50.2 s | **13.6 ms** | **3684×** | ✅ sin curva O(N²) |
+| Paridad de hits (5000 fps, bits) | — | **BIT-IDÉNTICA** (`suite vector_store`) | — | ✅ exigente |
+
+### Notas
+
+1. Formato nuevo: log append-only de UN archivo (`vectors.v3.bin`, magic `CCTXV3`).
+   Elimina las dos patologías del esquema v2: O(N) opens por carga y re-serialización
+   JSON del índice por put/invalidate (O(N²) de ingesta — 50 s → 14 ms medidos).
+2. Paridad estructural: mismos fingerprints (sha256 Python intacto), dim paramétrica
+   inferida del primer vector + validación ruidosa, modelo distinto ⇒ reset (A3),
+   batch_put transaccional (A2), invalidaciones idempotentes, leak-hasta-compact,
+   cola truncada ⇒ prefijo válido + WARNING (R8). Tests: 8 en
+   test_native_vector_cache.py + 7 en cortex-core::store.
+3. Metodología: cold load con mediana de 5 reaperturas (n=1 en escala ms es ruido;
+   primera corrida dio 7.8×, segunda 4.7×, mediana-5 estabiliza ~6×). Ingesta única
+   corrida (dominada por trabajo real). Wiring: flag CORTEX_NATIVE=1 en los puntos de
+   construcción reales (`cli/docs_vectorization._resolve_cache`, `cli/embedding reindex`);
+   VaultReader no cambia (interfaz duck-type idéntica).
+4. `cold_start.sync_warm_cache` mejora −37% ya bajo flag: efecto colateral esperado
+   (el warm sync ahora sí tiene cache nativo disponible).

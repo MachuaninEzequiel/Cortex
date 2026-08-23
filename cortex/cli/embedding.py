@@ -7,6 +7,7 @@ backup/rollback.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -115,7 +116,6 @@ def register(app) -> None:
         from cortex.core import CortexConfig, resolve_embedder
         from cortex.semantic.vault_reader import VaultReader
         from cortex.workspace import WorkspaceLayout
-
         start = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
         layout = WorkspaceLayout.discover(start)
         config_path = layout.config_path
@@ -162,7 +162,16 @@ def register(app) -> None:
             from cortex.semantic.vector_cache import VectorCache
 
             vectors_dir.mkdir(parents=True, exist_ok=True)
-            vector_cache = VectorCache(vectors_dir, model_name=model)
+            # Ruta nativa Rust (Obra 03, Gate G2): opt-in vía CORTEX_NATIVE=1.
+            if os.environ.get("CORTEX_NATIVE") == "1":
+                try:
+                    from cortex.semantic.native_vector_cache import NativeVectorCache
+
+                    vector_cache = NativeVectorCache(vectors_dir, model_name=model)
+                except ImportError:
+                    vector_cache = VectorCache(vectors_dir, model_name=model)
+            else:
+                vector_cache = VectorCache(vectors_dir, model_name=model)
             reader = VaultReader(
                 vault_path=str(vault_resolved),
                 embedding_model=model,

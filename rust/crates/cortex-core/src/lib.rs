@@ -18,6 +18,7 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod scoring;
+pub mod store;
 
 #[cfg(test)]
 mod tests {
