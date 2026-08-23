@@ -30,14 +30,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .encode_batch(texts.clone(), true)
         .map_err(|e| format!("encode: {e}"))?;
     let tok_ms = t_tok.elapsed().as_secs_f64() * 1000.0;
-    let max_len = encodings.iter().map(|e| e.get_ids().len()).max().unwrap_or(0);
-    println!(
-        "tokenización: {tok_ms:.1}ms · max_len={max_len} · padding dinámico por batch"
-    );
+    let max_len = encodings
+        .iter()
+        .map(|e| e.get_ids().len())
+        .max()
+        .unwrap_or(0);
+    println!("tokenización: {tok_ms:.1}ms · max_len={max_len} · padding dinámico por batch");
     if std::env::var("G5_DEBUG").is_ok() {
         let e0 = &encodings[0];
-        println!("DEBUG ids[0..12]={:?} mask={:?}", &e0.get_ids()[..12.min(e0.get_ids().len())], &e0.get_attention_mask()[..12.min(e0.get_attention_mask().len())]);
-        println!("DEBUG len_ids={} type_ids[:6]={:?}", e0.get_ids().len(), &e0.get_type_ids()[..6.min(e0.get_type_ids().len())]);
+        println!(
+            "DEBUG ids[0..12]={:?} mask={:?}",
+            &e0.get_ids()[..12.min(e0.get_ids().len())],
+            &e0.get_attention_mask()[..12.min(e0.get_attention_mask().len())]
+        );
+        println!(
+            "DEBUG len_ids={} type_ids[:6]={:?}",
+            e0.get_ids().len(),
+            &e0.get_type_ids()[..6.min(e0.get_type_ids().len())]
+        );
     }
 
     // ── Sesión ONNX ──
@@ -48,7 +58,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let load_ms = t_load.elapsed().as_secs_f64() * 1000.0;
     println!(
         "sesión onnxruntime cargada en {load_ms:.1}ms · entradas={:?}",
-        session.inputs().iter().map(|i| i.name().to_string()).collect::<Vec<_>>()
+        session
+            .inputs()
+            .iter()
+            .map(|i| i.name().to_string())
+            .collect::<Vec<_>>()
     );
 
     // Padding dinámico a max_len del batch (igual que chroma: pad fijo 128 —
@@ -67,8 +81,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let within = k < ids.len();
             // El modelo ONNX declara entradas int64 (tensor(int64)).
             input_ids.push(if within { ids[k] as i64 } else { 0 });
-            attention_mask.push(if within && k < mask.len() { mask[k] as i64 } else { 0 });
-            token_type_ids.push(if within && k < type_ids.len() { type_ids[k] as i64 } else { 0 });
+            attention_mask.push(if within && k < mask.len() {
+                mask[k] as i64
+            } else {
+                0
+            });
+            token_type_ids.push(if within && k < type_ids.len() {
+                type_ids[k] as i64
+            } else {
+                0
+            });
         }
     }
 
@@ -89,9 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("DEBUG hidden[0][1][0..4]={head:?}");
     }
     let dims: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
-    println!(
-        "inferencia: {inf_ms:.1}ms · salida shape={dims:?}"
-    );
+    println!("inferencia: {inf_ms:.1}ms · salida shape={dims:?}");
 
     // El modelo emite tokens (batch × seq × hidden): MEAN POOLING con máscara
     // + L2 normalize — idéntico a ONNXMiniLM_L6_V2 de chroma.
