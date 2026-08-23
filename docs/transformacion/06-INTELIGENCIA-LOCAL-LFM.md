@@ -97,6 +97,18 @@ o asíncrono.
 - **BRAIN-3**: lanzador de ventana dedicada multiplataforma + logo cerebro
   (banner rich v1) + i18n completo.
 
+### DECISIÓN DE LENGUAJE (dueño, 2026-08-24): BRAIN-2/3 serán RUST-NATIVOS
+
+Portear el brain a Python primero y luego a Rust duplicaría el trabajo. Orden final:
+1. Migración core a Rust (HANDOFF §TAREA-RUST: G1-G5) — retrieval/scoring/store/BM25/webgraph.
+2. **BRAIN-2/3 se implementan directo en Rust**: crate `cortex-brain` (o módulo del binario
+   `cortex-cli`) con bindings llama.cpp (GGUF LFM2.5), tool-calling sobre las acciones ya
+   migradas, loop de chat y ventana. El runtime sigue siendo llama.cpp/GGUF (decisión vigente);
+   cambia el lenguaje de implementación.
+3. El BRAIN-1 Python QUEDA como: (a) contrato de comportamiento executable (sus 13 tests son
+   la especificación que la versión Rust debe respetar), y (b) modo fallback determinista
+   liviano (`cortex brain --no-model`) para máquinas sin el modelo.
+
 ### Investigación que sigue abierta (para BRAIN-2)
 1. Eval reranker medible (MRR@10 post-rerank vs latencia).
 2. GGUF Q4 exacto a usar + benchmark tok/s en hardware del dueño.

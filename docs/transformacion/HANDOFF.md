@@ -183,6 +183,7 @@ Rust; default apagado hasta que el gate dé verde.
 | **T-EMB-1 (B4)** | embeddings: ort vs candle vs pre/post en Rust — spike + ADR | **G5**: mismos embeddings (cos sim ≥0.999 vs Python) + latencia | primera opción ort (paridad fácil) |
 | **T-DEC-1 (C1)** | spike episodic store (sqlite-vec/HNSW/chromadb queda) | ADR con números | NO migrar por migrar |
 | **T-CLI-1 (D)** | cortex-cli clap feature-par con comandos nivel-0/1 | **G6**: parity tests | solo al final |
+| **T-BRAIN (NUEVO, decisión dueño 2026-08-24)** | BRAIN-2/3 NATIVOS en Rust: crate `cortex-brain` con bindings llama.cpp (GGUF LFM2.5), tool-calling sobre las acciones ya migradas, chat loop + ventana | paridad conductual vs los 13 tests de tests/unit/brain/ (son LA especificación) | NO re-implementar en Python: ver doc 06 §DECISIÓN DE LENGUAJE |
 
 ## R5. Reglas duras de la migración
 
@@ -197,6 +198,9 @@ Rust; default apagado hasta que el gate dé verde.
 6. Suite Python completa verde en cada commit (el flag apagado = comportamiento idéntico a hoy).
 7. No portear código muerto: si aparece algo dudoso durante el porteo, podarlo en commit
    separado de poda o dejarlo en Python.
+8. **El brain (Obra 06) se implementa DIRECTO EN RUST** tras los gates (decisión del
+   dueño). BRAIN-1 Python es solo spec+fallback: sus 13 tests definen el comportamiento
+   que cortex-brain debe replicar.
 
 ## R6. Definición de "programa terminado"
 
