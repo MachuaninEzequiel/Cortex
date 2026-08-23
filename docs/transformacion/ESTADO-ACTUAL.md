@@ -44,16 +44,31 @@
 - Suite: **2451 passed, 13 skipped** · ruff/vulture en 0 · cargo clippy/test
   verde · commits atómicos un-gate-por-commit.
 
-**PENDIENTE (próxima sesión, EN ORDEN):**
+- **G5-INTEGRACIÓN ✅** (commit 9e838d6): `NativeEmbedder` productivo conectado
+  a `OnnxEmbedder` tras flag (singleton class-level). Paridad cos=1.0000000000
+  (incluye textos >128 tokens); batch 100 textos **2.1×** más rápido;
+  first_query_cold **457→22ms (20.8×)**; retrieve end-to-end p50 **4.3×** /
+  p99 2.2× — el ≥5× end-to-end NO se alcanza: piso físico de inferencia
+  ~13.8ms por query en este hardware (análisis y palancas: int8 H-9/GPU en
+  COMPARE.md §G5-integración). FIX de harness: sync_empty_cache medía hits de
+  cache (baseline p50=0.8s era inválido; costo frío real ≈ p99 42.6s → nativo
+  38.3s honesto).
+- **T-BRAIN ✅ incremento 1** (commit 235498a): crate `cortex-brain` binario
+  nativo — router determinista 1:1 con router.py, tools READ/SAFE_ACTION
+  delegando al CLI cortex vía subprocess (servicios Python hasta Obra E),
+  loop+banner+slash commands, trait `LlmBackend` con DeterministicBackend
+  (--no-model). 26 tests propios en verde (espejo de la spec de los 13).
 
-1. **G5-integración [M-L]**: envolver el spike en embedder productivo
-   (`cortex-embed`, API embed/embed_batch) + factory/VaultReader tras flag +
-   bench end-to-end retrieve (re-medir ≥5× completo ahora sin piso Python:
-   ver COMPARE.md §G1 nota 1).
-2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json).
-3. **T-BRAIN [XL]**: crate cortex-brain nativo (llama.cpp GGUF LFM2.5) con los
-   13 tests de tests/unit/brain/ como especificación conductual; requiere
-   decidir binding (llama-cpp-rs vs FFI) y descarga del GGUF.
+**PENDIENTE (siguientes sesiones, EN ORDEN):**
+
+1. **T-BRAIN incremento 2**: backend llama.cpp real (elevar binding:
+   llama-cpp-rs vs FFI propio), descarga del GGUF LFM2.5-1.2B Q4 (~0.8GB),
+   tool-calling del LLM sobre el catálogo ya existente; ventana dedicada
+   (BRAIN-3) + i18n.
+2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
+   — confirmar adopción con el dueño antes de cerrar Obra 03.
+3. Opcionales: int8 e5-large (H-9) para bajar el piso de inferencia;
+   f32/SIMD en scoring con ADR de re-validación de paridad.
 4. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
 
 > **PRÓXIMA SESIÓN = MIGRACIÓN RUST.** Leé primero `HANDOFF.md` §TAREA-RUST (tarea

@@ -132,6 +132,8 @@ Todos sus hallazgos (R-1..3, H-1..H-7) están RESUELTOS con commits `fix(auditor
 | G4 T-WG-1 | f729f18 | webgraph nativo: n1000 **9.2×** (345ms corrida completa, 255–276 aislado ≤300) · edges idénticos |
 | G5 spike T-EMB-1 | 98381a8 | ADR-EMBEDDINGS: **ort elegido** · paridad cos=1.00000000 · 2.2× latencia batch |
 | C1 T-DEC-1 | 664fede | ADR-EPISODIC: chromadb queda; criterios de re-evaluación |
+| G5-integración | 9e838d6 | NativeEmbedder productivo: cos=1.0 · batch 2.1× · first_query_cold 20.8× · fix harness sync_empty_cache |
+| T-BRAIN inc.1 | 235498a | cortex-brain nativo: router 1:1 + tools CLI + loop/banner + trait LlmBackend (26 tests) |
 
 Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 
@@ -143,16 +145,15 @@ Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 
 ## Pendiente (orden estricto para la próxima sesión)
 
-1. **G5-integración [M-L]**: embedder productivo en cortex-embed (embed/
-   embed_batch) conectado a factory/VaultReader tras `CORTEX_NATIVE=1`;
-   bench end-to-end retrieve y RE-MEDIR el ≥5× completo (el piso ONNX Python
-   de ~23ms desaparece; ver COMPARE.md §G1 nota 1). Criterio: cos ≥0.999 vs
-   ruta actual + ≥5× p99 end-to-end.
-2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 con parity --json.
-3. **T-BRAIN [XL]**: crate cortex-brain nativo (llama.cpp GGUF LFM2.5),
-   tool-calling sobre las rutas ya migradas, chat loop + ventana; los 13 tests
-   de tests/unit/brain/ son LA especificación conductual. Requiere elegir
-   binding (llama-cpp-rs vs FFI propio) y descarga del GGUF (~0.8–1.5 GB).
+1. **T-BRAIN incremento 2 [L]**: backend llama.cpp real (binding
+   llama-cpp-rs vs FFI propio — decidir), descarga GGUF LFM2.5-1.2B Q4,
+   tool-calling del LLM sobre el catálogo existente; ventana dedicada
+   (BRAIN-3) + i18n.
+2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 con parity
+   --json — CONFIRMAR ADOPCIÓN CON EL DUEÑO antes de cerrar Obra 03.
+3. Métrica retrieve end-to-end: p50 4.3× / p99 2.2× (piso físico ~13.8ms de
+   inferencia; ver COMPARE.md §G5-integración nota 2). El ≥5× end-to-end exige
+   int8 (H-9) o GPU — decisión de dueño.
 4. Cada uno con su JSON bench + COMPARE.md + commit atómico.
 
 Reglas vigentes: las mismas de §R5 (paridad antes que velocidad, flag default
