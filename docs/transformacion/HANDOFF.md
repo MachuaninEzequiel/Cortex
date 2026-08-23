@@ -134,6 +134,7 @@ Todos sus hallazgos (R-1..3, H-1..H-7) están RESUELTOS con commits `fix(auditor
 | C1 T-DEC-1 | 664fede | ADR-EPISODIC: chromadb queda; criterios de re-evaluación |
 | G5-integración | 9e838d6 | NativeEmbedder productivo: cos=1.0 · batch 2.1× · first_query_cold 20.8× · fix harness sync_empty_cache |
 | T-BRAIN inc.1 | 235498a | cortex-brain nativo: router 1:1 + tools CLI + loop/banner + trait LlmBackend (26 tests) |
+| T-BRAIN inc.2 | 9d224d7 | backend llama.cpp REAL (llama-cpp-2, feature llama) + GGUF LFM2.5 Q4_K_M descargado; generación end-to-end verificada |
 
 Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 
@@ -145,10 +146,10 @@ Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 
 ## Pendiente (orden estricto para la próxima sesión)
 
-1. **T-BRAIN incremento 2 [L]**: backend llama.cpp real (binding
-   llama-cpp-rs vs FFI propio — decidir), descarga GGUF LFM2.5-1.2B Q4,
-   tool-calling del LLM sobre el catálogo existente; ventana dedicada
-   (BRAIN-3) + i18n.
+1. **T-BRAIN pulido [M]**: auto-despacho de la tool sugerida por el LLM con
+   confirmación del usuario; temperature/samplers; ventana BRAIN-3 + i18n;
+   CI con backend falso scriptado. (El backend llama.cpp YA funciona:
+   ver inc.2.)
 2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 con parity
    --json — CONFIRMAR ADOPCIÓN CON EL DUEÑO antes de cerrar Obra 03.
 3. Métrica retrieve end-to-end: p50 4.3× / p99 2.2× (piso físico ~13.8ms de

@@ -53,22 +53,26 @@
   COMPARE.md §G5-integración). FIX de harness: sync_empty_cache medía hits de
   cache (baseline p50=0.8s era inválido; costo frío real ≈ p99 42.6s → nativo
   38.3s honesto).
-- **T-BRAIN ✅ incremento 1** (commit 235498a): crate `cortex-brain` binario
-  nativo — router determinista 1:1 con router.py, tools READ/SAFE_ACTION
-  delegando al CLI cortex vía subprocess (servicios Python hasta Obra E),
-  loop+banner+slash commands, trait `LlmBackend` con DeterministicBackend
-  (--no-model). 26 tests propios en verde (espejo de la spec de los 13).
+- **T-BRAIN ✅ incrementos 1+2** (commits 235498a + 9d224d7): crate
+  `cortex-brain` binario nativo — router determinista 1:1 con router.py, tools
+  READ/SAFE_ACTION delegando al CLI cortex vía subprocess (servicios Python
+  hasta Obra E), loop+banner+slash commands, trait `LlmBackend`.
+  **Incremento 2**: backend llama.cpp REAL (llama-cpp-2 0.1.154, feature
+  `llama`) con GGUF oficial LiquidAI LFM2.5-1.2B-Instruct-Q4_K_M (730MB en
+  ~/.cache/cortex/models/); chat template tomado del GGUF y aplicado con el
+  motor jinja de llama.cpp; generación end-to-end VERIFICADA referenciando
+  herramientas del catálogo. Muestreo greedy v1.
 
 **PENDIENTE (siguientes sesiones, EN ORDEN):**
 
-1. **T-BRAIN incremento 2**: backend llama.cpp real (elevar binding:
-   llama-cpp-rs vs FFI propio), descarga del GGUF LFM2.5-1.2B Q4 (~0.8GB),
-   tool-calling del LLM sobre el catálogo ya existente; ventana dedicada
-   (BRAIN-3) + i18n.
+1. **T-BRAIN pulido [M]**: auto-ejecución de la herramienta sugerida por el
+   LLM con confirmación del usuario (hoy la referencia se muestra pero no se
+   despacha automáticamente); temperature/samplers; ventana dedicada
+   (BRAIN-3) + i18n; CI con backend falso scriptado.
 2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
    — confirmar adopción con el dueño antes de cerrar Obra 03.
-3. Opcionales: int8 e5-large (H-9) para bajar el piso de inferencia;
-   f32/SIMD en scoring con ADR de re-validación de paridad.
+3. Opcionales: int8 e5-large (H-9) para bajar el piso de inferencia (~13.8ms
+   por query, único obstáculo del ≥5× end-to-end); f32/SIMD en scoring con ADR.
 4. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
 
 > **PRÓXIMA SESIÓN = MIGRACIÓN RUST.** Leé primero `HANDOFF.md` §TAREA-RUST (tarea
