@@ -1,0 +1,11 @@
+[package]
+name = "cortex-embed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Wrapper de inferencia ONNX para embeddings Cortex (dim paramétrica)."
+
+[dependencies]
+# `ort` (bindings onnxruntime) se incorpora en T-EMB-1 / Gate G5 junto a su ADR
+# (ort vs candle vs pre/post-en-Rust). El esqueleto no arrastra la dependencia
+# pesada para mantener R2 atómico y liviano.

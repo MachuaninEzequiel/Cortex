@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cortex-core",
+    "crates/cortex-embed",
+    "crates/cortex-py",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
+# - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.
+# - cortex-embed: wrapper de inferencia ONNX (ort). dim SIEMPRE paramétrica.
+# - cortex-py: fachada PyO3 GRUESA (APIs batch, nunca loop-per-item).
+#   El feature `extension-module` NO es default para que `cargo test` linkee
+#   contra libpython; maturin lo activa automáticamente al compilar el wheel.
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

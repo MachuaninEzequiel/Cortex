@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+# pyproject SOLO del binding nativo (no toca el build-backend setuptools
+# del proyecto principal). Desarrollo:
+#
+#   .venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml
+#
+# (ejecutarlo con cwd en la RAÍZ del repo o desde rust/crates/cortex-py —
+# el manifest -m evita que maturin lea el pyproject de la raíz.)
+
+[project]
+name = "cortex-core-native"
+version = "0.1.0"
+description = "Extension-module PyO3: cortex_core._native (Obra 03)."
+requires-python = ">=3.11"
+
+[tool.maturin]
+python-source = "."
+module-name = "cortex_core._native"
