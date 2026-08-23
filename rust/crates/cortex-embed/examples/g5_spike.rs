@@ -1,3 +1,4 @@
+// Requiere el feature onnx (ort + tokenizers): compilar con --features onnx.
 //! Spike G5 (T-EMB-1): inferencia all-MiniLM-L6-v2 con `ort` + tokenizador HF
 //! oficial sobre los MISMOS artefactos que usa chromadb en Python.
 //!
@@ -9,11 +10,20 @@
 //! de bench/g5_reference.py). Imprime dim + vector por texto para comparar
 //! coseno bit a bit contra Python.
 
+#[cfg(feature = "onnx")]
 use std::time::Instant;
 
+#[cfg(feature = "onnx")]
 use ort::session::{builder::GraphOptimizationLevel, Session};
+#[cfg(feature = "onnx")]
 use tokenizers::Tokenizer;
 
+#[cfg(not(feature = "onnx"))]
+fn main() {
+    eprintln!("Este example requiere --features onnx (ort + tokenizers).");
+}
+
+#[cfg(feature = "onnx")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let model_path = args.next().expect("falta ruta del model.onnx");
