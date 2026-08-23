@@ -1,0 +1,6 @@
+{
+  "queries": 100,
+  "hit_at_5": 0.13,
+  "mrr_at_10": 0.0544,
+  "modo": "hibrido"
+}
