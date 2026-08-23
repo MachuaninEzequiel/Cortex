@@ -8,5 +8,9 @@
 //! LFM2.5 queda scoped como siguiente incremento (HANDOFF §ESTADO-GATES).
 
 pub mod chat;
+
+#[cfg(feature = "llama")]
+pub mod llama;
+
 pub mod router;
 pub mod tools;
