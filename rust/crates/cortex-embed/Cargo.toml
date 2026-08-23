@@ -6,6 +6,19 @@ license.workspace = true
 description = "Wrapper de inferencia ONNX para embeddings Cortex (dim paramétrica)."
 
 [dependencies]
-# `ort` (bindings onnxruntime) se incorpora en T-EMB-1 / Gate G5 junto a su ADR
-# (ort vs candle vs pre/post-en-Rust). El esqueleto no arrastra la dependencia
-# pesada para mantener R2 atómico y liviano.
+# G5 (T-EMB-1): bindings onnxruntime + tokenizador HF oficial. Opcionales
+# hasta cerrar la integración; el spike corre con `--features onnx`
+# (ort descarga binaries precompilados de onnxruntime en su build.rs).
+[dependencies.ort]
+version = "2.0.0-rc.13"
+optional = true
+
+[dependencies.tokenizers]
+version = "0.23"
+optional = true
+
+[dev-dependencies]
+serde_json = "1"
+
+[features]
+onnx = ["dep:ort", "dep:tokenizers"]
