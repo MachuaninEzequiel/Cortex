@@ -1,9 +1,10 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
-> **PRÓXIMA SESIÓN = G6/T-CLI-1 (decisión de dueño)**: T-BRAIN pulido está
-> COMPLETO (2026-08-24c). Solo queda el CLI clap feature-par, que exige
-> decidir adopción con el dueño (los servicios session/actions/context siguen
-> Python hasta Obra E). Leé `HANDOFF.md` §ESTADO-2026-08-24c.
+> **OBRA 03 (Rust) COMPLETA ✅** — incluida G6 (fachada passthrough, commit
+> 3c38e69 de la sesión anterior, documentado tarde) y T-BRAIN pulido
+> (2026-08-24c). **PRÓXIMA SESIÓN = cierre Obra 04 con el dueño** (reindex
+> vault real + flip default per-language) + H-8 CHANGELOG.
+> Detalle completo: `HANDOFF.md` §ESTADO-2026-08-24c.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
 > `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
@@ -48,14 +49,13 @@
 
 **PENDIENTE (siguientes sesiones):**
 
-1. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
-   — REQUIERE DECISIÓN DE DUEÑO: los servicios session/actions/context siguen
-   Python hasta Obra E, así que feature-par real implica migrarlos o delegar
-   al CLI Python; ninguna de las dos es "gratis".
-2. Opcionales: f32/SIMD en scoring con ADR; GPU para ≥5× e2e (int8 descartado
-   por gate — ver arriba); traducir salidas de tools si el dueño quiere EN
-   completo (hoy solo chrome).
-3. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
+1. **Cierre Obra 04 CON EL DUEÑO**: reindex vault real + flip default global
+   per-language.
+2. **H-8** CHANGELOG: normalizar [Unreleased] (decisión de versión = DUEÑO).
+3. **H-11**: ventana pct_motor ≥2 semanas de uso real.
+4. Opcionales: GPU para el ≥5× e2e (int8 descartado por gate); traducción de
+   salidas de tools del brain; subcomandos nativos del CLI en Obra E.
+5. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
 
 ## Estado al cierre de la sesión de migración Rust (2026-08-24b)
 

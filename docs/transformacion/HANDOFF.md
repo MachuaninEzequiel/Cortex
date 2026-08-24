@@ -161,14 +161,34 @@ Verificación de cierre: rust workspace fmt/clippy/test verde (**78 tests**) ·
 suite Python verde · smoke --model real exit 0 pico 1312MB · smoke i18n EN/ES
 por stdin OK.
 
+## Descubrimiento post-docs: G6/T-CLI-1 YA ESTABA COMPLETO (3c38e69)
+
+Revisando `git log` apareció un commit de la sesión anterior (23/08 21:12,
+tres minutos antes del OOM #1) que no llegó a documentarse:
+
+- **G6/T-CLI-1 ✅** `feat(rust G6/T-CLI-1)`: crate `cortex-cli` — fachada
+  nativa passthrough (decisión del dueño 2026-08-24b: "fachada sobre CLI
+  Python"). Paridad por construcción (argv + stdio heredados, --json
+  idéntico), startup nativo <50ms (--cli-version), override CORTEX_BIN, 2
+  tests de paridad verde.
+- Desviación documentada en el propio commit: clap SE OMITE en modo fachada
+  porque subcomandos propios interceptarían --help/--json del CLI real;
+  subcomandos nativos recién en Obra E cuando migren los servicios.
+
+**Con esto, OBRA 03 QUEDA COMPLETA**: A1/I-1/T-CARGO-1/G1/G2/G3/G4/G5+
+integración/C1/G6/T-BRAIN pulido/wheels/T-EVAL-1 — todos commiteados con
+suite verde y JSON/ADR correspondientes.
+
 ## Pendiente (orden actualizado)
 
-1. **G6/T-CLI-1 [L]** — cortex-cli clap feature-par nivel-0/1. REQUIERE
-   DECISIÓN DE DUEÑO antes de cerrar Obra 03 (migrar servicios o delegar al
-   CLI Python hasta Obra E).
-2. Opcionales: GPU para ≥5× e2e (int8 descartado); traducción de salidas de
-   tools (hoy solo chrome está en EN); f32/SIMD con ADR nuevo.
-3. Reglas vigentes: las mismas de §R5 (paridad antes que velocidad, flag
+1. **Cierre Obra 04 CON EL DUEÑO**: reindex vault real + flip default global
+   per-language (e5-large ES / MiniLM EN).
+2. **H-8**: normalizar CHANGELOG (decisión de versión = dueño).
+3. **H-11**: registrar pct_motor tras ≥2 semanas de uso real.
+4. Opcionales: GPU para ≥5× e2e (int8 descartado); traducción de salidas de
+   tools (hoy solo chrome está en EN); subcomandos nativos del CLI en Obra E;
+   f32/SIMD con ADR nuevo.
+5. Reglas vigentes: las mismas de §R5 (paridad antes que velocidad, flag
    default apagado, suite verde antes de commit, un gate por commit) + las 4
    reglas de memoria de arriba.
 
