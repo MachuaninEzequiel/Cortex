@@ -4,10 +4,11 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P2** — P0 ✅ P1 ✅ (config serde con paridad
-> byte-a-byte sobre 8 fixtures). P2 = VaultReader + MiniLM-vía-ort + hybrid
-> search nativo con ranking parity (queries-synth + eval ES/EN).
-> Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`. Detalle sesión
+> **PRÓXIMA SESIÓN = OBRA 07 P3** — P0 ✅ P1 ✅ P2 ✅ (GATE: BM25 y semántico
+> 100/100 rankings idénticos vs Python; goldens commiteados en bench/parity/).
+> P3 = memoria episódica nativa (extensión store v3 con metadata filtrable +
+> conversor chroma→nativo; ADR-EPISODIC queda reemplazado por decisión de
+> migración total). Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
