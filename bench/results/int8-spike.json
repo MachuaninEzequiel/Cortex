@@ -1,0 +1,17 @@
+{
+  "cos_parity_mean": 0.946789,
+  "cos_parity_min": 0.887234,
+  "latency_ms_fp32": 1534.9,
+  "latency_ms_int8": 947.4,
+  "speedup": 1.62,
+  "fp32": {
+    "hit_at_5": 0.86,
+    "mrr_at_10": 0.7254
+  },
+  "int8": {
+    "hit_at_5": 0.79,
+    "mrr_at_10": 0.7075
+  },
+  "peak_rss_mb": 400.5,
+  "batch_size": 64
+}
