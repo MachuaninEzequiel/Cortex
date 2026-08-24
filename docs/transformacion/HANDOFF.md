@@ -1,198 +1,84 @@
 # HANDOFF — Programa de Transformación Cortex
 
-> **Leer esto COMPLETO antes de hacer nada.** Última actualización: 2026-08-24.
-> Este documento es el contrato de continuidad entre sesiones/agentes. Si algo acá y en
-> otro lado se contradice, este archivo manda (y actualizá el otro).
+> **HANDOFF ACTIVO (2026-08-24, cierre sesión integración).**
+> Obra 07 dual-stream EN CURSO. Si algo acá contradice historia vieja de este
+> archivo, MANDA ESTA SECCIÓN.
 
----
+## 0. Contexto en 30 segundos
 
-## 1. Contexto en 30 segundos
+Cortex (`cortex-memory` v0.7.0): memoria cognitiva híbrida + gobernanza para
+agentes. Programa: migración TOTAL Python→Rust (Obra 07, plan maestro
+`docs/transformacion/08-MIGRACION-TOTAL-RUST.md`). Master sellado v0.5.0;
+trabajo en `feature/transformacion-2026-08`. Suite Python = ORÁCULO
+(2451+ tests verdes). Paridad-como-contrato en todo.
 
-**Proyecto**: Cortex (`cortex-memory` v0.5.0) — memoria cognitiva híbrida (episódica +
-semántica) y gobernanza para agentes de IA. CLI Typer + MCP server + retrieval híbrido
-(ChromaDB + ONNX/fastembed + BM25) + vault estilo Obsidian + enterprise + webgraph +
-ActionEngine. Repo: `/home/chucho/Cortex`. ~18k LOC en cortex/.
+## 1. Estado por fases (detalle y evidencia: ESTADO-ACTUAL.md)
 
-**Programa**: Transformación total nacida del deep-review de 12 subsistemas
-(`docs/reviews/2026-08-deep-review/`), administrada en `docs/transformacion/`.
+✅ P0 scaffolding+harness · P1 config · P2 vault/hybrid (100+100) ·
+P3 episódica (+fix keyword) · P4 sessions/hooks/gates (+fix lstrip) ·
+P5 reconstructor gitless/git-aware + persister (note byte-parity) ·
+P10 branding/TUI (stream del dueño, 73 tests).
 
-**Dónde estamos**: Obras 01, 02, 05 COMPLETAS · Obra 04 al ~90% (falta intervención del
-dueño) · **Obra 03 (Rust) solo tiene A1 — la migración es LA TAREA DE LA PRÓXIMA SESIÓN**
-(ver §TAREA-RUST abajo, con pasos concretos).
+## 2. DUAL-STREAM ACTIVO — leé esto ANTES de tocar nada
 
-## 2. Estado VERIFICADO hoy (no confíes, ejecutá)
+Dos agentes comparten ESTE working tree. Asignaciones y reglas duras:
+**plan maestro §4b** (`08-MIGRACION-TOTAL-RUST.md`). Resumen:
+
+| | Stream A | Stream B |
+|---|---|---|
+| Fases | P6 cortex-actions + P7 context(module) | P8 cortex-setup + P9 cortex-mcp(rmcp) |
+| Progreso | progreso-streamA.md | progreso-streamB.md |
+
+REGLAS: cada stream SOLO sus archivos · cortex-app lo edita exclusivamente A ·
+verificación SIEMPRE `-p` por crate · commits `feat(obra07 P#)` atómicos ·
+NO actualizar ESTADO-ACTUAL/HANDOFF (integración posterior) · index.lock
+ocupado ⇒ esperar/reintentar · reglas de memoria vigentes.
+
+## 3. Cómo verificar (SIEMPRE)
 
 ```bash
-cd /home/chucho/Cortex
-git branch --show-current          # feature/transformacion-2026-08 (master SELLADO v0.5.0-baseline-seal)
-.venv/bin/python -m pytest tests/unit tests/integration -q --no-cov -p no:warnings   # ✅ 2415 passed
-uvx ruff check --select F401,F841,F821 cortex   # ✅ 0
-uvx vulture cortex --min-confidence 80          # ✅ 0
-.venv/bin/python -m pytest tests/unit --cov=cortex -q | grep TOTAL   # ≥80%
+cd /home/chucho/Cortex/rust
+cargo fmt --check && cargo clippy -p <TU_CRATE> --all-targets -- -D warnings
+cargo test -p <TU_CRATE>            # NUNCA confíes en el global sin filtrar
+cargo run -q -p cortex-app --example bm25_search …   # harness patterns:
 ```
 
-Auditoría completa de realidad con evidencia: `docs/transformacion/07-AUDITORIA-2026-08-24.md`.
-Todos sus hallazgos (R-1..3, H-1..H-7) están RESUELTOS con commits `fix(auditoria)`.
+Paridad: `bench/parity/README.md` + scripts golden existentes (doctor,
+next_stats, search_bm25_100, search_semantic_100, episódico, session dumps,
+verification, gates, documenter, persister). Suite Python:
+`.venv/bin/python -m pytest tests/unit tests/integration -q --no-cov`.
 
-## 3. Qué se hizo en TODO el programa (resumen por obra)
+## 4. Decisiones cerradas (no re-discutir)
 
-### Obra 01 — Podado ✅ COMPLETA (P1-P8 + P-bugs)
-- TRAMO 0: pin `mcp>=1.2,<2` (API 1.x; migración 2.x = P9 opcional post-split), suite verde.
-- Monolitos partidos: mcp/server.py 2977→491 (schemas.py + tools/{search,sessions,
-  documenter,workspace} mixins + dispatcher tabla `_TOOL_ROUTES`) con **golden contract MCP**
-  byte-a-byte (`tests/unit/mcp/test_golden_contract.py`, snapshot en golden/list_tools.json).
-- main.py 2277→~1925: subapps cli/{pr_context,hu,common,embedding,mcp_cmd,next,documenting}.
-- V1-V9 resueltas: _PathVault único, schemas ×13 → mixins `_XSpecific`, skills embebidos →
-  `setup/workspace_files/*.md` package-data, enricher sync/async unificados vía
-  `_finalize_items()`, ciclo session↔documenter roto (TYPE_CHECKING + guardia), co_occurrence
-  podada -50%, memory_decay podado a superficie viva.
-- P-bugs 10/10: ver tabla §4 del plan 01 (+ bug #13 nuevo arreglado: SetupOrchestrator
-  dry_run ahora REAL — test_dry_run_real.py).
+1. Paridad bit-exacta; f32/SIMD prohibido sin ADR que re-valide.
+2. BM25 casero (substring semantics); tantivy descartado.
+3. Embeddings por ort sobre artefactos chroma/fastembed cacheados.
+4. ChromaDB sale → store nativo JSONL/export neutro (decisión migración total).
+5. minijinja/ratatui/rmcp/tokio/git2 aprobados como deps del porteo.
+6. Brain: propone-nunca-muta; LFM2.5 GGUF vía llama.cpp.
+7. El cerebro ASCII+degradado del TUI/banner: RESUELTO por stream P10
+   (cortex-branding half-block + paleta azul/cian).
 
-### Obra 02 — Estándar IDE/CLI ✅ COMPLETA
-- `cortex ide list|setup|remove|status` único contrato; uninstall seguro con marcadores
-  BEGIN/END CORTEX SECTION en los 11 adapters; legacy root ocultos como aliases.
+## 5. Reglas de trabajo heredadas
 
-### Obra 04 — Vectorización ~90% (falta dueño)
-- Embeddings por idioma MEDIDOS: ES=`intfloat/multilingual-e5-large` (fastembed, MRR@10
-  0.9615 vs MiniLM 0.8821) · EN=all-MiniLM-L6-v2 onnx. Config `embedding:` per-language.
-- Fixes vectoriales: dim paramétrica, fail-fast anti-búsqueda vacía, cache schema v2,
-  prefijos query:/passage:, colisiones chunk_id, frontmatter preservado.
-- `cortex reindex` (backup→rebuild→rollback) + `embedding-status`.
-- Pendiente: int8 (plan en 04 §RECOMENDACIÓN), reindex vault real + flip default (DUEÑO).
+Suite verde antes de cada commit (por crate) · planes mandan · verificación
+contra código real, no checkboxes · un gate por commit · commits atómicos
+prefijados · websearch no configurado (API pública HF vía httpx) · reglas de
+memoria: un modelo residente por vez, batches ≤64, caché jamás en /tmp.
 
-### Obra 05 — UX/ActionEngine ✅ A-E completas
-- **Fase A**: FeedbackStore JSONL (.cortex/feedback.jsonl + rotación), telemetría cableada
-  en los 4 sitios de ContextEnricher + rotación events JSONL, APIs públicas SessionService,
-  guide_path revivido en tutor.
-- **Fase B**: paquete `cortex/action_engine/` (models/store/registry/scheduler/runner/
-  learning/signals/metrics/i18n) + catálogo v1 (10 acciones sobre servicios existentes) +
-  comando `cortex next` (--json/--explain-why-not/--all/--stats; <2s gate).
-- **Fase C**: nivel-0 `start`/`finish`; aliases viejos ocultos; help raíz = 8 exacto;
-  B3/B4 search (scope/project-id reales, --format siempre honrado); E2E ≤3 comandos
-  (tests/e2e/test_flujo_3_comandos.py).
-- **Fase D**: TUI home (`cortex` sin args) <300ms snapshot, pantalla acciones §3.5 real
-  (Learner+Runner), búsqueda con feedback persistido, watch deprecado.
-- **Fase E**: señales feedback→score (±25%), métrica pct_motor (`next --stats`),
-  i18n ui.language ES/EN.
-- ⚠ Gate final pendiente de USO REAL: registrar pct_motor tras ≥2 semanas.
+## 6. Deudas/decisiones pendientes del dueño
 
-## 4. Decisiones técnicas CERRADAS (NO re-discutir)
-
-1. **Embeddings**: e5-large ES / MiniLM EN vía fastembed+onnx — elegidos por eval suite
-   (`eval/retrieval/run_eval.py`), no intuición. Config per-language es el default recomendado.
-2. **Pin mcp>=1.2,<2** hasta P9 (migración API 2.x opcional tras split ya hecho).
-3. **LFM2.5 (Liquid)** NO es embedder: Obra 06 futura, investigación primero. Licencia LFM1.0
-   libre solo <$10M/año.
-4. **MrBERT-es** requiere fine-tune contrastivo para ser embedder (obra futura candidata).
-5. Piezas dormidas RESERVADAS Obra 05 (feedback_loop/telemetría/tutor) ya CONECTADAS — no tocar sin necesidad.
-6. TUIs: typer+rich, NO Textual en v1 (escape clause documentado §4.1).
-7. Dry-run del ActionEngine calcula su propio plan (el orquestador recién ahora respeta dry_run).
-8. Report-only actions: reversible=True con undo no-op (contrato exige undo si reversible).
-
-## 5. Reglas de trabajo (aprendidas — se aplican SIEMPRE)
-
-1. Suite verde antes de cada commit: `.venv/bin/python -m pytest tests/unit tests/integration
-   -q --no-cov -p no:warnings`. Commits atómicos por lógica. Nunca mezclar poda+refactor+bugfix.
-2. Los planes de las obras MANDAN; si están mal, actualizar el plan PRIMERO.
-3. Verificación contra código real, no checkboxes (ver 07-AUDITORIA: así se detectaron
-   regresiones propias).
-4. Subagentes: briefs edit-first, scopes disjuntos, git prohibido, entrega incremental;
-   si un hijo se traba 2 veces, hacerlo directo.
-5. Al cerrar sesión: actualizar ESTADO-ACTUAL.md + este HANDOFF.
-6. Websearch no configurado; para investigar modelos usar API pública HF vía httpx.
-
-## 6. Deudas vivas (fuera de Rust — prioridad menor)
-
-| # | Ítem | Nota |
-|---|---|---|
-| I-1 | **Gate CI propio (T0.6)**: workflow que corra pytest+ruff+vulture bloqueante | HACERLO JUNTO AL ARRANQUE RUST (bloquea merges desde día uno) |
-| H-8 | CHANGELOG: normalizar 8 [Unreleased] | decisión de versión = DUEÑO |
-| H-9 | int8 e5-large (cuantizar ONNX + backend + eval gate MRR≥0.93) | plan en doc 04 |
-| H-10 | Reindex vault real + flip default global | REQUIERE DUEÑO |
-| H-11 | Ventana 2 semanas pct_motor | REQUIERE USO REAL |
+GPU para ≥5× e2e · H-8 CHANGELOG ya normalizado a 0.7.0 (release cuando
+corresponda) · H-11 ventana pct_motor (uso real ≥2 semanas) · adopción CLI
+nativo (P12) · reindex vault real cuando el vault crezca (hoy vacío; la
+bóveda personal vive en ~/Polar con 2 notas).
 
 ---
----
 
-# 🦀 ESTADO-2026-08-24c — T-BRAIN pulido COMPLETO + OOM de memoria resuelto
-
-> Sesión siguiente a la de arriba. Actualiza (no reemplaza) el orden: lo que
-> sigue es G6/T-CLI-1 con decisión de dueño.
-
-## OOM del kernel: causa raíz y lección permanente (leer ANTES de correr modelos)
-
-Dos sesiones seguidas murieron por `oom-kill` global (23/08 21:15 · 24/08 09:08).
-Evidencia en journalctl: un solo `python` con ~9.4–10.3GB (RSS+zram) sobre
-11GB RAM — era `bench/int8_probe.py` v1: fp32+int8 cargados A LA VEZ + corpus
-de 1000 textos en un batch. Fix commiteado (fases secuenciales, batch 64,
-arena off): pico 10GB→397MB.
-
-**Reglas duras de memoria en esta máquina (ASUS S5402ZA, 11GB + zram):**
-1. NUNCA dos modelos residentes simultáneos (embedder + LLM, o dos variantes
-   del mismo). Fase completa → liberar → recién entonces abrir el otro.
-2. Inferencia batch SIEMPRE trozada (≤64 textos); jamás batches gigantes.
-3. onnxruntime con `enable_cpu_mem_arena=False` cuando el proceso conviva con
-   uso interactivo del equipo.
-4. Antes de lanzar algo que cargue LFM2.5 (~1.3GB) o e5-large (~2.2GB):
-   verificar `free -m` primero.
-Pesos medidos 2026-08-24c: search CLI 106MB · embedder MiniLM 465MB ·
-cortex-brain --model 1312MB · probe corregido ~400MB.
-
-## Gate H-9 int8: NO PASA (cerrado por gate)
-
-`bench/results/int8-spike.json`: cos mean **0.947** <0.99 · hit@5 int8 0.79 vs
-fp32 0.86 (cae >5% rel) · speedup 1.62×. Decisión automática del gate acordado:
-se descarta la cuantización dinámica; NO se integra nada. El ≥5× end-to-end
-queda supeditado a GPU (o aceptar piso actual) — decisión de dueño.
-
-## T-BRAIN pulido ✅ (commits test/feat de esta sesión)
-
-Auditoría contra código real (regla R3): auto-despacho c/confirmación,
-temp/seed/samplers y ventana BRAIN-3 ya existían desde 6a5479f. Lo faltante:
-
-| Pieza | Commit | Contenido |
-|---|---|---|
-| Protocolo TOOL testeable + CI sin modelo | test(rust T-BRAIN) | `chat::extraer_tool / respuesta_sin_tool / confirma / procesar_respuesta_modelo` en librería; **ScriptedBackend** público (backend falso scriptado); 12 tests e2e con CORTEX_BIN=/bin/echo; el job cargo de ci-gates.yml los corre sin cambios extra |
-| i18n ES/EN | feat(rust T-BRAIN) | `i18n.rs`: CORTEX_LANG > ui.language (.cortex/config.yaml > legacy) > es — misma convención que action_engine/i18n.py; help/prompts/avisos traducidos; router/catálogo/salidas de tools invariantes; confirma acepta s\|si\|sí\|y\|yes |
-| Fix bench OOM | fix(bench) | int8_probe seguro + int8-spike.json (gate NO PASA) |
-
-Verificación de cierre: rust workspace fmt/clippy/test verde (**78 tests**) ·
-suite Python verde · smoke --model real exit 0 pico 1312MB · smoke i18n EN/ES
-por stdin OK.
-
-## Descubrimiento post-docs: G6/T-CLI-1 YA ESTABA COMPLETO (3c38e69)
-
-Revisando `git log` apareció un commit de la sesión anterior (23/08 21:12,
-tres minutos antes del OOM #1) que no llegó a documentarse:
-
-- **G6/T-CLI-1 ✅** `feat(rust G6/T-CLI-1)`: crate `cortex-cli` — fachada
-  nativa passthrough (decisión del dueño 2026-08-24b: "fachada sobre CLI
-  Python"). Paridad por construcción (argv + stdio heredados, --json
-  idéntico), startup nativo <50ms (--cli-version), override CORTEX_BIN, 2
-  tests de paridad verde.
-- Desviación documentada en el propio commit: clap SE OMITE en modo fachada
-  porque subcomandos propios interceptarían --help/--json del CLI real;
-  subcomandos nativos recién en Obra E cuando migren los servicios.
-
-**Con esto, OBRA 03 QUEDA COMPLETA**: A1/I-1/T-CARGO-1/G1/G2/G3/G4/G5+
-integración/C1/G6/T-BRAIN pulido/wheels/T-EVAL-1 — todos commiteados con
-suite verde y JSON/ADR correspondientes.
-
-## Pendiente (orden actualizado)
-
-1. **Cierre Obra 04 CON EL DUEÑO**: reindex vault real + flip default global
-   per-language (e5-large ES / MiniLM EN).
-2. **H-8**: normalizar CHANGELOG (decisión de versión = dueño).
-3. **H-11**: registrar pct_motor tras ≥2 semanas de uso real.
-4. Opcionales: GPU para ≥5× e2e (int8 descartado); traducción de salidas de
-   tools (hoy solo chrome está en EN); subcomandos nativos del CLI en Obra E;
-   f32/SIMD con ADR nuevo.
-5. Reglas vigentes: las mismas de §R5 (paridad antes que velocidad, flag
-   default apagado, suite verde antes de commit, un gate por commit) + las 4
-   reglas de memoria de arriba.
 
 ---
+
+# HISTORIAL DE HANDOFFS ANTERIORES
 
 # 🦀 ESTADO-GATES-2026-08-24b — sesión de migración Rust cerrada
 
