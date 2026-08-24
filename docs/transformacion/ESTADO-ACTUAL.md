@@ -4,11 +4,11 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P4** — P0-P3 ✅. P3 incluyó fix real: keyword
-> bypass episódico estaba roto con chromadb moderno (ValueError) → filtrado
-> local $contains. Paridad episódica completa (round-trip/vector/keyword/
-> entity). P4 = Session primitive + hooks + quality gates en Rust
-> (spec: tests/unit/session/*). Plan: `08-MIGRACION-TOTAL-RUST.md`.
+> **PRÓXIMA SESIÓN = OBRA 07 P4-fin + P5** — P0-P3 ✅ y P4-núcleo ✅
+> (SessionRecord/Checkpoint/Task/Verification* + storage YAML atómico +
+> infer_mode con dumps 4/4 idénticos vs Python; goldens en golden_session/).
+> PENDIENTE P4: verification runner, hook adapters ×11, quality_gates review.
+> Después P5 documenter/reconstructor. Plan: `08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
