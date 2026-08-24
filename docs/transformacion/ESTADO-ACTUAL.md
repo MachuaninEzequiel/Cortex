@@ -4,11 +4,11 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07: MIGRACIÓN TOTAL A RUST** — plan aprobado por el
-> dueño ("literalmente cada parte que existe en Python"). Leé
-> `docs/transformacion/08-MIGRACION-TOTAL-RUST.md` y arrancá por **P0**
-> (scaffolding crates cortex-config/cortex-app + harness de parity golden).
-> Detalle sesión 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
+> **PRÓXIMA SESIÓN = OBRA 07 P1** — P0 ✅ commiteado (crates cortex-config/
+> cortex-app + harness bench/parity con goldens doctor.txt/next_stats.json).
+> P1 = porteo completo de config (serde) con paridad sobre fixtures.
+> Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`. Detalle sesión
+> 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
 > `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
