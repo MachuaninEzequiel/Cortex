@@ -4,13 +4,12 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P5b** — P0-P4 ✅ · P5a ✅ (reconstructor gitless
-> con dump idéntico vs oráculo; ADR-suggestions high incluidas).
-> COORDINACIÓN: el crate cortex-branding/cortex-tui lo lleva OTRO agente en
-> paralelo (P10) — no tocar; su WIP puede fallar `cargo test` global hasta
-> que commite. Verificar siempre con -p por crate.
-> P5b = reconstructor git-aware (subprocess git diff/name-status) +
-> DocumenterPersister (nota de sesión). Plan: `08-MIGRACION-TOTAL-RUST.md`.
+> **PRÓXIMA SESIÓN = OBRA 07 P6** — P0-P5 ✅ CERRADAS. Paridades acumuladas:
+> BM25/semántico 100+100 · episódica completa · sesiones dumps 4/4 · hooks 5/5
+> · gates 6/6 · reconstructor gitless+git-aware · create_args 20 campos ·
+> note_body byte-parity (jinja2↔minijinja). Coordinación stream P10 vigente.
+> P6 = ActionEngine nativo (registry/scheduler/learning/signals/metrics;
+> FeedbackStore JSONL formato-compatible). Plan: `08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
