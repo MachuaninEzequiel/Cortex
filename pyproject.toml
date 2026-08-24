@@ -44,6 +44,8 @@ dependencies = [
 # Use when you need to swap to a different HuggingFace model by name.
 # Enable in config.yaml: embedding_backend: local
 local = ["sentence-transformers>=3.0"]
+# Default ES embedder backend (Obra 04): generic ONNX via fastembed, no PyTorch.
+fastembed = ["fastembed>=0.8"]
 openai = ["openai>=1.0"]
 anthropic = ["anthropic>=0.25"]
 ollama = ["httpx>=0.27"]
