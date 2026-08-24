@@ -4,9 +4,9 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P1** — P0 ✅ commiteado (crates cortex-config/
-> cortex-app + harness bench/parity con goldens doctor.txt/next_stats.json).
-> P1 = porteo completo de config (serde) con paridad sobre fixtures.
+> **PRÓXIMA SESIÓN = OBRA 07 P2** — P0 ✅ P1 ✅ (config serde con paridad
+> byte-a-byte sobre 8 fixtures). P2 = VaultReader + MiniLM-vía-ort + hybrid
+> search nativo con ranking parity (queries-synth + eval ES/EN).
 > Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`. Detalle sesión
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
