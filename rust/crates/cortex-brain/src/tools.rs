@@ -13,6 +13,8 @@
 use std::collections::BTreeMap;
 use std::process::Command;
 
+use crate::i18n;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
     Read,
@@ -51,17 +53,18 @@ pub fn cortex_bin() -> String {
 
 /// Ejecuta el CLI cortex capturando stdout. Falla con mensaje accionable.
 fn run_cli(args: &[&str]) -> Result<String, String> {
+    let lang = i18n::actual();
     let out = Command::new(cortex_bin())
         .args(args)
         .output()
-        .map_err(|e| format!("no pude ejecutar {}: {e}", cortex_bin()))?;
+        .map_err(|e| i18n::cli_no_ejecutado(lang, &cortex_bin(), &e.to_string()))?;
     if !out.status.success() {
-        return Err(format!(
-            "{} {} falló (rc={:?}): {}",
-            cortex_bin(),
-            args.join(" "),
-            out.status.code(),
-            String::from_utf8_lossy(&out.stderr).trim()
+        return Err(i18n::cli_fallo(
+            lang,
+            &cortex_bin(),
+            &args.join(" "),
+            &format!("{:?}", out.status.code()),
+            String::from_utf8_lossy(&out.stderr).trim(),
         ));
     }
     Ok(String::from_utf8_lossy(&out.stdout).trim_end().to_string())
@@ -72,51 +75,50 @@ fn run_cli(args: &[&str]) -> Result<String, String> {
 /// NUNCA ejecuta mutaciones: las únicas herramientas con side-effect son
 /// SAFE_ACTION whitelisteada (webgraph.serve, spawn detached).
 pub fn dispatch(tool: &str, args: &[String]) -> Result<String, String> {
+    let lang = i18n::actual();
     match tool {
         "cortex.health" => run_cli(&["doctor"]),
         "session.current" => run_cli(&["context"]),
         "memory.search" | "docs.related" => {
             if args.is_empty() || args[0].trim().is_empty() {
                 if tool == "docs.related" {
-                    return Ok(
-                        "¿Qué precisión preferís?\n  · precise → e5-large multilingüe, máxima calidad (~2GB RAM)\n  · fast    → MiniLM, liviano y veloz\nRespondé 'docs.related <tema> fast'.".into(),
-                    );
+                    return Ok(i18n::related_precision(lang));
                 }
-                return Err("falta <query>".into());
+                return Err(i18n::falta_query(lang).into());
             }
             run_cli(&["search", &args.join(" ")])
         }
         "vault.stats" => {
             // Conteo nativo: vault/**/*.md (convención Cortex).
             let count = count_markdown("vault");
-            Ok(format!("Vault: {count} notas .md"))
+            Ok(i18n::vault_stats(lang, count))
         }
         "webgraph.serve" => {
             spawn_detached(&["webgraph", "serve", "--no-open"])?;
-            Ok("Webgraph abierto en http://127.0.0.1:8000 — mirá ese puerto.".into())
+            Ok(i18n::webgraph_ok(lang))
         }
         "actions.propose" => propose(),
-        other => Err(format!("tool desconocida: {other}")),
+        other => Err(i18n::tool_desconocida(lang, other)),
     }
 }
 
 /// actions.propose: lista sugerencias + comando exacto. El brain NUNCA muta.
 fn propose() -> Result<String, String> {
+    let lang = i18n::actual();
     let raw = run_cli(&["next", "--json"])?;
     let value: serde_json::Value =
-        serde_json::from_str(&raw).map_err(|e| format!("next --json no es JSON válido: {e}"))?;
+        serde_json::from_str(&raw).map_err(|e| i18n::next_json_invalido(lang, &e.to_string()))?;
     let items = value.as_array().cloned().unwrap_or_default();
     if items.is_empty() {
-        return Ok("Nada pendiente ✓".into());
+        return Ok(i18n::nada_pendiente(lang).into());
     }
-    let mut out = String::from("Acciones sugeridas (ejecutalas VOS con el comando indicado):\n");
+    let mut out = i18n::acciones_intro(lang);
     for item in &items {
         let id = item["id"].as_str().unwrap_or("?");
         let title = item["title"].as_str().unwrap_or("");
-        out.push_str(&format!("  · {id} — {title}\n"));
-        out.push_str("      → cortex next --json   |   efecto: ver doctor\n");
+        out.push_str(&i18n::accion_efecto(lang, id, title));
     }
-    out.push_str("El brain propone; la ejecución es tuya (modo estricto).");
+    out.push_str(i18n::acciones_footer(lang));
     Ok(out)
 }
 

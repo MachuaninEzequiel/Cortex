@@ -194,6 +194,114 @@ pub fn warn_ventana(lang: Lang, e: &str) -> String {
     }
 }
 
+// ── Textos de la capa tools (dispatch/propose/run_cli) ──────────────────────
+
+#[must_use]
+pub fn falta_query(lang: Lang) -> &'static str {
+    match lang {
+        Lang::Es => "falta <query>",
+        Lang::En => "missing <query>",
+    }
+}
+
+#[must_use]
+pub fn related_precision(lang: Lang) -> String {
+    match lang {
+        Lang::Es => "¿Qué precisión preferís?\n  \
+             · precise → e5-large multilingüe, máxima calidad (~2GB RAM)\n  \
+             · fast    → MiniLM, liviano y veloz\nRespondé 'docs.related <tema> fast'."
+            .into(),
+        Lang::En => "Which precision do you want?\n  \
+             · precise → multilingual e5-large, max quality (~2GB RAM)\n  \
+             · fast    → MiniLM, light and fast\nReply 'docs.related <topic> fast'."
+            .into(),
+    }
+}
+
+#[must_use]
+pub fn vault_stats(lang: Lang, count: usize) -> String {
+    match lang {
+        Lang::Es => format!("Vault: {count} notas .md"),
+        Lang::En => format!("Vault: {count} .md notes"),
+    }
+}
+
+#[must_use]
+pub fn webgraph_ok(lang: Lang) -> String {
+    match lang {
+        Lang::Es => "Webgraph abierto en http://127.0.0.1:8000 — mirá ese puerto.".into(),
+        Lang::En => "Webgraph opened at http://127.0.0.1:8000 — check that port.".into(),
+    }
+}
+
+#[must_use]
+pub fn tool_desconocida(lang: Lang, other: &str) -> String {
+    match lang {
+        Lang::Es => format!("tool desconocida: {other}"),
+        Lang::En => format!("unknown tool: {other}"),
+    }
+}
+
+#[must_use]
+pub fn cli_no_ejecutado(lang: Lang, bin: &str, e: &str) -> String {
+    match lang {
+        Lang::Es => format!("no pude ejecutar {bin}: {e}"),
+        Lang::En => format!("could not run {bin}: {e}"),
+    }
+}
+
+#[must_use]
+pub fn cli_fallo(lang: Lang, bin: &str, args: &str, rc: &str, stderr: &str) -> String {
+    match lang {
+        Lang::Es => format!("{bin} {args} falló (rc={rc}): {stderr}"),
+        Lang::En => format!("{bin} {args} failed (rc={rc}): {stderr}"),
+    }
+}
+
+#[must_use]
+pub fn nada_pendiente(lang: Lang) -> &'static str {
+    match lang {
+        Lang::Es => "Nada pendiente ✓",
+        Lang::En => "Nothing pending ✓",
+    }
+}
+
+#[must_use]
+pub fn acciones_intro(lang: Lang) -> String {
+    match lang {
+        Lang::Es => "Acciones sugeridas (ejecutalas VOS con el comando indicado):\n".into(),
+        Lang::En => "Suggested actions (run the given command yourself):\n".into(),
+    }
+}
+
+#[must_use]
+pub fn accion_efecto(lang: Lang, id: &str, title: &str) -> String {
+    match lang {
+        Lang::Es => {
+            format!("  · {id} — {title}\n      → cortex next --json   |   efecto: ver doctor\n")
+        }
+        Lang::En => {
+            format!("  · {id} — {title}\n      → cortex next --json   |   effect: see doctor\n")
+        }
+    }
+}
+
+#[must_use]
+pub fn acciones_footer(lang: Lang) -> &'static str {
+    match lang {
+        Lang::Es => "El brain propone; la ejecución es tuya (modo estricto).",
+        Lang::En => "The brain proposes; execution is yours (strict mode).",
+    }
+}
+
+#[must_use]
+pub fn next_json_invalido(lang: Lang, e: &str) -> String {
+    match lang {
+        Lang::Es => format!("next --json no es JSON válido: {e}"),
+        Lang::En => format!("next --json output is not valid JSON: {e}"),
+    }
+}
+
 // ── Resolución ──────────────────────────────────────────────────────────────
 
 /// Extrae `ui.language` de un contenido YAML/JSON-plano ya leído.
