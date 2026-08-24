@@ -1,0 +1,1 @@
+status: closed · diff: 0 file(s) · hooks: 0/0 passed · adrs: 1 · note: {{ROOT}}/vault/sessions/note.md

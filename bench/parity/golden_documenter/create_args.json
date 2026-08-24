@@ -1,0 +1,38 @@
+{
+  "blockers": [],
+  "changes_made": [],
+  "files_touched": [
+    "◌ src/auth.py",
+    "◌ src/nuevo.py"
+  ],
+  "gitless": true,
+  "handoff": false,
+  "key_decisions": [
+    "Decidimos usar tokens vs sesiones por trade-off de latencia."
+  ],
+  "next_steps": [
+    "Decide if scope drift is intentional: src/nuevo.py",
+    "Commit (or revert) declared-only files: src/auth.py, src/nuevo.py"
+  ],
+  "remember": true,
+  "spec_summary": "Mejorar la autenticación del servicio",
+  "suggested_skills": [],
+  "sync_vault": false,
+  "tags": [
+    "session",
+    "with-checkpoints",
+    "gitless"
+  ],
+  "task_type": "",
+  "tasks": [],
+  "tasks_done": 0,
+  "tasks_skipped": 0,
+  "tasks_total": 0,
+  "title": "Demo refactor",
+  "unverified_claims": [
+    "acceptance criterion: tests verdes"
+  ],
+  "verified_state": [
+    "Modified 1 file(s) inside spec scope"
+  ]
+}

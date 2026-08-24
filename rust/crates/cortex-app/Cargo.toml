@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+minijinja = { workspace = true }
 unicode-normalization = { workspace = true }
 chrono = { workspace = true }
 cortex-embed = { path = "../cortex-embed", features = ["onnx"] }

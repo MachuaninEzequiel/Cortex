@@ -5,6 +5,7 @@
 
 pub mod diff_parser;
 pub mod handoff;
+pub mod persister;
 pub mod spec_loader;
 
 use std::path::{Path, PathBuf};
@@ -43,6 +44,9 @@ pub struct ReconstructionOutput {
     pub gitless: bool,
     pub files_verified_by_git: Vec<String>,
     pub files_declared_only: Vec<String>,
+    /// Notas no-vacías de los checkpoints (para key_decisions del persister).
+    #[serde(skip)]
+    pub checkpoint_notes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -307,6 +311,11 @@ fn finish_output(
         gitless,
         files_verified_by_git: posix_list(&files_verified_by_git),
         files_declared_only: posix_list(&files_declared_only),
+        checkpoint_notes: checkpoints
+            .iter()
+            .filter(|c| !c.note.is_empty())
+            .map(|c| c.note.clone())
+            .collect(),
     }
 }
 
