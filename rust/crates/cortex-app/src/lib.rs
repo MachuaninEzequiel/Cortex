@@ -13,6 +13,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod documenter;
 pub mod episodic;
 pub mod semantic;
 pub mod session;

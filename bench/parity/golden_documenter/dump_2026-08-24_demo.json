@@ -1,0 +1,62 @@
+{
+  "session_id": "2026-08-24_demo",
+  "handoff": {
+    "agent": "cortex-documenter",
+    "status": "complete",
+    "verified_claims": [
+      "Modified 1 file(s) inside spec scope"
+    ],
+    "unverified_claims": [
+      "acceptance criterion: tests verdes"
+    ],
+    "artifacts_produced": [],
+    "context_for_next": [
+      "Decidimos usar tokens vs sesiones por trade-off de latencia.",
+      "Scope drift: src/nuevo.py"
+    ],
+    "suggested_adr": true,
+    "suggested_adr_reason": "Decidimos usar tokens vs sesiones por trade-off de latencia.",
+    "suggested_context_terms": []
+  },
+  "spec_path_normalized": "{{ROOT}}/specs/2026-08-24_demo.md",
+  "spec_title": "Demo refactor",
+  "spec_goal": "Mejorar la autenticación del servicio",
+  "files_in_scope_spec": [
+    "src/auth.py"
+  ],
+  "acceptance_criteria": [
+    "tests verdes"
+  ],
+  "status_session": "open",
+  "diff_text": "",
+  "diff_entries": [],
+  "files_touched": [
+    "src/auth.py",
+    "src/nuevo.py"
+  ],
+  "in_scope_files": [
+    "src/auth.py"
+  ],
+  "out_of_scope_files": [
+    "src/nuevo.py"
+  ],
+  "unimplemented_files": [],
+  "verification_results": [],
+  "suggested_status": "closed",
+  "suggested_adrs": [
+    {
+      "title": "Decidimos usar tokens vs sesiones por trade-off de latencia.",
+      "rationale": "Checkpoint #0 note mentions decision signal(s): \\bdecid(?:ed|imos|í)\\b, \\btrade-?off\\b, \\bvs\\.?\\b",
+      "source_checkpoint_index": 0,
+      "evidence": "Decidimos usar tokens vs sesiones por trade-off de latencia.",
+      "confidence": "high"
+    }
+  ],
+  "end_commit": "0000000000000000000000000000000000000000",
+  "gitless": true,
+  "files_verified_by_git": [],
+  "files_declared_only": [
+    "src/auth.py",
+    "src/nuevo.py"
+  ]
+}
