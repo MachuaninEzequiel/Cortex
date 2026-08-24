@@ -16,6 +16,8 @@ members = [
     "crates/cortex-setup",
     # Obra 07 P6 (ActionEngine nativo, stream A): docs/transformacion/08 §4b
     "crates/cortex-actions",
+    # Obra 07 P9 (MCP server rmcp, stream B): docs/transformacion/08 §4b
+    "crates/cortex-mcp",
 ]
 
 [workspace.package]
@@ -31,6 +33,11 @@ unicode-normalization = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 minijinja = "2"
 sha2 = "0.10"
+
+# Obra 07 P9 (stream B): servidor MCP nativo — deps aprobadas por
+# docs/transformacion/08-MIGRACION-TOTAL-RUST.md §5 (rmcp/tokio).
+rmcp = { version = "0.8", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "time"] }
 
 # Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
 # - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.

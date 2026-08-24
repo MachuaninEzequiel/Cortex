@@ -1,0 +1,23 @@
+[package]
+name = "cortex-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Obra 07 P9 (stream B) — servidor MCP nativo con rmcp.
+#
+# Reglas del crate:
+# - Contrato congelado: tests/unit/mcp/golden/list_tools.json (32 tools,
+#   server_version "2.2") es EL oráculo de list_tools; el gate Rust compara
+#   byte-a-byte (tests/mcp_golden_contract.rs).
+# - El dispatcher replica la tabla _TOOL_ROUTES + la ruta inline
+#   cortex_sync_vault + el mensaje estable "Herramienta desconocida: X".
+# - Los tools que dependen de backends aún no nativos devuelven fallo
+#   explícito documentado (patrón P6), sin fingir paridad conductual.
+
+[dependencies]
+rmcp = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+tokio = { workspace = true }
+cortex-setup = { path = "../cortex-setup" }

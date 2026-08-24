@@ -1,0 +1,40 @@
+{
+  "fase": "P9",
+  "fecha": "2026-08-24",
+  "stream": "B",
+  "crate": "rust/crates/cortex-mcp",
+  "fuente": "cortex/mcp/ — schemas.py (1078) + server.py (491) — contrato congelado: tests/unit/mcp/golden/list_tools.json + test_golden_contract.py",
+  "gate": "golden contract list_tools.json BYTE-A-BYTE + dispatch de ping respondiendo igual",
+  "verificacion": {
+    "cargo_test": "cargo test -p cortex-mcp → 4 passed, 0 failed (mcp_golden_contract)",
+    "clippy": "cargo clippy -p cortex-mcp --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-mcp --check → limpio",
+    "workspace": "cargo metadata -q → OK (rmcp 0.8 / tokio agregados append-only)",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration --no-cov → 2455 passed, 18 skipped",
+    "golden_p0_regresion": "capture_golden.py --fixture <fixture> --verify → PARIDAD OK"
+  },
+  "paridad_golden": {
+    "list_tools": "32 tools byte-a-byte vs tests/unit/mcp/golden/list_tools.json: catálogo construido desde el runtime Python real (emisor fuera del repo) y comparado como documento completo con json.dumps(indent=2, ensure_ascii=False) + \\n final — PASS estructural Y de bytes",
+    "routing": "tabla _TOOL_ROUTES idéntica a ROUTING_ESPERADO (32 rutas); anunciados == ruteables + cortex_sync_vault inline",
+    "dispatch_congelado": [
+      "Herramienta desconocida: X (mensaje estable)",
+      "Vault synced - N documents indexed. (ruta inline con backend stub=7)",
+      "cortex_ping responde JSON con las 8 claves esperadas y version==SERVER_VERSION"
+    ],
+    "ping_bare": {
+      "script": "bench/parity/p9_ping_golden.py (captura | --verify, VERIFY OK)",
+      "golden": "bench/parity/golden_setup/ping/bare_ping.txt",
+      "normalizacion": "uptime_seconds → {{UPTIME}} (varía por definición); resto byte-parity incl. serialización indent=2 ensure_ascii=False"
+    }
+  },
+  "cobertura_del_porteo": {
+    "tools_catalog": "32 definiciones con forma model_dump(mode='json') completa (title/outputSchema/icons/annotations/meta/execution nulls explícitos), CHECKPOINT_SOURCE_VALUES embebido del enum canónico (9 valores)",
+    "server": "dispatcher de tabla espejo (_TOOL_ROUTES), ruta inline sync_vault con MemoryBackend inyectable, mensaje estable de desconocida, register_error rolling maxlen=10, ping_text completo (starting/degraded/ok por grace 2s + ventana 300s, round(uptime,3), last_error_seen, recent_errors_count)",
+    "transporte_rmcp": "ServerHandler sobre rmcp 0.8 (get_info/list_tools/call_tool) + serve_stdio_blocking tokio; errores de handler vuelven como texto con marca 'Error ejecutando {name}: …' (espejo handle_call_tool)"
+  },
+  "decisiones": [
+    "El wire-format exacto del transporte (nulls explícitos del modelo mcp Python vs omisión serde de rmcp) queda diferido a P12: el gate P9 es catálogo+dispatch según plan §4.",
+    "Los tools no-ping rutean correctamente pero devuelven fallo EXPLÍCITO documentado ('backend aún no nativo', backlog P11/P12) — patrón P6: no se finge paridad conductual.",
+    "El catálogo se generó desde el runtime Python real para garantizar fidelidad de bytes y luego quedó congelado como código Rust revisable; cualquier cambio futuro del contract exige regenerar snapshot + documentar (regla del propio test Python)."
+  ]
+}
