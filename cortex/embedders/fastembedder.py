@@ -14,8 +14,25 @@ Obra 04 Fase B/D — model evaluation + language-aware config.
 
 from __future__ import annotations
 
+import os
 import threading
+from pathlib import Path
 from typing import Any, Literal
+
+
+def cortex_fastembed_cache() -> Path:
+    """Cache persistente de modelos fastembed para Cortex.
+
+    El default de fastembed (0.8) es ``/tmp/fastembed_cache`` — en distros con
+    ``/tmp`` como tmpfs (CachyOS, Arch, Fedora…) eso significa modelos de
+    GBs viviendo en RAM y desapareciendo en cada reboot. Cortex fija su propio
+    cache en disco: ``~/.cache/cortex/fastembed``, respetando
+    ``FASTEMBED_CACHE_PATH`` si el usuario lo define (comportamiento upstream).
+    """
+    env = os.getenv("FASTEMBED_CACHE_PATH")
+    if env:
+        return Path(env)
+    return Path.home() / ".cache" / "cortex" / "fastembed"
 
 
 class FastEmbedder:
@@ -59,7 +76,10 @@ class FastEmbedder:
         with self._load_lock:
             model = FastEmbedder._models.get(self._model_name)
             if model is None:
-                model = TextEmbedding(model_name=self._model_name)
+                model = TextEmbedding(
+                    model_name=self._model_name,
+                    cache_dir=str(cortex_fastembed_cache()),
+                )
                 FastEmbedder._models[self._model_name] = model
             return model
 
