@@ -12,6 +12,10 @@ members = [
     # Obra 07 P10 (branding + TUI): docs/transformacion/10-P10-BRANDING-TUI.md
     "crates/cortex-branding",
     "crates/cortex-tui",
+    # Obra 07 P8/P9 (stream B): docs/transformacion/08-MIGRACION-TOTAL-RUST.md §4b
+    "crates/cortex-setup",
+    # Obra 07 P6 (ActionEngine nativo, stream A): docs/transformacion/08 §4b
+    "crates/cortex-actions",
 ]
 
 [workspace.package]
@@ -26,6 +30,7 @@ serde_yaml = "0.9"
 unicode-normalization = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 minijinja = "2"
+sha2 = "0.10"
 
 # Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
 # - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.

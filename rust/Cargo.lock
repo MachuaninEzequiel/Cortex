@@ -340,6 +340,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
+name = "cortex-actions"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cortex-app",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "cortex-app"
 version = "0.1.0"
 dependencies = [
@@ -410,6 +421,17 @@ dependencies = [
  "cortex-embed",
  "numpy",
  "pyo3",
+]
+
+[[package]]
+name = "cortex-setup"
+version = "0.1.0"
+dependencies = [
+ "minijinja",
+ "serde",
+ "serde_json",
+ "sha2",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -2219,6 +2241,7 @@ version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
 dependencies = [
+ "indexmap",
  "itoa",
  "memchr",
  "serde",

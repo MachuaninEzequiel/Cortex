@@ -1,0 +1,30 @@
+[package]
+name = "cortex-setup"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Obra 07 P8 — porteo de setup/templates + writers canónicos + 11 IDE
+# adapters + session hooks (docs/transformacion/08-MIGRACION-TOTAL-RUST.md §4).
+#
+# Reglas del crate:
+# - Paridad-como-contrato: los renders y archivos generados deben ser
+#   byte-a-byte idénticos a los del código Python sobre fixtures
+#   deterministas (bench/parity/p8_capture.py + golden_setup/).
+# - Las plantillas REALES viven en cortex/documentation/templates/*.md.j2
+#   (solo lectura); se embeben con include_str! y un test verifica que la
+#   copia embebida == el archivo en disco.
+# - El dumper YAML replica el emisor de PyYAML (safe_dump,
+#   default_flow_style=False, allow_unicode=True, sort_keys=False) porque el
+#   frontmatter canónico se genera con yaml_dump_safe().
+
+[dependencies]
+minijinja = { workspace = true }
+serde = { workspace = true }
+# preserve_order: los maps del frontmatter canónico preservan orden de
+# inserción (yaml_dump_safe usa sort_keys=False).
+serde_json = { workspace = true, features = ["preserve_order"] }
+sha2 = { workspace = true }
+unicode-normalization = { workspace = true }
+
+[dev-dependencies]
