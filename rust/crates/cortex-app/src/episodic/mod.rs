@@ -205,6 +205,93 @@ impl NativeEpisodicStore {
         ids.sort();
         ids
     }
+
+    /// Puerto de `search_by_entity`: candidatos por flag + score de match
+    /// (`_entity_match_score`, con recencia dependiente de ``now``), sort
+    /// estable desc y truncate a top_k.
+    pub fn entity_search(
+        &self,
+        entity_type: &str,
+        entity_value: &str,
+        top_k: usize,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Vec<(MemoryEntry, f64)> {
+        let key = entity_filter_key(entity_type, entity_value);
+        let mut hits: Vec<(MemoryEntry, f64)> = self
+            .rows
+            .iter()
+            .filter(|r| matches!(r.raw_meta.get(&key), Some(serde_json::Value::Bool(true))))
+            .map(|r| {
+                let score = entity_match_score(&r.entry, entity_type, entity_value, now);
+                (r.entry.clone(), score)
+            })
+            .collect();
+        hits.sort_by(|a, b| b.1.total_cmp(&a.1));
+        hits.truncate(top_k);
+        hits
+    }
+}
+
+/// Puerto de `_entity_match_score`: frecuencia del valor normalizado +
+/// recencia (<24h +0.2 · >168h −0.1) con techo 1.0.
+pub fn entity_match_score(
+    entry: &MemoryEntry,
+    entity_type: &str,
+    entity_value: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> f64 {
+    let empty = serde_json::Map::new();
+    let entities = entry
+        .metadata
+        .get("entities")
+        .and_then(|v| v.as_object())
+        .unwrap_or(&empty);
+    let values = entities
+        .get(entity_type)
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let normalized_target = entity_value.trim().to_lowercase();
+    let entity_count = values
+        .iter()
+        .filter(|v| {
+            v.as_str()
+                .map(|s| s.trim().to_lowercase() == normalized_target)
+                .unwrap_or(false)
+        })
+        .count();
+    let frequency_boost = ((entity_count as f64 - 1.0).max(0.0) * 0.1).min(0.3);
+
+    // try/except ⇒ recency_boost 0.0 ante timestamps ilegibles.
+    let ts = parse_ts_utc(&entry.timestamp).map(|t| t.with_timezone(&chrono::Utc));
+    let recency_boost = match ts {
+        None => 0.0,
+        Some(t) => {
+            let hours_old = (now - t).num_seconds() as f64 / 3600.0;
+            if hours_old < 24.0 {
+                0.2
+            } else if hours_old > 168.0 {
+                -0.1
+            } else {
+                0.0
+            }
+        }
+    };
+
+    (1.0 + frequency_boost + recency_boost).min(1.0)
+}
+
+fn parse_ts_utc(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&chrono::Utc));
+    }
+    for fmt in ["%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%d %H:%M:%S"] {
+        if let Ok(dt) = chrono::DateTime::parse_from_str(s, fmt) {
+            return Some(dt.with_timezone(&chrono::Utc));
+        }
+    }
+    None
 }
 
 /// `_entity_filter_key`: normalizar tipo/valor y componer el flag.

@@ -9,10 +9,12 @@
 //! tests Python originales (paridad-como-contrato). El binario `cortex` (clap)
 //! y el brain consumen este crate; el MCP server (P9) lo expone vía rmcp.
 //!
-//! Estado: P0 scaffolding · P2a semantic (parser + BM25) en curso.
+//! Estado: P0 scaffolding · P2a semantic (parser + BM25) · P3 episódica · P4
+//! sessions/hooks/gates · P5 documenter+persister · **P7 context (este stream)**.
 
 #![forbid(unsafe_code)]
 
+pub mod context;
 pub mod documenter;
 pub mod episodic;
 pub mod git;

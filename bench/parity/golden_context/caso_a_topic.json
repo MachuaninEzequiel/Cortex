@@ -1,0 +1,59 @@
+{
+  "has_context": true,
+  "total_searches": 1,
+  "total_raw_hits": 7,
+  "total_items": 2,
+  "total_chars": 510,
+  "within_budget": true,
+  "work": {
+    "source": "manual",
+    "changed_files": [],
+    "detected_domain": null,
+    "domain_confidence": 0.0,
+    "search_queries": [
+      "bug de autenticación en el login"
+    ]
+  },
+  "items": [
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/sessions/2026-01-05_auth-bug.md",
+      "title": "Sesión bug de autenticación",
+      "content": "# Sesión: bug de autenticación\n\nSe arregló el error ValueError en el parser de tokens del login.\nDecisión: usar RRF con pesos adaptativos para retrieval del vault.\nQuedó documentado el runbook de deploy con rollback seguro.",
+      "score": 0.5928,
+      "enriched_score": 0.5928,
+      "matched_by": [
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [],
+      "doc_type": "session",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/handoffs/handoff-auth.md",
+      "title": "Handoff autenticación",
+      "content": "# Handoff\n\nPendiente: revisar el error intermitente de autenticación en producción\ny actualizar el runbook de deploy del servicio de login.",
+      "score": 0.40963,
+      "enriched_score": 0.40963,
+      "matched_by": [
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [],
+      "doc_type": "handoff",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ]
+}
