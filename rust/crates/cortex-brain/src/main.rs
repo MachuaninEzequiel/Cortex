@@ -3,11 +3,13 @@
 // Modo default: determinista (--no-model, spec BRAIN-1). El backend
 // llama.cpp/GGUF se conecta vía trait LlmBackend con --features llama.
 
-use cortex_brain::chat::{help_text, DeterministicBackend, LlmBackend, BANNER};
+use cortex_brain::chat::{
+    confirma, help_text, procesar_respuesta_modelo, DeterministicBackend, LlmBackend, BANNER,
+};
 #[cfg(feature = "llama")]
 use cortex_brain::llama::{model_path_default, LlamaChatBackend};
 use cortex_brain::router::route_intent;
-use cortex_brain::tools::{build_tools, dispatch, Tier, ToolSpec};
+use cortex_brain::tools::{build_tools, Tier, ToolSpec};
 use std::collections::BTreeMap;
 use std::io::{BufRead, Write};
 
@@ -58,42 +60,30 @@ fn parse_args() -> Args {
     args
 }
 
-/// Extrae `("nombre", "args")` de la primera línea "TOOL: nombre args".
-fn extraer_tool(respuesta: &str) -> Option<(String, String)> {
-    respuesta.lines().find_map(|l| {
-        let resto = l.strip_prefix("TOOL:")?;
-        let mut partes = resto.split_whitespace();
-        let name = partes.next()?.to_string();
-        Some((name, partes.collect::<Vec<_>>().join(" ")))
-    })
-}
-
-/// Muestra la respuesta sin la línea TOOL y pide confirmación explícita.
-/// Devuelve `true` si el usuario aprobó ejecutar.
+/// Confirmación con IO real: muestra la sugerencia y pide [s/N] por stdin.
+/// La DECISIÓN vive en `chat::confirma` (testeable); acá solo hay IO.
 fn confirmar_ejecucion(
     tool: &str,
     args_tool: &str,
     tools: &BTreeMap<&'static str, ToolSpec>,
 ) -> bool {
-    let tier = tools.get(tool).map(|t| t.tier);
-    match tier {
-        None => println!("(el modelo sugirió una tool inexistente: {tool})"),
-        Some(t) => {
-            let etiqueta = match t {
-                Tier::Read => "read",
-                Tier::SafeAction => "safe-action",
-            };
-            println!("🔧 sugerencia del modelo [{etiqueta}]: {tool} {args_tool}");
-            print!("¿Ejecutás '{tool} {args_tool}'? [s/N]: ");
-            let _ = std::io::stdout().flush();
-            let mut ok = String::new();
-            if std::io::stdin().read_line(&mut ok).is_ok() && ok.trim().eq_ignore_ascii_case("s") {
-                return true;
-            }
-            println!("(no ejecutado)");
-        }
+    let Some(spec) = tools.get(tool) else {
+        println!("(el modelo sugirió una tool inexistente: {tool})");
+        return false;
+    };
+    let etiqueta = match spec.tier {
+        Tier::Read => "read",
+        Tier::SafeAction => "safe-action",
+    };
+    println!("🔧 sugerencia del modelo [{etiqueta}]: {tool} {args_tool}");
+    print!("¿Ejecutás '{tool} {args_tool}'? [s/N]: ");
+    let _ = std::io::stdout().flush();
+    let mut ok = String::new();
+    let aprobado = std::io::stdin().read_line(&mut ok).is_ok() && confirma(&ok);
+    if !aprobado {
+        println!("(no ejecutado)");
     }
-    false
+    aprobado
 }
 
 /// Catálogo compacto para el prompt del LLM.
@@ -209,28 +199,13 @@ fn main() {
                     println!("¡hasta la próxima!");
                     break;
                 }
-                // Protocolo TOOL: el LLM puede pedir una herramienta con una
-                // línea "TOOL: <nombre> <args>". Se muestra su respuesta sin esa
-                // línea y se ofrece ejecutar con CONFIRMACIÓN explícita.
-                match extraer_tool(&out) {
-                    Some((tool, args_tool)) => {
-                        let respuesta_sin_tool: String = out
-                            .lines()
-                            .filter(|l| !l.starts_with("TOOL:"))
-                            .collect::<Vec<_>>()
-                            .join("\n");
-                        if !respuesta_sin_tool.trim().is_empty() {
-                            println!("{respuesta_sin_tool}");
-                        }
-                        if confirmar_ejecucion(&tool, &args_tool, &tools) {
-                            match dispatch(&tool, std::slice::from_ref(&args_tool)) {
-                                Ok(res) => println!("{res}\n"),
-                                Err(e) => println!("⚠ {e}\n"),
-                            }
-                        }
-                    }
-                    None => println!("{out}\n"),
-                }
+                // Protocolo TOOL (chat.rs): separa líneas TOOL:, pide
+                // confirmación al usuario y despacha SOLO si aprobó. El
+                // mismo código queda gateado en CI vía ScriptedBackend.
+                let salida = procesar_respuesta_modelo(&out, &tools, &mut |t, a| {
+                    confirmar_ejecucion(t, a, &tools)
+                });
+                print!("{salida}");
             }
             Err(e) => println!("⚠ {e}\n"),
         }

@@ -8,6 +8,8 @@
 pub use crate::router::{route_intent, Intent};
 pub use crate::tools::{build_tools, dispatch, Tier, ToolSpec};
 
+use std::collections::{BTreeMap, VecDeque};
+
 /// Backend de generación. Contrato mínimo para tool-calling: recibe el
 /// historial + catálogo de tools y devuelve texto o una llamada a tool.
 pub trait LlmBackend {
@@ -15,6 +17,42 @@ pub trait LlmBackend {
     /// Genera la próxima respuesta del asistente. `prompt` ya incluye el
     /// contexto conversacional; `tools_help` es el catálogo renderizado.
     fn generate(&mut self, prompt: &str, tools_help: &str) -> Result<String, String>;
+}
+
+/// Backend FALSO scriptado: devuelve respuestas encoladas en orden y falla
+/// ruidosamente al agotarse. Es el motor del gate CI del protocolo TOOL:
+/// ejercita todo el loop de chat SIN GGUF ni red (decisión dueño 2026-08-24b:
+/// "CI con backend falso scriptado"). No es un mock interno de tests: es
+/// parte pública de la librería, reutilizable por quien integre el brain.
+pub struct ScriptedBackend {
+    nombre: String,
+    cola: VecDeque<String>,
+}
+
+impl ScriptedBackend {
+    /// Script de respuestas crudas (pueden incluir líneas "TOOL: ...").
+    pub fn new<I, S>(nombre: &str, respuestas: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self {
+            nombre: nombre.to_string(),
+            cola: respuestas.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl LlmBackend for ScriptedBackend {
+    fn name(&self) -> &str {
+        &self.nombre
+    }
+
+    fn generate(&mut self, _prompt: &str, _tools_help: &str) -> Result<String, String> {
+        self.cola.pop_front().ok_or_else(|| {
+            String::from("script agotado: el test/CI pidió más turnos de los scriptados")
+        })
+    }
 }
 
 /// Fallback determinista (--no-model): sin LLM, sin RAM extra, respuesta
@@ -41,6 +79,75 @@ impl LlmBackend for DeterministicBackend {
             None => Ok(format!("{}\n{}", intent.razon, help_text())),
         }
     }
+}
+
+// ── Protocolo TOOL (antes en main.rs; en lib para poder gatearlo en CI) ────
+
+/// Extrae `(nombre, args)` de la primera línea `TOOL: <nombre> <args>`.
+/// Los espacios interiores de `args` se normalizan a uno.
+#[must_use]
+pub fn extraer_tool(respuesta: &str) -> Option<(String, String)> {
+    respuesta.lines().find_map(|l| {
+        let resto = l.trim_start().strip_prefix("TOOL:")?;
+        let mut partes = resto.split_whitespace();
+        let name = partes.next()?.to_string();
+        Some((name, partes.collect::<Vec<_>>().join(" ")))
+    })
+}
+
+/// La respuesta sin las líneas `TOOL:` (lo que se muestra al usuario).
+#[must_use]
+pub fn respuesta_sin_tool(respuesta: &str) -> String {
+    respuesta
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("TOOL:"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Decisión pura de confirmación: acepta `s|si|sí` (case-insensitive);
+/// cualquier otra cosa —incluido Enter vacío— rechaza (default N).
+#[must_use]
+pub fn confirma(input: &str) -> bool {
+    matches!(input.trim().to_lowercase().as_str(), "s" | "si" | "sí")
+}
+
+/// Procesa la respuesta cruda del backend y devuelve el texto a mostrar.
+///
+/// Si contiene línea(s) `TOOL:`, las separa, consulta `aprobar` (que en el
+/// binario pide confirmación al usuario; en CI/tests decide por script) y
+/// despacha la tool SOLO si aprobó. Tool fuera del catálogo jamás llega a
+/// `aprobar`, mucho menos a despachar.
+pub fn procesar_respuesta_modelo(
+    out: &str,
+    tools: &BTreeMap<&'static str, ToolSpec>,
+    aprobar: &mut dyn FnMut(&str, &str) -> bool,
+) -> String {
+    let Some((tool, args_tool)) = extraer_tool(out) else {
+        return format!("{out}\n");
+    };
+    let mut salida = String::new();
+    let sin_tool = respuesta_sin_tool(out);
+    if !sin_tool.trim().is_empty() {
+        salida.push_str(&sin_tool);
+        salida.push('\n');
+    }
+    if !tools.contains_key(tool.as_str()) {
+        salida.push_str(&format!(
+            "(el modelo sugirió una tool inexistente: {tool})\n"
+        ));
+        return salida;
+    }
+    if aprobar(&tool, &args_tool) {
+        match dispatch(&tool, std::slice::from_ref(&args_tool)) {
+            Ok(res) => salida.push_str(&res),
+            Err(e) => salida.push_str(&format!("⚠ {e}")),
+        }
+        salida.push('\n');
+    } else {
+        salida.push_str("(no ejecutado)\n");
+    }
+    salida
 }
 
 fn args_vec(intent: &Intent) -> Vec<String> {
