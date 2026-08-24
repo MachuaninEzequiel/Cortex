@@ -1,0 +1,16 @@
+[package]
+name = "cortex-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI nativo de Cortex (fachada de arranque instantáneo sobre el CLI existente)."
+
+[[bin]]
+name = "cortex-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", default-features = false, features = ["std", "help", "usage"] }
+
+[dev-dependencies]
+tempfile = "3"
