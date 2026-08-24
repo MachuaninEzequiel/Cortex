@@ -1,0 +1,24 @@
+🧠 Cortex · 5 acción(es) sugeridas:
+
+ [1] Validar los documentos del vault
+     id: vault.validate_docs · costo: instant [auto-ok] · score: 8.0
+     efecto: corre DocValidator sobre hasta 200 .md del vault e informa errores
+
+ [2] Revisar memorias con feedback negativo
+     id: memory.prune · costo: instant [auto-ok] · score: 8.0
+     efecto: lista memorias candidatas a forget según feedback persistido (no borra)
+
+ [3] Cerrar sesiones OPEN de más de 7 días sin checkpoints
+     id: session.close_stale · costo: instant [auto-ok] · score: 6.0
+     efecto: muestra guía de finish/abandon para sesiones OPEN >7 días
+
+ [4] Re-indexar el vault semántico
+     id: vault.reindex · costo: seconds · score: 5.0
+     efecto: parse+chunk+embed de vault/ via AgentMemory.sync_vault()
+
+ [5] Aprender un tópico del tutor hoy
+     id: learn.topic · costo: instant [auto-ok] · score: 3.0
+     efecto: sugiere un tópico del tutor (rotación diaria) con deep-link a su guía
+
+
+[dim]{{MS}}ms · ejecutá `cortex next --json` para salida machine-readable[/dim]

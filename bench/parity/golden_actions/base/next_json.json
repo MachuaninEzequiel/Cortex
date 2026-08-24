@@ -1,0 +1,55 @@
+{
+  "elapsed_ms": {{MS}},
+  "acciones": [
+    {
+      "id": "vault.validate_docs",
+      "title": "Validar los documentos del vault",
+      "category": "quality",
+      "effect": "corre DocValidator sobre hasta 200 .md del vault e informa errores",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "memory.prune",
+      "title": "Revisar memorias con feedback negativo",
+      "category": "quality",
+      "effect": "lista memorias candidatas a forget según feedback persistido (no borra)",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "session.close_stale",
+      "title": "Cerrar sesiones OPEN de más de 7 días sin checkpoints",
+      "category": "maintenance",
+      "effect": "muestra guía de finish/abandon para sesiones OPEN >7 días",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 6.0
+    },
+    {
+      "id": "vault.reindex",
+      "title": "Re-indexar el vault semántico",
+      "category": "maintenance",
+      "effect": "parse+chunk+embed de vault/ via AgentMemory.sync_vault()",
+      "cost": "seconds",
+      "reversible": true,
+      "auto_ok": false,
+      "score": 5.0
+    },
+    {
+      "id": "learn.topic",
+      "title": "Aprender un tópico del tutor hoy",
+      "category": "learning",
+      "effect": "sugiere un tópico del tutor (rotación diaria) con deep-link a su guía",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 3.0
+    }
+  ]
+}

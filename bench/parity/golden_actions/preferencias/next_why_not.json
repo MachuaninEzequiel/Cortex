@@ -1,0 +1,65 @@
+{
+  "elapsed_ms": {{MS}},
+  "acciones": [
+    {
+      "id": "memory.prune",
+      "title": "Revisar memorias con feedback negativo",
+      "category": "quality",
+      "effect": "lista memorias candidatas a forget según feedback persistido (no borra)",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "session.close_stale",
+      "title": "Cerrar sesiones OPEN de más de 7 días sin checkpoints",
+      "category": "maintenance",
+      "effect": "muestra guía de finish/abandon para sesiones OPEN >7 días",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 6.0
+    },
+    {
+      "id": "vault.reindex",
+      "title": "Re-indexar el vault semántico",
+      "category": "maintenance",
+      "effect": "parse+chunk+embed de vault/ via AgentMemory.sync_vault()",
+      "cost": "seconds",
+      "reversible": true,
+      "auto_ok": false,
+      "score": 3.5
+    },
+    {
+      "id": "learn.topic",
+      "title": "Aprender un tópico del tutor hoy",
+      "category": "learning",
+      "effect": "sugiere un tópico del tutor (rotación diaria) con deep-link a su guía",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 1.2
+    }
+  ],
+  "why_not": {
+    "setup.finish_bootstrap": [
+      "config.yaml inexistente"
+    ],
+    "session.checkpoint_now": [
+      "hay sesión abierta y archivos cambiados"
+    ],
+    "vault.validate_docs": [
+      "suprimida por preferencia ('nunca más')"
+    ],
+    "quality.run_gates": [
+      "sesión OPEN con checkpoints y spec"
+    ],
+    "knowledge.promote": [
+      "workspace enterprise presente"
+    ],
+    "ide.resync": [
+      ".cortex/workspace.yaml presente"
+    ]
+  }
+}
