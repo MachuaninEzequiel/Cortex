@@ -89,7 +89,7 @@ consume `cortex-app` in-process.
 |---|---|---|
 | **P0 ✅** | Scaffolding: crates `cortex-config`, `cortex-app`; harness de parity (--json golden) | workspace verde + fixtures commiteados |
 | **P1 ✅** | Config completa (bloque embedding incl.) | parse parity sobre config.yaml real + fixtures de error |
-| **P2** | Vault + embeddings MiniLM-vía-ort + hybrid search | ranking idéntico queries-synth + eval ES/EN hit@5≥95% rel |
+| **P2** (a✅ b⏳) | Vault + embeddings MiniLM-vía-ort + hybrid search | BM25: 100/100 rankings idénticos ✓ · sigue: semántico con ort |
 | **P3** | Episódica nativa + conversor chroma→nativo | recall parity en fixtures; round-trip de datos reales |
 | **P4** | Sessions + hooks + quality gates | tests espejo de tests/unit/session/* |
 | **P5** | Documenter/reconstructor + verification runner | notas generadas idénticas sobre sesiones fixture |
