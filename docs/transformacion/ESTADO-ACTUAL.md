@@ -2,12 +2,25 @@
 
 > **OBRA 04 CERRADA ✅ (2026-08-24d, autorización dueño)** — flip per-language
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
-> OBRA 03 COMPLETA ✅. **PRÓXIMA SESIÓN = README bilingüe nuevo** (en curso)
-> + decisiones de dueño: GPU ≥5×, H-11 ventana pct_motor (uso real).
-> Detalle: `HANDOFF.md` §ESTADO-2026-08-24c/d.
+> OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
+>
+> **PRÓXIMA SESIÓN = OBRA 07: MIGRACIÓN TOTAL A RUST** — plan aprobado por el
+> dueño ("literalmente cada parte que existe en Python"). Leé
+> `docs/transformacion/08-MIGRACION-TOTAL-RUST.md` y arrancá por **P0**
+> (scaffolding crates cortex-config/cortex-app + harness de parity golden).
+> Detalle sesión 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
 > `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
+
+## Pendientes menores registrados (no bloquean Obra 07)
+
+- **Cerebro ASCII con degradado** (banner brain + TUI Home): definición
+  estética pendiente del dueño (concepto + paleta). Se implementa en P10 del
+  plan 08. NO perder de nuevo: registrado acá y en el plan.
+- GPU para ≥5× end-to-end (decisión hardware del dueño).
+- H-11: ventana pct_motor ≥2 semanas de uso real (arranca cuando el dueño
+  use `cortex next` a diario).
 
 ## Estado al cierre de la sesión 2026-08-24d (Obra 04 cerrada + caché tmpfs)
 
