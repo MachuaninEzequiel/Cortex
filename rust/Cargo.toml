@@ -25,6 +25,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 unicode-normalization = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
+minijinja = "2"
 
 # Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
 # - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.
