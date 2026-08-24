@@ -58,8 +58,7 @@ fn split_frontmatter(raw: &str) -> (serde_yaml::Mapping, String) {
     match frontmatter_span(raw) {
         Some((cs, ce, body_start)) => {
             let fm_text = &raw[cs..ce];
-            let data: serde_yaml::Mapping =
-                serde_yaml::from_str(fm_text).unwrap_or_default();
+            let data: serde_yaml::Mapping = serde_yaml::from_str(fm_text).unwrap_or_default();
             (data, raw[body_start..].to_string())
         }
         None => (serde_yaml::Mapping::new(), raw.to_string()),
@@ -185,7 +184,7 @@ pub fn parse(raw: &str, path: &Path) -> ParsedDoc {
 
     let inline = inline_hashtags(&body);
     let mut tags: Vec<String> = Vec::new();
-    for t in fm_tags.into_iter().chain(inline.into_iter()) {
+    for t in fm_tags.into_iter().chain(inline) {
         if !tags.contains(&t) {
             tags.push(t);
         }

@@ -9,11 +9,19 @@
 //!
 //! El lado vectorial (chunker+routing+ort) entra en el mismo módulo (P2b).
 
+pub mod chunker;
 pub mod parser;
-
+pub mod routing;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+/// Chunk indexado con su vector de embedding (P2b).
+#[derive(Debug, Clone)]
+pub struct IndexedChunk {
+    pub info: chunker::Chunk,
+    pub embedding: Vec<f64>,
+}
 
 /// Documento semántico mínimo para ranking (espejo de SemanticDocument).
 #[derive(Debug, Clone)]
@@ -32,6 +40,7 @@ pub struct SemDoc {
 pub struct SemanticIndex {
     /// Orden de inserción = iteración de archivos (afecta desempates estables).
     pub docs: Vec<SemDoc>,
+    pub chunks: Vec<IndexedChunk>,
     by_rel: HashMap<String, usize>,
     doc_lengths: HashMap<String, usize>,
     idf: HashMap<String, f64>,
@@ -44,14 +53,14 @@ impl SemanticIndex {
     /// (determinismo Rust; los empates flotantes son measure-zero).
     pub fn build(vault: &Path) -> Result<Self, String> {
         let mut files: Vec<PathBuf> = Vec::new();
-        collect_md(vault, vault, &mut files)?;
+        collect_md(vault, &mut files)?;
         files.sort();
 
         let mut docs = Vec::with_capacity(files.len());
         let mut by_rel = HashMap::new();
         for path in &files {
-            let raw = std::fs::read_to_string(path)
-                .map_err(|e| format!("{}: {e}", path.display()))?;
+            let raw =
+                std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
             let parsed = parser::parse(&raw, path);
             let rel = path
                 .strip_prefix(vault)
@@ -72,7 +81,9 @@ impl SemanticIndex {
         // doc_lengths + IDF + avgdl (idéntico a sync()).
         let mut doc_lengths: HashMap<String, usize> = HashMap::new();
         for d in &docs {
-            let len = format!("{} {}", d.title, d.content).split_whitespace().count();
+            let len = format!("{} {}", d.title, d.content)
+                .split_whitespace()
+                .count();
             doc_lengths.insert(d.rel.clone(), len);
         }
         let n_docs = docs.len().max(1) as f64;
@@ -102,11 +113,105 @@ impl SemanticIndex {
 
         Ok(Self {
             docs,
+            chunks: Vec::new(),
             by_rel,
             doc_lengths,
             idf,
             avgdl,
         })
+    }
+
+    /// P2b: construye chunks (routing+chunker) y embebe en un solo lote
+    /// vía cortex-embed (ort). Replica la parte vectorial de `sync()`.
+    pub fn attach_embeddings(&mut self, model_dir: &Path) -> Result<usize, String> {
+        let mut emb = cortex_embed::onnx::OnnxEmbedder::open(model_dir)?;
+        self.attach_embeddings_with(&mut emb)
+    }
+
+    pub fn attach_embeddings_with(
+        &mut self,
+        embedder: &mut cortex_embed::onnx::OnnxEmbedder,
+    ) -> Result<usize, String> {
+        let mut infos: Vec<chunker::Chunk> = Vec::new();
+        for d in &self.docs {
+            let doc_type = routing::doc_type_from_rel(&d.rel).unwrap_or(routing::DocType::Glossary);
+            let route = routing::route(doc_type);
+            if !route.chunking_enabled {
+                let title = if d.title.is_empty() {
+                    "(untitled)".to_string()
+                } else {
+                    d.title.clone()
+                };
+                infos.push(chunker::single_chunk_public(
+                    &d.content, &title, doc_type, &d.tags, &d.rel,
+                ));
+            } else {
+                infos.extend(chunker::chunk_document(
+                    &d.title, &d.content, doc_type, &d.tags, &d.rel, route,
+                ));
+            }
+        }
+        let texts: Vec<String> = infos.iter().map(|c| c.embedding_text()).collect();
+        let vectors = embedder.embed_batch(&texts)?;
+        self.chunks = infos
+            .into_iter()
+            .zip(vectors)
+            .map(|(info, embedding)| IndexedChunk { info, embedding })
+            .collect();
+        Ok(self.chunks.len())
+    }
+
+    /// Búsqueda semántica: coseno por chunk (>0), max por padre (primer máximo
+    /// gana), orden estable descendente — puerto 1:1 de `VaultReader.search`.
+    pub fn semantic_search(
+        &self,
+        query: &str,
+        top_k: usize,
+        embedder: &mut cortex_embed::onnx::OnnxEmbedder,
+    ) -> Vec<(&SemDoc, f64)> {
+        let mut qvec = embedder
+            .embed_batch(std::slice::from_ref(&query.to_string()))
+            .expect("embed del query");
+        let Some(q) = qvec.pop() else {
+            return Vec::new();
+        };
+        self.semantic_search_vec(&q, top_k)
+    }
+
+    /// Variante con vector pre-calculado.
+    pub fn semantic_search_vec(&self, qvec: &[f64], top_k: usize) -> Vec<(&SemDoc, f64)> {
+        // best_per_doc con orden de primera aparición; `score > cur` conserva
+        // el PRIMER máximo — idéntico al dict de Python + comparación estricta.
+        let mut best: HashMap<&str, f64> = HashMap::new();
+        let mut order: Vec<&str> = Vec::new();
+        for ch in &self.chunks {
+            let score = cosine(qvec, &ch.embedding);
+            if score <= 0.0 {
+                continue;
+            }
+            let parent = ch.info.parent_path.as_str();
+            match best.get(parent) {
+                None => {
+                    order.push(parent);
+                    best.insert(parent, score);
+                }
+                Some(&cur) if score > cur => {
+                    best.insert(parent, score);
+                }
+                _ => {}
+            }
+        }
+        let mut scored: Vec<(&SemDoc, f64)> = Vec::new();
+        for parent in order {
+            let Some(doc) = self.get_by_rel(parent) else {
+                continue;
+            };
+            let score = best[parent];
+            scored.push((doc, score));
+        }
+        scored.sort_by(|a, b| b.1.total_cmp(&a.1));
+        scored.truncate(top_k);
+        scored
     }
 
     /// Puerto de `_bm25_search` (k1=1.5, b=0.75 fijos como en Python).
@@ -131,8 +236,7 @@ impl SemanticIndex {
                 }
                 let tf = text.matches(term).count() as f64;
                 let numerator = tf * (K1 + 1.0);
-                let denominator =
-                    tf + K1 * (1.0 - B + B * doc_len as f64 / self.avgdl);
+                let denominator = tf + K1 * (1.0 - B + B * doc_len as f64 / self.avgdl);
                 score += idf * (numerator / denominator);
             }
             if score > 0.0 {
@@ -151,15 +255,27 @@ impl SemanticIndex {
     }
 }
 
-fn collect_md(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     let rd = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for entry in rd {
         let p = entry.map_err(|e| e.to_string())?.path();
         if p.is_dir() {
-            collect_md(root, &p, out)?;
+            collect_md(&p, out)?;
         } else if p.extension().and_then(|e| e.to_str()) == Some("md") {
             out.push(p);
         }
     }
     Ok(())
+}
+
+/// Coseno naive (suma secuencial izquierda→derecha) — espejo exacto de
+/// `_cosine_similarity` de VaultReader (ruta default, sin Neumaier).
+fn cosine(a: &[f64], b: &[f64]) -> f64 {
+    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+    dot / (norm_a * norm_b)
 }
