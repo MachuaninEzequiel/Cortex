@@ -135,6 +135,9 @@ Todos sus hallazgos (R-1..3, H-1..H-7) están RESUELTOS con commits `fix(auditor
 | G5-integración | 9e838d6 | NativeEmbedder productivo: cos=1.0 · batch 2.1× · first_query_cold 20.8× · fix harness sync_empty_cache |
 | T-BRAIN inc.1 | 235498a | cortex-brain nativo: router 1:1 + tools CLI + loop/banner + trait LlmBackend (26 tests) |
 | T-BRAIN inc.2 | 9d224d7 | backend llama.cpp REAL (llama-cpp-2, feature llama) + GGUF LFM2.5 Q4_K_M descargado; generación end-to-end verificada |
+| T-BRAIN pulido | 6a5479f | protocolo TOOL confirmado + temp/seed/samplers + ventana BRAIN-3 multiplataforma |
+| Wheels CI | (ver git) | workflows/wheels.yml: maturin-action matriz 5 plataformas + release en tags |
+| T-EVAL-1 | 96d0dd8 | queries-es-en.jsonl (100) + eval_retrieval.py: BM25 hit@5=1.0 MRR=1.0 ✅ |
 
 Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 

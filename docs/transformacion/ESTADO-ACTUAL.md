@@ -63,6 +63,14 @@
   motor jinja de llama.cpp; generación end-to-end VERIFICADA referenciando
   herramientas del catálogo. Muestreo greedy v1.
 
+- **Wheels CI ✅**: .github/workflows/wheels.yml — maturin-action matrix
+  (Linux x86_64/aarch64 · macOS arm/x86 · Windows x64) + attach a GitHub
+  Release en tags.
+- **T-EVAL-1 ✅** (96d0dd8): queries-es-en.jsonl (100 anotadas seed 42) +
+  bench/eval_retrieval.py (hit@5/MRR@10). BM25 hit@5=1.0 MRR=1.0 (gate ≥95%
+  ✅). Híbrido semántico 13% sobre corpus sintético sopa-de-keywords:
+  queries semánticas reales requieren vault real (Obra 04/dueño).
+
 **PENDIENTE (siguientes sesiones, EN ORDEN):**
 
 1. **T-BRAIN pulido [M]**: auto-ejecución de la herramienta sugerida por el
@@ -70,7 +78,9 @@
    despacha automáticamente); temperature/samplers; ventana dedicada
    (BRAIN-3) + i18n; CI con backend falso scriptado.
 2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
-   — confirmar adopción con el dueño antes de cerrar Obra 03.
+   — REQUIERE DECISIÓN DE DUEÑO: los servicios session/actions/context siguen
+   Python hasta Obra E, así que feature-par real implica migrarlos o delegar
+   al CLI Python; ninguna de las dos es "gratis".
 3. Opcionales: int8 e5-large (H-9) para bajar el piso de inferencia (~13.8ms
    por query, único obstáculo del ≥5× end-to-end); f32/SIMD en scoring con ADR.
 4. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
