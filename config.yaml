@@ -9,6 +9,19 @@ episodic:
   embedding_model: all-MiniLM-L6-v2 # local, no API key needed
   embedding_backend: onnx           # onnx | local | openai
 
+# ── Embeddings per-language (Obra 04 — flip default 2026-08-24c) ───────
+# Decisión medida (doc 04 §RECOMENDACIÓN): EN=MiniLM onnx (MRR@10=1.0 en
+# dataset, cero regresión) · ES=e5-large fastembed (MRR 0.8821→0.9615).
+embedding:
+  language_detection: heuristic     # enruta ES→e5-large / EN→MiniLM
+  per_language:
+    en:
+      model: all-MiniLM-L6-v2
+      backend: onnx
+    es:
+      model: intfloat/multilingual-e5-large
+      backend: fastembed
+
 # ── Semantic Memory (markdown vault) ─────────────────────────
 semantic:
   vault_path: vault                  # path to your .md notes folder
