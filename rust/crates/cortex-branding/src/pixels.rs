@@ -233,7 +233,10 @@ mod tests {
     #[test]
     fn blit_copia_solo_lo_opaco() {
         let mut base = PixelMap::parse(&["....", "...."]);
-        let patch = PixelMap::parse(&["##", " #"]);
+        // Patch 3-wide: fila inferior con hueco transparente que NO debe
+        // pisar lo ya existente (base(2,1) queda Transparent) y un Mark
+        // final que cae en base(3,1).
+        let patch = PixelMap::parse(&["##", "# #"]);
         base.blit(&patch, 1, 0);
         assert_eq!(base.get(1, 0), PixelKind::Mark);
         assert_eq!(base.get(2, 0), PixelKind::Mark);
