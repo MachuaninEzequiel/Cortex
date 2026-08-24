@@ -4,13 +4,13 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P5** — P0-P4 ✅ CERRADAS. P4 incluyó fix real
-> #2: lstrip('./') en process-artifacts anulaba la exención de artefactos
-> procesales (intención documentada restaurada; tests Python verdes).
-> Paridades commiteadas: BM25/semántico 100+100, episódico round-trip/vector/
-> keyword/entity, sesiones dumps 4/4, hooks 5/5, gates 6/6.
-> P5 = documenter/reconstructor de 8 pasos (spec: tests/unit/documenter/*).
-> Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`.
+> **PRÓXIMA SESIÓN = OBRA 07 P5b** — P0-P4 ✅ · P5a ✅ (reconstructor gitless
+> con dump idéntico vs oráculo; ADR-suggestions high incluidas).
+> COORDINACIÓN: el crate cortex-branding/cortex-tui lo lleva OTRO agente en
+> paralelo (P10) — no tocar; su WIP puede fallar `cargo test` global hasta
+> que commite. Verificar siempre con -p por crate.
+> P5b = reconstructor git-aware (subprocess git diff/name-status) +
+> DocumenterPersister (nota de sesión). Plan: `08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
