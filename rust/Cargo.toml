@@ -11,6 +11,7 @@ members = [
     "crates/cortex-app",
     # Obra 07 P10 (branding + TUI): docs/transformacion/10-P10-BRANDING-TUI.md
     "crates/cortex-branding",
+    "crates/cortex-tui",
 ]
 
 [workspace.package]
