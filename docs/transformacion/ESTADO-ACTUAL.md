@@ -4,11 +4,11 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P3** — P0 ✅ P1 ✅ P2 ✅ (GATE: BM25 y semántico
-> 100/100 rankings idénticos vs Python; goldens commiteados en bench/parity/).
-> P3 = memoria episódica nativa (extensión store v3 con metadata filtrable +
-> conversor chroma→nativo; ADR-EPISODIC queda reemplazado por decisión de
-> migración total). Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`.
+> **PRÓXIMA SESIÓN = OBRA 07 P4** — P0-P3 ✅. P3 incluyó fix real: keyword
+> bypass episódico estaba roto con chromadb moderno (ValueError) → filtrado
+> local $contains. Paridad episódica completa (round-trip/vector/keyword/
+> entity). P4 = Session primitive + hooks + quality gates en Rust
+> (spec: tests/unit/session/*). Plan: `08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
