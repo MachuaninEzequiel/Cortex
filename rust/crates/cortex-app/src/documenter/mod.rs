@@ -1,9 +1,7 @@
 //! Puerto del `Reconstructor` de 8 pasos (`cortex/documenter/reconstruction.py`).
 //!
-//! P5a cubre: gitless mode completo (diff vacío, files desde checkpoints),
-//! scope cross-check, decide_status, build_handoff, suggest_adrs y el filtro
-//! de paths internos de Cortex. El modo git-aware entra con P5b
-//! (subprocess `git diff` + `--name-status`).
+//! P5a: gitless mode. P5b: git-aware mode (diff real + name-status +
+//! provenance union vía subprocess git, timeout 10s como Python).
 
 pub mod diff_parser;
 pub mod handoff;
@@ -13,6 +11,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use crate::git;
 use crate::session::{Checkpoint, SessionRecord, SessionStatus, VerificationHookResult};
 use diff_parser::{DiffAction, DiffEntry};
 use handoff::AgentHandoff;
@@ -50,7 +49,6 @@ pub struct ReconstructionOutput {
 pub struct DiffEntrySer {
     pub action: String,
     pub path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub old_path: Option<String>,
 }
 
@@ -59,7 +57,6 @@ fn is_cortex_internal_path(p: &Path) -> bool {
     CORTEX_INTERNAL_PATHS.contains(&posix.as_str())
 }
 
-/// `_files_touched_from_checkpoints`: dedupe POSIX preservando primer orden.
 fn files_touched_from_checkpoints(checkpoints: &[Checkpoint]) -> Vec<PathBuf> {
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut ordered = Vec::new();
@@ -74,7 +71,6 @@ fn files_touched_from_checkpoints(checkpoints: &[Checkpoint]) -> Vec<PathBuf> {
     ordered
 }
 
-/// `(in_scope, out_of_scope, unimplemented)` — orden de entrada preservado.
 pub fn scope_cross_check(
     files_touched: &[PathBuf],
     files_in_scope: &[String],
@@ -106,8 +102,7 @@ pub fn scope_cross_check(
     (in_scope, out_of_scope, unimplemented)
 }
 
-/// CLOSED si todos los hooks requeridos pasan Y no hay unimplemented.
-/// Los resultados no llevan flag `required` ⇒ todo se trata como requerido.
+/// CLOSED si todos los hooks pasan Y no hay unimplemented; si no HANDOFF.
 pub fn decide_status(
     verification_results: &[VerificationHookResult],
     unimplemented: &[PathBuf],
@@ -227,32 +222,20 @@ fn build_handoff(
     }
 }
 
-/// Entrada mínima del reconstructor (P5a): sesión ya cargada + spec ya
-/// cargada + resultados de hooks inyectables. La resolución fs/git vive en
-/// el oráculo Python (paridad por fixture commiteado).
 #[allow(clippy::too_many_arguments)]
-pub fn reconstruct_gitless(
+fn finish_output(
     session: &SessionRecord,
     spec: &LoadedSpec,
     verification_results: Vec<VerificationHookResult>,
-) -> Result<ReconstructionOutput, String> {
-    if !session.is_gitless() {
-        return Err("reconstruct_gitless exige sesión gitless".into());
-    }
-    let checkpoints = session.checkpoints.clone();
-
-    // STEP 2 (gitless): diff vacío, touched desde checkpoints.
-    let diff_text = String::new();
-    let diff_entries: Vec<DiffEntry> = vec![];
-    let end_commit = session
-        .end_commit
-        .clone()
-        .unwrap_or_else(|| session.start_commit.clone());
-    let files_verified_by_git: Vec<PathBuf> = vec![];
-    let files_declared_only = files_touched_from_checkpoints(&checkpoints);
-    let files_touched = files_declared_only.clone();
-
-    // Filtro de paths internos.
+    diff_text: String,
+    diff_entries: Vec<DiffEntry>,
+    end_commit: String,
+    gitless: bool,
+    files_verified_by_git: Vec<PathBuf>,
+    files_declared_only: Vec<PathBuf>,
+    files_touched: Vec<PathBuf>,
+    checkpoints: Vec<Checkpoint>,
+) -> ReconstructionOutput {
     let filter_internal = |v: Vec<PathBuf>| -> Vec<PathBuf> {
         v.into_iter()
             .filter(|p| !is_cortex_internal_path(p))
@@ -262,15 +245,9 @@ pub fn reconstruct_gitless(
     let files_declared_only = filter_internal(files_declared_only);
     let files_touched = filter_internal(files_touched);
 
-    // STEP 3: los results llegan inyectados (run_hooks lo maneja el caller).
-    // STEP 4: cross-check contra la spec.
     let (in_scope, out_of_scope, unimplemented) =
         scope_cross_check(&files_touched, &spec.files_in_scope);
 
-    // STEP 5: contradicciones — NoOp detector por defecto (igual que Python).
-    // STEP 5: contradicciones — NoOp detector (default Python).
-
-    // STEP 6/7: ADRs + handoff + status.
     let suggested_adrs = spec_loader::suggest_adrs(&checkpoints);
     let suggested_status = decide_status(&verification_results, &unimplemented);
     let handoff = build_handoff(
@@ -303,7 +280,7 @@ pub fn reconstruct_gitless(
             .collect()
     };
 
-    Ok(ReconstructionOutput {
+    ReconstructionOutput {
         session_id: session.session_id.clone(),
         handoff,
         spec_path_normalized: "{{ROOT}}/".to_string()
@@ -327,8 +304,95 @@ pub fn reconstruct_gitless(
         suggested_status: suggested_status.as_str().into(),
         suggested_adrs,
         end_commit,
-        gitless: true,
+        gitless,
         files_verified_by_git: posix_list(&files_verified_by_git),
         files_declared_only: posix_list(&files_declared_only),
-    })
+    }
+}
+
+/// P5a: reconstrucción gitless (diff vacío; touched desde checkpoints).
+pub fn reconstruct_gitless(
+    session: &SessionRecord,
+    spec: &LoadedSpec,
+    verification_results: Vec<VerificationHookResult>,
+) -> Result<ReconstructionOutput, String> {
+    if !session.is_gitless() {
+        return Err("reconstruct_gitless exige sesión gitless".into());
+    }
+    let checkpoints = session.checkpoints.clone();
+    let diff_text = String::new();
+    let diff_entries: Vec<DiffEntry> = vec![];
+    let end_commit = session
+        .end_commit
+        .clone()
+        .unwrap_or_else(|| session.start_commit.clone());
+    let files_verified_by_git: Vec<PathBuf> = vec![];
+    let files_declared_only = files_touched_from_checkpoints(&checkpoints);
+    let files_touched = files_declared_only.clone();
+
+    Ok(finish_output(
+        session,
+        spec,
+        verification_results,
+        diff_text,
+        diff_entries,
+        end_commit,
+        true,
+        files_verified_by_git,
+        files_declared_only,
+        files_touched,
+        checkpoints,
+    ))
+}
+
+/// P5b: reconstrucción git-aware — STEP 2 con git real como ground truth.
+pub fn reconstruct_git(
+    session: &SessionRecord,
+    spec: &LoadedSpec,
+    repo_root: &Path,
+    verification_results: Vec<VerificationHookResult>,
+) -> Result<ReconstructionOutput, String> {
+    if session.is_gitless() {
+        return Err("reconstruct_git exige sesión NO gitless".into());
+    }
+    let checkpoints = session.checkpoints.clone();
+
+    let end_ref = session.end_commit.clone().unwrap_or_else(|| "HEAD".into());
+    let diff_text =
+        git::diff(&session.start_commit, &end_ref, repo_root).map_err(|e| format!("diff: {e}"))?;
+    let ns_text = git::diff_name_status(&session.start_commit, &end_ref, repo_root)
+        .map_err(|e| format!("name-status: {e}"))?;
+    let diff_entries = diff_parser::parse_name_status(&ns_text);
+    let end_commit = match &session.end_commit {
+        Some(c) => c.clone(),
+        None => git::get_head_commit(repo_root).map_err(|e| format!("head: {e}"))?,
+    };
+    let files_verified_by_git: Vec<PathBuf> = diff_entries.iter().map(|e| e.path.clone()).collect();
+    let verified_keys: std::collections::BTreeSet<String> = files_verified_by_git
+        .iter()
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .collect();
+    let declared_all = files_touched_from_checkpoints(&checkpoints);
+    let files_declared_only: Vec<PathBuf> = declared_all
+        .iter()
+        .filter(|p| !verified_keys.contains(&p.to_string_lossy().replace('\\', "/")))
+        .cloned()
+        .collect();
+    // Unión preservando orden: verificados primero, luego declarados-only.
+    let mut files_touched = files_verified_by_git.clone();
+    files_touched.extend(files_declared_only.iter().cloned());
+
+    Ok(finish_output(
+        session,
+        spec,
+        verification_results,
+        diff_text,
+        diff_entries,
+        end_commit,
+        false,
+        files_verified_by_git,
+        files_declared_only,
+        files_touched,
+        checkpoints,
+    ))
 }

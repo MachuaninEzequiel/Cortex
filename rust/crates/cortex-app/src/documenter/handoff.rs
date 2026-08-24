@@ -19,9 +19,7 @@ pub struct AgentHandoff {
     pub unverified_claims: Vec<String>,
     pub artifacts_produced: Vec<ArtifactProduced>,
     pub context_for_next: Vec<String>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub suggested_adr: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub suggested_adr_reason: String,
     pub suggested_context_terms: Vec<String>,
 }

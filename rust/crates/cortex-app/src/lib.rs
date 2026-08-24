@@ -15,6 +15,7 @@
 
 pub mod documenter;
 pub mod episodic;
+pub mod git;
 pub mod semantic;
 pub mod session;
 
