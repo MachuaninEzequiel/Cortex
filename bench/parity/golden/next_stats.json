@@ -1,0 +1,9 @@
+{
+  "total_ejecuciones": 0,
+  "via_auto": 0,
+  "via_usuario": 0,
+  "pct_motor": 0.0,
+  "dias_con_interaccion": 0,
+  "por_accion": {},
+  "definicion": "pct_motor alto + volumen estable = el motor toma las decisiones rutinarias (target dueño: abrir el menú <1 vez/día activo)"
+}
