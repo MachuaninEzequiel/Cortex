@@ -128,9 +128,8 @@ fn walk_contains(
         if pred(&p) {
             return true;
         }
-        let descend = depth > 0
-            && p.is_dir()
-            && p.file_name().map(|n| n != ".git").unwrap_or(false);
+        let descend =
+            depth > 0 && p.is_dir() && p.file_name().map(|n| n != ".git").unwrap_or(false);
         if descend && walk_contains(&p, pred, depth - 1) {
             return true;
         }

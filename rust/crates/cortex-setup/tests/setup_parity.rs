@@ -11,7 +11,12 @@ const GOLDEN: &str = concat!(
     "/../../../bench/parity/golden_setup/setup"
 );
 
-fn create_project(base: &std::path::Path, name: &str, markers: &[String], new_layout: bool) -> PathBuf {
+fn create_project(
+    base: &std::path::Path,
+    name: &str,
+    markers: &[String],
+    new_layout: bool,
+) -> PathBuf {
     let root = base.join(name);
     std::fs::create_dir_all(&root).unwrap();
     for rel in markers {
