@@ -72,19 +72,34 @@ The brain NEVER executes mutations: it proposes the exact command.
 
 ## Installation
 
-Requirements: Python **3.11+** · ~500 MB disk for core · Linux/macOS/Windows.
+Requirements: Python **3.11+** · Linux/macOS/Windows.
+
+### Recommended: pipx (one global CLI, zero project pollution)
+
+Cortex is a cross-project governance tool: **one** global command, while all
+data stays per-project (`config.yaml`, `vault/`, `.memory/` live inside each
+repo). `pipx` gives you exactly that — an isolated environment and a global
+`cortex` command:
 
 ```bash
-# Core (memory, sessions, governance)
-pip install -e .
+# From a clone of this repository:
+pipx install .
 
-# Recommended extras
-pip install -e ".[webgraph]"     # graph visualizer
-pip install -e ".[fastembed]"    # multilingual embeddings (Spanish e5-large)
+# Extras: multilingual embeddings + webgraph visualizer
+pipx inject cortex-memory fastembed webgraph
 
-# Optional backends
-pip install -e ".[local]"        # sentence-transformers (PyTorch)
-pip install -e ".[openai]"       # OpenAI embeddings/LLM
+cortex doctor    # validate prerequisites & governance state
+```
+
+> Once releases land on PyPI this becomes simply `pipx install cortex-memory`
+> (multi-platform wheels are already built on every tag).
+
+### For development (editable install)
+
+```bash
+git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
+pip install -e ".[dev]"
+pytest tests/unit tests/integration -q --no-cov
 ```
 
 Bootstrap a project (creates config, vault, skills, IDE adapters):
