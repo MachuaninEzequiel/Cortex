@@ -1,0 +1,13 @@
+{
+  "files": {},
+  "ide": "claude-code",
+  "kind": "result",
+  "payload": {
+    "ide": "claude-code",
+    "message": "{{TARGET}}/.claude/settings.json does not exist",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_missing"
+}

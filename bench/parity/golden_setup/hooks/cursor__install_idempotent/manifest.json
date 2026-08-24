@@ -1,0 +1,15 @@
+{
+  "files": {
+    ".git/hooks/post-commit": "#!/bin/sh\n\n# >>> cortex-session-hook (managed by `cortex session hooks`) >>>\n# Emits a checkpoint to the active Cortex session after each commit.\n# The `|| true` guard prevents a Cortex failure from blocking commits.\nSHA=$(git rev-parse --short HEAD 2>/dev/null) || SHA=unknown\nSUBJ=$(git log -1 --pretty=%s 2>/dev/null) || SUBJ='(no subject)'\ncortex session checkpoint --source ide-hook --note \"git commit ${SHA}: ${SUBJ}\" >/dev/null 2>&1 || true\n# <<< cortex-session-hook <<<\n"
+  },
+  "ide": "cursor",
+  "kind": "result",
+  "payload": {
+    "ide": "cursor",
+    "installed": true,
+    "message": "already installed in {{TARGET}}/.git/hooks/post-commit",
+    "modified_paths": [],
+    "removed_paths": []
+  },
+  "step": "install_idempotent"
+}

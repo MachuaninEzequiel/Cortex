@@ -1,0 +1,15 @@
+{
+  "files": {
+    "justfile": "otra:\n    echo otra\n"
+  },
+  "ide": "pi",
+  "kind": "result",
+  "payload": {
+    "ide": "pi",
+    "message": "no cortex-managed block in {{TARGET}}/justfile",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_nomarker"
+}

@@ -1,0 +1,14 @@
+{
+  "files": {
+    "justfile": "# >>> cortex-session-hook (managed by `cortex session hooks`) >>>\n# Recipes invoked by Pi Coding Agent (or any just user) to enrich the\n# active Cortex session. All recipes use `|| true` so a Cortex failure\n# never aborts the surrounding Pi pipeline.\n\ncortex-checkpoint NOTE='pi checkpoint':\n    cortex session checkpoint --source ide-hook --note \"{{NOTE}}\" >/dev/null 2>&1 || true\n\ncortex-finish:\n    cortex finish-session || true\n\ncortex-status:\n    cortex session show || true\n# <<< cortex-session-hook <<<\n"
+  },
+  "ide": "pi",
+  "kind": "status",
+  "payload": {
+    "detail": "cortex recipes present in {{TARGET}}/justfile",
+    "ide": "pi",
+    "installed": true,
+    "supported": true
+  },
+  "step": "status_installed"
+}

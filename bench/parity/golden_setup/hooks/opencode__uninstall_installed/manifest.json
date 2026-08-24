@@ -1,0 +1,15 @@
+{
+  "files": {},
+  "ide": "opencode",
+  "kind": "result",
+  "payload": {
+    "ide": "opencode",
+    "message": "removed (file had no other content) {{TARGET}}/.opencode/hooks.md",
+    "modified_paths": [],
+    "removed_paths": [
+      "{{TARGET}}/.opencode/hooks.md"
+    ],
+    "uninstalled": true
+  },
+  "step": "uninstall_installed"
+}

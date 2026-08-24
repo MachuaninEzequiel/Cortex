@@ -1,0 +1,15 @@
+{
+  "files": {},
+  "ide": "cursor",
+  "kind": "result",
+  "payload": {
+    "ide": "cursor",
+    "message": "removed (file had no other content) {{TARGET}}/.git/hooks/post-commit",
+    "modified_paths": [],
+    "removed_paths": [
+      "{{TARGET}}/.git/hooks/post-commit"
+    ],
+    "uninstalled": true
+  },
+  "step": "uninstall_installed"
+}

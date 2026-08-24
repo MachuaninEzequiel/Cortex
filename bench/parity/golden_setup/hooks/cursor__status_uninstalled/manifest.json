@@ -1,0 +1,12 @@
+{
+  "files": {},
+  "ide": "cursor",
+  "kind": "status",
+  "payload": {
+    "detail": "{{TARGET}}/.git/hooks/post-commit does not exist",
+    "ide": "cursor",
+    "installed": false,
+    "supported": true
+  },
+  "step": "status_uninstalled"
+}

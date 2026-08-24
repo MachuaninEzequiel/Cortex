@@ -1,0 +1,15 @@
+{
+  "files": {
+    ".git/hooks/post-commit": "#!/bin/sh\necho solo usuario\n"
+  },
+  "ide": "cursor",
+  "kind": "result",
+  "payload": {
+    "ide": "cursor",
+    "message": "no cortex-managed block in {{TARGET}}/.git/hooks/post-commit",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_nomarker"
+}

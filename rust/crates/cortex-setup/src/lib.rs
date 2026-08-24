@@ -21,6 +21,7 @@ pub mod fingerprint;
 pub mod ide;
 pub mod jinja;
 pub mod routing;
+pub mod session_hooks;
 pub mod setup_templates;
 pub mod setup_templates_gen;
 pub mod slug;

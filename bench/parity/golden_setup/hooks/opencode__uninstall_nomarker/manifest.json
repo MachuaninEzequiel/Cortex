@@ -1,0 +1,15 @@
+{
+  "files": {
+    ".opencode/hooks.md": "# Solo usuario\n"
+  },
+  "ide": "opencode",
+  "kind": "result",
+  "payload": {
+    "ide": "opencode",
+    "message": "no cortex-managed block in {{TARGET}}/.opencode/hooks.md",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_nomarker"
+}

@@ -1,0 +1,12 @@
+{
+  "files": {},
+  "ide": "pi",
+  "kind": "status",
+  "payload": {
+    "detail": "{{TARGET}}/justfile does not exist",
+    "ide": "pi",
+    "installed": false,
+    "supported": true
+  },
+  "step": "status_missing"
+}

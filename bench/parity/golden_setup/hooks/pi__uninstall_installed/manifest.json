@@ -1,0 +1,15 @@
+{
+  "files": {},
+  "ide": "pi",
+  "kind": "result",
+  "payload": {
+    "ide": "pi",
+    "message": "removed (file had no other content) {{TARGET}}/justfile",
+    "modified_paths": [],
+    "removed_paths": [
+      "{{TARGET}}/justfile"
+    ],
+    "uninstalled": true
+  },
+  "step": "uninstall_installed"
+}

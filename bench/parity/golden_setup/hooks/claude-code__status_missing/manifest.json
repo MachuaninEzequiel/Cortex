@@ -1,0 +1,12 @@
+{
+  "files": {},
+  "ide": "claude-code",
+  "kind": "status",
+  "payload": {
+    "detail": "{{TARGET}}/.claude/settings.json does not exist",
+    "ide": "claude-code",
+    "installed": false,
+    "supported": true
+  },
+  "step": "status_missing"
+}

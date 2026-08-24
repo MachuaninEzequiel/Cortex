@@ -1,0 +1,9 @@
+{
+  "files": {},
+  "ide": "cursor",
+  "kind": "error-or-result",
+  "payload": {
+    "error": "not a git repository: {{TARGET}}/.git does not exist (run `git init` first)"
+  },
+  "step": "install_error_nogit"
+}

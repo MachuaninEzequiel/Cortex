@@ -1,0 +1,13 @@
+{
+  "files": {},
+  "ide": "cursor",
+  "kind": "result",
+  "payload": {
+    "ide": "cursor",
+    "message": "{{TARGET}}/.git/hooks/post-commit does not exist",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_missing"
+}

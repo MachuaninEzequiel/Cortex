@@ -1,0 +1,12 @@
+{
+  "files": {},
+  "ide": "opencode",
+  "kind": "status",
+  "payload": {
+    "detail": "{{TARGET}}/.opencode/hooks.md does not exist",
+    "ide": "opencode",
+    "installed": false,
+    "supported": true
+  },
+  "step": "status_uninstalled"
+}
