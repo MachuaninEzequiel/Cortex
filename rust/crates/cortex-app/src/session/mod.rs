@@ -11,6 +11,9 @@
 //! - Storage: YAML `sort_keys=False, allow_unicode` ⇒ orden de declaración;
 //!   escritura atómica tmp+rename; active pointer `.cortex/sessions/active`.
 //! - `infer_mode`: BYO / CI_REVIEW / MANAGED / OBSERVED idéntico.
+//!
+//! Submódulos: `verification` (runner de hooks) y `quality_gates` (review
+//! en dos etapas) — puertos de verification.py y quality_gates.py.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -372,6 +375,9 @@ pub fn infer_mode(checkpoints: &[Checkpoint]) -> SessionMode {
 }
 
 // ── Storage ──────────────────────────────────────────────────────────────────
+
+pub mod quality_gates;
+pub mod verification;
 
 pub struct SessionStorage {
     root: PathBuf,

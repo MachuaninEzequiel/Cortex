@@ -1,0 +1,50 @@
+[
+ {
+  "caso": "accept_ok",
+  "accepted": true,
+  "stage_1_passed": true,
+  "stage_2_passed": true,
+  "reason": "checkpoint passed both gates",
+  "action": "accept"
+ },
+ {
+  "caso": "redelegate_scope",
+  "accepted": false,
+  "stage_1_passed": false,
+  "stage_2_passed": false,
+  "reason": "files touched outside spec scope: src/fuera.py",
+  "action": "redelegate"
+ },
+ {
+  "caso": "process_artifact_ok",
+  "accepted": true,
+  "stage_1_passed": true,
+  "stage_2_passed": true,
+  "reason": "checkpoint passed both gates",
+  "action": "accept"
+ },
+ {
+  "caso": "sin_senal",
+  "accepted": false,
+  "stage_1_passed": false,
+  "stage_2_passed": false,
+  "reason": "checkpoint has neither verified_claims nor artifacts_touched",
+  "action": "redelegate"
+ },
+ {
+  "caso": "placeholder_note",
+  "accepted": false,
+  "stage_1_passed": true,
+  "stage_2_passed": false,
+  "reason": "placeholders in note: tbd",
+  "action": "warn"
+ },
+ {
+  "caso": "claim_corto",
+  "accepted": false,
+  "stage_1_passed": true,
+  "stage_2_passed": false,
+  "reason": "test/build claim too short to be auditable evidence",
+  "action": "warn"
+ }
+]

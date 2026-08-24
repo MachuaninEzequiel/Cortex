@@ -147,7 +147,12 @@ def _is_process_artifact(path: str) -> bool:
 
     See ``docs/incidents/2026-05-22_appfutbol-mcp-duplicate-loop/``.
     """
-    p = Path(path).as_posix().lstrip("./")
+    # FIX (Obra 07 P3/P4): lstrip("./") removía CONJUNTO de chars — ".cortex/x"
+    # quedaba como "cortex/x" y ningún artefacto procesal matcheaba su
+    # prefijo. La intención documentada es normalizar un posible "./" inicial.
+    p = Path(path).as_posix()
+    if p.startswith("./"):
+        p = p[2:]
     return any(p.startswith(prefix) for prefix in _PROCESS_ARTIFACT_PREFIXES)
 
 
