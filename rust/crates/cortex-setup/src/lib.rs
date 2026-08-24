@@ -15,10 +15,13 @@
 //! Los módulos restantes (writers canónicos, setup templates, IDE
 //! adapters, session hooks) se agregan por commits atómicos dentro de P8.
 
+pub mod detector;
 pub mod doc_type;
 pub mod fingerprint;
 pub mod jinja;
 pub mod routing;
+pub mod setup_templates;
+pub mod setup_templates_gen;
 pub mod slug;
 pub mod writers;
 pub mod yaml;

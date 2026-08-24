@@ -549,7 +549,10 @@ fn enterprise_fields(
     // audit_trail: la validación parte de [], y append_audit_event agrega
     // SIEMPRE un evento "created".
     let trail = vec![
-        ("actor".to_string(), Yaml::Str(actor.unwrap_or("unknown").into())),
+        (
+            "actor".to_string(),
+            Yaml::Str(actor.unwrap_or("unknown").into()),
+        ),
         ("action".to_string(), Yaml::Str("created".into())),
         ("timestamp".to_string(), Yaml::Str(iso_z(now))),
         ("reason".to_string(), Yaml::Null),
@@ -889,8 +892,7 @@ pub fn build_note(
     now: DateTime<Utc>,
 ) -> Result<WriteOutcome, String> {
     preconditions(req)?;
-    if vault_scope == "enterprise"
-        && (req.opt_s("owner").is_none() || req.opt_s("team").is_none())
+    if vault_scope == "enterprise" && (req.opt_s("owner").is_none() || req.opt_s("team").is_none())
     {
         let mut missing = Vec::new();
         if req.opt_s("owner").is_none() {

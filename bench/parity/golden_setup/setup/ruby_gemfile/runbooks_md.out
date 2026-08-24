@@ -1,0 +1,77 @@
+---
+title: Runbooks
+tags: [runbook, ops, procedures]
+created: 2026-04-13
+---
+
+# Runbooks
+
+> Standard operating procedures for common tasks and incidents.
+
+## Local Development
+
+```bash
+# Install dependencies
+echo 'install dependencies'
+
+# Run tests
+bundle exec rspec
+
+# Run linting
+bundle exec rubocop
+
+# Build
+echo 'no build command'
+```
+
+## CI/CD Pipeline
+
+The pipeline is integrated with Cortex memory:
+- Every PR auto-generates documentation in `vault/`
+- CI results stored as episodic memories (searchable)
+- Hybrid RRF search finds similar past PRs
+- `cortex doctor` validates the local operating state
+- `cortex validate-docs` checks vault markdown integrity before merge
+
+### Pipeline Status
+
+Check GitHub Actions: [Actions Tab](../../actions)
+
+## Common Issues
+
+### Tests Failing in CI
+
+1. Run tests locally: `bundle exec rspec`
+2. Check for environment differences
+3. Search Cortex for similar failures: `cortex search "test failure"`
+
+### Lint Errors
+
+1. Run lint locally: `bundle exec rubocop`
+2. Auto-fix if possible: `bundle exec rubocop --fix` (if supported)
+3. Check lint rules configuration
+
+### Deployment Issues
+
+1. Check deployment logs
+2. Verify environment variables
+3. Search Cortex for past deployment issues: `cortex search "deploy"`
+
+## Security Procedures
+
+- Dependency vulnerabilities: `npm audit` or `pip audit`
+- Secret rotation procedures
+- Incident response checklist
+
+## Governance Quick Checks
+
+```bash
+cortex doctor
+cortex webgraph doctor --project-root .
+cortex validate-docs --vault vault
+```
+
+## Adding a New Runbook
+
+Add new procedures to this file or create separate files in `vault/runbooks/`.
+Link them here using [[wiki-links]].

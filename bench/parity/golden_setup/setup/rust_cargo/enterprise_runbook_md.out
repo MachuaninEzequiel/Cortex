@@ -1,0 +1,56 @@
+---
+title: Cortex Enterprise Runbook
+tags: [runbook, governance, onboarding]
+created: 2026-04-26
+---
+
+# Cortex Enterprise Runbook
+
+> Shared operating model for small-to-medium engineering teams using Cortex.
+
+## Role Onboarding
+
+### DevOps
+
+- Run `cortex setup pipeline` in the governed repository.
+- Validate baseline health with `cortex doctor`.
+- Wire CI to run `cortex verify-docs` and `cortex validate-docs`.
+- Keep `.memory/` local-only and never publish Chroma state.
+
+### Developers
+
+- Start with `cortex-sync` before implementation work.
+- Persist specs in `vault/specs/` and session outcomes in `vault/sessions/`.
+- Use `cortex search` and `cortex context` before repeating old work.
+- Use branch namespaces when the repository has long-lived parallel work.
+
+### Analysts
+
+- Use `cortex webgraph serve --project-root <repo>` for one project.
+- Use `cortex webgraph serve --workspace-file .cortex/webgraph/workspace.yaml` for multi-project analysis.
+- Filter WebGraph by project, node type and recent activity to reduce noise.
+
+### Staff / Tech Leads
+
+- Review `vault/decisions/` for architectural drift.
+- Keep `vault/runbooks/` current when delivery or operations change.
+- Decide explicitly whether session notes are Git-tracked in your team policy.
+
+## Daily Checks
+
+```bash
+cortex doctor
+cortex validate-docs --vault vault
+```
+
+## Release and Incident Readiness
+
+- Confirm `vault/specs/`, `vault/decisions/`, `vault/runbooks/` and `vault/hu/` are current.
+- Confirm local-only state remains outside Git (`.memory/`, transient session churn if your policy ignores it).
+- Re-run `cortex doctor --strict` before publishing tooling changes.
+
+## Project Notes
+
+- Project: ejemplo-core
+- Language: rust
+- Package manager: cargo

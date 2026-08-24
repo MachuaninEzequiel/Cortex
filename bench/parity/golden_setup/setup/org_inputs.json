@@ -1,0 +1,101 @@
+{
+ "project_name": "AppFútbol Org",
+ "cases": [
+  {
+   "profile": "small-company",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": true,
+   "file": "org_0.yaml"
+  },
+  {
+   "profile": "small-company",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": false,
+   "file": "org_1.yaml"
+  },
+  {
+   "profile": "small-company",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": true,
+   "file": "org_2.yaml"
+  },
+  {
+   "profile": "small-company",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": false,
+   "file": "org_3.yaml"
+  },
+  {
+   "profile": "multi-project-team",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": true,
+   "file": "org_4.yaml"
+  },
+  {
+   "profile": "multi-project-team",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": false,
+   "file": "org_5.yaml"
+  },
+  {
+   "profile": "multi-project-team",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": true,
+   "file": "org_6.yaml"
+  },
+  {
+   "profile": "multi-project-team",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": false,
+   "file": "org_7.yaml"
+  },
+  {
+   "profile": "regulated-organization",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": true,
+   "file": "org_8.yaml"
+  },
+  {
+   "profile": "regulated-organization",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": false,
+   "file": "org_9.yaml"
+  },
+  {
+   "profile": "regulated-organization",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": true,
+   "file": "org_10.yaml"
+  },
+  {
+   "profile": "regulated-organization",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": false,
+   "file": "org_11.yaml"
+  },
+  {
+   "profile": "custom",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": true,
+   "file": "org_12.yaml"
+  },
+  {
+   "profile": "custom",
+   "github_actions_enabled": true,
+   "branch_isolation_enabled": false,
+   "file": "org_13.yaml"
+  },
+  {
+   "profile": "custom",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": true,
+   "file": "org_14.yaml"
+  },
+  {
+   "profile": "custom",
+   "github_actions_enabled": false,
+   "branch_isolation_enabled": false,
+   "file": "org_15.yaml"
+  }
+ ]
+}

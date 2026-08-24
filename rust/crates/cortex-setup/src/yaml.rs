@@ -522,7 +522,7 @@ fn neighbor_space(ch: char) -> bool {
     )
 }
 
-fn analyze_scalar(scalar: &str) -> ScalarAnalysis {
+fn analyze_scalar(scalar: &str, allow_unicode: bool) -> ScalarAnalysis {
     if scalar.is_empty() {
         return ScalarAnalysis {
             scalar: String::new(),
@@ -555,9 +555,6 @@ fn analyze_scalar(scalar: &str) -> ScalarAnalysis {
 
     let chars: Vec<char> = scalar.chars().collect();
     let len = chars.len();
-
-    // allow_unicode=True en el pipeline canónico: los caracteres unicode
-    // válidos no marcan special_characters.
 
     let mut preceded_by_whitespace = true;
     let mut followed_by_whitespace = len == 1 || neighbor_space(chars[1]);
@@ -605,7 +602,7 @@ fn analyze_scalar(scalar: &str) -> ScalarAnalysis {
                 || ('\u{E000}'..='\u{FFFD}').contains(&ch)
                 || ('\u{10000}'..='\u{10FFFF}').contains(&ch))
                 && ch != '\u{FEFF}';
-            if !unicode_ok {
+            if !unicode_ok || !allow_unicode {
                 special_characters = true;
             }
         }
@@ -704,6 +701,9 @@ fn analyze_scalar(scalar: &str) -> ScalarAnalysis {
 #[derive(Debug)]
 pub struct Emitter {
     pub(crate) out: String,
+    /// allow_unicode=True en el pipeline canónico (yaml_dump_safe); org.yaml
+    /// usa safe_dump con allow_unicode=False.
+    allow_unicode: bool,
     column: usize,
     whitespace: bool,
     indention: bool,
@@ -727,6 +727,7 @@ impl Emitter {
     pub fn new() -> Self {
         Emitter {
             out: String::new(),
+            allow_unicode: true,
             column: 0,
             whitespace: true,
             indention: true,
@@ -949,8 +950,9 @@ impl Emitter {
                         || is_break(c)
                         || c == '\u{FEFF}'
                         || !(('\u{20}'..='\u{7E}').contains(&c)
-                            || ('\u{A0}'..='\u{D7FF}').contains(&c)
-                            || ('\u{E000}'..='\u{FFFD}').contains(&c))
+                            || (self.allow_unicode
+                                && (('\u{A0}'..='\u{D7FF}').contains(&c)
+                                    || ('\u{E000}'..='\u{FFFD}').contains(&c))))
                 })
                 .unwrap_or(true);
             if needs_escape {
@@ -1034,7 +1036,7 @@ impl Emitter {
         match node {
             s @ (Yaml::Str(_) | Yaml::Int(_) | Yaml::Float(_) | Yaml::Bool(_) | Yaml::Null) => {
                 let (repr, tag) = Self::scalar_repr(s);
-                let analysis = analyze_scalar(&repr);
+                let analysis = analyze_scalar(&repr, self.allow_unicode);
                 let length = Self::prepared_tag_len(tag) + repr.chars().count();
                 length < 128 && !analysis.empty && !analysis.multiline
             }
@@ -1139,7 +1141,7 @@ impl Emitter {
     }
 
     fn process_scalar(&mut self, repr: &str, tag: &'static str) {
-        let analysis = analyze_scalar(repr);
+        let analysis = analyze_scalar(repr, self.allow_unicode);
         // implicit[0] = (node.tag == detected_tag): un Int cuyo repr es "1"
         // es plain; un Str "1" (detectado como !!int) debe citarse.
         let implicit0 = tag == detected_tag(repr);
@@ -1212,7 +1214,13 @@ impl Emitter {
 /// `yaml.safe_dump(value, default_flow_style=False, allow_unicode=True,
 /// sort_keys=False)` (incluye el `\n` final del documento).
 pub fn dump(value: &Yaml) -> String {
+    dump_with(value, true)
+}
+
+/// Variante con `allow_unicode` explícito (org.yaml usa False).
+pub fn dump_with(value: &Yaml, allow_unicode: bool) -> String {
     let mut em = Emitter::new();
+    em.allow_unicode = allow_unicode;
     // expect_document_root → expect_node(root=True)
     em.expect_node(value, true, false, false, false);
     // expect_document_end → write_indent() con indent None.
