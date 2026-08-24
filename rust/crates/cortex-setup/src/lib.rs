@@ -18,6 +18,7 @@
 pub mod detector;
 pub mod doc_type;
 pub mod fingerprint;
+pub mod ide;
 pub mod jinja;
 pub mod routing;
 pub mod setup_templates;

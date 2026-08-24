@@ -1,0 +1,40 @@
+{
+  "fase": "P8d",
+  "fecha": "2026-08-24",
+  "stream": "B",
+  "crate": "rust/crates/cortex-setup (módulo ide)",
+  "fuente": "cortex/ide/ — base.py (416) + canonical_tools.py + prompts.py + adapters/*.py (~3.400 líneas) — spec: tests/unit/ide_adapters.py",
+  "gate": "renders byte-parity y archivos generados idénticos sobre proyectos fixture deterministas",
+  "verificacion": {
+    "cargo_test": "cargo test -p cortex-setup → 15 passed, 0 failed (incluye setup_parity, writers_parity, ide_parity)",
+    "clippy": "cargo clippy -p cortex-setup --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-setup --check → limpio",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration -q --no-cov → 2455 passed, 18 skipped",
+    "golden_p0_regresion": "capture_golden.py --fixture <fixture> --verify → PARIDAD OK"
+  },
+  "paridad_golden": {
+    "script": "bench/parity/p8_ide_golden.py (captura | --verify)",
+    "goldens": "bench/parity/golden_setup/ide/<ide>__<escenario>/manifest.json",
+    "ides": ["claude_code", "opencode", "pi", "codex", "cursor", "claude_desktop", "vscode", "windsurf", "zed", "antigravity", "hermes"],
+    "escenarios": {
+      "fresh": "proyecto fixture con SSoT .cortex/ (3 skills + 4 subagents) → inject_profiles(build_all_prompts) + inject_mcp",
+      "existing": "pre-sembrado de configs ajenas en proyecto y HOME redirigido (merge/backup paths) → inject",
+      "uninstall": "existing → inject con prompts {} (returns descartados) → uninstall → árbol final + report"
+    },
+    "resultado_rust_vs_oraculo": "33/33 manifiestos idénticos (árboles project+home byte-a-byte + reports normalizados)",
+    "normalizacion": "{{ROOT}}/{{HOME}} rutas absolutas; reports ORDENADOS en ambos lados (el glob de subagents de opencode.py NO es determinista y solo afecta orden de lista, no archivos); reloj congelado 2026-08-24T12:34:56 (patch datetime en base + antigravity + windsurf); HOME por env var; CODEX_HOME=<home>/.codex; microsegundos de _unique_backup = 000000 deterministas",
+    "determinismo": "--verify regenera en temp y compara contra lo commiteado → VERIFY OK 33/33"
+  },
+  "cobertura_del_porteo": {
+    "base": "autogen header (format %Y-%m-%dT%H:%M:%SZ), backup %Y%m%d_%H%M%S, deep_merge_dict sobre serde_json (preserve_order), append_to_markdown, marker blocks (find lineal DOTALL no-codicioso, strip/upsert/extract/idempotencia), is_cortex_owned, is_content_identical (CRLF+timestamp), json dumps indent=2 ensure_ascii=True/False con surrogate pairs, is_wsl()=false (shielded wrapper no portea: inalcanzable en fixtures)",
+    "canonical_tools": "vocabulario canónico completo (27 tools), matriz claude_code (PascalCase + mcp__cortex__*) / opencode (lowercase; MCP=None), errores UnknownCanonicalTool/UnvalidatedIDE con mensajes espejo",
+    "prompts": "split/strip frontmatter, get_skill/subagent_prompt con fallbacks, build_all_prompts (skills_dir/subagents_dir = repo/.cortex/ en AMBOS layouts)",
+    "adapters_11": "claude_code (CLAUDE.md workflow doc SSoT + skills slash + agents con translate_list + .mcp.json/settings merge + uninstall restore-backup/markers/bundle-compare), opencode (agent files permission-field, MCP user-level ~/.config/opencode, WSL shielding portado pero inalcanzable), pi (bundle cortex-pi verbatim desde repo real, uninstall conservador), codex (AGENTS.md marker block, TOML project-scoped con hardening, trust global respeta CODEX_HOME, uninstall completo), cursor (.cursor/agents 4 subagents + skills triádicos + mcp.json user-level), claude_desktop/vscode/windsurf/zed/antigravity/hermes (community/experimental 1:1, _unique_backup microsegundos en antigravity/windsurf)"
+  },
+  "decisiones": [
+    "serde_json preserve_order ya activo en P8a: los maps JSON preservan orden de inserción como los dicts de Python (crítico en dumps indent=2).",
+    "Los reports se comparan ORDENADOS: documentar como normalización pactada (equivalente a {{ROOT}}/{{MS}} de P6).",
+    "_create_shielded_wrapper NO se portea: solo alcanzable bajo WSL real; base::is_wsl()=false lo hace inalcanzable también en captura.",
+    "El trait IdeAdapter mantiene uninstall default no-op; solo los adapters cuyo Python implementa remove real lo sobreescriben."
+  ]
+}
