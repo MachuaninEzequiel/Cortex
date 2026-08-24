@@ -58,14 +58,16 @@ fn tool_con_espacios_interiores_se_normaliza() {
 
 #[test]
 fn confirmacion_acepta_variantes_si() {
-    for s in ["s", "S", "si", "SI", "Si", "sí", "SÍ"] {
+    for s in [
+        "s", "S", "si", "SI", "Si", "sí", "SÍ", "y", "Y", "yes", "YES",
+    ] {
         assert!(confirma(s), "{s} debe aprobar");
     }
 }
 
 #[test]
 fn confirmacion_rechaza_default_negativo() {
-    for s in ["", " ", "n", "N", "no", "NO", "y", "yes", "quizá"] {
+    for s in ["", " ", "n", "N", "no", "NO", "ja", "quizá"] {
         assert!(!confirma(s), "{s} debe rechazar");
     }
 }

@@ -6,6 +6,7 @@
 use cortex_brain::chat::{
     confirma, help_text, procesar_respuesta_modelo, DeterministicBackend, LlmBackend, BANNER,
 };
+use cortex_brain::i18n;
 #[cfg(feature = "llama")]
 use cortex_brain::llama::{model_path_default, LlamaChatBackend};
 use cortex_brain::router::route_intent;
@@ -52,7 +53,7 @@ fn parse_args() -> Args {
                 std::process::exit(0);
             }
             other => {
-                eprintln!("argumento desconocido: {other} (usá --help)");
+                eprintln!("{}", i18n::warn_arg_desconocido(i18n::actual(), other));
                 std::process::exit(1);
             }
         }
@@ -67,21 +68,22 @@ fn confirmar_ejecucion(
     args_tool: &str,
     tools: &BTreeMap<&'static str, ToolSpec>,
 ) -> bool {
+    let lang = i18n::actual();
     let Some(spec) = tools.get(tool) else {
-        println!("(el modelo sugirió una tool inexistente: {tool})");
+        println!("{}", i18n::tool_inexistente(lang, tool));
         return false;
     };
     let etiqueta = match spec.tier {
         Tier::Read => "read",
         Tier::SafeAction => "safe-action",
     };
-    println!("🔧 sugerencia del modelo [{etiqueta}]: {tool} {args_tool}");
-    print!("¿Ejecutás '{tool} {args_tool}'? [s/N]: ");
+    println!("{}", i18n::sugerencia(lang, etiqueta, tool, args_tool));
+    print!("{}", i18n::prompt_confirmar(lang, tool, args_tool));
     let _ = std::io::stdout().flush();
     let mut ok = String::new();
     let aprobado = std::io::stdin().read_line(&mut ok).is_ok() && confirma(&ok);
     if !aprobado {
-        println!("(no ejecutado)");
+        println!("{}", i18n::no_ejecutado(lang));
     }
     aprobado
 }
@@ -106,6 +108,14 @@ fn main() {
     if let Some(root) = &args.project_root {
         let _ = std::env::set_current_dir(root);
     }
+    // Idioma del chrome (i18n): CORTEX_LANG > .cortex/config.yaml > config.yaml > es.
+    // Se resuelve DESPUÉS del chdir para que las rutas relativas sean del proyecto.
+    i18n::fijar(i18n::detectar(
+        std::env::var("CORTEX_LANG").ok().as_deref(),
+        std::path::Path::new(".cortex/config.yaml"),
+        std::path::Path::new("config.yaml"),
+    ));
+    let lang = i18n::actual();
 
     // ── Ventana dedicada (BRAIN-3): relanzar en terminal nueva y salir ──
     if args.window {
@@ -124,7 +134,7 @@ fn main() {
             cmd.push(args.temp.to_string());
         }
         if let Err(e) = cortex_brain::window::launch_window(&cmd) {
-            eprintln!("⚠ no pude abrir ventana: {e}");
+            eprintln!("{}", i18n::warn_ventana(lang, &e));
             std::process::exit(1);
         }
         return;
@@ -141,7 +151,7 @@ fn main() {
     let model_path = model_path_default();
     #[cfg(feature = "llama")]
     let mut backend: Box<dyn LlmBackend> = if args.model && model_path.exists() {
-        println!("🧠 cargando GGUF: {}", model_path.display());
+        println!("{}", i18n::cargando_gguf(lang, &model_path));
         let system = format!(
             "Sos el asistente local de Cortex, experto en ESTE proyecto.\n\n{}\nReglas estrictas:\n\
              - NUNCA ejecutás mutaciones: si la acción es mutante, proponés el comando CLI exacto para que el usuario lo corra.\n\
@@ -161,10 +171,7 @@ fn main() {
         }
     } else {
         if args.model {
-            println!(
-                "⚠ --model pero no existe {} o el binario se compiló sin --features llama; modo determinista.",
-                model_path.display()
-            );
+            println!("{}", i18n::warn_model_falta(lang, &model_path));
         }
         Box::new(DeterministicBackend)
     };
@@ -172,12 +179,12 @@ fn main() {
     #[cfg(not(feature = "llama"))]
     let mut backend: Box<dyn LlmBackend> = {
         if args.model {
-            println!("⚠ binario sin feature llama; modo determinista.");
+            println!("{}", i18n::warn_sin_llama(lang));
         }
         Box::new(DeterministicBackend)
     };
 
-    println!("🧠 cortex-brain — backend: {}", backend.name());
+    println!("{}", i18n::backend_line(lang, backend.name()));
     println!("{}", help_text());
     let _ = std::io::stdout().flush();
 
@@ -190,13 +197,13 @@ fn main() {
             continue;
         }
         if route_intent(texto).slash.as_deref() == Some("quit") {
-            println!("¡hasta la próxima!");
+            println!("{}", i18n::hasta_proxima(lang));
             break;
         }
         match backend.generate(texto, &catalogo_tools()) {
             Ok(out) => {
                 if out == "/quit" {
-                    println!("¡hasta la próxima!");
+                    println!("{}", i18n::hasta_proxima(lang));
                     break;
                 }
                 // Protocolo TOOL (chat.rs): separa líneas TOOL:, pide

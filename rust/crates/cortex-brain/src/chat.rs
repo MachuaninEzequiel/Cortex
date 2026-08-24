@@ -105,11 +105,15 @@ pub fn respuesta_sin_tool(respuesta: &str) -> String {
         .join("\n")
 }
 
-/// Decisión pura de confirmación: acepta `s|si|sí` (case-insensitive);
-/// cualquier otra cosa —incluido Enter vacío— rechaza (default N).
+/// Decisión pura de confirmación: acepta `s|si|sí|y|yes` (case-insensitive;
+/// `y|yes` para UI en inglés); cualquier otra cosa —incluido Enter vacío—
+/// rechaza (default N).
 #[must_use]
 pub fn confirma(input: &str) -> bool {
-    matches!(input.trim().to_lowercase().as_str(), "s" | "si" | "sí")
+    matches!(
+        input.trim().to_lowercase().as_str(),
+        "s" | "si" | "sí" | "y" | "yes"
+    )
 }
 
 /// Procesa la respuesta cruda del backend y devuelve el texto a mostrar.
@@ -133,9 +137,8 @@ pub fn procesar_respuesta_modelo(
         salida.push('\n');
     }
     if !tools.contains_key(tool.as_str()) {
-        salida.push_str(&format!(
-            "(el modelo sugirió una tool inexistente: {tool})\n"
-        ));
+        salida.push_str(&crate::i18n::tool_inexistente(crate::i18n::actual(), &tool));
+        salida.push('\n');
         return salida;
     }
     if aprobar(&tool, &args_tool) {
@@ -145,7 +148,8 @@ pub fn procesar_respuesta_modelo(
         }
         salida.push('\n');
     } else {
-        salida.push_str("(no ejecutado)\n");
+        salida.push_str(crate::i18n::no_ejecutado(crate::i18n::actual()));
+        salida.push('\n');
     }
     salida
 }
@@ -192,27 +196,17 @@ pub const BANNER: &str = "\
 ";
 
 pub fn help_text() -> String {
-    let mut out = String::from(
-        "Comandos:\n\
-         /help    muestra esta ayuda\n\
-         /doctor  estado de salud de Cortex\n\
-         /stats   conteos del vault\n\
-         /search <q>  búsqueda híbrida\n\
-         /session sesión actual\n\
-         /webgraph levanta el visualizador\n\
-         /actions acciones sugeridas\n\
-         /quit    salir\n\nHerramientas:\n",
-    );
+    let lang = crate::i18n::actual();
+    let mut tools_render = String::new();
     for spec in build_tools().values() {
         let tier = match spec.tier {
             Tier::Read => "read",
             Tier::SafeAction => "safe",
         };
-        out.push_str(&format!(
+        tools_render.push_str(&format!(
             "  · {:<16} [{tier}] {}\n",
             spec.name, spec.description
         ));
     }
-    out.push_str("\nEl brain NUNCA ejecuta mutaciones: propone el comando exacto.\n");
-    out
+    crate::i18n::ayuda(lang, &tools_render)
 }
