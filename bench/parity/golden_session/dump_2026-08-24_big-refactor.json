@@ -1,0 +1,48 @@
+{
+  "adrs_created": [],
+  "checkpoints": [
+    {
+      "artifacts_touched": [],
+      "note": "",
+      "source": "user-skill",
+      "timestamp": "{{TS}}",
+      "unverified_claims": [],
+      "verified_claims": []
+    }
+  ],
+  "closed_at": "{{TS}}",
+  "documenter_decision": "handoff",
+  "end_commit": "0000000000000000000000000000000000000000",
+  "mode": "observed",
+  "opened_at": "{{TS}}",
+  "session_id": "2026-08-24_big-refactor",
+  "session_note_path": null,
+  "spec_path": "{{ROOT}}/specs/z.md",
+  "spec_summary": "Refactor grande",
+  "start_branch": "",
+  "start_commit": "0000000000000000000000000000000000000000",
+  "status": "handoff",
+  "tasks": [
+    {
+      "checkpoint_index": null,
+      "completed_at": "{{TS}}",
+      "depends_on": [],
+      "description": "extraer servicio",
+      "files_in_scope": [],
+      "id": "T1",
+      "note": "",
+      "status": "done"
+    },
+    {
+      "checkpoint_index": null,
+      "completed_at": null,
+      "depends_on": [],
+      "description": "migrar tests",
+      "files_in_scope": [],
+      "id": "T2",
+      "note": "espera API",
+      "status": "blocked"
+    }
+  ],
+  "verification_results": []
+}

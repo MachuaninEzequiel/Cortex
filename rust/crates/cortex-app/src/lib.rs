@@ -15,6 +15,7 @@
 
 pub mod episodic;
 pub mod semantic;
+pub mod session;
 
 /// Identificación de build para parity logs y `--version`.
 pub const BUILD_TAG: &str = concat!("cortex-app ", env!("CARGO_PKG_VERSION"));

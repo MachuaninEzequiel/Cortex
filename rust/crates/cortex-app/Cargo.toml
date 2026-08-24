@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 unicode-normalization = { workspace = true }
+chrono = { workspace = true }
 cortex-embed = { path = "../cortex-embed", features = ["onnx"] }
 regex = "1"
 cortex-config = { path = "../cortex-config" }

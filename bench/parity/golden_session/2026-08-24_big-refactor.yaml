@@ -1,0 +1,38 @@
+session_id: 2026-08-24_big-refactor
+spec_path: /tmp/tmpndoc_tc3/specs/z.md
+spec_summary: Refactor grande
+start_commit: '0000000000000000000000000000000000000000'
+start_branch: ''
+opened_at: '2026-08-24T18:35:29.181114Z'
+status: handoff
+mode: observed
+checkpoints:
+- timestamp: '2026-08-24T18:35:29.182223Z'
+  source: user-skill
+  verified_claims: []
+  unverified_claims: []
+  artifacts_touched: []
+  note: ''
+verification_results: []
+tasks:
+- id: T1
+  description: extraer servicio
+  files_in_scope: []
+  depends_on: []
+  status: done
+  completed_at: '2026-08-24T12:00:00Z'
+  checkpoint_index: null
+  note: ''
+- id: T2
+  description: migrar tests
+  files_in_scope: []
+  depends_on: []
+  status: blocked
+  completed_at: null
+  checkpoint_index: null
+  note: espera API
+closed_at: '2026-08-24T18:35:29.185501Z'
+end_commit: '0000000000000000000000000000000000000000'
+documenter_decision: handoff
+session_note_path: null
+adrs_created: []
