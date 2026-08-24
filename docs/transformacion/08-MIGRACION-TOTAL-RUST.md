@@ -91,7 +91,7 @@ consume `cortex-app` in-process.
 | **P1 ✅** | Config completa (bloque embedding incl.) | parse parity sobre config.yaml real + fixtures de error |
 | **P2 ✅** | Vault + embeddings MiniLM-vía-ort + hybrid search | BM25 100/100 + semántico 100/100 rankings idénticos ✓ |
 | **P3** | Episódica nativa + conversor chroma→nativo | recall parity en fixtures; round-trip de datos reales |
-| **P4** (núcleo ✅) | Session models+storage+infer_mode paritarios; faltan hooks-adapters y quality_gates completos | dumps 4/4 · pointer · infer_mode 4/4 ✓ |
+| **P4 ✅** | Sessions + verification runner + quality gates (hooks-adapters IDE → P8) | dumps 4/4 · hooks 5/5 · gates 6/6 · infer_mode 4/4 ✓ (+fix lstrip) |
 | **P5** | Documenter/reconstructor + verification runner | notas generadas idénticas sobre sesiones fixture |
 | **P6** | ActionEngine + next/stats + feedback JSONL | catálogo/scheduler parity + pct_motor igual |
 | **P7** | ContextEnricher + budget | bundles --json idénticos |

@@ -4,11 +4,13 @@
 > activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
 > OBRA 03 COMPLETA ✅. README bilingüe nuevo (pipx primario).
 >
-> **PRÓXIMA SESIÓN = OBRA 07 P4-fin + P5** — P0-P3 ✅ y P4-núcleo ✅
-> (SessionRecord/Checkpoint/Task/Verification* + storage YAML atómico +
-> infer_mode con dumps 4/4 idénticos vs Python; goldens en golden_session/).
-> PENDIENTE P4: verification runner, hook adapters ×11, quality_gates review.
-> Después P5 documenter/reconstructor. Plan: `08-MIGRACION-TOTAL-RUST.md`.
+> **PRÓXIMA SESIÓN = OBRA 07 P5** — P0-P4 ✅ CERRADAS. P4 incluyó fix real
+> #2: lstrip('./') en process-artifacts anulaba la exención de artefactos
+> procesales (intención documentada restaurada; tests Python verdes).
+> Paridades commiteadas: BM25/semántico 100+100, episódico round-trip/vector/
+> keyword/entity, sesiones dumps 4/4, hooks 5/5, gates 6/6.
+> P5 = documenter/reconstructor de 8 pasos (spec: tests/unit/documenter/*).
+> Plan: `docs/transformacion/08-MIGRACION-TOTAL-RUST.md`.
 > 24c/d: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
