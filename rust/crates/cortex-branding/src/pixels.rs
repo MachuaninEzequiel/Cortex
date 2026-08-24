@@ -78,6 +78,22 @@ impl PixelMap {
         self.cells.iter().filter(|k| **k == kind).count()
     }
 
+    /// Copia los píxeles no transparentes de `other` sobre `self` en el
+    /// offset dado (para componer logo + wordmark, banners, etc.).
+    pub fn blit(&mut self, other: &PixelMap, ox: usize, oy: usize) {
+        for y in 0..other.h() {
+            for x in 0..other.w() {
+                let kind = other.get(x, y);
+                if kind != PixelKind::Transparent {
+                    let (tx, ty) = (ox + x, oy + y);
+                    if tx < self.w() && ty < self.h() {
+                        *self.get_mut(tx, ty) = kind;
+                    }
+                }
+            }
+        }
+    }
+
     /// Agrega glow periférico (prompt §22): celdas transparentes del EXTERIOR
     /// adyacentes (8-vecindad) al CUERPO PRINCIPAL (Mark/Cross/Highlight)
     /// pasan a `Shadow`. Las capas no emanan glow (los huecos entre slabs se
@@ -85,12 +101,8 @@ impl PixelMap {
     pub fn dilate_exterior_shadow(&mut self) {
         let (w, h) = (self.w, self.h);
         let exterior = self.exterior_transparent();
-        let emanates = |k: PixelKind| {
-            matches!(
-                k,
-                PixelKind::Mark | PixelKind::Cross | PixelKind::Highlight
-            )
-        };
+        let emanates =
+            |k: PixelKind| matches!(k, PixelKind::Mark | PixelKind::Cross | PixelKind::Highlight);
         let mut shadows = Vec::new();
         for y in 0..h {
             for x in 0..w {
@@ -216,5 +228,16 @@ mod tests {
         let map = PixelMap::parse(&["###", "#"]);
         assert_eq!(map.w(), 3);
         assert_eq!(map.get(2, 1), PixelKind::Transparent);
+    }
+
+    #[test]
+    fn blit_copia_solo_lo_opaco() {
+        let mut base = PixelMap::parse(&["....", "...."]);
+        let patch = PixelMap::parse(&["##", " #"]);
+        base.blit(&patch, 1, 0);
+        assert_eq!(base.get(1, 0), PixelKind::Mark);
+        assert_eq!(base.get(2, 0), PixelKind::Mark);
+        assert_eq!(base.get(2, 1), PixelKind::Transparent); // transparente no pisa
+        assert_eq!(base.get(3, 1), PixelKind::Mark);
     }
 }

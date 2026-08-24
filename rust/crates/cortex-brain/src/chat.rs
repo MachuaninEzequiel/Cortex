@@ -9,6 +9,7 @@ pub use crate::router::{route_intent, Intent};
 pub use crate::tools::{build_tools, dispatch, Tier, ToolSpec};
 
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::OnceLock;
 
 /// Backend de generación. Contrato mínimo para tool-calling: recibe el
 /// historial + catálogo de tools y devuelve texto o una llamada a tool.
@@ -186,14 +187,43 @@ fn dispatch_slash(cmd: &str, resto: &str) -> String {
     }
 }
 
-/// Banner ASCII ≤80 columnas (spec test_banner_renderiza_en_80).
-pub const BANNER: &str = "\
-   ______ __  __ ____  _____ _   _____  __
-  / ____// / / //  _// ___// | / /   \\/ /
- / /    / /_/ / / /  \\__ \\/  |/ / /\\ / /
-/ /___ / __  _/ / / ___/ / /|  / /_/  /
-\\____//_/ /_/___//____/_/ |_/\\____/
-";
+/// Banner del brain: isotipo Cortex half-block + wordmark lado a lado
+/// (≤80 columnas visibles, spec `banner_visible_en_80`). Coloreado si el
+/// terminal lo soporta; silueta plana si no (prompt-logo.md §38).
+pub fn banner() -> &'static str {
+    if cortex_branding::ansi::should_color() {
+        banner_ansi()
+    } else {
+        banner_plain()
+    }
+}
+
+/// Banner coloreado según el modo detectado del entorno.
+pub fn banner_ansi() -> &'static str {
+    static BANNER: OnceLock<String> = OnceLock::new();
+    BANNER.get_or_init(|| {
+        let map = banner_map();
+        cortex_branding::ansi::render_ansi(&map, cortex_branding::ansi::env_color_mode())
+    })
+}
+
+/// Banner en silueta monocroma (sin escapes; NO_COLOR / piped).
+pub fn banner_plain() -> &'static str {
+    static BANNER: OnceLock<String> = OnceLock::new();
+    BANNER.get_or_init(|| cortex_branding::ansi::render_plain(&banner_map()))
+}
+
+fn banner_map() -> cortex_branding::pixels::PixelMap {
+    let logo = cortex_branding::logo::LogoVariant::Compact.pixel_map();
+    let wordmark = cortex_branding::wordmark::wordmark();
+    let gap = 2;
+    let w = logo.w() + gap + wordmark.w();
+    let h = logo.h().max(wordmark.h());
+    let mut combined = cortex_branding::pixels::PixelMap::new(w, h);
+    combined.blit(logo, 0, 0);
+    combined.blit(wordmark, logo.w() + gap, (h - wordmark.h()) / 2);
+    combined
+}
 
 pub fn help_text() -> String {
     let lang = crate::i18n::actual();

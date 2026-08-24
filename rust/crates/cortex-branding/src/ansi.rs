@@ -71,9 +71,10 @@ pub fn render_plain(map: &PixelMap) -> String {
         for x in 0..w {
             let (top, bottom) = (map.get(x, y), map.get(x, y + 1));
             match (top, bottom) {
-                (PixelKind::Transparent | PixelKind::Shadow, PixelKind::Transparent | PixelKind::Shadow) => {
-                    out.push(' ')
-                }
+                (
+                    PixelKind::Transparent | PixelKind::Shadow,
+                    PixelKind::Transparent | PixelKind::Shadow,
+                ) => out.push(' '),
                 (PixelKind::Transparent | PixelKind::Shadow, _) => out.push('▄'),
                 (_, PixelKind::Transparent | PixelKind::Shadow) => out.push('▀'),
                 _ => out.push('█'),

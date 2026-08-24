@@ -8,7 +8,7 @@
 use std::sync::Mutex;
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
-use cortex_brain::chat::{DeterministicBackend, LlmBackend, BANNER};
+use cortex_brain::chat::{self, DeterministicBackend, LlmBackend};
 use cortex_brain::router::route_intent;
 use cortex_brain::tools::{build_tools, dispatch, Tier};
 
@@ -103,10 +103,16 @@ fn desconocido_ofrece_ayuda() {
 }
 
 #[test]
-fn banner_renderiza_en_80() {
-    for line in BANNER.lines() {
+fn banner_visible_en_80() {
+    // Silueta plana: sin escapes, chars == columnas visibles.
+    for line in chat::banner_plain().lines() {
         assert!(line.chars().count() <= 80);
     }
+    // Variante coloreada: los escapes ANSI no cuentan como columnas.
+    for line in chat::banner_ansi().lines() {
+        assert!(cortex_branding::ansi::visible_width(line) <= 80);
+    }
+    assert_eq!(chat::banner_plain(), chat::banner_plain());
 }
 
 #[test]

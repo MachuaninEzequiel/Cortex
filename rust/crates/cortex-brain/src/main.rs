@@ -4,7 +4,7 @@
 // llama.cpp/GGUF se conecta vía trait LlmBackend con --features llama.
 
 use cortex_brain::chat::{
-    confirma, help_text, procesar_respuesta_modelo, DeterministicBackend, LlmBackend, BANNER,
+    banner, confirma, help_text, procesar_respuesta_modelo, DeterministicBackend, LlmBackend,
 };
 use cortex_brain::i18n;
 #[cfg(feature = "llama")]
@@ -140,9 +140,12 @@ fn main() {
         return;
     }
 
-    // ── Banner ≤80 columnas (spec test_banner_renderiza_en_80) ──
-    for line in BANNER.lines() {
-        assert!(line.chars().count() <= 80, "banner excede 80 columnas");
+    // ── Banner ≤80 columnas visibles (spec banner_visible_en_80) ──
+    for line in banner().lines() {
+        assert!(
+            cortex_branding::ansi::visible_width(line) <= 80,
+            "banner excede 80 columnas visibles"
+        );
         println!("{line}");
     }
 
