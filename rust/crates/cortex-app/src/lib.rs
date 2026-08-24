@@ -13,6 +13,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod episodic;
 pub mod semantic;
 
 /// Identificación de build para parity logs y `--version`.

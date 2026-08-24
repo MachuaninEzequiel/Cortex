@@ -1,0 +1,172 @@
+{
+ "ok": true,
+ "entries": [
+  {
+   "id": "mem_01d6edf3",
+   "content": "Memoria genérica sin entidades ni archivos adjuntos.",
+   "memory_type": "general",
+   "tags": [],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_0bf57d5a",
+   "content": "Incidente 2026-05-15: subagente colgado 14 minutos + MCP desconectado.",
+   "memory_type": "incident",
+   "tags": [
+    "mcp"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_114365ca",
+   "content": "Se optimizó el webgraph con rayon: vecinos n1000 en 345ms.",
+   "memory_type": "perf",
+   "tags": [
+    "webgraph",
+    "rust"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_385ea080",
+   "content": "Se arregló el bug de login en la función authenticate_user del módulo auth.",
+   "memory_type": "bugfix",
+   "tags": [
+    "auth",
+    "login"
+   ],
+   "files": [
+    "src/auth.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_546349f7",
+   "content": "Clase FeedbackStore persiste feedback en feedback.jsonl con rotación.",
+   "memory_type": "feature",
+   "tags": [
+    "feedback"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_5f462853",
+   "content": "Error ValueError: invalid literal for int en el parser de config.",
+   "memory_type": "incident",
+   "tags": [],
+   "files": [
+    "parser.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "error": [
+      "invalid literal for int en el parser de config."
+     ]
+    }
+   },
+   "confidence": null
+  },
+  {
+   "id": "mem_77875604",
+   "content": "Refactor de VaultReader para soportar frontmatter multilingüe.",
+   "memory_type": "refactor",
+   "tags": [
+    "vault"
+   ],
+   "files": [
+    "cortex/semantic/vault_reader.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_824c189b",
+   "content": "Se agregó endpoint POST /api/memories al servicio REST.",
+   "memory_type": "feature",
+   "tags": [
+    "api"
+   ],
+   "files": [
+    "server.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_aeffb278",
+   "content": "Decisión de arquitectura: usar RRF con k=60 para fusionar retrieval.",
+   "memory_type": "decision",
+   "tags": [
+    "architecture"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_b1f2fdba",
+   "content": "La clase NativeVectorCache escribe store v3 append-only.",
+   "memory_type": "note",
+   "tags": [
+    "rust"
+   ],
+   "files": [
+    "rust/cortex-core"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_f62cf4fb",
+   "content": "Runbook: si chromadb falla al abrir, borrar .memory/chroma y reindexar.",
+   "memory_type": "runbook",
+   "tags": [
+    "ops"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  {
+   "id": "mem_f6331d4e",
+   "content": "config.get('embedding_model') devuelve el modelo activo por idioma.",
+   "memory_type": "note",
+   "tags": [
+    "config"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "config_key": [
+      "embedding_model"
+     ],
+     "endpoint": [
+      "embedding_model"
+     ]
+    }
+   },
+   "confidence": null
+  }
+ ]
+}

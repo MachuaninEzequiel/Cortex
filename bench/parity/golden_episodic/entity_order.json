@@ -1,0 +1,17 @@
+[
+ {
+  "type": "function",
+  "value": "authenticate_user",
+  "ids": []
+ },
+ {
+  "type": "class",
+  "value": "FeedbackStore",
+  "ids": []
+ },
+ {
+  "type": "endpoint",
+  "value": "/api/memories",
+  "ids": []
+ }
+]
