@@ -93,13 +93,44 @@ consume `cortex-app` in-process.
 | **P3** | Episódica nativa + conversor chroma→nativo | recall parity en fixtures; round-trip de datos reales |
 | **P4 ✅** | Sessions + verification runner + quality gates (hooks-adapters IDE → P8) | dumps 4/4 · hooks 5/5 · gates 6/6 · infer_mode 4/4 ✓ (+fix lstrip) |
 | **P5** | Documenter/reconstructor + verification runner | notas generadas idénticas sobre sesiones fixture |
-| **P6** | ActionEngine + next/stats + feedback JSONL | catálogo/scheduler parity + pct_motor igual |
+| **P6** 🅰 | crate `cortex-actions`: ActionEngine completo + FeedbackStore JSONL formato-compatible + next/stats | catálogo/scheduler parity + pct_motor igual |
+| **P7** 🅰 | módulo `context` dentro de cortex-app: ContextEnricher + budget resolver sobre semantic/episodic nativas | bundles --json idénticos |
+| **P8** 🅱 | crate `cortex-setup`: templates vía minijinja + 11 IDE adapters + session hooks install | renders byte-parity sobre proyectos fixture |
+| **P9** 🅱 | crate `cortex-mcp` con rmcp (SDK oficial Rust) | golden contract list_tools.json byte-a-byte |
+| **P10** 🅿️ EN CURSO por stream paralelo del dueño | cortex-branding (paleta/máscaras/wordmark/render half-block) + cortex-tui (splash/Home ratatui) + logo en banner del brain | snapshot render + latencia <50ms ✅ VERDE (73 tests del stream) |
+
 | **P7** | ContextEnricher + budget | bundles --json idénticos |
 | **P8** | Setup/templates + 11 IDE adapters (minijinja) | renders byte-parity sobre proyectos fixture |
 | **P9** | MCP server rmcp | golden contract list_tools.json byte-a-byte |
 | **P10** | TUI ratatui (Home <50ms) + cerebro ASCII degradado (definición estética pendiente del dueño) | snapshot render + latencia |
 | **P11** | Cola larga (ci, tutor, hu, pr_context…) uno por commit | parity por comando |
 | **P12** | Cierre: brain in-process, default Rust, Python app layer eliminada, wheels solo-Rust | suite completa Rust + bench final vs baseline |
+
+## 4b. Coordinación DUAL-STREAM (P6+P7 ∥ P8+P9) — activa 2026-08-24
+
+Dos agentes en paralelo sobre el MISMO working tree:
+
+| Stream | Fases | Crates/archivos PROPIOS | Progreso |
+|---|---|---|---|
+| **A** | P6 + P7 | `rust/crates/cortex-actions/`, módulo `context` dentro de cortex-app, `bench/parity/*p6*`/`*p7*`, `docs/transformacion/progreso-streamA.md` | |
+| **B** | P8 + P9 | `rust/crates/cortex-setup/`, `rust/crates/cortex-mcp/`, `bench/parity/*p8*`/`*p9*`, `docs/transformacion/progreso-streamB.md` | |
+
+REGLAS DURAS:
+1. Cada stream toca SOLO sus archivos. cortex-app lo edita exclusivamente A
+   (B lo consume read-only). cortex-branding/cortex-tui son del stream P10.
+2. `rust/Cargo.toml`: añadir members/deps con edits quirúrgicos append-only;
+   tras editar, validar `cargo metadata -q >/dev/null`.
+3. Verificación SIEMPRE por crate: `cargo test -p <crate>` (el global puede
+   fallar por WIP ajeno). Suite Python completa sí es compartida como oráculo.
+4. Commits atómicos prefijados `feat(obra07 P6/P7/P8/P9)`; ante
+   `index.lock` ocupado, esperar y reintentar.
+5. NINGUNO de los dos actualiza ESTADO-ACTUAL.md ni HANDOFF.md: cada uno
+   escribe su archivo de progreso; la integración documental la hace una
+   sesión posterior.
+6. Reglas de memoria vigentes (un modelo residente por vez).
+
+PUNTOS DE INTEGRACIÓN FUTURA (P12): TUI ratatui ← actions/context engines
+(hoy el Home usa datos mock); brain deja subprocess cuando exista CLI nativo.
 
 ## 5. Reglas (extienden §R5)
 
