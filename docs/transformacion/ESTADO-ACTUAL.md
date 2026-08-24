@@ -1,11 +1,61 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
-> **PRÓXIMA SESIÓN = CONTINUAR OBRA 03**: quedan **G5-integración** (embedder ort
-> productivo conectado a VaultReader), **G6** (CLI clap) y **T-BRAIN** (nativo).
-> Leé `HANDOFF.md` §ESTADO-GATES-2026-08-24b + los ADRs en docs/transformacion/.
+> **PRÓXIMA SESIÓN = G6/T-CLI-1 (decisión de dueño)**: T-BRAIN pulido está
+> COMPLETO (2026-08-24c). Solo queda el CLI clap feature-par, que exige
+> decidir adopción con el dueño (los servicios session/actions/context siguen
+> Python hasta Obra E). Leé `HANDOFF.md` §ESTADO-2026-08-24c.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
 > `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
+
+## Estado al cierre de la sesión T-BRAIN pulido + OOM resuelto (2026-08-24c)
+
+**DIAGNÓSTICO Y FIX DE LOS 2 OOM DEL KERNEL** (causa de las sesiones cortadas):
+
+- Evidencia (`journalctl -k`): kills del 23/08 21:15 y 24/08 09:08 — ambos
+  matando un `python` con ~9.4–10.3GB anónimos (RSS+swap-zram) sobre una
+  notebook de 11GB. Swap zram agotado (160kB libres) al segundo kill.
+- Causa raíz: `bench/int8_probe.py` v1 cargaba fp32+int8 SIMULTÁNEOS y
+  embebía el corpus de 1000 textos en UN batch; activaciones + retención del
+  arena de onnxruntime ≈ 10GB → OOM global.
+- Fix commiteado: fases secuenciales (fp32 completa → liberar → int8),
+  batch=64, `enable_cpu_mem_arena=False`, mean-pooling corregido (bug de
+  broadcasting a (b,b,hid)). Pico medido: **397MB** (25× menos).
+- **Gate H-9 int8: NO PASA ❌** (cos mean 0.947 <0.99 · hit@5 0.86→0.79).
+  Se descarta cuantización dinámica de MiniLM; sin integración. Única vía al
+  ≥5× e2e: GPU o aceptar piso actual (decisión de dueño, ver COMPARE.md §G5).
+
+**T-BRAIN PULIDO ✅ COMPLETO** (3 commits atómicos, gates verde): 
+
+- Auditoría contra código real: auto-despacho c/confirmación, samplers y
+  ventana BRAIN-3 YA EXISTÍAN (commit 6a5479f de la sesión anterior); lo que
+  faltaba de verdad era testabilidad + i18n:
+- C1 `test(rust T-BRAIN)`: protocolo TOOL movido a librería (`chat::
+  extraer_tool/respuesta_sin_tool/confirma/procesar_respuesta_modelo`) +
+  **ScriptedBackend** público = backend falso scriptado para CI sin GGUF;
+  12 tests nuevos end-to-end (aprueba-despacha / rechaza-no-despacha /
+  tool inexistente jamás despacha, con CORTEX_BIN=/bin/echo). Gate CI ya los
+  corre vía job cargo existente.
+- C2 `feat(rust T-BRAIN)`: **i18n ES/EN** del chrome (`i18n.rs`) espejando
+  `cortex/action_engine/i18n.py`: CORTEX_LANG > ui.language en
+  `.cortex/config.yaml` > config.yaml legacy > es; help/prompts/avisos
+  traducidos (catálogo y router invariantes); `confirma` acepta s|si|sí|y|yes
+  ([s/N] ES, [y/N] EN); smoke real verificado en ambos idiomas.
+- Smoke final --model (LFM2.5 real): exit 0 · pico **1312MB** · backend
+  llama.cpp OK. Regla de memoria vigente: NUNCA dos modelos residentes juntos.
+- Suite: rust workspace **78 tests** verde (fmt/clippy/test) · Python
+  unit+integration verde (exit 0).
+
+**PENDIENTE (siguientes sesiones):**
+
+1. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
+   — REQUIERE DECISIÓN DE DUEÑO: los servicios session/actions/context siguen
+   Python hasta Obra E, así que feature-par real implica migrarlos o delegar
+   al CLI Python; ninguna de las dos es "gratis".
+2. Opcionales: f32/SIMD en scoring con ADR; GPU para ≥5× e2e (int8 descartado
+   por gate — ver arriba); traducir salidas de tools si el dueño quiere EN
+   completo (hoy solo chrome).
+3. Al cerrar cada uno: JSON bench + fila COMPARE.md + este archivo.
 
 ## Estado al cierre de la sesión de migración Rust (2026-08-24b)
 
@@ -71,12 +121,10 @@
   ✅). Híbrido semántico 13% sobre corpus sintético sopa-de-keywords:
   queries semánticas reales requieren vault real (Obra 04/dueño).
 
-**PENDIENTE (siguientes sesiones, EN ORDEN):**
+**PENDIENTE (sesión 2026-08-24b — RESUELTO en 24c, ver arriba):**
 
-1. **T-BRAIN pulido [M]**: auto-ejecución de la herramienta sugerida por el
-   LLM con confirmación del usuario (hoy la referencia se muestra pero no se
-   despacha automáticamente); temperature/samplers; ventana dedicada
-   (BRAIN-3) + i18n; CI con backend falso scriptado.
+1. ~~T-BRAIN pulido [M]~~ ✅ completado 2026-08-24c (auto-despacho ya estaba;
+   faltaban ScriptedBackend/CI + i18n).
 2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 (parity --json)
    — REQUIERE DECISIÓN DE DUEÑO: los servicios session/actions/context siguen
    Python hasta Obra E, así que feature-par real implica migrarlos o delegar

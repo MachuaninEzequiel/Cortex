@@ -1,11 +1,12 @@
 //! cortex-brain — asistente local nativo de Cortex (Obra 06, BRAIN-2/3).
 //!
-//! Estado (2026-08-24b): núcleo determinista completo — router 1:1 con
-//! `cortex/brain/router.py`, tools READ/SAFE_ACTION delegando en el CLI
-//! `cortex` (los servicios session/actions siguen Python hasta Obra E),
-//! loop de chat + slash commands + banner ≤80. Backend LLM vía trait
-//! `LlmBackend`: hoy `DeterministicBackend` (--no-model); llama.cpp/GGUF
-//! LFM2.5 queda scoped como siguiente incremento (HANDOFF §ESTADO-GATES).
+//! Estado (2026-08-24c): T-BRAIN PULIDO COMPLETO — router determinista 1:1
+//! (`cortex/brain/router.py`), tools READ/SAFE_ACTION delegando en el CLI
+//! `cortex`, protocolo TOOL con confirmación testeable desde la librería
+//! (`chat::procesar_respuesta_modelo`) + `ScriptedBackend` como backend falso
+//! scriptado para CI sin GGUF, i18n ES/EN del chrome (`i18n.rs`, convención
+//! `ui.language`), samplers temp/seed y ventana multiplataforma (BRAIN-3).
+//! Backend real: llama.cpp/GGUF LFM2.5 tras `--features llama` (--model).
 
 pub mod chat;
 #[cfg(feature = "llama")]

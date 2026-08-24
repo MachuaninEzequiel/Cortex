@@ -115,6 +115,65 @@ Todos sus hallazgos (R-1..3, H-1..H-7) están RESUELTOS con commits `fix(auditor
 ---
 ---
 
+# 🦀 ESTADO-2026-08-24c — T-BRAIN pulido COMPLETO + OOM de memoria resuelto
+
+> Sesión siguiente a la de arriba. Actualiza (no reemplaza) el orden: lo que
+> sigue es G6/T-CLI-1 con decisión de dueño.
+
+## OOM del kernel: causa raíz y lección permanente (leer ANTES de correr modelos)
+
+Dos sesiones seguidas murieron por `oom-kill` global (23/08 21:15 · 24/08 09:08).
+Evidencia en journalctl: un solo `python` con ~9.4–10.3GB (RSS+zram) sobre
+11GB RAM — era `bench/int8_probe.py` v1: fp32+int8 cargados A LA VEZ + corpus
+de 1000 textos en un batch. Fix commiteado (fases secuenciales, batch 64,
+arena off): pico 10GB→397MB.
+
+**Reglas duras de memoria en esta máquina (ASUS S5402ZA, 11GB + zram):**
+1. NUNCA dos modelos residentes simultáneos (embedder + LLM, o dos variantes
+   del mismo). Fase completa → liberar → recién entonces abrir el otro.
+2. Inferencia batch SIEMPRE trozada (≤64 textos); jamás batches gigantes.
+3. onnxruntime con `enable_cpu_mem_arena=False` cuando el proceso conviva con
+   uso interactivo del equipo.
+4. Antes de lanzar algo que cargue LFM2.5 (~1.3GB) o e5-large (~2.2GB):
+   verificar `free -m` primero.
+Pesos medidos 2026-08-24c: search CLI 106MB · embedder MiniLM 465MB ·
+cortex-brain --model 1312MB · probe corregido ~400MB.
+
+## Gate H-9 int8: NO PASA (cerrado por gate)
+
+`bench/results/int8-spike.json`: cos mean **0.947** <0.99 · hit@5 int8 0.79 vs
+fp32 0.86 (cae >5% rel) · speedup 1.62×. Decisión automática del gate acordado:
+se descarta la cuantización dinámica; NO se integra nada. El ≥5× end-to-end
+queda supeditado a GPU (o aceptar piso actual) — decisión de dueño.
+
+## T-BRAIN pulido ✅ (commits test/feat de esta sesión)
+
+Auditoría contra código real (regla R3): auto-despacho c/confirmación,
+temp/seed/samplers y ventana BRAIN-3 ya existían desde 6a5479f. Lo faltante:
+
+| Pieza | Commit | Contenido |
+|---|---|---|
+| Protocolo TOOL testeable + CI sin modelo | test(rust T-BRAIN) | `chat::extraer_tool / respuesta_sin_tool / confirma / procesar_respuesta_modelo` en librería; **ScriptedBackend** público (backend falso scriptado); 12 tests e2e con CORTEX_BIN=/bin/echo; el job cargo de ci-gates.yml los corre sin cambios extra |
+| i18n ES/EN | feat(rust T-BRAIN) | `i18n.rs`: CORTEX_LANG > ui.language (.cortex/config.yaml > legacy) > es — misma convención que action_engine/i18n.py; help/prompts/avisos traducidos; router/catálogo/salidas de tools invariantes; confirma acepta s\|si\|sí\|y\|yes |
+| Fix bench OOM | fix(bench) | int8_probe seguro + int8-spike.json (gate NO PASA) |
+
+Verificación de cierre: rust workspace fmt/clippy/test verde (**78 tests**) ·
+suite Python verde · smoke --model real exit 0 pico 1312MB · smoke i18n EN/ES
+por stdin OK.
+
+## Pendiente (orden actualizado)
+
+1. **G6/T-CLI-1 [L]** — cortex-cli clap feature-par nivel-0/1. REQUIERE
+   DECISIÓN DE DUEÑO antes de cerrar Obra 03 (migrar servicios o delegar al
+   CLI Python hasta Obra E).
+2. Opcionales: GPU para ≥5× e2e (int8 descartado); traducción de salidas de
+   tools (hoy solo chrome está en EN); f32/SIMD con ADR nuevo.
+3. Reglas vigentes: las mismas de §R5 (paridad antes que velocidad, flag
+   default apagado, suite verde antes de commit, un gate por commit) + las 4
+   reglas de memoria de arriba.
+
+---
+
 # 🦀 ESTADO-GATES-2026-08-24b — sesión de migración Rust cerrada
 
 > Esta sección registra el resultado de ejecutar §TAREA-RUST. Actualiza y no
@@ -149,10 +208,9 @@ Decisiones técnicas nuevas registradas (no re-discutir sin dueño):
 
 ## Pendiente (orden estricto para la próxima sesión)
 
-1. **T-BRAIN pulido [M]**: auto-despacho de la tool sugerida por el LLM con
-   confirmación del usuario; temperature/samplers; ventana BRAIN-3 + i18n;
-   CI con backend falso scriptado. (El backend llama.cpp YA funciona:
-   ver inc.2.)
+1. ~~T-BRAIN pulido [M]~~ ✅ RESUELTO 2026-08-24c (ver §ESTADO-2026-08-24c
+   arriba): lo pendiente real era ScriptedBackend/CI + i18n; el resto ya
+   estaba en 6a5479f.
 2. **G6/T-CLI-1 [L]**: cortex-cli clap feature-par nivel-0/1 con parity
    --json — CONFIRMAR ADOPCIÓN CON EL DUEÑO antes de cerrar Obra 03.
 3. Métrica retrieve end-to-end: p50 4.3× / p99 2.2× (piso físico ~13.8ms de
