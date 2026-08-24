@@ -1,13 +1,32 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
-> **OBRA 03 (Rust) COMPLETA ✅** — incluida G6 (fachada passthrough, commit
-> 3c38e69 de la sesión anterior, documentado tarde) y T-BRAIN pulido
-> (2026-08-24c). **PRÓXIMA SESIÓN = cierre Obra 04 con el dueño** (reindex
-> vault real + flip default per-language) + H-8 CHANGELOG.
-> Detalle completo: `HANDOFF.md` §ESTADO-2026-08-24c.
+> **OBRA 04 CERRADA ✅ (2026-08-24d, autorización dueño)** — flip per-language
+> activo + reindex real ejecutado + fix de caché fastembed fuera del tmpfs.
+> OBRA 03 COMPLETA ✅. **PRÓXIMA SESIÓN = README bilingüe nuevo** (en curso)
+> + decisiones de dueño: GPU ≥5×, H-11 ventana pct_motor (uso real).
+> Detalle: `HANDOFF.md` §ESTADO-2026-08-24c/d.
 > Flag de ruta nativa: `CORTEX_NATIVE=1` (default APAGADO; paridad bit-exacta
 > verificada en G1/G2/G3/G4). Compilado nativo:
 > `.venv/bin/python -m maturin develop --release -m rust/crates/cortex-py/Cargo.toml`
+
+## Estado al cierre de la sesión 2026-08-24d (Obra 04 cerrada + caché tmpfs)
+
+- **Descarga e5-large resuelta**: la red de esta máquina mata conexiones
+  largas (HF y GCS; clientes Python quedan colgados sin timeout). El modelo
+  completo quedó en el caché HF hub vía snapshot_download con reintentos.
+- **Fix estructural**: fastembed 0.8 cachea en `/tmp/fastembed_cache` →
+  tmpfs = RAM (4.6GB detectados, /tmp al 87%). Ahora Cortex usa
+  `~/.cache/cortex/fastembed` (persistente, respeta FASTEMBED_CACHE_PATH),
+  con guardias de test contra regresión a /tmp. /tmp liberado a 38%.
+- **Verificación offline**: e5-large carga sin red → dims=1024 ✓.
+- **Reindex real**: `cortex reindex --prune-old-caches` OK (vault vacío:
+  0 docs, backup+prune limpios); embedding-status refleja bloque
+  per-language (en=MiniLM·onnx, es=e5-large·fastembed, detection=heuristic).
+- Nota para el dueño: su vault personal (`~/Polar`, Obsidian) tiene solo 2
+  notas reales hoy; apuntar `semantic.vault_path` ahí cuando crezca o sumar
+  notas en `vault/` para capitalizar el win ES (MRR 0.88→0.96).
+- Suite: Python verde · commits `fix(obra04)` + `feat(obra04+H8)` +
+  `feat(rust T-BRAIN)` i18n tools.
 
 ## Estado al cierre de la sesión T-BRAIN pulido + OOM resuelto (2026-08-24c)
 
