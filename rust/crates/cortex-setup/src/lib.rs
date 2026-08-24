@@ -15,9 +15,12 @@
 //! Los módulos restantes (writers canónicos, setup templates, IDE
 //! adapters, session hooks) se agregan por commits atómicos dentro de P8.
 
+pub mod doc_type;
 pub mod fingerprint;
 pub mod jinja;
+pub mod routing;
 pub mod slug;
+pub mod writers;
 pub mod yaml;
 
 /// Rutas de las plantillas canónicas reales (fuente Python, solo lectura).

@@ -15,9 +15,7 @@ fn json_to_yaml(v: serde_json::Value) -> cortex_setup::yaml::Yaml {
             if let Some(i) = n.as_i64() {
                 Yaml::Int(i)
             } else {
-                // El frontmatter canónico no produce floats; si aparecieran,
-                // se rechazan ruidosamente en vez de divergir.
-                panic!("float no soportado por el dumper canónico: {n}")
+                Yaml::Float(n.as_f64().expect("f64"))
             }
         }
         serde_json::Value::String(s) => Yaml::Str(s),

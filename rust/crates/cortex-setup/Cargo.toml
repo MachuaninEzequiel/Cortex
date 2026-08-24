@@ -19,6 +19,7 @@ license.workspace = true
 #   frontmatter canónico se genera con yaml_dump_safe().
 
 [dependencies]
+chrono = { workspace = true }
 minijinja = { workspace = true }
 serde = { workspace = true }
 # preserve_order: los maps del frontmatter canónico preservan orden de

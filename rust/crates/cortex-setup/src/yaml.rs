@@ -30,10 +30,96 @@ pub enum Yaml {
     Null,
     Bool(bool),
     Int(i64),
+    Float(f64),
     Str(String),
     Seq(Vec<Yaml>),
     /// Mapa con orden de inserción (sort_keys=False en Python).
     Map(Vec<(String, Yaml)>),
+}
+
+/// Réplica de `SafeRepresenter.represent_float`: `repr(data).lower()` de
+/// CPython con el fix del '.0' antes de 'e'. CPython usa la representación
+/// decimal corta (round-trip) con notación fija cuando -4 <= exp < 16 y
+/// científica con exponente de al menos 2 dígitos fuera de ese rango.
+pub fn python_repr_float(v: f64) -> String {
+    if v.is_nan() {
+        return ".nan".to_string();
+    }
+    if v.is_infinite() {
+        return if v > 0.0 {
+            ".inf".to_string()
+        } else {
+            "-.inf".to_string()
+        };
+    }
+    // Dígitos significativos más cortos que hacen round-trip.
+    let mut digits = String::new();
+    let mut exp10: i32 = 0;
+    for prec in 0usize..=16 {
+        let candidate = format!("{:.*e}", prec, v);
+        let parsed: f64 = candidate.parse().unwrap_or(f64::NAN);
+        if parsed == v {
+            // separar "d.ddddde±X"
+            let (mant, e) = candidate.split_once('e').expect("format {:e}");
+            digits = mant
+                .replace(['-', '.'], "")
+                .trim_start_matches('0')
+                .to_string();
+            if digits.is_empty() {
+                digits = "0".to_string();
+            }
+            exp10 = e.parse().unwrap_or(0);
+            break;
+        }
+    }
+    if digits == "0" {
+        return "0.0".to_string();
+    }
+    let neg = v.is_sign_negative();
+    let sign = if neg { "-" } else { "" };
+    let sci = |digits: &str, exp10: i32| -> String {
+        let (head, tail) = digits.split_at(1);
+        // CPython: mantisa siempre con parte fraccionaria ("1.0e-05").
+        let mantissa = if tail.is_empty() {
+            format!("{head}.0")
+        } else {
+            format!("{head}.{tail}")
+        };
+        format!(
+            "{sign}{mantissa}e{}{:02}",
+            if exp10 < 0 { '-' } else { '+' },
+            exp10.abs()
+        )
+    };
+    if (-4..16).contains(&exp10) {
+        // Notación fija estilo CPython.
+        let nd = digits.len() as i32;
+        let mut out = String::new();
+        if exp10 >= 0 {
+            if (exp10 as usize) + 1 >= nd as usize {
+                out.push_str(&digits);
+                let zeros = exp10 + 1 - nd;
+                for _ in 0..zeros {
+                    out.push('0');
+                }
+                out.push_str(".0");
+            } else {
+                let point = (exp10 + 1) as usize;
+                out.push_str(&digits[..point]);
+                out.push('.');
+                out.push_str(&digits[point..]);
+            }
+        } else {
+            out.push_str("0.");
+            for _ in 0..(-exp10 - 1) {
+                out.push('0');
+            }
+            out.push_str(&digits);
+        }
+        format!("{sign}{out}")
+    } else {
+        sci(&digits, exp10)
+    }
 }
 
 impl Yaml {
@@ -801,7 +887,9 @@ impl Emitter {
                     self.write_indent();
                     start = end;
                 }
-            } else if ch.map(|c| c == ' ' || is_break(c) || c == '\'').unwrap_or(true)
+            } else if ch
+                .map(|c| c == ' ' || is_break(c) || c == '\'')
+                .unwrap_or(true)
                 && start < end
             {
                 let data: String = chars[start..end].iter().collect();
@@ -936,6 +1024,7 @@ impl Emitter {
                 "tag:yaml.org,2002:bool",
             ),
             Yaml::Int(i) => (i.to_string(), "tag:yaml.org,2002:int"),
+            Yaml::Float(f) => (python_repr_float(*f), "tag:yaml.org,2002:float"),
             Yaml::Str(s) => (s.clone(), "tag:yaml.org,2002:str"),
             _ => unreachable!("scalar_repr llamado con colección"),
         }
@@ -943,7 +1032,7 @@ impl Emitter {
 
     fn check_simple_key(&self, node: &Yaml) -> bool {
         match node {
-            s @ (Yaml::Str(_) | Yaml::Int(_) | Yaml::Bool(_) | Yaml::Null) => {
+            s @ (Yaml::Str(_) | Yaml::Int(_) | Yaml::Float(_) | Yaml::Bool(_) | Yaml::Null) => {
                 let (repr, tag) = Self::scalar_repr(s);
                 let analysis = analyze_scalar(&repr);
                 let length = Self::prepared_tag_len(tag) + repr.chars().count();
