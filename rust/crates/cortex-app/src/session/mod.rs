@@ -12,8 +12,9 @@
 //!   escritura atómica tmp+rename; active pointer `.cortex/sessions/active`.
 //! - `infer_mode`: BYO / CI_REVIEW / MANAGED / OBSERVED idéntico.
 //!
-//! Submódulos: `verification` (runner de hooks) y `quality_gates` (review
-//! en dos etapas) — puertos de verification.py y quality_gates.py.
+//! Submódulos: `verification` (runner de hooks), `quality_gates` (review
+//! en dos etapas) y `service` (capa SessionService para ci/CLI, P11-ci) —
+//! puertos de verification.py, quality_gates.py y service.py.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -377,6 +378,7 @@ pub fn infer_mode(checkpoints: &[Checkpoint]) -> SessionMode {
 // ── Storage ──────────────────────────────────────────────────────────────────
 
 pub mod quality_gates;
+pub mod service;
 pub mod verification;
 
 pub struct SessionStorage {

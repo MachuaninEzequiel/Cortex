@@ -1,0 +1,48 @@
+{
+  "fase": "P11-ci",
+  "fecha": "2026-08-24",
+  "stream": "A",
+  "crate": "módulos ci/ y session/service.rs dentro de rust/crates/cortex-app",
+  "fuente": "cortex/ci/ (803 líneas) + cortex/cli/ci.py (286) + gap de cortex/session/service.py — spec: tests/unit/ci/ (766 líneas, 5 archivos)",
+  "gate": "parity por comando (`cortex ci validate-pr/open-review-session/report-checkpoint/close-review-session`)",
+  "verificacion": {
+    "oraculo_determinista": ".venv/bin/python bench/parity/ci_golden_p11.py verify → PASS (regenera fixture+sesiones en temp con fechas git fijadas y compara contra lo commiteado)",
+    "paridad_rust": "cargo run -p cortex-app --example ci_check -- <fixtures> <golden_dir> → 23/23 escenarios byte-a-byte",
+    "cargo_test": "cargo test -p cortex-app → 43 passed, 0 failed (16 nuevos de ci/service + 27 preexistentes intactos)",
+    "clippy": "cargo clippy -p cortex-app --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-app --check → limpio",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration --no-cov → 2455 passed, 18 skipped"
+  },
+  "paridad_golden": {
+    "script": "bench/parity/ci_golden_p11.py (build | verify)",
+    "golden": "bench/parity/golden_ci/golden_ci.txt (23 escenarios: S01-S23)",
+    "escenarios_validate_pr": [
+      "S01 explicit pass · S02 no-match blocked · S03 out-of-scope warn",
+      "S04 unimplemented blocked · S05 required-hook-fail blocked · S06 optional-hook-fail warn",
+      "S07 handoff warn · S08 abandoned blocked · S09 by_branch pass · S10 by_commit→abandoned (edge de orden sorted)"
+    ],
+    "escenarios_formatos": "S11 text (rich no-tty) · S12/S13 pr-comment (markdown con marcador sentinela)",
+    "escenarios_review_session": "S14-S23 flujo Level-3 completo: open (json/texto), report-checkpoint manual y desde validation-result, close en CLOSED/HANDOFF con reason ⇒ mode observed, sin reason con checkpoints CI_BOT puros ⇒ mode ci-review",
+    "normalizacion": "{{ROOT}} ruta del workdir · \"duration_ms\" → \"{{MS}}\" · duraciones markdown (X.Xs, → ({{DUR}}s, · fecha de HOY en ids de review-session → {{DATE}}_ (los ids del fixture usan fechas fijas 2026-05 y NO se tocan) · \\n final único",
+    "determinismo_fixture": "commits git con GIT_AUTHOR_DATE/GIT_COMMITTER_DATE pinneados ⇒ SHAs reproducibles · sesiones creadas vía SessionService.open real (capturan HEAD/branch) · specs con hooks true/false (exit determinista) · el flujo mutante corre sobre COPIA; --fixtures deja el pristine para Rust",
+    "rc_esperados": "cada bloque declara rc=0/1/2/3 según exit_code del validador (patrón COMANDOS del harness P0)"
+  },
+  "cobertura_del_porteo": {
+    "session/service.rs": "SessionService completo: open (idempotencia anti-fantasma, sufijos -2/-3, modo gitless con placeholder, promoción a activa + lock), checkpoint (invariante OPEN), close (end_commit HEAD o placeholder ante rotura de git, infer_mode, limpieza de puntero+lock), find_for_pr (prioridad explícito>commit>branch>none), set_active (solo OPEN), get_active tolerante a punteros stale, list por estado, save_new_record, _make_unique_session_id, session.lock best-effort `<repo>/.cortex/session.lock` formato `<id>\\n` write_bytes",
+    "ci/result.rs": "ValidationInput/Result/ScopeDriftFinding + to_json_dict con ORDEN DE CLAVES del dict Python vía pyjson::Pj",
+    "ci/validator.rs": "CiValidator.validate fase a fase (lifecycle HANDOFF/ABANDONED, scope_cross_check reutilizado del documenter P5, severidad required/non-required de hooks consultando la spec, warning de spec sin hooks, umbral status/exit_code, summary_text idéntico) + parse_files_from_diff (+++/--- con dedup preservando orden y borrados) + validate_pull_request wrapper CLI",
+    "ci/session_matcher.rs": "find_session_for_pr sobre storage directo (fallo de carga ⇒ none, no crash)",
+    "ci/diff_io.rs": "tres modos (--diff/--base-commit/auto-trunk main|master via rev-parse --verify) + DiffResolutionError con mensajes espejo",
+    "ci/review_session.rs": "open_review_session (NO promueve activa, spec sintética vault/specs/<id>.md, summary PR #N/Review of branch), report_ci_checkpoint (mapeo payload→claims/artifacts con labels repr-comillas-simples, summary_text.strip() como nota), close_review_session (reason ⇒ checkpoint MANUAL previo, validación terminal)",
+    "ci/markdown_formatter.rs": "render_pr_comment byte-compatible: marcador, título por sesión/PR/genérico, secciones files(top10+more)/hooks(✓✗ duración .1f)/drift, blockers/warnings, sub-footer",
+    "examples/ci_check.rs": "runner nativo de los 23 escenarios sobre copia del fixture, normalizador espejo ({{ROOT}}/{{MS}}/{{DUR}}/{{DATE}}) y comparación línea-a-línea con diff acotado"
+  },
+  "decisiones": [
+    "TODO como módulos dentro de cortex-app (territorio exclusivo A): CERO edits a Cargo.toml/Cargo.lock compartidos mientras B trabaja; extracción a crate cortex-ci queda para P12 (el plan dice 'crates temáticos al final').",
+    "El mutate transaccional con file-lock del storage Python no se porta: los gates no ejercitan concurrencia MCP; load→mutate→save en un hilo.",
+    "Los mensajes con !r de Python (repr) se espejan con comillas simples literales ('session', 'hook'), no con {:?} de Rust.",
+    "formato text del CLI usa rich Console no-tty (sin ANSI); los fixtures eligen líneas <80 cols para no depender del wrap de rich.",
+    "CliRunner mezcla stderr en output (mix_stderr default): el caso rc=3 de archivo de validación inválido NO entra al golden (mensaje depende del parser); la ruta feliz S16/S19/S22 sí cubre el consumo del payload.",
+    "S10 ejercita el edge by_commit→primera sesión en orden sorted = ABANDONED (matching determinista por nombre de archivo)."
+  ]
+}

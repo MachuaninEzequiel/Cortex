@@ -1,0 +1,344 @@
+### S01 validate-pr explicit pass (json) · rc=0
+{
+  "status": "pass",
+  "exit_code": 0,
+  "session_match": "explicit",
+  "session_id": "2026-05-14_demo",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-14_demo.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [],
+  "warnings": [],
+  "summary_text": "session=2026-05-14_demo status=pass files=1 hooks=1/1 warnings=0 blockers=0",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S02 validate-pr no-match blocked (json) · rc=2
+{
+  "status": "blocked",
+  "exit_code": 2,
+  "session_match": "none",
+  "session_id": null,
+  "spec_path": null,
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [],
+  "blockers": [
+    "No Cortex Session matches this PR. Open one before re-running CI: `cortex create-spec ...` (creates the spec and the session)."
+  ],
+  "warnings": [],
+  "summary_text": "no session match (kind=none); diff has 1 files",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S03 validate-pr out-of-scope warn (json) · rc=1
+{
+  "status": "warn",
+  "exit_code": 1,
+  "session_match": "explicit",
+  "session_id": "2026-05-14_demo",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-14_demo.md",
+  "files_in_diff": [
+    "src/x.py",
+    "src/unexpected.py"
+  ],
+  "scope_drift": [
+    {
+      "path": "src/unexpected.py",
+      "reason": "out_of_scope"
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "out-of-scope file in diff: src/unexpected.py"
+  ],
+  "summary_text": "session=2026-05-14_demo status=warn files=2 hooks=1/1 warnings=1 blockers=0",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S04 validate-pr unimplemented blocked (json) · rc=2
+{
+  "status": "blocked",
+  "exit_code": 2,
+  "session_match": "explicit",
+  "session_id": "2026-05-14_demo",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-14_demo.md",
+  "files_in_diff": [
+    "src/other.py"
+  ],
+  "scope_drift": [
+    {
+      "path": "src/other.py",
+      "reason": "out_of_scope"
+    },
+    {
+      "path": "src/x.py",
+      "reason": "unimplemented"
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [
+    "file in scope not implemented: src/x.py"
+  ],
+  "warnings": [
+    "out-of-scope file in diff: src/other.py"
+  ],
+  "summary_text": "session=2026-05-14_demo status=blocked files=1 hooks=1/1 warnings=1 blockers=1",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S05 validate-pr required-hook-fail blocked (json) · rc=2
+{
+  "status": "blocked",
+  "exit_code": 2,
+  "session_match": "explicit",
+  "session_id": "2026-05-12_hookfail",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-12_hookfail.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": false,
+      "exit_code": 1,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [
+    "required hook 'smoke' failed (exit 1)"
+  ],
+  "warnings": [],
+  "summary_text": "session=2026-05-12_hookfail status=blocked files=1 hooks=0/1 warnings=0 blockers=1",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S06 validate-pr optional-hook-fail warn (json) · rc=1
+{
+  "status": "warn",
+  "exit_code": 1,
+  "session_match": "explicit",
+  "session_id": "2026-05-13_optfail",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-13_optfail.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": false,
+      "exit_code": 1,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "non-required hook 'smoke' failed (exit 1)"
+  ],
+  "summary_text": "session=2026-05-13_optfail status=warn files=1 hooks=0/1 warnings=1 blockers=0",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S07 validate-pr handoff warn (json) · rc=1
+{
+  "status": "warn",
+  "exit_code": 1,
+  "session_match": "explicit",
+  "session_id": "2026-05-11_handoff",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-11_handoff.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "Matched session '2026-05-11_handoff' is in HANDOFF status."
+  ],
+  "summary_text": "session=2026-05-11_handoff status=warn files=1 hooks=1/1 warnings=1 blockers=0",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S08 validate-pr abandoned blocked (json) · rc=2
+{
+  "status": "blocked",
+  "exit_code": 2,
+  "session_match": "explicit",
+  "session_id": "2026-05-10_abandoned",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-10_abandoned.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [
+    "Matched session '2026-05-10_abandoned' is ABANDONED — block."
+  ],
+  "warnings": [],
+  "summary_text": "session=2026-05-10_abandoned status=blocked files=1 hooks=1/1 warnings=0 blockers=1",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S09 validate-pr by_branch pass (json) · rc=0
+{
+  "status": "pass",
+  "exit_code": 0,
+  "session_match": "by_branch",
+  "session_id": "2026-05-15_branchy",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-14_demo.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [],
+  "warnings": [],
+  "summary_text": "session=2026-05-15_branchy status=pass files=1 hooks=1/1 warnings=0 blockers=0",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": "feature/x"
+}
+### S10 validate-pr by_commit->abandoned blocked (json) · rc=2
+{
+  "status": "blocked",
+  "exit_code": 2,
+  "session_match": "by_commit",
+  "session_id": "2026-05-10_abandoned",
+  "spec_path": "{{ROOT}}/vault/specs/2026-05-10_abandoned.md",
+  "files_in_diff": [
+    "src/x.py"
+  ],
+  "scope_drift": [],
+  "verification_results": [
+    {
+      "name": "smoke",
+      "passed": true,
+      "exit_code": 0,
+      "duration_ms": "{{MS}}"
+    }
+  ],
+  "blockers": [
+    "Matched session '2026-05-10_abandoned' is ABANDONED — block."
+  ],
+  "warnings": [],
+  "summary_text": "session=2026-05-10_abandoned status=blocked files=1 hooks=1/1 warnings=0 blockers=1",
+  "pr_number": null,
+  "pr_author": null,
+  "head_branch": null
+}
+### S11 validate-pr out-of-scope warn (text) · rc=1
+session=2026-05-14_demo status=warn files=2 hooks=1/1 warnings=1 blockers=0
+  session: 2026-05-14_demo
+  status:  warn
+  warn: out-of-scope file in diff: src/unexpected.py
+### S12 validate-pr pass (pr-comment) · rc=0
+<!-- cortex-pr-summary -->
+### Cortex PR validation · `2026-05-14_demo`
+
+**Status:** PASS · 0 blocker(s) · 0 warning(s)
+
+**Session:** `2026-05-14_demo`
+**Spec:** `{{ROOT}}/vault/specs/2026-05-14_demo.md`
+**Match:** `explicit`
+
+#### Files in diff
+- `src/x.py`
+
+#### Verification hooks
+- ✓ `smoke` ({{DUR}}s, exit 0)
+
+<sub>Generated by Cortex CI. Re-run the workflow to refresh.</sub>
+<!-- cortex-pr-summary -->
+
+### S13 validate-pr no-match (pr-comment) · rc=2
+<!-- cortex-pr-summary -->
+### Cortex PR validation
+
+**Status:** BLOCKED · 1 blocker(s) · 0 warning(s)
+
+_No Cortex Session matched this PR. Open one with_ `cortex create-spec ...` _before re-running CI._
+
+#### Blockers
+- No Cortex Session matches this PR. Open one before re-running CI: `cortex create-spec ...` (creates the spec and the session).
+
+<sub>Generated by Cortex CI. Re-run the workflow to refresh.</sub>
+<!-- cortex-pr-summary -->
+
+### S14 open-review-session pr42 (json) · rc=0
+{"session_id": "{{DATE}}_pr-42-review", "status": "open"}
+### S15 report-checkpoint manual (json) · rc=0
+{"session_id": "{{DATE}}_pr-42-review", "checkpoint_count": 1}
+### S16 report-checkpoint from-validation (json) · rc=0
+{"session_id": "{{DATE}}_pr-42-review", "checkpoint_count": 2}
+### S17 close-review-session closed (json) · rc=0
+{"session_id": "{{DATE}}_pr-42-review", "status": "closed", "mode": "ci-review"}
+### S18 open-review-session branch (texto) · rc=0
+{{DATE}}_feature-ci-review
+### S19 report-checkpoint from-validation (texto) · rc=0
+checkpoint emitted; total=1
+### S20 close-review-session handoff reason (texto) · rc=0
+{{DATE}}_feature-ci-review → handoff (mode=observed)
+### S21 open-review-session pr7 (json) · rc=0
+{"session_id": "{{DATE}}_pr-7-review", "status": "open"}
+### S22 report-checkpoint from-validation (json) · rc=0
+{"session_id": "{{DATE}}_pr-7-review", "checkpoint_count": 1}
+### S23 close-review-session closed ci-review (json) · rc=0
+{"session_id": "{{DATE}}_pr-7-review", "status": "closed", "mode": "ci-review"}

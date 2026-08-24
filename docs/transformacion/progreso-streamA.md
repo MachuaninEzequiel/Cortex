@@ -8,6 +8,7 @@
 |---|---|---|---|
 | P6 cortex-actions | ✅ COMPLETA | catálogo/scheduler parity + `next --stats` JSON + pct_motor igual → **16/16 byte-a-byte** | `bench/results/p6-evidencia.json` · goldens `bench/parity/golden_actions/` |
 | P7 context (cortex-app) | ✅ COMPLETA | bundles --json idénticos vs oráculo → **3/3 byte-a-byte** (oráculo determinista verify 3/3) | `bench/results/p7-evidencia.json` · goldens `bench/parity/golden_context/` |
+| P11-ci plugin (cortex-app) | ✅ COMPLETA | parity por comando → **23/23 escenarios byte-a-byte** (oráculo determinista verify PASS) | `bench/results/p11-ci-evidencia.json` · golden `bench/parity/golden_ci/` |
 
 ---
 
@@ -92,5 +93,46 @@ limpio · suite Python completa verde (**2455 passed, 18 skipped**).
    entidad (1.0+frecuencia+recencia, techo 1.0) — solo afecta raw counts.
 4. Edits a lib.rs/episodic aditivos; cero cambios de comportamiento
    preexistente (los 11 tests previos del crate pasan sin modificación).
+
+## P11-ci — plugin CI como módulos en cortex-app (2026-08-24)
+
+**Alcance porteado** (fuente: `cortex/ci/` 803 líneas + CLI `cli/ci.py` +
+gap de `session/service.py`; spec: `tests/unit/ci/` 766 líneas; detalle en
+p11-ci-evidencia.json):
+- `src/session/service.rs`: SessionService completo (open anti-fantasma con
+  sufijos -2/-3 y modo gitless, checkpoint/close con invariantes,
+  find_for_pr por prioridad explícito>commit>branch, session.lock
+  best-effort, puntero activo).
+- `src/ci/`: result (JSON ordenado vía pyjson), validator (lifecycle,
+  scope drift con severidad required/optional de hooks, umbral+summary),
+  session_matcher, diff_io (3 modos de entrada), review_session (flujo
+  Level-3 CI_BOT: open sin robar puntero activo, checkpoints desde
+  validation-result, close con reason ⇒ MANUAL) y markdown_formatter
+  (comentario PR con marcador sentinela).
+- Example `ci_check.rs` + oráculo `bench/parity/ci_golden_p11.py`.
+
+**Gate de paridad**: 23 escenarios S01-S23 — 10 de validate-pr (pass/
+no-match/out-of-scope/unimplemented/hook requerido fallido/optional fallido/
+handoff/abandoned/by_branch/by_commit→abandoned edge), 3 formatos (json,
+text rich no-tty, pr-comment) y el flujo completo de review-sessions
+(json/texto, modes ci-review/observed). Fixture eternamente determinista:
+fechas git pinneadas (SHAs reproducibles), sesiones reales vía service.open,
+hooks true/false. Normalizaciones pactadas: {{ROOT}}, {{MS}}, {{DUR}},
+{{DATE}}_ para ids generados hoy.
+
+**Verificación**: oráculo determinista `verify` PASS · paridad Rust
+`ci_check` 23/23 byte-a-byte · `cargo test -p cortex-app` 43 passed
+(16 nuevos + 27 preexistentes intactos) · clippy -D warnings · fmt · suite
+Python completa verde (**2455 passed, 18 skipped**).
+
+**Decisiones registradas**:
+1. Módulos dentro de cortex-app (territorio exclusivo A): CERO edits a
+   Cargo.toml/Cargo.lock compartidos mientras B trabaja; extracción a crate
+   cortex-ci diferida a P12 según el plan ('crates temáticos al final').
+2. mutate con file-lock del storage Python fuera de alcance: los gates no
+   ejercitan concurrencia.
+3. repr de Python (!r) espejado con comillas simples literales, no {:?}.
+4. El caso rc=3 de --from-validation-result inválido no entra al golden
+   (mensaje depende del parser); la ruta feliz del payload sí está cubierta.
 
 ---

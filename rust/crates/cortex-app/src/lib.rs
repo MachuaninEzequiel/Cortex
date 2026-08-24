@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod ci;
 pub mod context;
 pub mod documenter;
 pub mod episodic;
