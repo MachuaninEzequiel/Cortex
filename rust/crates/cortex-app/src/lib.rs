@@ -9,9 +9,11 @@
 //! tests Python originales (paridad-como-contrato). El binario `cortex` (clap)
 //! y el brain consumen este crate; el MCP server (P9) lo expone vía rmcp.
 //!
-//! Estado P0: scaffolding — sin servicios aún.
+//! Estado: P0 scaffolding · P2a semantic (parser + BM25) en curso.
 
 #![forbid(unsafe_code)]
+
+pub mod semantic;
 
 /// Identificación de build para parity logs y `--version`.
 pub const BUILD_TAG: &str = concat!("cortex-app ", env!("CARGO_PKG_VERSION"));
