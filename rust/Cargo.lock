@@ -474,6 +474,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-enterprise"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cortex-app",
+ "cortex-setup",
+ "cortex-workspace",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "cortex-mcp"
 version = "0.1.0"
 dependencies = [
@@ -504,6 +520,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "serde_yaml",
  "uuid",
 ]
 
