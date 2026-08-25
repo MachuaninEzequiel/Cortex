@@ -1,9 +1,11 @@
-//! Servicios de dominio portados en P12A-5.
+//! Servicios de dominio portados en P12A-5/P12A-6.
 //!
 //! - [`spec`]: SpecService — validación, persistencia, index selectivo,
 //!   apertura best-effort de Session y memoria episódica.
 //! - [`note`]: NoteService — nota session con rollback transaccional.
+//! - [`migration`]: migrador de bóvedas legacy → esquema canónico.
 
+pub mod migration;
 pub mod note;
 pub mod spec;
 
