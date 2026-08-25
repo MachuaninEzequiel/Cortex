@@ -42,6 +42,34 @@
   clave `memory:` ⇒ resolver `resolve_episodic_persist_dir` (default
   `memory/`) igual que EpisodicSource Python; NO devolver vacío.
 
+### Diseño aprobado P12B-3 — cortex-enterprise
+
+- **Arquitectura**: crate profundo `cortex-enterprise` con módulos `models`,
+  `config`, `governance`, `promotion_models`, `knowledge_promotion`,
+  `promotion_doctype`, `maintenance`, `retrieval`, `reporting` y
+  `review_knowledge`. Consume `cortex-workspace`, `cortex-setup` y
+  `cortex-app` read-only. `review_knowledge` porta operaciones y presentación
+  comprobable, pero el registro clap queda para P12B-8 (CLI nativo último).
+- **Seam enterprise→doctor**: `reporting` define `DoctorBackend` y vistas
+  neutrales `DoctorReportView`/`DoctorCheckView`. El backend por defecto falla
+  explícitamente con `doctor backend unavailable until P12B-4`; el gate usa un
+  snapshot del doctor Python y P12B-4 implementará `NativeDoctorBackend` desde
+  `cortex-doctor`. Así las dependencias quedan `doctor → enterprise/webgraph`,
+  nunca `enterprise → doctor`, y `build_memory_report` ejecuta doctor una vez.
+- **Seams de testabilidad**: reloj inyectable para promoción/review/retención;
+  `SearchBackend` inyectable para fuentes semánticas/episódicas. El adapter
+  nativo usa BM25/export episódico sin embeddings y ONNX cuando recibe
+  `model_dir`; ausencia de backend requerido falla explícitamente.
+- **Paridad y gate**: `bench/parity/enterprise_golden_p12b.py` +
+  `examples/enterprise_check.rs`, byte-a-byte con solo `{{ROOT}}`/`{{TS}}`.
+  Cubre config/YAML, validaciones, gobernanza, promoción legacy y DocType,
+  review queue/salida/path traversal, retención/archivo, retrieval/RRF y
+  reporting local/all con snapshot real, más fallo del backend default.
+- **Errores/dependencias**: `EnterpriseError` manual (sin dependencia nueva),
+  mensajes contractuales preservados, omisión tolerante solo donde Python la
+  tiene. YAML PyYAML-compatible mediante `cortex_setup::yaml::dump_with`,
+  incluido `allow_unicode=false` para `org.yaml`.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
