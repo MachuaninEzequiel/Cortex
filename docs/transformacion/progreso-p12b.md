@@ -695,13 +695,30 @@ git add -- docs/transformacion/progreso-p12b.md
 git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y review knowledge"
 ```
 
+- **[P12B-3] Seam enterprise→doctor con inversión de dependencia**: reporting
+  define `DoctorBackend` + vistas neutrales; default falla con
+  "doctor backend unavailable until P12B-4"; el gate usa snapshot estático del
+  doctor Python real. En P12B-4 cortex-doctor implementa `NativeDoctorBackend`
+  ⇒ dependencia queda doctor→enterprise sin ciclo.
+- **[P12B-3] promotion_mode/requires_review espejados localmente**: RouteSpec
+  nativo (cortex-setup, crate ajeno) aún no trae esos campos; la tabla
+  session=summarize / runbook=review-required / postmortem+runbook
+  requires_review se matchea 1:1 desde routing.py dentro de promotion_doctype.
+- **[P12B-3] Path::file_name() devuelve None con ".." final**: el resolve tipo
+  Python para validar escape del vault en review-knowledge debía recorrer
+  Components explícitos (el loop por parent()/file_name() cortaba sin
+  normalizar y dejaba pasar escapes léxicos).
+- **[P12B-3] json.dumps(indent=1/sort_keys) replicado**: writer PyVal propio
+  en el checker para orden de inserción Python (breakdown local→enterprise,
+  rows governance); sort_keys=True solo en el payload curado de reporting.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
 | P12B-1 crate cortex-workspace (layout 564 + handoff 121 + git_policy 111 + skills 98 + runtime_context 58 ≈ 1076 LOC py) | ✅ | Gate: `bench/parity/workspace_golden_p12b.py` build/verify determinista + `examples/workspace_check.rs` **byte-parity** sobre 8 escenarios de discovery + handoff H01–H06 (zoo quoting/folding/multilínea/tab congelados vs PyYAML real) + validaciones inválidas + snippets/gitignore + slugify/persist-modes (fake-git y repo REAL `feature/Mi_Rama`) + skills con hashes. Suite Python oráculo verde: **2455 passed, 18 skipped**. `cargo test -p cortex-workspace`: 27 tests ✅ · clippy `-D warnings` ✅ · fmt ✅ | (este commit) |
 | P12B-2 webgraph-server axum (~2202) | ✅ | Gate: `bench/parity/webgraph_golden_p12b.py` build/verify determinista + `examples/webgraph_check.rs` **byte-parity** vs `golden_webgraph.txt` (server real axum/Flask en puertos efímeros, fixture fake_embed SHA-256 + export P3, normalización {{ROOT}}/{{TS}}/{{FP}}; 19 casos single + 3 federados). Suite Python oráculo rc=0. clippy `-D warnings` ✅ fmt ✅ tests 3 ✅ | `2761356` |
-| P12B-3 enterprise/review_knowledge (~2441) | ⏳ pendiente | — | — |
+| P12B-3 enterprise/review_knowledge (~2441) | ✅ | Gate: `bench/parity/enterprise_golden_p12b.py` build/verify determinista (8 segmentos; oráculo real incl. `run_doctor`) + `examples/enterprise_check.rs` **byte-parity** → `[PASS] enterprise_check byte-parity vs golden_enterprise.txt` / `✅ PARIDAD P12B-3`. Suite Rust crate: 32 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: 2571 collected, **0 fallos enterprise/promotion/review_knowledge**; 32 fallos PREEXISTENTES de trunk en e2e setup/autopilot/tui/artefact_integrity (commit "recatorizacion" borró módulos que esos tests importan; árbol Python verificado idéntico a HEAD). | `1ce45ca` |
 | P12B-4 doctor (~925) | ⏳ pendiente | golden P0 congela salida; checks sin backend nativo ⇒ fail explícito documentado (patrón P6/P9) | — |
 | P12B-5 autopilot (~1902) | ⏳ pendiente | spec: tests/unit/autopilot | — |
 | P12B-6 pipeline SDDwork (~1708) | ⏳ pendiente | reqwest aprobado §7.2.8; stages gh API con fixtures/dry-run | — |
