@@ -30,6 +30,8 @@ members = [
     "crates/cortex-doctor",
     # Obra 07 P12B-5 (autopilot capa de decisión, stream B): doc 09 §3.6/§7
     "crates/cortex-autopilot",
+    # Obra 07 P12B-6 (pipeline SDDwork, stream B): doc 09 §3.7/§7
+    "crates/cortex-pipeline",
 ]
 
 [workspace.package]

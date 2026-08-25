@@ -522,11 +522,24 @@ dependencies = [
 name = "cortex-mcp"
 version = "0.1.0"
 dependencies = [
+ "cortex-app",
  "cortex-setup",
  "rmcp",
  "serde",
  "serde_json",
+ "serde_yaml",
  "tokio",
+]
+
+[[package]]
+name = "cortex-pipeline"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cortex-enterprise",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
