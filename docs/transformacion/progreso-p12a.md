@@ -122,6 +122,7 @@ suite Python oráculo completa verde (--no-cov).
 |---|---|---|---|
 | P12A-1 episodic.append + semantic.index_file + resolve_safe | ✅ | `bench/parity/p12a1_golden.py` verify PASS + `p12a1_check` PARIDAD COMPLETA (16/16 entries · 6 rankings exactos · R1/R2 idénticos · incremental==rebuild); suite Python 2455 passed | `c9b62ab` |
 | P12A-2 workitems/hu WorkItemService | ✅ | `bench/parity/p12a2_golden.py` verify PASS + `p12a2_check` S01–S09 PARIDAD COMPLETA byte-a-byte; suite oráculo verde | `e587d2a` |
+| P12A-3 pr_context: PRContext + pr_capture + PRService.store | ✅ | `bench/parity/p12a3_golden.py` verify PASS + `p12a3_check` S01–S12 PARIDAD COMPLETA byte-a-byte (JSON pydantic idéntico, payload de store exacto); suite oráculo verde | `8e90ee6` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -151,14 +152,59 @@ suite Python oráculo completa verde (--no-cov).
 - **Alternativas descartadas**: hex derivado de timestamp/pid (no es v4,
   colisiones triviales en batch), dep nueva `rand` directo (innecesaria).
 
+## P12A-3 — pr_context: PRContext + pr_capture + PRService.store
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Qué se portó (`cortex-app/src/pr.rs`, nuevo):
+
+- **PRContext** con orden de declaración pydantic como contrato JSON:
+  serializador propio estilo `model_dump_json(indent=2)` (nulls explícitos,
+  UTF-8 crudo) y parser tolerante con required title/author/source_branch/
+  commit_sha. Métodos `hu_references` (4 patrones IGNORECASE en orden,
+  prefijos por patrón, dedup por conjunto — el ORDEN no es contrato porque
+  Python hace `list(set(refs))`), has_db_changes / has_api_changes /
+  has_adr_label fieles al spec.
+- **pr_capture**: run_git (stdout strip, errores ⇒ vacío),
+  get_files_changed con fallback origin/base, diff_summary --stat,
+  detectores db/api con indicadores lowercase, capture_manual (+ variante
+  `_in` con cwd inyectable), capture_from_github con getenv inyectable,
+  save_context/capture_from_json byte-parity, enrich_with_pipeline que
+  devuelve copia sin mutar el original.
+- **PRService.store_pr_context**: enrich local + resumen multilínea EXACTO
+  (summary / Description[:500] con \\n inicial / Diff:\\n{stat} / Lint-Audit-
+  Tests con "n/a" default — los saltos dobles del join son parte del
+  contrato), tags `[pr, author]+labels`, files truncado a 20,
+  context_metadata, sobre el trait EpisodicSink de P12A-2.
+- generate_pr_docs/write_pr_docs quedan para P12A-4 junto al porte de
+  doc_generator (dependencia declarada del servicio).
+- La presentación typer (`cli/pr_context.py`) la wirea el CLI nativo de B
+  (§7.1.3); acá vive la capa de servicio.
+
+Gate: `bench/parity/p12a3_golden.py` (build/verify) +
+`examples/p12a3_check.rs`: S01–S12 sobre cwd tmp SIN repo git (la ruta git
+queda determinista-vacía en ambos lados; misma ruta de código), JSON
+pydantic byte-a-byte (incluye unicode/saltos), payload del sink con
+json.dumps(indent=1, sort_keys) espejando p12a2, roundtrip save→load→save
+idéntico.
+
+Verificación: gate verify PASS + checker PARIDAD COMPLETA · cargo test -p
+cortex-app 73 passed · clippy/fmt limpios · suite Python oráculo completa
+verde.
+
+Observación para el dueño/oráculo: el test
+`tests/unit/ide/test_contract_git_dirs.py::TestUninstallIdempotency[...]`
+es FLAKY dependiente de orden bajo pytest-randomly (falló en runs completos
+dos veces, pasa aislado y con `-p no:randomly`). No relacionado con P12A
+(no se tocó código Python). Queda registrado acá porque la suite es el
+oráculo compartido.
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
 |---|---|
-| Tarea | Estado |
-|---|---|
-| ~~P12A-2 workitems/hu (~685)~~ | ✅ completada (ver arriba) |
-| P12A-3 pr_context (~623) + gate CliRunner→checker | pendiente |
+| ~~P12A-2 workitems/hu (~685)~~ | ✅ completada |
+| ~~P12A-3 pr_context (~623) + gate CliRunner→checker~~ | ✅ completada |
 | P12A-4 doc_generator/doc_validator/doc_verifier (~590) | pendiente |
 | P12A-5 spec_service + note_service (~541) | pendiente |
 | P12A-6 documentation/migration docs-migrate (~565) | pendiente |
