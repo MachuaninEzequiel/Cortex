@@ -123,6 +123,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-1 episodic.append + semantic.index_file + resolve_safe | ✅ | `bench/parity/p12a1_golden.py` verify PASS + `p12a1_check` PARIDAD COMPLETA (16/16 entries · 6 rankings exactos · R1/R2 idénticos · incremental==rebuild); suite Python 2455 passed | `c9b62ab` |
 | P12A-2 workitems/hu WorkItemService | ✅ | `bench/parity/p12a2_golden.py` verify PASS + `p12a2_check` S01–S09 PARIDAD COMPLETA byte-a-byte; suite oráculo verde | `e587d2a` |
 | P12A-3 pr_context: PRContext + pr_capture + PRService.store | ✅ | `bench/parity/p12a3_golden.py` verify PASS + `p12a3_check` S01–S12 PARIDAD COMPLETA byte-a-byte (JSON pydantic idéntico, payload de store exacto); suite oráculo verde | `8e90ee6` |
+| P12A-4 doc_generator/doc_validator/doc_verifier | ✅ | `bench/parity/p12a4_golden.py` verify PASS + `p12a4_check` S01–S14 PARIDAD COMPLETA byte-a-byte (contenido/filenames, issues, clasificación y JSON); suite oráculo verde | `d682bee` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -199,13 +200,50 @@ dos veces, pasa aislado y con `-p no:randomly`). No relacionado con P12A
 (no se tocó código Python). Queda registrado acá porque la suite es el
 oráculo compartido.
 
+## P12A-4 — doc_generator + doc_validator + doc_verifier
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Qué se portó:
+
+- **`doc_generator.rs`**: `GeneratedDoc`/DocTypeGen y generador fallback de
+  UNA nota session; template por replace simple + placeholder restante→N/A
+  (no jinja), body[:300], files[:20], labels[:5], resultados pipeline/default
+  "not run", safe_filename fiel (incluye trailing dash si los símbolos dejan
+  espacio final), generate_all/skip_types, write_docs/generate_and_write.
+  El reloj es explícito (patrón P8/workitems); el oráculo congela datetime con
+  monkeypatch `_patch_now` de P8.
+- **`doc_validator.rs`**: frontmatter YAML por delimitadores, checks title y
+  date/created, extracción wikilinks sin embeds, limpieza |/#/^, embeds
+  rotos con lookup con/sin .md, batch y to_dict. El texto específico de YAML
+  inválido NO es contrato (PyYAML vs serde_yaml) y se normaliza a
+  `{{YAML_ERR}}`; field/severity/is_valid sí son contrato.
+- **`doc_verifier.rs`**: verify_from_list y git diff --name-status; filtro
+  único vault/.md; unión vault_files + particiones exclusivas new/modified/
+  deleted, has_agent_docs sólo new|modified, métricas, error git EXACTO
+  `git status failed: None` (Python no captura stderr), error vault relativo
+  fuera de root, to_json(indent=2) manual para preservar ORDEN Python de
+  claves (serde_json default ordena alfabético).
+- **PRService completado**: generate_pr_docs y write_pr_docs sobre
+  DocGenerator + index_file semántico selectivo; fallo de index o doc fuera
+  del vault no aborta (Python loguea warning).
+
+Gate: `bench/parity/p12a4_golden.py` + `examples/p12a4_check.rs`, S01–S14:
+session completa/vacía, safe_filename, skip/write, validator inexistente/
+sin-fm/válida/embed roto/YAML inválido/parcial, verifier from_list/git
+nonrepo/vault fuera, contenido e JSON byte-a-byte.
+
+Verificación: gate verify PASS + checker PARIDAD COMPLETA · cargo test -p
+cortex-app 76 passed · clippy/fmt limpios · suite Python oráculo completa
+verde (`PYTEST_RC=0`).
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
 |---|---|
 | ~~P12A-2 workitems/hu (~685)~~ | ✅ completada |
 | ~~P12A-3 pr_context (~623) + gate CliRunner→checker~~ | ✅ completada |
-| P12A-4 doc_generator/doc_validator/doc_verifier (~590) | pendiente |
+| ~~P12A-4 doc_generator/doc_validator/doc_verifier (~590)~~ | ✅ completada |
 | P12A-5 spec_service + note_service (~541) | pendiente |
 | P12A-6 documentation/migration docs-migrate (~565) | pendiente |
 | P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902) | pendiente |
