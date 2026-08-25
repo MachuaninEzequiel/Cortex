@@ -10,4 +10,3 @@
 │     7.      🔌     Integración IDE          Cómo conectar Cortex con tu IDE via MCP              │
 │                                                                                                  │
 ╰──────────────────────────────── q = salir | número = ver tópico ─────────────────────────────────╯
-
