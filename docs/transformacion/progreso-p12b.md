@@ -28,13 +28,26 @@
 - **Cargo.lock compartido**: el diff actual contiene un hunk ajeno de A
   (`cortex-setup` en deps de cortex-app) ⇒ se commitea SIN lock hasta que
   A integre los suyos (regla §7.2.2).
+- **[P12B-2] sum() de CPython ≥3.12 usa Neumaier**: `_cosine_similarity`
+  del oráculo NO es suma ingenua — el builtin suma floats con compensación.
+  Por eso los scores salen del kernel G4 (`cortex_core::webgraph`, Neumaier)
+  y NO debe portearse nunca con `fold(0.0, +)` (divergencia 1 ULP verificada
+  empíricamente contra Python 3.12.14).
+- **[P12B-2] serde_json feature `float_roundtrip`**: sin ella, el re-parseo
+  del caché de snapshots perdía 1 ULP en floats como 0.9526919036834995
+  (parser default no correctamente redondeado) ⇒ respuestas cacheadas ≠
+  frescas y gate S07/F01 rojo. Con la feature, round-trip exacto. Sin deps
+  nuevas (feature de serde_json ya aprobado).
+- **[P12B-2] federación resuelve memoria por config**: workspace.yaml sin
+  clave `memory:` ⇒ resolver `resolve_episodic_persist_dir` (default
+  `memory/`) igual que EpisodicSource Python; NO devolver vacío.
 
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
 | P12B-1 crate cortex-workspace (layout 564 + handoff 121 + git_policy 111 + skills 98 + runtime_context 58 ≈ 1076 LOC py) | ✅ | Gate: `bench/parity/workspace_golden_p12b.py` build/verify determinista + `examples/workspace_check.rs` **byte-parity** sobre 8 escenarios de discovery + handoff H01–H06 (zoo quoting/folding/multilínea/tab congelados vs PyYAML real) + validaciones inválidas + snippets/gitignore + slugify/persist-modes (fake-git y repo REAL `feature/Mi_Rama`) + skills con hashes. Suite Python oráculo verde: **2455 passed, 18 skipped**. `cargo test -p cortex-workspace`: 27 tests ✅ · clippy `-D warnings` ✅ · fmt ✅ | (este commit) |
-| P12B-2 webgraph-server axum (~2202) | ⏳ pendiente | — | — |
+| P12B-2 webgraph-server axum (~2202) | ✅ | Gate: `bench/parity/webgraph_golden_p12b.py` build/verify determinista + `examples/webgraph_check.rs` **byte-parity** vs `golden_webgraph.txt` (server real axum/Flask en puertos efímeros, fixture fake_embed SHA-256 + export P3, normalización {{ROOT}}/{{TS}}/{{FP}}; 19 casos single + 3 federados). Suite Python oráculo rc=0. clippy `-D warnings` ✅ fmt ✅ tests 3 ✅ | `2761356` |
 | P12B-3 enterprise/review_knowledge (~2441) | ⏳ pendiente | — | — |
 | P12B-4 doctor (~925) | ⏳ pendiente | golden P0 congela salida; checks sin backend nativo ⇒ fail explícito documentado (patrón P6/P9) | — |
 | P12B-5 autopilot (~1902) | ⏳ pendiente | spec: tests/unit/autopilot | — |
