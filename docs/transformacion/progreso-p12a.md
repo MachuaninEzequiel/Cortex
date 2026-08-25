@@ -126,6 +126,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-4 doc_generator/doc_validator/doc_verifier | ✅ | `bench/parity/p12a4_golden.py` verify PASS + `p12a4_check` S01–S14 PARIDAD COMPLETA byte-a-byte (contenido/filenames, issues, clasificación y JSON); suite oráculo verde | `d682bee` |
 | P12A-5 cortex-services: SpecService + NoteService | ✅ | `bench/parity/p12a5_golden.py` verify PASS + `p12a5_check` S01–S10 PARIDAD COMPLETA byte-a-byte (contenido, payloads, proposal/hooks/session y rollback); suite oráculo verde | `fffc4cd` |
 | P12A-6 documentation/migration (docs-migrate) | ✅ | `bench/parity/p12a6_golden.py` verify PASS + `p12a6_check` S01–S12 PARIDAD COMPLETA byte-a-byte (dry-run/apply/idempotencia/force/inferencia/report/legacy/backups/status/validate/títulos/fechas); suite oráculo verde | `bc9d218` |
+| P12A-7 context extras (filters/domain/observer/telemetry/presenter) | ✅ | `bench/parity/p12a7_golden.py` verify PASS + `p12a7_check` S01–S27 PARIDAD COMPLETA byte-a-byte (filtros, presentadores ×5, detector reglas+embedding a 6 decimales, observer files/pr/git, telemetría JSONL/aggregate/citas); suite oráculo verde | `34b9064` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -317,6 +318,47 @@ cortex-services 10 passed · clippy/fmt limpios · suite Python completa verde
 huérfano sin proceso vivo (bloqueaba ambos streams bajo la convención mkdir);
 fue eliminado antes del gate.
 
+## P12A-7 — context extras (filters/domain/observer/telemetry/presenter)
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Nuevos módulos en **`cortex-app/src/context/`** completando el enricher P7:
+
+- **`filters.rs`**: `EnrichmentFilters` + `apply_filters(_at)` AND-compuestos
+  (doc_types strict/tolerante, statuses in/out, tags AND/OR/exclude,
+  vault_scope, max_age con naive⇒UTC y clock inyectable, project_ids);
+  default no-op con `vault_scope="all"`.
+- **`domain_detector.rs`**: DOMAIN_RULES canónica (12 dominios) + RULE_ORDER;
+  scoring 0.6 archivos / 0.4 keywords; fallback embeddings vía
+  `cortex_embed` ONNX all-MiniLM-L6-v2 con centroides idénticos al Python —
+  confianzas iguales a 6 decimales en todos los casos sub-threshold del gate
+  (0.167022 i18n, 0.437747 auth, 0.360362, 0.316439…).
+- **`observer.rs`**: `ContextObserver` git_diff/pr/manual; extractores regex
+  MULTILINE de imports top-level/functions (filtro if/else/for/while por
+  substring como Python)/classes; keywords por frecuencia top-15 estables;
+  text_keywords únicos max-10; 4 search queries.
+- **`telemetry.rs`**: `PersistentObserver` JSONL append-only con rotación
+  5 MB→`.1.jsonl`; iter (rotada primero, malformed skip), events_for_run,
+  aggregate (hit rate global y por estrategia en orden de primer
+  aparecimiento = Counter, percentiles p50/p95/p99 interpolados),
+  `detect_citations` wiki/md con alias/ancla/dedup por orden ofrecido,
+  `make_observer` con bloque retrieval.telemetry. Emisión JSONL y payloads
+  en orden de dict de Python vía Pj compacto + conversión Value→Pj
+  canónica (serde_json ordena claves ⇒ no contrato directo).
+- **`presenter.rs`**: markdown/compact/grouped×2 (grupos ordenados por max
+  enriched_score desc estable; OTHER al final); excerpt 200/300 chars con
+  `…`; labels `_search/_query` stripped.
+- **models/pyjson**: `dumps_ascii` (ensure_ascii=True default de json.dumps)
+  para presenter.to_json; campo `within_budget_override` (EnrichedContext lo
+  trae como campo, no calculado); `Pj: Clone`.
+
+Gate `p12a7` S01–S27 con normalizaciones {{ROOT}}/{{RUN}}/{{TS}}; S19 usa un
+repo git temporal + chdir (`_run_git` observa el CWD del proceso, igual que
+Python). Verificación: oráculo determinista + checker PARIDAD COMPLETA ·
+cargo test -p cortex-app 96 passed · clippy/fmt limpios · suite Python verde
+(`PYTEST_RC=0`). Nota operativa: `.cortex/heavy.lock` volvió a aparecer como
+archivo huérfano sin proceso vivo; eliminado antes del gate.
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
@@ -326,7 +368,7 @@ fue eliminado antes del gate.
 | ~~P12A-4 doc_generator/doc_validator/doc_verifier (~590)~~ | ✅ completada |
 | ~~P12A-5 spec_service + note_service (~541)~~ | ✅ completada |
 | ~~P12A-6 documentation/migration docs-migrate (~565)~~ | ✅ completada |
-| P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902) | pendiente |
+| ~~P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902)~~ | ✅ completada |
 | P12A-8 documenter/interactive (~342) | pendiente |
 | P12A-9 mcp handlers in-process (~2056) · escritura espera decisión wire-format §4.8 | pendiente |
 
