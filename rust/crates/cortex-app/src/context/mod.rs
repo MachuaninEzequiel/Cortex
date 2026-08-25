@@ -573,7 +573,10 @@ mod tests {
     use chrono::TimeZone;
 
     fn store_vacio() -> NativeEpisodicStore {
-        NativeEpisodicStore { rows: vec![] }
+        NativeEpisodicStore {
+            rows: vec![],
+            src: std::path::PathBuf::new(),
+        }
     }
 
     fn sem_vacio() -> SemanticIndex {

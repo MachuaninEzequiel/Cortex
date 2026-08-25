@@ -1,0 +1,78 @@
+{
+ "vector": [
+  {
+   "query": "workitem HU importado",
+   "docs": [
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.",
+    "Error KeyError: workitem_id faltante al importar HU sin key externa.",
+    "Memoria genérica sin entidades ni archivos adjuntos.",
+    "class WorkItemService delega la escritura en writers.build_note con frontmatter estable.",
+    "Incidente 2026-05-15: subagente colgado 14 minutos + MCP desconectado."
+   ]
+  },
+  {
+   "query": "servicio de workitems escritura",
+   "docs": [
+    "Se agregó endpoint POST /api/memories al servicio REST.",
+    "class WorkItemService delega la escritura en writers.build_note con frontmatter estable.",
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.",
+    "Incidente 2026-05-15: subagente colgado 14 minutos + MCP desconectado.",
+    "Se optimizó el webgraph con rayon: vecinos n1000 en 345ms."
+   ]
+  },
+  {
+   "query": "migración de bóveda",
+   "docs": [
+    "docs-migrate migró la bóveda legacy a estructura canónica specs/ y adr/.",
+    "Memoria genérica sin entidades ni archivos adjuntos.",
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.",
+    "Refactor de VaultReader para soportar frontmatter multilingüe.",
+    "Runbook: si chromadb falla al abrir, borrar .memory/chroma y reindexar."
+   ]
+  },
+  {
+   "query": "error importando workitem",
+   "docs": [
+    "Error KeyError: workitem_id faltante al importar HU sin key externa.",
+    "Error ValueError: invalid literal for int en el parser de config.",
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.",
+    "class WorkItemService delega la escritura en writers.build_note con frontmatter estable.",
+    "Runbook: si chromadb falla al abrir, borrar .memory/chroma y reindexar."
+   ]
+  },
+  {
+   "query": "webgraph rendimiento rayon",
+   "docs": [
+    "Se optimizó el webgraph con rayon: vecinos n1000 en 345ms.",
+    "Memoria genérica sin entidades ni archivos adjuntos.",
+    "Runbook: si chromadb falla al abrir, borrar .memory/chroma y reindexar.",
+    "Decisión de arquitectura: usar RRF con k=60 para fusionar retrieval.",
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy."
+   ]
+  },
+  {
+   "query": "rotación de feedback",
+   "docs": [
+    "Clase FeedbackStore persiste feedback en feedback.jsonl con rotación.",
+    "Incidente 2026-05-15: subagente colgado 14 minutos + MCP desconectado.",
+    "Memoria genérica sin entidades ni archivos adjuntos.",
+    "Refactor de VaultReader para soportar frontmatter multilingüe.",
+    "Se agregó endpoint POST /api/memories al servicio REST."
+   ]
+  }
+ ],
+ "keyword": [
+  {
+   "query": "HU-123.md",
+   "docs": [
+    "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy."
+   ]
+  },
+  {
+   "query": "build_note",
+   "docs": [
+    "class WorkItemService delega la escritura en writers.build_note con frontmatter estable."
+   ]
+  }
+ ]
+}

@@ -9,6 +9,7 @@ minijinja = { workspace = true }
 unicode-normalization = { workspace = true }
 chrono = { workspace = true }
 cortex-embed = { path = "../cortex-embed", features = ["onnx"] }
+uuid = { version = "1", default-features = false, features = ["v4"] }
 regex = "1"
 cortex-config = { path = "../cortex-config" }
 serde = { workspace = true }

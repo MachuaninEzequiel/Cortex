@@ -16,6 +16,10 @@ pub mod routing;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+/// Batch-embedder inyectable (espejo de `_embed_batch_with_cache`):
+/// textos → vectores, uno por texto.
+pub type EmbedBatchFn<'a> = &'a mut dyn FnMut(&[String]) -> Result<Vec<Vec<f64>>, String>;
+
 /// Chunk indexado con su vector de embedding (P2b).
 #[derive(Debug, Clone)]
 pub struct IndexedChunk {
@@ -79,16 +83,37 @@ impl SemanticIndex {
         }
 
         // doc_lengths + IDF + avgdl (idéntico a sync()).
-        let mut doc_lengths: HashMap<String, usize> = HashMap::new();
-        for d in &docs {
-            let len = format!("{} {}", d.title, d.content)
-                .split_whitespace()
-                .count();
-            doc_lengths.insert(d.rel.clone(), len);
-        }
-        let n_docs = docs.len().max(1) as f64;
+        let mut idx = Self {
+            docs,
+            chunks: Vec::new(),
+            by_rel,
+            doc_lengths: HashMap::new(),
+            idf: HashMap::new(),
+            avgdl: 1.0,
+        };
+        idx.recompute_stats();
+        Ok(idx)
+    }
+
+    /// Recalcula doc_lengths + avgdl + IDF desde `docs` — bloque compartido
+    /// por `build()` (sync) e `index_file()` (`_compute_idf` tras cada
+    /// escritura). Misma matemática que VaultReader.
+    pub fn recompute_stats(&mut self) {
+        self.doc_lengths = self
+            .docs
+            .iter()
+            .map(|d| {
+                (
+                    d.rel.clone(),
+                    format!("{} {}", d.title, d.content)
+                        .split_whitespace()
+                        .count(),
+                )
+            })
+            .collect();
+        let n_docs = self.docs.len().max(1) as f64;
         let mut df: HashMap<String, usize> = HashMap::new();
-        for d in &docs {
+        for d in &self.docs {
             let text = format!("{} {}", d.title, d.content).to_lowercase();
             let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
             for word in text.split_whitespace() {
@@ -97,28 +122,19 @@ impl SemanticIndex {
                 }
             }
         }
-        let idf: HashMap<String, f64> = df
+        self.idf = df
             .into_iter()
             .map(|(t, c)| {
                 let v = ((n_docs - c as f64 + 0.5) / (c as f64 + 0.5) + 1.0).ln();
                 (t, v)
             })
             .collect();
-        let total: usize = doc_lengths.values().sum();
-        let avgdl = if docs.is_empty() {
+        let total: usize = self.doc_lengths.values().sum();
+        self.avgdl = if self.docs.is_empty() {
             1.0
         } else {
-            total as f64 / docs.len() as f64
+            total as f64 / self.docs.len() as f64
         };
-
-        Ok(Self {
-            docs,
-            chunks: Vec::new(),
-            by_rel,
-            doc_lengths,
-            idf,
-            avgdl,
-        })
     }
 
     /// P2b: construye chunks (routing+chunker) y embebe en un solo lote
@@ -132,25 +148,12 @@ impl SemanticIndex {
         &mut self,
         embedder: &mut cortex_embed::onnx::OnnxEmbedder,
     ) -> Result<usize, String> {
-        let mut infos: Vec<chunker::Chunk> = Vec::new();
-        for d in &self.docs {
-            let doc_type = routing::doc_type_from_rel(&d.rel).unwrap_or(routing::DocType::Glossary);
-            let route = routing::route(doc_type);
-            if !route.chunking_enabled {
-                let title = if d.title.is_empty() {
-                    "(untitled)".to_string()
-                } else {
-                    d.title.clone()
-                };
-                infos.push(chunker::single_chunk_public(
-                    &d.content, &title, doc_type, &d.tags, &d.rel,
-                ));
-            } else {
-                infos.extend(chunker::chunk_document(
-                    &d.title, &d.content, doc_type, &d.tags, &d.rel, route,
-                ));
-            }
-        }
+        let infos: Vec<chunker::Chunk> = self
+            .docs
+            .iter()
+            .map(chunks_for_doc)
+            .collect::<Vec<_>>()
+            .concat();
         let texts: Vec<String> = infos.iter().map(|c| c.embedding_text()).collect();
         let vectors = embedder.embed_batch(&texts)?;
         self.chunks = infos
@@ -159,6 +162,63 @@ impl SemanticIndex {
             .map(|(info, embedding)| IndexedChunk { info, embedding })
             .collect();
         Ok(self.chunks.len())
+    }
+
+    /// Puerto de `VaultReader.index_file` (P12A-1): re-parsea UN archivo del
+    /// vault, upsertea el documento (posición de inserción preservada si ya
+    /// existía, como el dict de Python), purga y regenera sus chunks,
+    /// recalcula BM25 (lengths/avgdl/IDF completos) y embebe los chunks
+    /// nuevos vía el batch-embedder provisto. Devuelve Ok(false) si el
+    /// archivo no existe (mismo resultado que Python); los demás errores van
+    /// como Err(msg) — estrictamente más informativo que el False+log de
+    /// Python. La invalidación granular del vector-cache persistente no
+    /// aplica: el índice nativo no tiene caché en disco.
+    pub fn index_file(
+        &mut self,
+        vault: &Path,
+        rel: &str,
+        embed_batch: EmbedBatchFn<'_>,
+    ) -> Result<bool, String> {
+        let path =
+            crate::security::resolve_safe(vault, Path::new(rel)).map_err(|e| e.to_string())?;
+        if !path.exists() {
+            return Ok(false);
+        }
+        let raw = std::fs::read_to_string(&path).map_err(|e| format!("index_file {}: {e}", rel))?;
+        let parsed = parser::parse(&raw, &path);
+        let doc = SemDoc {
+            path: path.to_string_lossy().replace('\\', "/"),
+            rel: rel.to_string(),
+            title: parsed.title,
+            content: parsed.content,
+            tags: parsed.tags,
+            links: parsed.links,
+        };
+
+        // Upsert: clave existente conserva posición; nueva va al final.
+        match self.by_rel.get(rel) {
+            Some(&i) => self.docs[i] = doc,
+            None => {
+                self.by_rel.insert(rel.to_string(), self.docs.len());
+                self.docs.push(doc);
+            }
+        }
+
+        // Purga + regeneración de chunks de este padre.
+        let doc_ref = self.get_by_rel(rel).expect("recién insertado");
+        let nuevos = chunks_for_doc(doc_ref);
+        self.chunks.retain(|c| c.info.parent_path != rel);
+        if !nuevos.is_empty() {
+            let texts: Vec<String> = nuevos.iter().map(|c| c.embedding_text()).collect();
+            let vectors = embed_batch(&texts)?;
+            for (info, embedding) in nuevos.into_iter().zip(vectors) {
+                self.chunks.push(IndexedChunk { info, embedding });
+            }
+        }
+
+        // BM25: lengths + avgdl + IDF completos (`_compute_idf`).
+        self.recompute_stats();
+        Ok(true)
     }
 
     /// Búsqueda semántica: coseno por chunk (>0), max por padre (primer máximo
@@ -255,6 +315,26 @@ impl SemanticIndex {
     }
 }
 
+/// Chunks de un documento según routing — compartido por `sync`
+/// (`attach_embeddings_with`) e `index_file`, para que ambos caminos
+/// produzcan exactamente los mismos chunks.
+fn chunks_for_doc(d: &SemDoc) -> Vec<chunker::Chunk> {
+    let doc_type = routing::doc_type_from_rel(&d.rel).unwrap_or(routing::DocType::Glossary);
+    let route = routing::route(doc_type);
+    if !route.chunking_enabled {
+        let title = if d.title.is_empty() {
+            "(untitled)".to_string()
+        } else {
+            d.title.clone()
+        };
+        vec![chunker::single_chunk_public(
+            &d.content, &title, doc_type, &d.tags, &d.rel,
+        )]
+    } else {
+        chunker::chunk_document(&d.title, &d.content, doc_type, &d.tags, &d.rel, route)
+    }
+}
+
 fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     let rd = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for entry in rd {
@@ -278,4 +358,86 @@ fn cosine(a: &[f64], b: &[f64]) -> f64 {
         return 0.0;
     }
     dot / (norm_a * norm_b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn vault_tmp(tag: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("cortex_sem_{tag}_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("specs")).unwrap();
+        d
+    }
+
+    fn escribir(d: &Path, rel: &str, contenido: &str) {
+        let p = d.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, contenido).unwrap();
+    }
+
+    #[test]
+    fn index_file_incremental_igual_a_rebuild() {
+        let d = vault_tmp("incr");
+        escribir(&d, "glosario.md", "---\ntitle: Glosario\n---\n# Glosario\n\nLa memoria híbrida fusiona rankings con RRF y k=60.\n");
+        escribir(&d, "specs/2026-06-01_foo.md", "---\ntitle: Spec foo\ndoc_type: spec\n---\nObjetivo: validar el gate de paridad del store episódico nativo.\n");
+        escribir(
+            &d,
+            "nota.md",
+            "# Nota\n\nTexto suelto sobre webgraph y rayon.\n",
+        );
+
+        let mut base = SemanticIndex::build(&d).unwrap();
+
+        // Modificamos UN archivo en disco y reindexamos incrementalmente.
+        escribir(&d, "specs/2026-06-01_foo.md", "---\ntitle: Spec foo v2\ndoc_type: spec\n---\nNuevo cuerpo: ahora habla del gate de paridad del workitem HU-1 y del cold start.\n");
+        let ok = base.index_file(&d, "specs/2026-06-01_foo.md", &mut |_| {
+            Ok(vec![vec![0.0; 4]; 3])
+        });
+        assert!(matches!(ok, Ok(true)), "{ok:?}");
+
+        // Rebuild completo sobre el vault ya modificado.
+        let full = SemanticIndex::build(&d).unwrap();
+
+        // Mismos rankings bm25 incremental vs rebuild.
+        for q in ["gate paridad", "cold start", "webgraph"] {
+            let inc = base.bm25_search(q, 3);
+            let reb = full.bm25_search(q, 3);
+            let inc_rels: Vec<&str> = inc.iter().map(|(d, _)| d.rel.as_str()).collect();
+            let reb_rels: Vec<&str> = reb.iter().map(|(d, _)| d.rel.as_str()).collect();
+            assert_eq!(inc_rels, reb_rels, "query {q}");
+        }
+        // Y el documento reindexado refleja el nuevo título (upsert real).
+        assert_eq!(
+            base.get_by_rel("specs/2026-06-01_foo.md").unwrap().title,
+            "Spec foo v2"
+        );
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn index_file_archivo_inexistente_false() {
+        let d = vault_tmp("missing");
+        escribir(&d, "nota.md", "# Nada\n");
+        let mut idx = SemanticIndex::build(&d).unwrap();
+        let r = idx.index_file(&d, "no_existe.md", &mut |_| Ok(vec![]));
+        assert!(matches!(r, Ok(false)));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn index_file_archivo_nuevo_agrega_al_final() {
+        let d = vault_tmp("nuevo");
+        escribir(&d, "a.md", "---\ntitle: A\n---\nuno dos tres\n");
+        let mut idx = SemanticIndex::build(&d).unwrap();
+        escribir(&d, "sub/b.md", "---\ntitle: B\n---\ncuatro cinco seis\n");
+        let ok = idx
+            .index_file(&d, "sub/b.md", &mut |_| Ok(vec![vec![0.0; 2]]))
+            .unwrap();
+        assert!(ok);
+        assert_eq!(idx.docs.len(), 2);
+        assert_eq!(idx.get_by_rel("sub/b.md").unwrap().title, "B");
+        std::fs::remove_dir_all(&d).ok();
+    }
 }
