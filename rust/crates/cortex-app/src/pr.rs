@@ -24,7 +24,8 @@ use std::process::Command;
 
 use regex::RegexBuilder;
 
-use crate::workitems::{EpisodicMemoryRequest, EpisodicSink};
+use crate::doc_generator::{DocGenerator, GeneratedDoc};
+use crate::workitems::{EpisodicMemoryRequest, EpisodicSink, SemanticIndexer};
 
 // ── PRContext (cortex/models.py) ────────────────────────────────────────────
 
@@ -549,10 +550,11 @@ pub fn enrich_with_pipeline(
 
 // ── services/pr_service.py ─────────────────────────────────────────────────
 
-/// Puerto de `PRService.store_pr_context` (la parte de docs entra P12A-4).
+/// Puerto de `PRService` completo (services/pr_service.py).
 pub struct PRService<'a> {
     vault_path: PathBuf,
     episodic: Option<&'a mut dyn EpisodicSink>,
+    semantic: Option<&'a mut dyn SemanticIndexer>,
     context_metadata: std::collections::BTreeMap<String, serde_json::Value>,
 }
 
@@ -561,8 +563,15 @@ impl<'a> PRService<'a> {
         Self {
             vault_path: vault_path.into(),
             episodic,
+            semantic: None,
             context_metadata: Default::default(),
         }
+    }
+
+    /// Inyecta el VaultReader nativo (index_file selectivo tras escribir).
+    pub fn with_semantic(mut self, semantic: &'a mut dyn SemanticIndexer) -> Self {
+        self.semantic = Some(semantic);
+        self
     }
 
     pub fn with_context_metadata(
@@ -621,6 +630,40 @@ impl<'a> PRService<'a> {
             files: ctx.files_changed.iter().take(20).cloned().collect(),
             extra_metadata: self.context_metadata.clone(),
         })
+    }
+
+    /// `generate_pr_docs`: delega en el DocGenerator fallback.
+    pub fn generate_pr_docs(
+        &self,
+        ctx: &PRContext,
+        now: chrono::DateTime<chrono::Utc>,
+        skip_types: &[&str],
+    ) -> Vec<GeneratedDoc> {
+        DocGenerator::new(&self.vault_path).generate_all(ctx, now, skip_types)
+    }
+
+    /// `write_pr_docs`: escribe cada doc e INDEXA inmediatamente (si hay
+    /// semantic); sin semantic escribe pero NO indexa (Python lo loguea).
+    pub fn write_pr_docs(&mut self, docs: &[GeneratedDoc]) -> Result<Vec<String>, String> {
+        let written = DocGenerator::new(&self.vault_path).write_docs(docs)?;
+        let mut out = Vec::with_capacity(written.len());
+        for path in &written {
+            if let Some(semantic) = self.semantic.as_deref_mut() {
+                match path.strip_prefix(&self.vault_path) {
+                    Ok(rel) => {
+                        let rel_s = rel.to_string_lossy().replace('\\', "/");
+                        if !semantic.index_file(&rel_s) {
+                            // fallo de index no aborta (Python sólo loguea)
+                        }
+                    }
+                    Err(_) => {
+                        // doc fuera del vault — skip defensivo (Python loguea)
+                    }
+                }
+            }
+            out.push(path.display().to_string());
+        }
+        Ok(out)
     }
 }
 

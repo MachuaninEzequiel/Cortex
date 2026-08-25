@@ -16,6 +16,9 @@
 
 pub mod ci;
 pub mod context;
+pub mod doc_generator;
+pub mod doc_validator;
+pub mod doc_verifier;
 pub mod documenter;
 pub mod episodic;
 pub mod git;
