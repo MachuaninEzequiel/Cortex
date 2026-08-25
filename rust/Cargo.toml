@@ -9,6 +9,8 @@ members = [
     # Obra 07 (migración total): docs/transformacion/08-MIGRACION-TOTAL-RUST.md
     "crates/cortex-config",
     "crates/cortex-app",
+    # Obra 07 P12A-5 (spec/note services, stream A): doc 09 §3.15/§7
+    "crates/cortex-services",
     # Obra 07 P10 (branding + TUI): docs/transformacion/10-P10-BRANDING-TUI.md
     "crates/cortex-branding",
     "crates/cortex-tui",
