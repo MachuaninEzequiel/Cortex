@@ -20,6 +20,8 @@ members = [
     "crates/cortex-mcp",
     # Obra 07 P12B-1 (workspace/layout+misc, stream B): doc 09 §3.9/§7
     "crates/cortex-workspace",
+    # Obra 07 P12B-2 (webgraph server axum, stream B): doc 09 §3.3/§7
+    "crates/cortex-webgraph-server",
 ]
 
 [workspace.package]

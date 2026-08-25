@@ -1,0 +1,26 @@
+[package]
+name = "cortex-webgraph-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = "0.8"
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_yaml = { workspace = true }
+sha2 = { workspace = true }
+chrono = { workspace = true }
+minijinja = { workspace = true }
+regex = "1"
+rayon = "1"
+cortex-core = { path = "../cortex-core" }
+cortex-app = { path = "../cortex-app" }
+cortex-workspace = { path = "../cortex-workspace" }
+cortex-setup = { path = "../cortex-setup" }
+
+[dev-dependencies]
+tempfile = "3"
+# Gate P12B-2: cliente HTTP mínimo sobre std para golpear el server real.
+httparse = "1"
