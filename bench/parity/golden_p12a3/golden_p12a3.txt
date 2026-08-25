@@ -1,0 +1,128 @@
+### S01 json mínimo
+rc=0
+{
+  "pr_number": 0,
+  "title": "Fix login bug",
+  "body": "",
+  "author": "dev1",
+  "source_branch": "fix/login",
+  "target_branch": "main",
+  "commit_sha": "abc123",
+  "files_changed": [],
+  "diff_summary": "",
+  "db_migrations": [],
+  "api_changes": [],
+  "labels": [],
+  "lint_result": null,
+  "audit_result": null,
+  "test_result": null
+}### S02 json completo
+rc=0
+{
+  "pr_number": 42,
+  "title": "Implementar búsqueda semántica",
+  "body": "Cuerpo con acentos: búsqueda\ny salto de línea",
+  "author": "chucho",
+  "source_branch": "feature/hu-42",
+  "target_branch": "develop",
+  "commit_sha": "deadbeefcafe",
+  "files_changed": [
+    "src/routes/users.js",
+    "migrations/001.sql"
+  ],
+  "diff_summary": " src/routes/users.js | 10 ++++\n 1 file changed",
+  "db_migrations": [],
+  "api_changes": [],
+  "labels": [
+    "rag",
+    "backend"
+  ],
+  "lint_result": "pass",
+  "audit_result": null,
+  "test_result": null
+}### S03 hu_references
+rc=0
+HU-100
+HU-200
+HU-42
+HU-7
+HU-9
+US-9### S04 has_db_changes
+rc=0
+con=True
+sin=False### S05 has_api_changes
+rc=0
+con=True
+sin=False### S06 has_adr_label
+rc=0
+con=True
+sin=False### S07 capture_manual sin repo
+rc=0
+title=Test PR
+author=dev1
+branch=test
+body=Fixed the refresh token issue
+target=main
+files=[]
+diff=''### S08 capture_from_github env
+rc=0
+number=7
+title=Env captured PR
+author=alice
+source=feature/env
+target=develop
+commit=deadbeef
+labels=['ci', 'deploy']
+files=[]### S09 detectores directos
+rc=0
+db=["migrations/001.sql", "schema.sql"]
+api=["src/routes/users.js", "src/controllers/auth.js"]### S10 enrich inmutabilidad
+rc=0
+enriched_lint=pass
+enriched_audit=fail: 2 high vulnerabilities
+enriched_test=pass
+original_lint=None### S11 PRService.store_pr_context
+rc=0
+{
+ "episodico": [
+  {
+   "content": "PR #42: Fix login bug by dev1 (fix/login -> main)\n\nDescription: refresh token\n\nDiff:\n src/main.py | 2 +-\n 1 file changed\n\nLint: pass\n\nAudit: n/a\n\nTests: pass",
+   "extra_metadata": {
+    "workspace": "obra07"
+   },
+   "files": [
+    "f0.py",
+    "f1.py",
+    "f2.py",
+    "f3.py",
+    "f4.py",
+    "f5.py",
+    "f6.py",
+    "f7.py",
+    "f8.py",
+    "f9.py",
+    "f10.py",
+    "f11.py",
+    "f12.py",
+    "f13.py",
+    "f14.py",
+    "f15.py",
+    "f16.py",
+    "f17.py",
+    "f18.py",
+    "f19.py"
+   ],
+   "memory_type": "pr",
+   "tags": [
+    "pr",
+    "dev1",
+    "bugfix"
+   ]
+  }
+ ]
+}### S12 roundtrip json
+rc=0
+iguales=True
+title=Roundtrip
+labels=['rt']
+pr_number=9

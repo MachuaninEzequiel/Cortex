@@ -19,6 +19,7 @@ pub mod context;
 pub mod documenter;
 pub mod episodic;
 pub mod git;
+pub mod pr;
 pub mod security;
 pub mod semantic;
 pub mod session;
