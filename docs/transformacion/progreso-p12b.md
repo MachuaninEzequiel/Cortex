@@ -831,6 +831,269 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   paridad de contenido garantizada por construcción, divergencia solo en
   estilos ANSI.
 
+### Diseño aprobado P12B-8 — cortex-cli clap nativo (cierre del Stream B)
+
+- **ADR chico — activación de clap 4 en cortex-cli**: clap 4 ya figuraba
+  como dependencia declarada del crate desde G6 (sin uso). Se activa la
+  feature `derive` (única adición real al árbol de deps: `clap_derive` +
+  transitivas de proc-macro), manteniendo `default-features = false`
+  (sin color ni sugerencias ⇒ help/errores deterministas y self-golden
+  estables). Sin más deps nuevas: el passthrough usa std::process::Command,
+  el JSON paridad se emite con writers propios y la TUI no se toca.
+- **Arquitectura de dispatch (routing manual previo a clap)**:
+  `CORTEX_PY=1` → passthrough TOTAL inmediato; `--cli-version` → línea
+  nativa (compat contrato fachada); argv vacío (Home TUI) → passthrough;
+  `--help/-h` solos → help clap (self-golden); primer token ∈ wireados →
+  clap parsea ESE subárbol y ejecuta nativo; cualquier otra cosa →
+  reenvío del argv ORIGINAL byte-idéntico al CLI Python (`CORTEX_BIN`
+  override o `cortex` en PATH, mensaje 127 actual). Así los errores de
+  comando desconocido/args de comandos NO wireados salen del propio Typer
+  (paridad gratis) y clap solo gobierna lo que ejecuta nativo.
+- **Paridad (decisión del dueño)**: comandos funcionales wireados =
+  byte-parity stdout/stderr/rc vs oráculo Python. Textos `--help` y errores
+  de args de comandos wireados = **self-golden** (snapshots congelados en
+  tests/checker Rust): Typer y clap formatean distinto por diseño;
+  divergencia cosmética documentada (precedente: ANSI del tutor).
+- **Alcance Tier 1 estricto (decisión del dueño)**: se wirean SOLO
+  comandos de crates B: doctor, tutor (+menú EOF), hint, org-config,
+  promote-knowledge, review-knowledge ×4, memory-report, webgraph export,
+  autopilot preflight, agent-guidelines, install-skills. Todo lo demás
+  (session/ide/ci/docs/pr-context/hu/next/brain/setup/embedding/mcp/
+  documenting trio/search/context/remember/stats/Home TUI/-V) queda
+  PASSTHROUGH residual post-P12, inventariado al cierre.
+- **Writers JSON duales**: (1) `pydantic_json(indent=2)` para
+  `model_dump_json(indent=2)` — UTF-8 crudo, orden de campos serde=
+declaración pydantic; (2) `stdlib_json(indent=2)` para `json.dumps(...,
+indent=2)` — ensure_ascii=True con pares sustitutos >0xFFFF, separadores
+de indent anidados. Lección #1 aplica.
+- **Panel rich para hint**: réplica del Panel(width=80 non-tty,
+  padding=(1,2), title="{icon} {title}") sin ANSI; líneas en blanco
+  alrededor. El oráculo corre pipado en ambos lados ⇒ determinista.
+- **Fixtures FUERA del repo** (lección #3): mkdtemp externo porque
+  hint/doctor detectan estado caminando hacia arriba. Normalización
+  {{ROOT}}/{{TS}} pactada.
+- **Cold start**: medición documentada sobre binario release (`hint` y
+  `--cli-version`, mediana N≈20); objetivo <100 ms; rollback CORTEX_PY=1
+  probado en gate.
+
+## Cortex CLI P12B-8 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:executing-plans (inline; los subagentes medium del paquete
+> fueron borrados y el cupo falló 3× en sesión anterior). Steps usan
+> checkbox (`- [ ]`).
+
+**Goal:** binario clap nivel-1 con subcomandos nativos que consumen los
+crates B, passthrough residual al CLI Python y rollback CORTEX_PY=1,
+con cold start <100 ms medido.
+
+**Architecture:** routing manual de primer token → clap derive solo para
+subárboles wireados → ejecución nativa por crate; catch-all passthrough
+byte-idéntico. Writers JSON propios para las dos semánticas de Python.
+
+**Tech Stack:** clap 4 (derive, default-features=false), crates
+workspace read-only (doctor/tutor/enterprise/workspace/webgraph-server/
+autopilot/setup), serde_json float_roundtrip; oráculo `.venv/bin/cortex`.
+
+**Spec:** sección “Diseño aprobado P12B-8” de este archivo.
+
+### Global Constraints
+
+- Territorio: `rust/crates/cortex-cli/` + hunk propio de deps en su
+  Cargo.toml + `bench/parity/cli_golden_p12b.py` + este archivo.
+  cortex-app/mcp/actions/services INTACTOS (A cerró).
+- Un gate por commit: commit feature atómico recién con TODO verde.
+- Suite Python completa UNA vez pre-commit bajo
+  `flock .cortex/heavy.lock` + `timeout 1200` + threads=2 +
+  `CARGO_BUILD_JOBS=6`; baseline trunk conocida (e2e setup/autopilot/
+  artefact_integrity preexistentes).
+- Staging quirúrgico; Cargo.lock solo si diff 100% atribuible a B
+  (clap_derive lo es).
+
+---
+
+### Task 1: Esqueleto dispatch + passthrough + rollback
+
+**Files:**
+- Rewrite: `rust/crates/cortex-cli/src/main.rs`
+- Create: `rust/crates/cortex-cli/src/fallback.rs`
+- Modify: `rust/crates/cortex-cli/Cargo.toml` (clap += "derive"; deps
+  workspace crates se agregan por tarea según se wirean)
+- Test: `rust/crates/cortex-cli/tests/cli_dispatch.rs`
+
+**Interfaces:**
+- Produces: `fallback::passthrough(argv) -> !` (hereda stdio, propaga rc,
+  mensaje 127 actual si no hay binario), `fallback::python_bin() -> String`.
+
+- [ ] **Step 1: tests rojos de dispatch**
+
+```rust
+// tests/cli_dispatch.rs
+use std::process::Command;
+fn bin() -> Command { Command::new(env!("CARGO_BIN_EXE_cortex-cli")) }
+
+#[test]n cli_version_native() {
+    let out = bin().arg("--cli-version").output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "cortex-cli 0.1.0");
+}
+#[test]n cortex_py_forces_passthrough() {
+    // CORTEX_PY=1 + --cli-version DELEGA al CLI python (que no conoce ese flag
+    // ⇒ error de Typer, exit≠0): prueba que el env se chequea ANTES del dispatch.
+    let out = bin().env("CORTEX_PY", "1")
+        .env("CORTEX_BIN", "/bin/false")   // binario que existe y falla
+        .arg("--cli-version").output().unwrap();
+    assert_eq!(out.status.code(), Some(1)); // rc de /bin/false, NO 0 nativo
+}
+#[test]n unknown_command_passes_through_original_argv() {
+    let out = bin().env("CORTEX_PY", "1")
+        .env("CORTEX_BIN", "/bin/echo")
+        .args(["frobnicate", "--x", "1"]).output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "frobnicate --x 1\n");
+}
+```
+
+- [ ] **Step 2: RED visible** — `cargo test -p cortex-cli` FAIL.
+
+- [ ] **Step 3: implementar main.rs mínimo**: check CORTEX_PY → fallback;
+  `--cli-version`; argv==["--help"]/["-h"] → clap help del Parser raíz;
+  resto → fallback::passthrough(argv original). Routing por primer token
+  queda como match abierto para Tasks 2–7.
+
+- [ ] **Step 4: GREEN + clippy/fmt focalizado.**
+
+### Task 2: doctor + agent-guidelines + install-skills
+
+**Files:** Create `src/commands/{mod,doctor,misc}.rs`; Test
+`tests/cli_commands_basic.rs`. Deps += cortex-doctor, cortex-workspace.
+
+**Interfaces:**
+- Consumes: `cortex_doctor::{run_doctor, DoctorScope}`,
+  `cortex_workspace::skills::install_skills(&Path) -> Vec<String>`;
+  recurso `include_str!("../../../cortex/agent_guidelines.md")`.
+
+- [ ] **Step 1: test rojo** — `doctor --project-root <tmp vacío>` imprime
+  `[FAIL] config_yaml: ...` a stderr, `[OK] project_root...`? NO: replica
+  EXACTA de main.py: ok→`[OK] name: detail` stdout GREEN(no-tty=plain);
+  fail→stderr `[FAIL] ...`; warn→stdout `[WARN]`; info→stdout `[INFO]`;
+  rc=1 si has_failures; strict+warnings→rc=1. Assert contra salida
+  esperada literal de un fixture vacío (root inexistente → todos fails).
+- [ ] **Step 2: RED → Step 3: implementar render loop + rc** → **Step 4:
+  GREEN**. `agent-guidelines`: bytes completos del recurso + `\n`?
+  typer.echo añade newline final — verificar contra oráculo antes de
+  fijar. `install-skills [--dest]`: mensajes ✅/bullets/“All skills
+  already installed.” idénticos.
+
+### Task 3: tutor + hint (panel rich)
+
+**Files:** Create `src/commands/tutor.rs`, `src/rich_panel.rs`; Test
+`tests/cli_tutor_hint.rs`. Deps += cortex-tutor.
+
+**Interfaces:**
+- Consumes: `cortex_tutor::engine::{render_menu, show_topic_by_slug}`,
+  `cortex_tutor::hint::{ProjectState::detect, get_hint}`.
+- Produces: `rich_panel::render(icon,title,body,command,width=80) -> String`.
+
+- [ ] **Step 1: test rojo hint-L0**: fixture mkdtemp VACÍO fuera del repo;
+  salida esperada generada por oráculo Python (`HintEngine().get_hint(...).render()`) congelada en el test tras primera verificación manual.
+- [ ] **Step 2: RED → Step 3: panel renderer** (borde ─│┌┐└┘, título
+  inline en borde superior con espacios, padding 1/2, wrap greedy de
+  palabras a 80−4 columnas, `$ command` línea propia, print en blanco
+  antes/después) `→ Step 4: GREEN`. Tutor: slug directo (no encontrado →
+  stderr `Tópico 'x' no encontrado. Disponibles: …` rc=1) + menú EOF
+  (stdin cerrado → menú + línea en blanco + rc 0).
+
+### Task 4: org-config + promote-knowledge (pyjson)
+
+**Files:** Create `src/pyjson.rs`, `src/commands/{org_config,promote}.rs`;
+Test `tests/cli_enterprise_cmds.rs`. Deps += cortex-enterprise,
+serde_json float_roundtrip.
+
+**Interfaces:**
+- Produces: `pyjson::stdlib_dumps_indent2(&PyVal) -> String`
+  (ensure_ascii+pares sustitutos) y `pyjson::pydantic_pretty(v:
+  &serde_json::Value) -> String` (UTF-8 crudo, 2-indent, {} [] compactos).
+- Consumes: enterprise `config` (load/describe/topology YAML safe_dump vía
+  `cortex_setup::yaml`), `KnowledgePromotionService::from_project_root`.
+
+- [ ] **Step 1: tests rojos de writers** — `assert_eq!(stdlib_dumps("
+  á😀"), "\"\\u00e1\\ud83d\\ude00\"")`; orden de inserción preservado.
+- [ ] **Step 2–4: RED→implementar→GREEN** para org-config (texto:
+  4 líneas header + blank + yaml.safe_dump(sort_keys=False,
+  allow_unicode=False) vía dump_with; --required missing → stderr
+  `Enterprise config not found under <root>/.cortex/org.yaml` rc=1) y
+  promote-knowledge (--dry-run default: plan vacío → “No reviewed
+  candidates ready for promotion.”; con records.jsonl revisado → líneas
+  “Planned promotions: N” + bullets; --json payload dict ordenado +
+  default=str).
+
+### Task 5: review-knowledge ×4
+
+**Files:** Create `src/commands/review.rs`; Test extiende
+`tests/cli_enterprise_cmds.rs`.
+
+- [ ] pending (tabla `  - {path:<60} doc_type={…:<10} owner={…}` /
+  “No drafts pending review.” / --json list), approve/reject
+  (`approve_output`/`reject_output` existentes + “Recorded review…” del
+  candidate legacy vía service.review), candidate (--approve/--reject,
+  model_dump_json(indent=2)), errores rc=1 (path escape). Fixture org con
+  drafts + records.jsonl. RED→GREEN por subcomando.
+
+### Task 6: memory-report (cierra seam DoctorBackend)
+
+**Files:** Create `src/commands/memory_report.rs`; Test
+`tests/cli_memory_report.rs`. Deps ya presentes.
+
+- [ ] **Step 1: test rojo**: texto bloque completo (“Cortex Enterprise
+  Memory Report” … Promotion … warnings:) y --json (payload
+  model_dump(mode="json") + stdlib writer). Scope inválido → stderr
+  `Invalid --scope value. Use one of: local, enterprise, all.` rc=1.
+- [ ] **Step 2: implementar** con
+  `EnterpriseReportingService::from_project_root(root, layout)
+  .with_doctor_backend(NativeDoctorBackend::new())`; {{TS}} solo en
+  oráculo. **Step 3: GREEN.**
+
+### Task 7: webgraph export + autopilot preflight
+
+**Files:** Create `src/commands/{webgraph,autopilot}.rs`; Test
+`tests/cli_webgraph_autopilot.rs`. Deps += cortex-webgraph-server,
+cortex-autopilot.
+
+- [ ] webgraph export: single-project (`_require_config` → stderr
+  “No Cortex configuration found at …” rc=1 si falta; OK →
+  “Webgraph snapshot exported -> <path>”), flags mode/output/--no-cache/
+  --project-root/--workspace-file. Grupos `webgraph`/`autopilot` llevan
+  external_subcommand interno → serve/doctor/start/etc. caen a passthrough.
+- [ ] autopilot preflight: `default_detectors()+resolve_detectors` sobre
+  DetectionRequest{user_request, changed_files}; _emit texto `k: v` o
+  stdlib JSON (confidence f64 → formato repr Python verificado contra
+  oráculo). start/checkpoint/finish/status/doctor → passthrough.
+
+### Task 8: Gate cli_golden_p12b.py + checker + self-golden
+
+**Files:** Create `bench/parity/cli_golden_p12b.py`,
+`rust/crates/cortex-cli/examples/cli_check.rs`,
+`tests/cli_self_golden.rs` (help root/doctor, missing-arg approve —
+snapshots inline).
+
+- [ ] Gate: fixtures mkdtemp externos (L0 vacío / full / org+records);
+  casos S01–S28 del diseño (11 wireados × texto/--json, errores, unknown
+  command, CORTEX_PY=1 ×2); oráculo `.venv/bin/cortex` vs binario
+  construido; normaliza {{ROOT}}/{{TS}}; build/verify determinista.
+- [ ] `examples/cli_check.rs`: recorre golden_cli.txt + self-golden
+  inline → `✅ PARIDAD P12B-8`.
+
+### Task 9: Cold start + verificación + commits + cierre
+
+- [ ] Medición release: `hyperfine --warmup 3 './target/release/cortex-cli
+  hint'` (o loop bash `date +%s%N` N=20, mediana) en fixture L0; número
+  y comando anotados acá; objetivo <100 ms.
+- [ ] fmt/clippy/tests workspace-B focalizados bajo lock R3; gates
+  build/verify; suite Python completa UNA vez (baseline trunk idéntica).
+- [ ] Commit atómico `feat(obra07 P12B-8): CLI clap nativo — sincronización
+  final con A` + docs inmediato (fila ✅ con evidencia) + sección
+  “Stream B completo” (inventario entregado + passthrough residual
+  post-P12). HANDOFF/ESTADO-ACTUAL/doc 09 intactos.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
@@ -842,7 +1105,7 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
 | P12B-5 autopilot (~1902, capa de decisión) | ✅ | Gate: `doctor_golden_p12b.py` ampliado a 6 escenarios (autopilot_policy REAL + autopilot_mode_typo) + `doctor_check.rs` byte-parity `✅ PARIDAD P12B-4`. Suite Rust: autopilot 5 + doctor 5 tests ✅ · clippy/fmt ✅. Suite Python: mismo set preexistente de trunk (29F+3E e2e); unit tests/unit/autopilot sin fallos. service/cli/mcp_tools con fallo explícito hasta motor de sesiones nativo. | `8bc4c6d` |
 | P12B-6 pipeline SDDwork (~1708) | ✅ | Gate: `bench/parity/pipeline_golden_p12b.py` (2 workflows GH Actions byte-exactos + flows pass/fail-bloqueante/skip + abort_early + no-bloqueante + summary/markdown/to_dict con clock fijo) + `examples/pipeline_check.rs` **byte-parity** → `✅ PARIDAD P12B-6`. Suite Rust crate: 4 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. **Sin reqwest**: el runner Python es generador puro de YAML, nunca hubo cliente HTTP (hallazgo vs §7.2.8). Documentation stage stub hasta AgentMemory nativo. | `c8a04d3` |
 | P12B-7 tutor (~862, porte fiel — opción A) | ✅ | Gate: `bench/parity/tutor_golden_p12b.py` (metadata JSON de 7 topics por introspección + hints L0/L1/L7 en fixtures FUERA del repo) + `examples/tutor_check.rs` **byte-parity** → `✅ PARIDAD P12B-7`. Suite Rust crate: 4 tests ✅ · clippy/fmt ✅. Hallazgo: dependencias reales = layout + contenido estático (sin sesiones/AgentMemory) ⇒ el "NO portear ciego" del doc 09 queda desmontado. Divergencia cosmética: cuerpos embebidos vía rich `export_text()` sin ANSI. | `0e6b936`+`2fd035c`/`600cc04` |
-| P12B-8 CLI clap nativo (~2995, ÚLTIMO) | ⏳ pendiente | punto de sincronización final; CORTEX_PY=1 rollback; cold-start <100ms | — |
+| P12B-8 CLI clap nativo (~2995, ÚLTIMO) | 🚧 en curso | punto de sincronización final; CORTEX_PY=1 rollback; cold-start <100ms | — |
 
 ## Notas de coordinación dual-stream
 
