@@ -778,6 +778,15 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   autopilot_policy real del doctor) + `examples/autopilot_check.rs`
   byte-parity con solo {{ROOT}}/{{TS}}.
 
+- **[P12B-5] Alcance decisión del dueño**: autopilot se portea como capa
+  de decisión pura; service/cli/mcp_tools requieren el motor de sesiones
+  (SessionService/Storage/AgentMemory, no porteño y territorio ambiguo con
+  A) ⇒ fallo explícito documentado. El stub autopilot_policy de P12B-4 pasa
+  a real y la STUB_TABLE del oráculo pierde esa entrada.
+- **[P12B-5] session-models mínimos**: SessionRecord/Checkpoint porteñados
+  como subconjunto fiel de los campos que policies/lifecycle consumen;
+  invariante lifecycle defensivo incluido para el doctor futuro.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
@@ -786,7 +795,7 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
 | P12B-2 webgraph-server axum (~2202) | ✅ | Gate: `bench/parity/webgraph_golden_p12b.py` build/verify determinista + `examples/webgraph_check.rs` **byte-parity** vs `golden_webgraph.txt` (server real axum/Flask en puertos efímeros, fixture fake_embed SHA-256 + export P3, normalización {{ROOT}}/{{TS}}/{{FP}}; 19 casos single + 3 federados). Suite Python oráculo rc=0. clippy `-D warnings` ✅ fmt ✅ tests 3 ✅ | `2761356` |
 | P12B-3 enterprise/review_knowledge (~2441) | ✅ | Gate: `bench/parity/enterprise_golden_p12b.py` build/verify determinista (8 segmentos; oráculo real incl. `run_doctor`) + `examples/enterprise_check.rs` **byte-parity** → `[PASS] enterprise_check byte-parity vs golden_enterprise.txt` / `✅ PARIDAD P12B-3`. Suite Rust crate: 32 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: 2571 collected, **0 fallos enterprise/promotion/review_knowledge**; 32 fallos PREEXISTENTES de trunk en e2e setup/autopilot/tui/artefact_integrity (commit "recatorizacion" borró módulos que esos tests importan; árbol Python verificado idéntico a HEAD). | `1ce45ca` |
 | P12B-4 doctor (~925) | ✅ | Gate: `bench/parity/doctor_golden_p12b.py` (5 escenarios: legacy/all/enterprise-sin-org/new-layout/con-sessions; oráculo doctor Python real + STUB_TABLE contractual) + `examples/doctor_check.rs` **byte-parity** → `✅ PARIDAD P12B-4`. Suite Rust crate: 5 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: mismo set de fallos preexistentes de trunk que el baseline previo (29F+3E e2e setup/autopilot/tui/artefact); **0 regresiones B**. | `31b3f3c` |
-| P12B-5 autopilot (~1902) | ⏳ pendiente | spec: tests/unit/autopilot | — |
+| P12B-5 autopilot (~1902, capa de decisión) | ✅ | Gate: `doctor_golden_p12b.py` ampliado a 6 escenarios (autopilot_policy REAL + autopilot_mode_typo) + `doctor_check.rs` byte-parity `✅ PARIDAD P12B-4`. Suite Rust: autopilot 5 + doctor 5 tests ✅ · clippy/fmt ✅. Suite Python: mismo set preexistente de trunk (29F+3E e2e); unit tests/unit/autopilot sin fallos. service/cli/mcp_tools con fallo explícito hasta motor de sesiones nativo. | `8bc4c6d` |
 | P12B-6 pipeline SDDwork (~1708) | ⏳ pendiente | reqwest aprobado §7.2.8; stages gh API con fixtures/dry-run | — |
 | P12B-7 tutor (~862) | ⏳ decisión del dueño pendiente | se documentarán las 3 opciones (porte fiel vs ratatui vs no migrar) aquí al cierre | — |
 | P12B-8 CLI clap nativo (~2995, ÚLTIMO) | ⏳ pendiente | punto de sincronización final; CORTEX_PY=1 rollback; cold-start <100ms | — |
