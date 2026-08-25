@@ -18,6 +18,8 @@ members = [
     "crates/cortex-actions",
     # Obra 07 P9 (MCP server rmcp, stream B): docs/transformacion/08 §4b
     "crates/cortex-mcp",
+    # Obra 07 P12B-1 (workspace/layout+misc, stream B): doc 09 §3.9/§7
+    "crates/cortex-workspace",
 ]
 
 [workspace.package]

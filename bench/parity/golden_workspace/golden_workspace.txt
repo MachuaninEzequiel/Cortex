@@ -1,0 +1,489 @@
+{
+  "escenario": "S01_new_full",
+  "repo_root": "{{ROOT}}/s01_new_full",
+  "workspace_root": "{{ROOT}}/s01_new_full/.cortex",
+  "is_legacy_layout": false,
+  "is_new_layout": true,
+  "config_path": "{{ROOT}}/s01_new_full/.cortex/config.yaml",
+  "org_config_path": "{{ROOT}}/s01_new_full/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s01_new_full/.cortex/vault",
+  "enterprise_vault_path": "{{ROOT}}/s01_new_full/.cortex/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s01_new_full/.cortex/memory",
+  "enterprise_memory_path": "{{ROOT}}/s01_new_full/.cortex/enterprise-memory",
+  "skills_dir": "{{ROOT}}/s01_new_full/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s01_new_full/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s01_new_full/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s01_new_full/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s01_new_full/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s01_new_full/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s01_new_full/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s01_new_full/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s01_new_full/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s01_new_full/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s01_new_full/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s01_new_full/.cortex/scripts",
+  "workflows_dir": "{{ROOT}}/s01_new_full/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s01_new_full/.cortex/vault-enterprise/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s01_new_full/.cortex/vault-enterprise/promotion",
+  "context_md_path": "{{ROOT}}/s01_new_full/.cortex/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s01_new_full/.cortex/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s01_new_full/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s01_new_full/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s01_new_full/vault",
+  "legacy_memory_path": "{{ROOT}}/s01_new_full/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s01_new_full/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s01_new_full/.cortex/vault",
+  "resolve_memory": "{{ROOT}}/s01_new_full/.cortex/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s01_new_full'), workspace_root=PosixPath('{{ROOT}}/s01_new_full/.cortex'), mode=new)"
+}
+{
+  "escenario": "S02_new_no_wsyaml",
+  "repo_root": "{{ROOT}}/s02_new_no_wsyaml",
+  "workspace_root": "{{ROOT}}/s02_new_no_wsyaml/.cortex",
+  "is_legacy_layout": false,
+  "is_new_layout": true,
+  "config_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/config.yaml",
+  "org_config_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault",
+  "enterprise_vault_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/memory",
+  "enterprise_memory_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/enterprise-memory",
+  "skills_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/scripts",
+  "workflows_dir": "{{ROOT}}/s02_new_no_wsyaml/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault-enterprise/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault-enterprise/promotion",
+  "context_md_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s02_new_no_wsyaml/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s02_new_no_wsyaml/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s02_new_no_wsyaml/vault",
+  "legacy_memory_path": "{{ROOT}}/s02_new_no_wsyaml/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s02_new_no_wsyaml/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s02_new_no_wsyaml/.cortex/vault",
+  "resolve_memory": "{{ROOT}}/s02_new_no_wsyaml/.cortex/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s02_new_no_wsyaml'), workspace_root=PosixPath('{{ROOT}}/s02_new_no_wsyaml/.cortex'), mode=new)"
+}
+{
+  "escenario": "S03_legacy",
+  "repo_root": "{{ROOT}}/s03_legacy",
+  "workspace_root": "{{ROOT}}/s03_legacy",
+  "is_legacy_layout": true,
+  "is_new_layout": false,
+  "config_path": "{{ROOT}}/s03_legacy/config.yaml",
+  "org_config_path": "{{ROOT}}/s03_legacy/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s03_legacy/vault",
+  "enterprise_vault_path": "{{ROOT}}/s03_legacy/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s03_legacy/.memory",
+  "enterprise_memory_path": "{{ROOT}}/s03_legacy/.memory/enterprise",
+  "skills_dir": "{{ROOT}}/s03_legacy/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s03_legacy/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s03_legacy/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s03_legacy/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s03_legacy/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s03_legacy/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s03_legacy/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s03_legacy/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s03_legacy/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s03_legacy/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s03_legacy/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s03_legacy/scripts",
+  "workflows_dir": "{{ROOT}}/s03_legacy/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s03_legacy/vault-enterprise/.cortex/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s03_legacy/vault-enterprise/.cortex/promotion",
+  "context_md_path": "{{ROOT}}/s03_legacy/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s03_legacy/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s03_legacy/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s03_legacy/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s03_legacy/vault",
+  "legacy_memory_path": "{{ROOT}}/s03_legacy/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s03_legacy/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s03_legacy/vault",
+  "resolve_memory": "{{ROOT}}/s03_legacy/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s03_legacy'), workspace_root=PosixPath('{{ROOT}}/s03_legacy'), mode=legacy)"
+}
+{
+  "escenario": "S04_bootstrap",
+  "repo_root": "{{ROOT}}/s04_bootstrap",
+  "workspace_root": "{{ROOT}}/s04_bootstrap/.cortex",
+  "is_legacy_layout": false,
+  "is_new_layout": true,
+  "config_path": "{{ROOT}}/s04_bootstrap/.cortex/config.yaml",
+  "org_config_path": "{{ROOT}}/s04_bootstrap/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s04_bootstrap/.cortex/vault",
+  "enterprise_vault_path": "{{ROOT}}/s04_bootstrap/.cortex/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s04_bootstrap/.cortex/memory",
+  "enterprise_memory_path": "{{ROOT}}/s04_bootstrap/.cortex/enterprise-memory",
+  "skills_dir": "{{ROOT}}/s04_bootstrap/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s04_bootstrap/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s04_bootstrap/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s04_bootstrap/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s04_bootstrap/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s04_bootstrap/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s04_bootstrap/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s04_bootstrap/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s04_bootstrap/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s04_bootstrap/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s04_bootstrap/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s04_bootstrap/.cortex/scripts",
+  "workflows_dir": "{{ROOT}}/s04_bootstrap/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s04_bootstrap/.cortex/vault-enterprise/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s04_bootstrap/.cortex/vault-enterprise/promotion",
+  "context_md_path": "{{ROOT}}/s04_bootstrap/.cortex/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s04_bootstrap/.cortex/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s04_bootstrap/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s04_bootstrap/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s04_bootstrap/vault",
+  "legacy_memory_path": "{{ROOT}}/s04_bootstrap/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s04_bootstrap/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s04_bootstrap/.cortex/vault",
+  "resolve_memory": "{{ROOT}}/s04_bootstrap/.cortex/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s04_bootstrap'), workspace_root=PosixPath('{{ROOT}}/s04_bootstrap/.cortex'), mode=new)"
+}
+{
+  "escenario": "S05_both_configs",
+  "repo_root": "{{ROOT}}/s05_both_configs",
+  "workspace_root": "{{ROOT}}/s05_both_configs/.cortex",
+  "is_legacy_layout": false,
+  "is_new_layout": true,
+  "config_path": "{{ROOT}}/s05_both_configs/.cortex/config.yaml",
+  "org_config_path": "{{ROOT}}/s05_both_configs/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s05_both_configs/.cortex/vault",
+  "enterprise_vault_path": "{{ROOT}}/s05_both_configs/.cortex/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s05_both_configs/.cortex/memory",
+  "enterprise_memory_path": "{{ROOT}}/s05_both_configs/.cortex/enterprise-memory",
+  "skills_dir": "{{ROOT}}/s05_both_configs/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s05_both_configs/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s05_both_configs/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s05_both_configs/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s05_both_configs/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s05_both_configs/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s05_both_configs/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s05_both_configs/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s05_both_configs/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s05_both_configs/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s05_both_configs/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s05_both_configs/.cortex/scripts",
+  "workflows_dir": "{{ROOT}}/s05_both_configs/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s05_both_configs/.cortex/vault-enterprise/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s05_both_configs/.cortex/vault-enterprise/promotion",
+  "context_md_path": "{{ROOT}}/s05_both_configs/.cortex/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s05_both_configs/.cortex/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s05_both_configs/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s05_both_configs/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s05_both_configs/vault",
+  "legacy_memory_path": "{{ROOT}}/s05_both_configs/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s05_both_configs/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s05_both_configs/.cortex/vault",
+  "resolve_memory": "{{ROOT}}/s05_both_configs/.cortex/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s05_both_configs'), workspace_root=PosixPath('{{ROOT}}/s05_both_configs/.cortex'), mode=new)"
+}
+{
+  "escenario": "S06_ws_yaml_v1",
+  "repo_root": "{{ROOT}}/s06_ws_yaml_v1",
+  "workspace_root": "{{ROOT}}/s06_ws_yaml_v1",
+  "is_legacy_layout": true,
+  "is_new_layout": false,
+  "config_path": "{{ROOT}}/s06_ws_yaml_v1/config.yaml",
+  "org_config_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s06_ws_yaml_v1/vault",
+  "enterprise_vault_path": "{{ROOT}}/s06_ws_yaml_v1/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s06_ws_yaml_v1/.memory",
+  "enterprise_memory_path": "{{ROOT}}/s06_ws_yaml_v1/.memory/enterprise",
+  "skills_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s06_ws_yaml_v1/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s06_ws_yaml_v1/scripts",
+  "workflows_dir": "{{ROOT}}/s06_ws_yaml_v1/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s06_ws_yaml_v1/vault-enterprise/.cortex/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s06_ws_yaml_v1/vault-enterprise/.cortex/promotion",
+  "context_md_path": "{{ROOT}}/s06_ws_yaml_v1/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s06_ws_yaml_v1/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s06_ws_yaml_v1/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s06_ws_yaml_v1/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s06_ws_yaml_v1/vault",
+  "legacy_memory_path": "{{ROOT}}/s06_ws_yaml_v1/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s06_ws_yaml_v1/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s06_ws_yaml_v1/vault",
+  "resolve_memory": "{{ROOT}}/s06_ws_yaml_v1/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s06_ws_yaml_v1'), workspace_root=PosixPath('{{ROOT}}/s06_ws_yaml_v1'), mode=legacy)"
+}
+{
+  "escenario": "S07_legacy_subdir",
+  "repo_root": "{{ROOT}}/s07_legacy_subdir",
+  "workspace_root": "{{ROOT}}/s07_legacy_subdir",
+  "is_legacy_layout": true,
+  "is_new_layout": false,
+  "config_path": "{{ROOT}}/s07_legacy_subdir/config.yaml",
+  "org_config_path": "{{ROOT}}/s07_legacy_subdir/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s07_legacy_subdir/vault",
+  "enterprise_vault_path": "{{ROOT}}/s07_legacy_subdir/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s07_legacy_subdir/.memory",
+  "enterprise_memory_path": "{{ROOT}}/s07_legacy_subdir/.memory/enterprise",
+  "skills_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s07_legacy_subdir/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s07_legacy_subdir/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s07_legacy_subdir/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s07_legacy_subdir/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s07_legacy_subdir/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s07_legacy_subdir/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s07_legacy_subdir/scripts",
+  "workflows_dir": "{{ROOT}}/s07_legacy_subdir/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s07_legacy_subdir/vault-enterprise/.cortex/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s07_legacy_subdir/vault-enterprise/.cortex/promotion",
+  "context_md_path": "{{ROOT}}/s07_legacy_subdir/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s07_legacy_subdir/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s07_legacy_subdir/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s07_legacy_subdir/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s07_legacy_subdir/vault",
+  "legacy_memory_path": "{{ROOT}}/s07_legacy_subdir/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s07_legacy_subdir/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s07_legacy_subdir/vault",
+  "resolve_memory": "{{ROOT}}/s07_legacy_subdir/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s07_legacy_subdir'), workspace_root=PosixPath('{{ROOT}}/s07_legacy_subdir'), mode=legacy)"
+}
+{
+  "escenario": "S08_start_inside_cortex",
+  "repo_root": "{{ROOT}}/s08_inside_cortex",
+  "workspace_root": "{{ROOT}}/s08_inside_cortex/.cortex",
+  "is_legacy_layout": false,
+  "is_new_layout": true,
+  "config_path": "{{ROOT}}/s08_inside_cortex/.cortex/config.yaml",
+  "org_config_path": "{{ROOT}}/s08_inside_cortex/.cortex/org.yaml",
+  "vault_path": "{{ROOT}}/s08_inside_cortex/.cortex/vault",
+  "enterprise_vault_path": "{{ROOT}}/s08_inside_cortex/.cortex/vault-enterprise",
+  "episodic_memory_path": "{{ROOT}}/s08_inside_cortex/.cortex/memory",
+  "enterprise_memory_path": "{{ROOT}}/s08_inside_cortex/.cortex/enterprise-memory",
+  "skills_dir": "{{ROOT}}/s08_inside_cortex/.cortex/skills",
+  "sessions_dir": "{{ROOT}}/s08_inside_cortex/.cortex/sessions",
+  "subagents_dir": "{{ROOT}}/s08_inside_cortex/.cortex/subagents",
+  "agent_guidelines_path": "{{ROOT}}/s08_inside_cortex/.cortex/AGENT.md",
+  "system_prompt_path": "{{ROOT}}/s08_inside_cortex/.cortex/system-prompt.md",
+  "workspace_yaml_path": "{{ROOT}}/s08_inside_cortex/.cortex/workspace.yaml",
+  "webgraph_dir": "{{ROOT}}/s08_inside_cortex/.cortex/webgraph",
+  "webgraph_config_path": "{{ROOT}}/s08_inside_cortex/.cortex/webgraph/config.yaml",
+  "webgraph_workspace_path": "{{ROOT}}/s08_inside_cortex/.cortex/webgraph/workspace.yaml",
+  "webgraph_cache_dir": "{{ROOT}}/s08_inside_cortex/.cortex/webgraph/cache",
+  "logs_dir": "{{ROOT}}/s08_inside_cortex/.cortex/logs",
+  "scripts_dir": "{{ROOT}}/s08_inside_cortex/.cortex/scripts",
+  "workflows_dir": "{{ROOT}}/s08_inside_cortex/.github/workflows",
+  "promotion_records_path": "{{ROOT}}/s08_inside_cortex/.cortex/vault-enterprise/promotion/records.jsonl",
+  "promotion_dir": "{{ROOT}}/s08_inside_cortex/.cortex/vault-enterprise/promotion",
+  "context_md_path": "{{ROOT}}/s08_inside_cortex/.cortex/CONTEXT.md",
+  "vault_index_path": "{{ROOT}}/s08_inside_cortex/.cortex/vault/.cortex_index.json",
+  "gitignore_path": "{{ROOT}}/s08_inside_cortex/.gitignore",
+  "legacy_config_path": "{{ROOT}}/s08_inside_cortex/config.yaml",
+  "legacy_vault_path": "{{ROOT}}/s08_inside_cortex/vault",
+  "legacy_memory_path": "{{ROOT}}/s08_inside_cortex/.memory",
+  "legacy_org_config_path": "{{ROOT}}/s08_inside_cortex/.cortex/org.yaml",
+  "resolve_vault": "{{ROOT}}/s08_inside_cortex/.cortex/vault",
+  "resolve_memory": "{{ROOT}}/s08_inside_cortex/.cortex/.memory",
+  "resolve_abs": "{{ROOT}}/abs/passthrough.md",
+  "repr": "WorkspaceLayout(repo_root=PosixPath('{{ROOT}}/s08_inside_cortex'), workspace_root=PosixPath('{{ROOT}}/s08_inside_cortex/.cortex'), mode=new)"
+}
+### H01_tipico
+agent: cortex-code-implementer
+status: complete
+verified_claims:
+- auth refactorizada a JWT
+unverified_claims: []
+artifacts_produced: []
+context_for_next: []
+suggested_adr: true
+suggested_adr_reason: decisión de tokens
+suggested_context_terms: []
+roundtrip: OK
+### H02_artifacts
+agent: cortex-documenter
+status: partial
+verified_claims:
+- docs generados
+unverified_claims: []
+artifacts_produced:
+- path: src/auth.py
+  action: modified
+  lines_changed: 47
+  lines_added: 0
+- path: docs/nuevo.md
+  action: created
+  lines_changed: 0
+  lines_added: 120
+context_for_next:
+- revisar gates de calidad
+suggested_adr: false
+suggested_adr_reason: ''
+suggested_context_terms: []
+roundtrip: OK
+### H03_folding
+agent: cortex-sync
+status: complete
+verified_claims:
+- una afirmación bastante larga que supera los ochenta caracteres de ancho para ver
+  el plegado
+unverified_claims: []
+artifacts_produced: []
+context_for_next: []
+suggested_adr: false
+suggested_adr_reason: ''
+suggested_context_terms: []
+roundtrip: OK
+### H04_zoo
+agent: cortex-security-auditor
+status: blocked
+verified_claims:
+- 'Decisión: usar RRF'
+- '123'
+- 'yes'
+- 'null'
+- 'abc # comment'
+- '- item'
+- 'con espacio '
+- ver https://x.io/a
+- '[algo], {otro}'
+- '*ref'
+- '&ancla'
+- '%tag'
+- '@user'
+- '`code`'
+- '''citado'
+- dijo "hola"
+- d'junio
+- -> flecha
+- '? duda'
+unverified_claims: []
+artifacts_produced: []
+context_for_next: []
+suggested_adr: false
+suggested_adr_reason: ''
+suggested_context_terms: []
+roundtrip: OK
+### H05_multiline_tab
+agent: cortex-test-verifier
+status: partial
+verified_claims:
+- 'linea1
+
+  linea2'
+- "tab\taqui"
+unverified_claims: []
+artifacts_produced: []
+context_for_next: []
+suggested_adr: false
+suggested_adr_reason: ''
+suggested_context_terms: []
+roundtrip: OK
+### H06_minimo
+agent: cortex-SDDwork
+status: complete
+verified_claims: []
+unverified_claims: []
+artifacts_produced: []
+context_for_next: []
+suggested_adr: false
+suggested_adr_reason: ''
+suggested_context_terms: []
+roundtrip: OK
+### invalid_1
+RECHAZADO
+### invalid_2
+RECHAZADO
+### invalid_3
+RECHAZADO
+### invalid_4
+RECHAZADO
+### unknown_field
+OK(agent=cortex-sync,status=complete)
+### snippet_new
+# Cortex local state (new layout)
+.cortex/memory/
+*.chroma/
+
+# Cortex vault policy
+# Track: vault/specs, vault/decisions, vault/runbooks, vault/hu, vault/incidents
+# Ignore session churn by default unless your team explicitly audits sessions in Git
+.cortex/vault/sessions/
+### snippet_legacy
+# Cortex local state
+.memory/
+*.chroma/
+
+# Cortex vault policy
+# Track: vault/specs, vault/decisions, vault/runbooks, vault/hu, vault/incidents
+# Ignore session churn by default unless your team explicitly audits sessions in Git
+vault/sessions/
+### snippet_default
+# Cortex local state
+.memory/
+*.chroma/
+
+# Cortex vault policy
+# Track: vault/specs, vault/decisions, vault/runbooks, vault/hu, vault/incidents
+# Ignore session churn by default unless your team explicitly audits sessions in Git
+vault/sessions/
+### gitignore_contains
+'.memory/'=True
+'  .memory/  '=True
+'*.chroma/'=True
+'vault/sessions/'=False
+'# comentario'=False
+### slugify
+'Mi Rama Feature'='mi-rama-feature'
+'¡Hola, Mundo!'='hola-mundo'
+'feature/Mi_Rama'='feature-mi_rama'
+'   '='default'
+'---'='default'
+'ya-tiene-formato.ok_v1'='ya-tiene-formato.ok_v1'
+fallback='fb'
+### git_fake
+branch='no-git-branch'
+toplevel=PosixPath('{{ROOT}}/fake_git')
+persist(project,'memory','')=PosixPath('{{ROOT}}/fake_git/memory')
+persist(branch,'.memory/chroma','')=PosixPath('{{ROOT}}/fake_git/.memory/chroma/branches/no-git-branch')
+persist(custom,'memory','Mi Equipo!')=PosixPath('{{ROOT}}/fake_git/memory/custom/mi-equipo')
+persist(custom,'memory','  ')=PosixPath('{{ROOT}}/fake_git/memory/custom/default')
+### git_real
+branch='feature/Mi_Rama'
+toplevel={ROOT}
+real_persist(project,'memory')={{ROOT}}/memory
+real_persist(branch,'.memory/c')={{ROOT}}/.memory/c/branches/feature-mi_rama
+### skills_fresh
+obsidian-markdown::SKILL.md:81630681565b;references/CALLOUTS.md:f9a035840be5;references/EMBEDS.md:2c8aa283e906;references/PROPERTIES.md:dce9883d5519
+json-canvas::SKILL.md:ed58ad71fff2;references/EXAMPLES.md:b7a628ab628c
+obsidian-bases::SKILL.md:06005e5bb08a;references/FUNCTIONS_REFERENCE.md:b40bb0e3713d
+obsidian-cli::SKILL.md:f94185655b15
+defuddle::SKILL.md:7d16e6314698
+### skills_again
+obsidian-markdown (already exists)
+json-canvas (already exists)
+obsidian-bases (already exists)
+obsidian-cli (already exists)
+defuddle (already exists)
