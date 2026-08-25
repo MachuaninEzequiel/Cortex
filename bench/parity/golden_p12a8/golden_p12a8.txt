@@ -1,0 +1,146 @@
+### S01 approve
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S02 approve case-insensitive
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S03 cancel
+rc=0
+action=cancel
+cancelled=True
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S04 handoff con razón
+rc=0
+action=handoff
+cancelled=False
+forced=handoff
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S05 handoff razón vacía vuelve al menú
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S06 input inválido re-promptea
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S07 edit skip todo luego approve
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S08 edit reemplaza título
+rc=0
+action=approve
+cancelled=False
+forced=None
+title='Brand new title'
+body=None
+adrs=None
+inputs_left=0
+### S09 edit cuerpo vía editor
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body='# Brand new body\n\nNew content here.'
+adrs=None
+inputs_left=0
+### S10 editor abortado
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S11 edit luego cancel
+rc=0
+action=cancel
+cancelled=True
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S12 edit luego handoff
+rc=0
+action=handoff
+cancelled=False
+forced=handoff
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S13 approve default mantiene ADRs
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=None
+inputs_left=0
+### S14 rechaza un ADR
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=[0]
+inputs_left=0
+### S15 aprueba todos explícito
+rc=0
+action=approve
+cancelled=False
+forced=None
+title=None
+body=None
+adrs=[0, 1]
+inputs_left=0
+### S18 seed body
+rc=0
+# Demo Spec
+
+<!-- Edit this body. Lines starting with <!-- are kept as comments. -->
+
+- hardcoded the TTL for now
+
+### S19 agotamiento de cola
+rc=0
+exhausted_ok=True

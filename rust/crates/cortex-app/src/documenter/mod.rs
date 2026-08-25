@@ -5,6 +5,7 @@
 
 pub mod diff_parser;
 pub mod handoff;
+pub mod interactive;
 pub mod persister;
 pub mod spec_loader;
 
