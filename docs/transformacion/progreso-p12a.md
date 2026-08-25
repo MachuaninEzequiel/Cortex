@@ -127,6 +127,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-5 cortex-services: SpecService + NoteService | ✅ | `bench/parity/p12a5_golden.py` verify PASS + `p12a5_check` S01–S10 PARIDAD COMPLETA byte-a-byte (contenido, payloads, proposal/hooks/session y rollback); suite oráculo verde | `fffc4cd` |
 | P12A-6 documentation/migration (docs-migrate) | ✅ | `bench/parity/p12a6_golden.py` verify PASS + `p12a6_check` S01–S12 PARIDAD COMPLETA byte-a-byte (dry-run/apply/idempotencia/force/inferencia/report/legacy/backups/status/validate/títulos/fechas); suite oráculo verde | `bc9d218` |
 | P12A-7 context extras (filters/domain/observer/telemetry/presenter) | ✅ | `bench/parity/p12a7_golden.py` verify PASS + `p12a7_check` S01–S27 PARIDAD COMPLETA byte-a-byte (filtros, presentadores ×5, detector reglas+embedding a 6 decimales, observer files/pr/git, telemetría JSONL/aggregate/citas); suite oráculo verde | `34b9064` |
+| P12A-8 documenter/interactive | ✅ | `bench/parity/p12a8_golden.py` verify PASS + `p12a8_check` S01–S19 PARIDAD COMPLETA byte-a-byte (máquina de estados con I/O stubbed: approve/cancel/handoff/edit/ADRs/seed/agotamiento); suite oráculo verde | `08ae11f` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -359,6 +360,35 @@ cargo test -p cortex-app 96 passed · clippy/fmt limpios · suite Python verde
 (`PYTEST_RC=0`). Nota operativa: `.cortex/heavy.lock` volvió a aparecer como
 archivo huérfano sin proceso vivo; eliminado antes del gate.
 
+## P12A-8 — documenter/interactive
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+**`cortex-app/src/documenter/interactive.rs`** replica la máquina de estados
+de `cortex/documenter/interactive.py` (T4.1):
+
+- `InteractiveAction`/`InteractiveResult` (cancelled, forced_status,
+  edited_note_title/body, approved_adr_indices) y `InteractiveSession` con
+  I/O inyectable (`InputProvider` + `EditorOpener`) para ejercitarla sin
+  terminal.
+- Flujo fiel: menú A/E/H/C con loop de inválidos; handoff con razón vacía →
+  vuelve al menú; EDIT secuencial título→cuerpo→ADRs uno a uno (default Y);
+  seed del editor canónico (título + comentario + notas de checkpoints) con
+  comparación trimmed para detectar edición real; confirmación post-edición
+  A/H/C; CANCEL descarta ediciones; HANDOFF tras edit conserva ediciones y
+  razón vacía ⇒ "".
+- Divergencia documentada: el rendering rich NO es contrato — se produce un
+  transcript de texto plano no gateado. EditorOpener recibe String propio
+  para evitar HRTB en stubs.
+
+Gate `p12a8` S01–S19 determinista puro (sin relojes ni UUID): acciones
+top-level, case-insensitivity, loop de inválidos, flujo EDIT completo,
+review de ADRs (default None=aprobar todos, explícito [], rechazo parcial),
+seed del editor y agotamiento de cola (catch_unwind del provider).
+
+Verificación: cargo test -p cortex-app 100 passed · clippy/fmt limpios ·
+suite Python completa verde (`PYTEST_RC=0`).
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
@@ -369,7 +399,7 @@ archivo huérfano sin proceso vivo; eliminado antes del gate.
 | ~~P12A-5 spec_service + note_service (~541)~~ | ✅ completada |
 | ~~P12A-6 documentation/migration docs-migrate (~565)~~ | ✅ completada |
 | ~~P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902)~~ | ✅ completada |
-| P12A-8 documenter/interactive (~342) | pendiente |
+| ~~P12A-8 documenter/interactive (~342)~~ | ✅ completada |
 | P12A-9 mcp handlers in-process (~2056) · escritura espera decisión wire-format §4.8 | pendiente |
 
 Notas de coordinación dual-stream:
