@@ -738,6 +738,20 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   normalización de stubs) + `examples/doctor_check.rs` byte-parity con solo
   {{ROOT}}/{{TS}}. Fuera de alcance: clap `cortex doctor` (P12B-8).
 
+- **[P12B-4] NativeDoctorBackend cierra el seam de P12B-3**: cortex-doctor
+  implementa `cortex_enterprise::reporting::DoctorBackend` mapeando
+  local→Project y enterprise/all→Enterprise; el default "unavailable" de
+  reporting queda reemplazable en producción sin tocar enterprise.
+- **[P12B-4] STUB_TABLE como contrato**: los checks con backend Python sin
+  porteño (webgraph deps, sessions profundos, autopilot policy, hooks,
+  documenter module/interactive, verification, mcp tools) emiten
+  `(false, severity, "backend no nativo aún (<módulo>)")`; el oráculo
+  normaliza por nombre antes de comparar. autopilot_policy pasa a real en
+  P12B-5 actualizando ambos lados.
+- **[P12B-4] json.dumps default separators**: el checker serializa checks a
+  mano (`", "` / `": "` + ensure_ascii=True) porque serde_json::to_string es
+  compacto y mantiene unicode crudo.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
@@ -745,7 +759,7 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
 | P12B-1 crate cortex-workspace (layout 564 + handoff 121 + git_policy 111 + skills 98 + runtime_context 58 ≈ 1076 LOC py) | ✅ | Gate: `bench/parity/workspace_golden_p12b.py` build/verify determinista + `examples/workspace_check.rs` **byte-parity** sobre 8 escenarios de discovery + handoff H01–H06 (zoo quoting/folding/multilínea/tab congelados vs PyYAML real) + validaciones inválidas + snippets/gitignore + slugify/persist-modes (fake-git y repo REAL `feature/Mi_Rama`) + skills con hashes. Suite Python oráculo verde: **2455 passed, 18 skipped**. `cargo test -p cortex-workspace`: 27 tests ✅ · clippy `-D warnings` ✅ · fmt ✅ | (este commit) |
 | P12B-2 webgraph-server axum (~2202) | ✅ | Gate: `bench/parity/webgraph_golden_p12b.py` build/verify determinista + `examples/webgraph_check.rs` **byte-parity** vs `golden_webgraph.txt` (server real axum/Flask en puertos efímeros, fixture fake_embed SHA-256 + export P3, normalización {{ROOT}}/{{TS}}/{{FP}}; 19 casos single + 3 federados). Suite Python oráculo rc=0. clippy `-D warnings` ✅ fmt ✅ tests 3 ✅ | `2761356` |
 | P12B-3 enterprise/review_knowledge (~2441) | ✅ | Gate: `bench/parity/enterprise_golden_p12b.py` build/verify determinista (8 segmentos; oráculo real incl. `run_doctor`) + `examples/enterprise_check.rs` **byte-parity** → `[PASS] enterprise_check byte-parity vs golden_enterprise.txt` / `✅ PARIDAD P12B-3`. Suite Rust crate: 32 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: 2571 collected, **0 fallos enterprise/promotion/review_knowledge**; 32 fallos PREEXISTENTES de trunk en e2e setup/autopilot/tui/artefact_integrity (commit "recatorizacion" borró módulos que esos tests importan; árbol Python verificado idéntico a HEAD). | `1ce45ca` |
-| P12B-4 doctor (~925) | ⏳ pendiente | golden P0 congela salida; checks sin backend nativo ⇒ fail explícito documentado (patrón P6/P9) | — |
+| P12B-4 doctor (~925) | ✅ | Gate: `bench/parity/doctor_golden_p12b.py` (5 escenarios: legacy/all/enterprise-sin-org/new-layout/con-sessions; oráculo doctor Python real + STUB_TABLE contractual) + `examples/doctor_check.rs` **byte-parity** → `✅ PARIDAD P12B-4`. Suite Rust crate: 5 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: mismo set de fallos preexistentes de trunk que el baseline previo (29F+3E e2e setup/autopilot/tui/artefact); **0 regresiones B**. | `31b3f3c` |
 | P12B-5 autopilot (~1902) | ⏳ pendiente | spec: tests/unit/autopilot | — |
 | P12B-6 pipeline SDDwork (~1708) | ⏳ pendiente | reqwest aprobado §7.2.8; stages gh API con fixtures/dry-run | — |
 | P12B-7 tutor (~862) | ⏳ decisión del dueño pendiente | se documentarán las 3 opciones (porte fiel vs ratatui vs no migrar) aquí al cierre | — |
