@@ -128,6 +128,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-6 documentation/migration (docs-migrate) | ✅ | `bench/parity/p12a6_golden.py` verify PASS + `p12a6_check` S01–S12 PARIDAD COMPLETA byte-a-byte (dry-run/apply/idempotencia/force/inferencia/report/legacy/backups/status/validate/títulos/fechas); suite oráculo verde | `bc9d218` |
 | P12A-7 context extras (filters/domain/observer/telemetry/presenter) | ✅ | `bench/parity/p12a7_golden.py` verify PASS + `p12a7_check` S01–S27 PARIDAD COMPLETA byte-a-byte (filtros, presentadores ×5, detector reglas+embedding a 6 decimales, observer files/pr/git, telemetría JSONL/aggregate/citas); suite oráculo verde | `34b9064` |
 | P12A-8 documenter/interactive | ✅ | `bench/parity/p12a8_golden.py` verify PASS + `p12a8_check` S01–S19 PARIDAD COMPLETA byte-a-byte (máquina de estados con I/O stubbed: approve/cancel/handoff/edit/ADRs/seed/agotamiento); suite oráculo verde | `08ae11f` |
+| P12A-9 mcp handlers in-process (familia sesiones) | ✅ | `bench/parity/p12a9_golden.py` verify PASS + `p12a9_check` S01–S22 PARIDAD COMPLETA byte-a-byte (payloads JSON orden-pydantic, errores ❌, quality-gates, handoff YAML, claims vs repo temporal); resto de rutas mantiene fallo explícito §7.1.4; suite oráculo verde | `42eedd8` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -389,6 +390,37 @@ seed del editor y agotamiento de cola (catch_unwind del provider).
 Verificación: cargo test -p cortex-app 100 passed · clippy/fmt limpios ·
 suite Python completa verde (`PYTEST_RC=0`).
 
+## P12A-9 — mcp handlers in-process (familia sesiones)
+
+Estado: ✅ COMPLETADA dentro del alcance permitido por §7.1.4.
+
+**`cortex-mcp/src/handlers_sessions.rs`**: los 12 handlers de la familia
+sesiones/checkpoints/tasks pasan de fallo explícito a llamadas in-process
+sobre un `SessionsBackend` inyectable:
+
+- open/checkpoint/close/status/list + task list/update (create-or-update),
+  close_session, save_session, review_checkpoint (quality_gates nativo vía
+  files_in_scope resuelto por el backend), validate_handoff (serde_yaml con
+  defaults pydantic replicados en AgentHandoff/ArtifactProduced) y
+  verify_session_claims (heurística git diff portada directa).
+- Wire-format exacto: emisor propio con separadores ", "/": " y orden de
+  claves = declaración pydantic sobre serde_json/preserve_order; mensajes ❌
+  y listas de valores válidos byte-a-byte.
+- `server.rs`: campo opcional sessions_backend + SESSION_TOOLS routing;
+  sin backend ⇒ se conserva el fallo explícito documentado (patrón P6).
+- Alcance honesto restante (fallo explícito vigente): search/context/
+  sync_ticket/proposal/autopilot/documenter-briefing/finish/write-doc —
+  dependen de la decisión wire-format rmcp (§7.1.4) y del layout workspace
+  (stream B); jamás fingir paridad conductual.
+
+Gate `p12a9` S01–S22 determinista con stub backend espejo: payloads,
+errores de validación, veredictos accept/redelegate/warn de quality-gates,
+handoff YAML happy/mismatch/vacío y claims contra repo temporal.
+
+Verificación: cargo test -p cortex-mcp -p cortex-app verde · clippy/fmt
+limpios · suite Python oráculo completa verde (`PYTEST_RC=0`). Nota:
+`.cortex/heavy.lock` volvió a quedar como archivo huérfano; eliminado.
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
@@ -400,8 +432,7 @@ suite Python completa verde (`PYTEST_RC=0`).
 | ~~P12A-6 documentation/migration docs-migrate (~565)~~ | ✅ completada |
 | ~~P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902)~~ | ✅ completada |
 | ~~P12A-8 documenter/interactive (~342)~~ | ✅ completada |
-| P12A-9 mcp handlers in-process (~2056) · escritura espera decisión wire-format §4.8 | pendiente |
-
+| ~~P12A-9 mcp handlers in-process (~2056): familia sesiones IN-PROCESS; resto fallo explícito (§7.1.4)~~ | ✅ completada |
 Notas de coordinación dual-stream:
 
 - Handlers MCP de ESCRITURA: quedan con fallo explícito actual hasta que
