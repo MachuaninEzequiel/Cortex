@@ -176,3 +176,63 @@ Mediciones fuente: COMPARE/evidencias de Obra 03 (G1–G5) y Obra 07
 Mientras cualquier componente exista en ambos lados, la suite Python completa
 sigue siendo EL ORÁCULO (2455 passed al cierre de esta verificación). Drift
 visible ⇒ revert. Ninguna baja de código Python antes del punto 8 de §4.
+
+## 7. Ejecución P12 en DUAL-STREAM (activa 2026-08-24)
+
+Dos agentes en paralelo sobre el MISMO working tree, mismo modelo que §4b
+de 08-MIGRACION. Territorios por CRATE (no por archivo suelto):
+
+| Stream | Nombre | Crates/archivos PROPIOS | Contenido (~LOC py) |
+---|---|---|---|
+| **A** | contenido-y-escritura | `rust/crates/cortex-app/` (extensiones episodic.append, semantic reindex, workitems, pr, context extras, documenter/interactive), `rust/crates/cortex-mcp/src/server.rs` handlers, NUEVO `rust/crates/cortex-services/` | prereq escrituras (~200) · workitems/hu (685) · pr_context+capture+pr_service (623) · doc_generator/validator/verifier (590) · spec/note services (541) · docs-migrate (565) · context observer/telemetry/domain/filters/presenter-text (1902) · documenter/interactive (342) · mcp tools handlers (2056) ≈ **9.5k** |
+| **B** | dominios-e-integración | NUEVOS crates: `cortex-workspace`, `cortex-webgraph-server` (axum), `cortex-enterprise`, `cortex-doctor`, `cortex-autopilot`, `cortex-pipeline`; reescritura de `rust/crates/cortex-cli/` | workspace/layout+misc (1076) · webgraph server (2202) · enterprise/review_knowledge (2441) · doctor (925) · autopilot (1902) · pipeline SDDwork (1708) · tutor decisión (862) · CLI clap nativo (2995) ≈ **13k** |
+
+### 7.1 Dependencias cruzadas (quién bloquea a quién)
+
+1. A#1 (episodic.append + semantic.reindex + security::resolve_safe en
+   cortex-app) es PREREQ de A#2/#3 y de los handlers MCP de escritura.
+   B NO toca cortex-app: consume read-only (dep normal en Cargo).
+2. B: layout → {doctor, review_knowledge, tutor}; webgraph-service →
+   doctor; enterprise → doctor (DoctorReport). Orden interno B respeta eso.
+3. El CLI nativo (B, ÚLTIMO en su orden) wirea subcomandos de AMBOS lados:
+   los comandos con motor de A requieren el estado merged del trunk. Es EL
+   punto de sincronización final de P12.
+4. Los handlers MCP de escritura (A) dependen de la DECISIÓN DEL DUEÑO sobre
+   wire-format rmcp (nulls explícitos vs omisión): mientras no llegue,
+   A avanza con el resto y deja esos handlers con fallo explícito actual.
+5. tutor (B): decisión del dueño pendiente — porte fiel vs reemplazo
+   ratatui vs no migrar. Por defecto: NO portear ciego; documentar.
+
+### 7.2 Reglas duras P12 (extienden §R5)
+
+1. Cada stream toca SOLO sus crates. cortex-app lo edita exclusivamente A;
+   B lo consume como dependencia. cortex-cli lo edita exclusivamente B.
+2. `rust/Cargo.toml` raíz y `Cargo.lock`: compartidos — edits quirúrgicos
+   append-only de TU member/deps; tras editar validar
+   `cargo metadata -q >/dev/null`. Al commitear, incluirlos SOLO si el diff
+   corresponde íntegramente a tus crates; si hay hunks ajenos sin commitear
+   del otro stream, no los stages (esperar/reintentar). Ante `index.lock`
+   ocupado: esperar 2s y reintentar.
+3. Verificación SIEMPRE por crate (`cargo test -p <crate>`); el global se
+   corre solo en la integración final. Suite Python completa = ORÁCULO
+   compartido y debe seguir verde en cada commit.
+4. Un gate byte-a-byte por componente portado (patrón capture_golden/
+   *_golden.py + example/checker Rust, normalizaciones pactadas
+   {{ROOT}}/{{MS}}/{{TS}}/{{DATE}}). Los scripts nuevos: A usa
+   `bench/parity/*p12a*`, B usa `bench/parity/*p12b*`.
+5. Commits atómicos prefijados `feat(obra07 P12A…)` / `feat(obra07 P12B…)`,
+   un gate por commit, git add SOLO de archivos propios.
+6. Progreso: A escribe SOLO `docs/transformacion/progreso-p12a.md`, B SOLO
+   `docs/transformacion/progreso-p12b.md`. NINGUNO toca ESTADO-ACTUAL.md ni
+   HANDOFF.md ni este documento (integración final posterior).
+7. Backends no porteados aún ⇒ fallo EXPLÍCTICO documentado (patrón P6/P9);
+   jamás fingir paridad conductual.
+8. Sin deps nuevas sin ADR chico (reqwest para pipeline/github queda
+   aprobado si B lo necesita; axum ya aprobado).
+
+### 7.3 Criterio de cierre de P12
+
+Ambos streams completos + CLI nativo wireando todos los subcomandos +
+suite Python oráculo verde + `cargo test --workspace` verde + medición
+cold-start <100ms documentada ⇒ recién ahí procede la baja de código Python
+(último paso de §4) y el refresco final de ESTADO-ACTUAL/HANDOFF.
