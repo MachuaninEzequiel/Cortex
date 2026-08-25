@@ -124,6 +124,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-2 workitems/hu WorkItemService | ✅ | `bench/parity/p12a2_golden.py` verify PASS + `p12a2_check` S01–S09 PARIDAD COMPLETA byte-a-byte; suite oráculo verde | `e587d2a` |
 | P12A-3 pr_context: PRContext + pr_capture + PRService.store | ✅ | `bench/parity/p12a3_golden.py` verify PASS + `p12a3_check` S01–S12 PARIDAD COMPLETA byte-a-byte (JSON pydantic idéntico, payload de store exacto); suite oráculo verde | `8e90ee6` |
 | P12A-4 doc_generator/doc_validator/doc_verifier | ✅ | `bench/parity/p12a4_golden.py` verify PASS + `p12a4_check` S01–S14 PARIDAD COMPLETA byte-a-byte (contenido/filenames, issues, clasificación y JSON); suite oráculo verde | `d682bee` |
+| P12A-5 cortex-services: SpecService + NoteService | ✅ | `bench/parity/p12a5_golden.py` verify PASS + `p12a5_check` S01–S10 PARIDAD COMPLETA byte-a-byte (contenido, payloads, proposal/hooks/session y rollback); suite oráculo verde | `fffc4cd` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -237,6 +238,42 @@ Verificación: gate verify PASS + checker PARIDAD COMPLETA · cargo test -p
 cortex-app 76 passed · clippy/fmt limpios · suite Python oráculo completa
 verde (`PYTEST_RC=0`).
 
+## P12A-5 — cortex-services: SpecService + NoteService
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Se creó el crate propio **`rust/crates/cortex-services/`** y se agregó como
+member quirúrgico del workspace (Cargo.lock: sólo package cortex-services;
+regex/uuid ya presentes, cero paquetes nuevos).
+
+Arquitectura:
+
+- Puertos `SemanticPort` (Result en index/sync para rollback),
+  `EpisodicPort`, `SessionOpener`; request episódico propio; adapter de
+  SessionOpener sobre SessionService nativo de cortex-app.
+- Persistencia común sobre `cortex_setup::writers::build_note` con writer
+  canónico P8, idempotencia por fingerprint y DuplicateDocumentError exacto.
+- **SpecService**: proposal_mode optional|required|skip y errores exactos;
+  verification hooks typed o dict (serde defaults, nombres únicos y error de
+  duplicados con repr Python); tasks-required opt-in; spec writer draft;
+  index selectivo/sync; orden duro write→index→sync→Session→episodic;
+  Session best-effort (fallo nunca bloquea), summary goal-or-title;
+  memoria spec con requirements[:8].
+- **NoteService**: writer session con id uuid4 hex[:12] (reusa decisión uuid
+  P12A-1; variante create_with_id sólo para gates), completed/handoff,
+  blockers/verified/unverified/skills/telemetry/tasks/gitless; index selectivo,
+  sync opcional, memoria session (changes[:8], decisions[:5]); rollback
+  transaccional unlink+propagación ante fallo semantic/sync/episodic después
+  de persistir; remember=false saltea episódico. Alias SessionNoteService.
+
+Gate `p12a5`: S01–S10 con normalizaciones {{ROOT}}/{{DATE}}/{{TS}}/{{SID}}/
+{{FP}} pactadas; compara contenido completo, payloads episódicos, propuesta,
+hooks, tasks, orden session, handoff y rollback byte-a-byte.
+
+Verificación: oráculo determinista + checker PARIDAD COMPLETA · cargo test -p
+cortex-services 4 passed · clippy/fmt/metadata limpios · suite Python completa
+verde (`PYTEST_RC=0`).
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
@@ -244,7 +281,7 @@ verde (`PYTEST_RC=0`).
 | ~~P12A-2 workitems/hu (~685)~~ | ✅ completada |
 | ~~P12A-3 pr_context (~623) + gate CliRunner→checker~~ | ✅ completada |
 | ~~P12A-4 doc_generator/doc_validator/doc_verifier (~590)~~ | ✅ completada |
-| P12A-5 spec_service + note_service (~541) | pendiente |
+| ~~P12A-5 spec_service + note_service (~541)~~ | ✅ completada |
 | P12A-6 documentation/migration docs-migrate (~565) | pendiente |
 | P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902) | pendiente |
 | P12A-8 documenter/interactive (~342) | pendiente |
