@@ -69,9 +69,75 @@ Lecciones del gate (bugs atrapados antes del commit):
 2. Los flags `entity_*` van normalizados a minúsculas por
    `_entity_filter_key` (validado contra Python).
 
+## P12A-2 — workitems/hu: WorkItemService nativo
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Recuperación del WIP de la sesión muerta: triage completo antes de escribir
+nada nuevo. El WIP compilaba y estaba estructuralmente fiel al oráculo; se
+CONTINUÓ (no reiniciado) corrigiendo 4 defectos de paridad detectados en el
+triage:
+
+1. `has_provider` normalizaba case/trim — Python hace lookup DIRECTO
+   (`golden S05: FAKE_normaliza=False`); la normalización vive sólo en
+   `import_item`/_provider.
+2. Edge `status=""`: Python (`item.status or "imported"`) cae al default;
+   Rust sólo trataba None.
+3. Checker: título S02 con llaves cuádruples, copia de fixture no recursiva
+   (fallaba con vault/hu/) y formato repr Python (comillas simples,
+   True/False, KeyError con repr citado).
+4. **synced_at / str(datetime)**: HUData es dataclass ⇒ el servicio Python
+   pasa OBJETOS datetime; el body los renderiza como `str(dt)`
+   ("2026-08-22 14:03:00+00:00") mientras el frontmatter serializa
+   pydantic/RFC3339 ("...T14:03:00Z"). El writer nativo usa el mismo campo
+   para ambos (body raw, frontmatter opt_dt): se pasa la forma str(dt) y
+   `normalize_pydantic_datetime` (cortex-setup) aprende a aceptar separador
+   espacio (reintento T-form). Inputs Z-form intactos — gates P8 verdes
+   (cargo test -p cortex-setup 16 passed post-cambio).
+
+Qué se portó:
+
+- **`cortex-app/src/workitems.rs`** (nuevo, ~740 líneas): models
+  (TrackedItem/WorkItemSource/WorkItemKind), trait WorkItemProvider,
+  WorkItemService con import_item (KeyError/RuntimeError con mensajes de
+  Python), get_item_note (naming canónico HU-{id} + fallback slug legacy),
+  list_item_notes, has_provider; escritura vía writer canónico
+  `build_note("hu")` (API estable P8b) + semántica de duplicados por
+  fingerprint (no-op idempotente / DuplicateDocumentError mensaje exacto);
+  resumen episódico (_store_episodic: truncado 300 chars, 5 criterios) y
+  reindex semántico tras traits inyectables SemanticIndexer/EpisodicSink
+  con adapters live sobre semantic.index_file + episodic.append (P12A-1).
+  7 tests unitarios espejando tests/unit/workitems.
+- **`bench/parity/p12a2_golden.py`**: oráculo determinista S01–S09
+  (fakes espejo del test_service.py; synced_at FIJO ⇒ todo lo demás
+  determinista; normalizaciones {{ROOT}}/{{TS}} pactadas).
+- **`rust/crates/cortex-app/examples/p12a2_check.rs`**: checker Rust que
+  reproduce S01–S09 y compara byte-a-byte contra golden_p12a2.txt.
+
+Verificación: gate verify PASS (oráculo determinista) + checker PARIDAD
+COMPLETA · cargo test -p cortex-app 65 passed · clippy/fmt limpios ·
+suite Python oráculo completa verde (--no-cov).
+
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
-| P12A-1 episodic.append + semantic.index_file + resolve_safe | ✅ | `bench/parity/p12a1_golden.py` verify PASS + `p12a1_check` PARIDAD COMPLETA (16/16 entries · 6 rankings exactos · R1/R2 idénticos · incremental==rebuild); suite Python 2455 passed | (este commit) |
+| P12A-1 episodic.append + semantic.index_file + resolve_safe | ✅ | `bench/parity/p12a1_golden.py` verify PASS + `p12a1_check` PARIDAD COMPLETA (16/16 entries · 6 rankings exactos · R1/R2 idénticos · incremental==rebuild); suite Python 2455 passed | `c9b62ab` |
+| P12A-2 workitems/hu WorkItemService | ✅ | `bench/parity/p12a2_golden.py` verify PASS + `p12a2_check` S01–S09 PARIDAD COMPLETA byte-a-byte; suite oráculo verde | `e587d2a` |
+
+## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
+
+- **Decisión**: aceptar además la forma `str(datetime)` de Python
+  ("2026-08-22 14:03:00+00:00", separador espacio) con reintento T-form
+  dentro de `normalize_pydantic_datetime`, para que un único valor alimente
+  body (raw = str(dt)) y frontmatter (normalizado pydantic) en paridad.
+- **Justificación**: el servicio workitems recibe datetimes reales de los
+  providers (pydantic TrackedItem); HUData es dataclass y el template hu
+  renderiza `{{ synced_at }}` directo. Sin esto, body o frontmatter
+  divergen siempre. Cambio aditivo: inputs RFC3339/Z-form toman el camino
+  original (gates P8 verdes post-cambio, 16 tests cortex-setup).
+- **Alternativas descartadas**: duplicar la lógica del writer en
+  cortex-app (pierde garantías P8b), cambiar el oráculo/golden (el golden
+  ES el comportamiento Python real), tocar template_vars por doc-type
+  (más invasivo).
 
 ## ADR chico: dependencia uuid en cortex-app
 
@@ -89,7 +155,9 @@ Lecciones del gate (bugs atrapados antes del commit):
 
 | Tarea | Estado |
 |---|---|
-| P12A-2 workitems/hu (~685) | pendiente |
+| Tarea | Estado |
+|---|---|
+| ~~P12A-2 workitems/hu (~685)~~ | ✅ completada (ver arriba) |
 | P12A-3 pr_context (~623) + gate CliRunner→checker | pendiente |
 | P12A-4 doc_generator/doc_validator/doc_verifier (~590) | pendiente |
 | P12A-5 spec_service + note_service (~541) | pendiente |
