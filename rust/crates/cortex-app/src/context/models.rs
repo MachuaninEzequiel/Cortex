@@ -19,6 +19,12 @@ pub struct WorkContext {
     pub detected_domain: Option<String>,
     pub domain_confidence: f64,
     pub search_queries: Vec<String>,
+    /// Campos completos de `cortex.models.WorkContext` (P12A-7 observer).
+    pub new_files: Vec<String>,
+    pub deleted_files: Vec<String>,
+    pub pr_title: Option<String>,
+    pub pr_body: Option<String>,
+    pub pr_labels: Vec<String>,
 }
 
 impl WorkContext {
@@ -67,11 +73,14 @@ pub struct EnrichedBundle {
     pub total_searches: usize,
     pub total_raw_hits: usize,
     pub total_chars: usize,
+    /// EnrichedContext de Python trae within_budget como CAMPO; None ⇒ calcular.
+    pub within_budget_override: Option<bool>,
 }
 
 impl EnrichedBundle {
     pub fn within_budget(&self, max_chars: usize) -> bool {
-        self.total_chars <= max_chars
+        self.within_budget_override
+            .unwrap_or(self.total_chars <= max_chars)
     }
 
     /// Espejo byte-parity de `ContextPresenter.to_json(ctx)`.
@@ -129,7 +138,7 @@ impl EnrichedBundle {
                 Pj::Arr(self.items.iter().map(item_to_pj).collect()),
             ),
         ]);
-        super::pyjson::dumps(&v)
+        super::pyjson::dumps_ascii(&v)
     }
 }
 

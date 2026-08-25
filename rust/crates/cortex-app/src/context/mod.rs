@@ -16,11 +16,16 @@ pub mod budget_resolver;
 pub mod cooccurrence;
 pub mod decay;
 pub mod doc_intent;
+pub mod domain_detector;
 pub mod feedback;
+pub mod filters;
 pub mod hybrid;
 pub mod intent;
 pub mod models;
+pub mod observer;
+pub mod presenter;
 pub mod pyjson;
+pub mod telemetry;
 
 use std::collections::HashMap;
 
@@ -409,6 +414,7 @@ impl<'a> ContextEnricher<'a> {
             total_searches: strategy_count(&strategy_results),
             total_raw_hits,
             total_chars,
+            within_budget_override: None,
         }
     }
 }
