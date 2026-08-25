@@ -1,0 +1,24 @@
+╭─────────────────────────── 🏢 ENTERPRISE MEMORY — Memoria Corporativa ───────────────────────────╮
+│                                                                                                  │
+│  Modelo de 2 niveles:                                                                            │
+│    vault/             → Conocimiento LOCAL del proyecto                                          │
+│    vault-enterprise/  → Conocimiento CORPORATIVO compartido                                      │
+│                                                                                                  │
+│  Flujo de promoción:                                                                             │
+│    Local spec → candidate → review → promote → enterprise vault                                  │
+│                                                                                                  │
+│  Topologías disponibles:                                                                         │
+│    • small-company         → Equipo chico, vault compartido                                      │
+│    • multi-project-team    → Varios proyectos, retrieval cruzado                                 │
+│    • regulated-organization → Review obligatorio, CI enforced                                    │
+│    • custom                → Config manual completa                                              │
+│                                                                                                  │
+│  Comandos clave:                                                                                 │
+│    cortex setup enterprise    → Configurar topología                                             │
+│    cortex promote-knowledge   → Promover docs (--dry-run/--apply)                                │
+│    cortex review-knowledge    → Aprobar/rechazar candidatos                                      │
+│    cortex memory-report       → Ver salud de memoria                                             │
+│                                                                                                  │
+│  📖 Guía enterprise: docs/guides/enterprise-vault.md                                             │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

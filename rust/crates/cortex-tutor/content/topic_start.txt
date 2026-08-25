@@ -1,0 +1,15 @@
+╭─────────────────────────────────────── 🚀 PRIMEROS PASOS ────────────────────────────────────────╮
+│                                                                                                  │
+│  1. Activar tu entorno: source .venv/bin/activate  (o .venv\Scripts\Activate.ps1)                │
+│  2. Inicializar:        cortex setup agent                                                       │
+│  3. Crear spec:         cortex create-spec --title "Mi Feature"                                  │
+│  4. Trabajar y guardar: cortex save-session --title "Mi Feature"                                 │
+│  5. Buscar contexto:    cortex search "mi query"                                                 │
+│  6. Verificar salud:    cortex doctor                                                            │
+│                                                                                                  │
+│  Cortex se instala como dependencia en el .venv de tu propio proyecto.                           │
+│  Cada proyecto tiene su propio vault/ y .memory/ totalmente aislados.                            │
+│                                                                                                  │
+│  📖 Guía completa: docs/guides/getting-started.md                                                │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

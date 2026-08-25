@@ -1,0 +1,23 @@
+╭─────────────────────────────── 📁 VAULT — Tu Base de Conocimiento ───────────────────────────────╮
+│                                                                                                  │
+│  vault/                                                                                          │
+│    ├── specs/        → Especificaciones técnicas (pre-trabajo)                                   │
+│    ├── sessions/     → Notas de sesiones (post-trabajo)                                          │
+│    ├── decisions/    → Decisiones arquitectónicas                                                │
+│    ├── runbooks/     → Guías operativas                                                          │
+│    └── hu/           → Work items importados (Jira, etc.)                                        │
+│                                                                                                  │
+│  ¿Qué va a Git/Master?                                                                           │
+│    ✅ vault/          (tu knowledge base versionada)                                             │
+│    ✅ config.yaml     (configuración del proyecto)                                               │
+│    ✅ .cortex/org.yaml (si usás enterprise)                                                      │
+│    ❌ .memory/        (base de datos local, en .gitignore)                                       │
+│                                                                                                  │
+│  Comandos clave:                                                                                 │
+│    cortex sync-vault     → Re-indexar el vault                                                   │
+│    cortex validate-docs  → Validar estructura y frontmatter                                      │
+│    cortex index-docs     → Indexar docs como memoria semántica                                   │
+│                                                                                                  │
+│  📖 Estructura detallada: docs/guides/vault-structure.md                                         │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

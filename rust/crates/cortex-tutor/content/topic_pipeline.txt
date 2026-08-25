@@ -1,0 +1,25 @@
+╭─────────────────────────────── ⚙️  PIPELINE CI/CD — DevSecDocOps ────────────────────────────────╮
+│                                                                                                  │
+│  Cortex ejecuta 4 stages en orden:                                                               │
+│    Security → Lint → Test → Documentation                                                        │
+│                                                                                                  │
+│  Cada stage se configura en config.yaml:                                                         │
+│    pipeline.stages.security.enabled: true/false                                                  │
+│    pipeline.stages.security.block_on_failure: true/false                                         │
+│                                                                                                  │
+│  Módulos intercambiables:                                                                        │
+│    Security: npm audit (default) o tu propio script                                              │
+│    Lint:     ruff (default) o eslint, pylint, flake8...                                          │
+│    Test:     pytest (default) o jest, vitest, go test...                                         │
+│    Docs:     cortex verify-docs (default)                                                        │
+│                                                                                                  │
+│  Modos de enforcement:                                                                           │
+│    block_on_failure: false → Advisory (advierte, no bloquea)                                     │
+│    block_on_failure: true  → Enforced (bloquea el merge)                                         │
+│                                                                                                  │
+│  Setup rápido: cortex setup pipeline                                                             │
+│                                                                                                  │
+│  📖 Setup completo: docs/guides/pipeline-setup.md                                                │
+│  📖 Módulos custom: docs/guides/pipeline-custom-modules.md                                       │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

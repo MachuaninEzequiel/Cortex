@@ -587,6 +587,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-tutor"
+version = "0.1.0"
+dependencies = [
+ "cortex-workspace",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "cortex-webgraph-server"
 version = "0.1.0"
 dependencies = [

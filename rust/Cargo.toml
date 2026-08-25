@@ -32,6 +32,8 @@ members = [
     "crates/cortex-autopilot",
     # Obra 07 P12B-6 (pipeline SDDwork, stream B): doc 09 §3.7/§7
     "crates/cortex-pipeline",
+    # Obra 07 P12B-7 (tutor, stream B): doc 09 §3.8/§7 — porte fiel aprobado
+    "crates/cortex-tutor",
 ]
 
 [workspace.package]
