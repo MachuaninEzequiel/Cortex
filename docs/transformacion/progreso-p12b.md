@@ -752,6 +752,32 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   mano (`", "` / `": "` + ensure_ascii=True) porque serde_json::to_string es
   compacto y mantiene unicode crudo.
 
+### Diseño aprobado P12B-5 — cortex-autopilot (capa de decisión)
+
+- **Alcance** (decisión del dueño): capa de decisión pura. Crate
+  `rust/crates/cortex-autopilot` con: config (`AutopilotConfig` +
+  `load_autopilot_config`, error "Failed to parse autopilot config"),
+  errors, models (DetectionRequest/Result), **modelos de sesión mínimos**
+  (SessionStatus/CheckpointSource/Checkpoint/SessionRecord — solo los
+  campos que policies/lifecycle consumen), detectors (base resolve_detectors
+  + 7 default + ambiguous, reglas §7.1.2), policies (AutopilotPolicy
+  from_config con fallback seguro a ASSIST, validaciones de thresholds,
+  PolicyEnforcer hooks on_session_open/on_checkpoint/on_pre_close con reloj
+  inyectable), lifecycle (tipos start/preflight/finish/status).
+- **service/cli/mcp_tools**: fallo explícito documentado hasta que exista el
+  motor de sesiones nativo (SessionService/Storage/AgentMemory no porteños;
+  handlers mcp de sessions son territorio A). CLI clap en P12B-8.
+- **doctor.py de autopilot**: parcial nativo (config/sessions_dir writability);
+  last_finish/adapters/hooks → stub hasta motor de sesiones.
+- **Llena el stub de P12B-4**: cortex-doctor pasa a cargar
+  `load_autopilot_config` + `AutopilotPolicy::from_config` reales
+  (info `mode=…, budget_profile=…`; warn "could not load/build"; typo check
+  `autopilot_mode_typo`) y la STUB_TABLE del oráculo pierde esa entrada.
+- **Gate**: `bench/parity/autopilot_golden_p12b.py` (detección con requests
+  canónicos, enforcement con clock fijo, config inválida/válida,
+  autopilot_policy real del doctor) + `examples/autopilot_check.rs`
+  byte-parity con solo {{ROOT}}/{{TS}}.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
