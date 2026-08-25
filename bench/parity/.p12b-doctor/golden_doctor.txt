@@ -17,7 +17,7 @@
 {"name": "vault_validation_errors", "ok": true, "severity": "fail", "detail": "0 error(s) across 1 markdown file(s)"}
 {"name": "vault_validation_warnings", "ok": true, "severity": "warn", "detail": "0 warning(s) across 1 markdown file(s)"}
 {"name": "sessions_dir", "ok": false, "severity": "warn", "detail": "Missing: /home/chucho/Cortex/bench/parity/.p12b-doctor/.work/legacy/acme-api/.cortex/sessions \u2014 run `cortex setup agent`."}
-{"name": "autopilot_policy", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.autopilot.policies)"}
+{"name": "autopilot_policy", "ok": true, "severity": "info", "detail": "mode=assist, budget_profile=fast_code"}
 {"name": "session_hooks_installed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.hooks)"}
 {"name": "pm_workspace_layout_v2", "ok": false, "severity": "warn", "detail": "running on legacy layout"}
 {"name": "pm_documenter_module", "ok": false, "severity": "fail", "detail": "backend no nativo a\u00fan (cortex.documenter)"}
@@ -46,7 +46,7 @@ SUMMARY has_failures=True has_warnings=True
 {"name": "vault_validation_errors", "ok": true, "severity": "fail", "detail": "0 error(s) across 1 markdown file(s)"}
 {"name": "vault_validation_warnings", "ok": true, "severity": "warn", "detail": "0 warning(s) across 1 markdown file(s)"}
 {"name": "sessions_dir", "ok": false, "severity": "warn", "detail": "Missing: /home/chucho/Cortex/bench/parity/.p12b-doctor/.work/legacy_all/acme-api/.cortex/sessions \u2014 run `cortex setup agent`."}
-{"name": "autopilot_policy", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.autopilot.policies)"}
+{"name": "autopilot_policy", "ok": true, "severity": "info", "detail": "mode=assist, budget_profile=fast_code"}
 {"name": "session_hooks_installed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.hooks)"}
 {"name": "pm_workspace_layout_v2", "ok": false, "severity": "warn", "detail": "running on legacy layout"}
 {"name": "pm_documenter_module", "ok": false, "severity": "fail", "detail": "backend no nativo a\u00fan (cortex.documenter)"}
@@ -87,7 +87,7 @@ SUMMARY has_failures=True has_warnings=False
 {"name": "vault_validation_errors", "ok": true, "severity": "fail", "detail": "0 error(s) across 1 markdown file(s)"}
 {"name": "vault_validation_warnings", "ok": true, "severity": "warn", "detail": "0 warning(s) across 1 markdown file(s)"}
 {"name": "sessions_dir", "ok": false, "severity": "warn", "detail": "Missing: /home/chucho/Cortex/bench/parity/.p12b-doctor/.work/newlayout/acme-api/.cortex/sessions \u2014 run `cortex setup agent`."}
-{"name": "autopilot_policy", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.autopilot.policies)"}
+{"name": "autopilot_policy", "ok": true, "severity": "info", "detail": "mode=assist, budget_profile=fast_code"}
 {"name": "session_hooks_installed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.hooks)"}
 {"name": "pm_workspace_layout_v2", "ok": true, "severity": "info", "detail": "layout v2 active"}
 {"name": "pm_documenter_module", "ok": false, "severity": "fail", "detail": "backend no nativo a\u00fan (cortex.documenter)"}
@@ -118,7 +118,37 @@ SUMMARY has_failures=True has_warnings=True
 {"name": "sessions_dir", "ok": true, "severity": "info", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/with_sessions/acme-api/.cortex/sessions"}
 {"name": "sessions_active_pointer", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.storage)"}
 {"name": "sessions_parsed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.storage)"}
-{"name": "autopilot_policy", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.autopilot.policies)"}
+{"name": "autopilot_policy", "ok": true, "severity": "info", "detail": "mode=assist, budget_profile=fast_code"}
+{"name": "session_hooks_installed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.hooks)"}
+{"name": "pm_workspace_layout_v2", "ok": false, "severity": "warn", "detail": "running on legacy layout"}
+{"name": "pm_documenter_module", "ok": false, "severity": "fail", "detail": "backend no nativo a\u00fan (cortex.documenter)"}
+{"name": "pm_documenter_interactive", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.documenter.interactive)"}
+{"name": "pm_documenter_default_mode", "ok": true, "severity": "info", "detail": "documenter.default_mode = auto"}
+{"name": "pm_verification_runner", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.verification)"}
+{"name": "pm_mcp_tools_registered", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.mcp.server)"}
+{"name": "pm_git_available", "ok": true, "severity": "info", "detail": "git repository detected \u2014 full documenter fidelity"}
+SUMMARY has_failures=True has_warnings=True
+### autopilot_typo
+{"name": "project_root", "ok": true, "severity": "fail", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api"}
+{"name": "layout_mode", "ok": true, "severity": "info", "detail": "legacy (workspace_root=/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api)"}
+{"name": "config_yaml", "ok": true, "severity": "fail", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/config.yaml"}
+{"name": "config_validation", "ok": true, "severity": "info", "detail": "config.yaml is valid"}
+{"name": "vault_dir", "ok": true, "severity": "fail", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/vault"}
+{"name": "episodic_store", "ok": false, "severity": "fail", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/memory"}
+{"name": "cortex_workspace", "ok": true, "severity": "warn", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api"}
+{"name": "agent_guidelines", "ok": false, "severity": "warn", "detail": "/home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/.cortex/AGENT.md"}
+{"name": "workspace_yaml", "ok": false, "severity": "info", "detail": "Missing: /home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/.cortex/workspace.yaml"}
+{"name": "git_repository", "ok": true, "severity": "warn", "detail": "/home/chucho/Cortex"}
+{"name": "git_branch", "ok": true, "severity": "warn", "detail": "feature/transformacion-2026-08"}
+{"name": "gitignore:.memory/", "ok": false, "severity": "fail", "detail": ".memory/"}
+{"name": "gitignore:vault/sessions/", "ok": false, "severity": "warn", "detail": "vault/sessions/"}
+{"name": "gitignore:.cortex/session.lock", "ok": false, "severity": "warn", "detail": ".cortex/session.lock"}
+{"name": "webgraph_dependencies", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.webgraph.setup)"}
+{"name": "vault_validation_errors", "ok": true, "severity": "fail", "detail": "0 error(s) across 1 markdown file(s)"}
+{"name": "vault_validation_warnings", "ok": true, "severity": "warn", "detail": "0 warning(s) across 1 markdown file(s)"}
+{"name": "sessions_dir", "ok": false, "severity": "warn", "detail": "Missing: /home/chucho/Cortex/bench/parity/.p12b-doctor/.work/ap_typo/acme-api/.cortex/sessions \u2014 run `cortex setup agent`."}
+{"name": "autopilot_policy", "ok": true, "severity": "info", "detail": "mode=assist, budget_profile=fast_code"}
+{"name": "autopilot_mode_typo", "ok": false, "severity": "warn", "detail": "autopilot.yaml mode='auto' is not recognized; using 'assist'."}
 {"name": "session_hooks_installed", "ok": false, "severity": "warn", "detail": "backend no nativo a\u00fan (cortex.session.hooks)"}
 {"name": "pm_workspace_layout_v2", "ok": false, "severity": "warn", "detail": "running on legacy layout"}
 {"name": "pm_documenter_module", "ok": false, "severity": "fail", "detail": "backend no nativo a\u00fan (cortex.documenter)"}

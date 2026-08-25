@@ -1,5 +1,5 @@
 [package]
-name = "cortex-doctor"
+name = "cortex-autopilot"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,9 +9,6 @@ chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 serde_yaml = { workspace = true }
-cortex-app = { path = "../cortex-app" }
-cortex-config = { path = "../cortex-config" }
-cortex-autopilot = { path = "../cortex-autopilot" }
 cortex-enterprise = { path = "../cortex-enterprise" }
 cortex-workspace = { path = "../cortex-workspace" }
 

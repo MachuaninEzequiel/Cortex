@@ -28,6 +28,8 @@ members = [
     "crates/cortex-enterprise",
     # Obra 07 P12B-4 (doctor, stream B): doc 09 §3.10/§7
     "crates/cortex-doctor",
+    # Obra 07 P12B-5 (autopilot capa de decisión, stream B): doc 09 §3.6/§7
+    "crates/cortex-autopilot",
 ]
 
 [workspace.package]

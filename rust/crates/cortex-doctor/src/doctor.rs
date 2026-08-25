@@ -276,12 +276,8 @@ fn run_doctor_inner(
     // ── Sessions ──────────────────────────────────────────────────
     checks.extend(validate_sessions(&layout));
 
-    // ── Autopilot policy (stub; real en P12B-5) ───────────────────
-    checks.push(stub(
-        "autopilot_policy",
-        "cortex.autopilot.policies",
-        "warn",
-    ));
+    // ── Autopilot policy (real desde P12B-5) ─────────────────────
+    checks.extend(validate_autopilot_policy(&layout));
 
     // ── Session hooks (stub) ──────────────────────────────────────
     checks.push(stub(
@@ -306,6 +302,64 @@ fn run_doctor_inner(
         project_root: root,
         checks,
     })
+}
+
+/// `_validate_autopilot_policy` (real vía cortex-autopilot).
+fn validate_autopilot_policy(layout: &WorkspaceLayout) -> Vec<DoctorCheck> {
+    use cortex_autopilot::config::load_autopilot_config;
+    use std::sync::Arc;
+
+    let mut checks = Vec::new();
+    let cfg = match load_autopilot_config(layout) {
+        Ok(c) => c,
+        Err(exc) => {
+            checks.push(DoctorCheck::new(
+                "autopilot_policy",
+                false,
+                "warn",
+                format!("could not load: {exc}"),
+            ));
+            return checks;
+        }
+    };
+    let clock: Arc<dyn cortex_enterprise::clock::Clock> =
+        Arc::new(cortex_enterprise::clock::SystemClock);
+    let policy = match cortex_autopilot::policies::AutopilotPolicy::from_config(&cfg, clock) {
+        Ok(p) => p,
+        Err(exc) => {
+            checks.push(DoctorCheck::new(
+                "autopilot_policy",
+                false,
+                "warn",
+                format!("could not build policy: {exc}"),
+            ));
+            return checks;
+        }
+    };
+    checks.push(DoctorCheck::new(
+        "autopilot_policy",
+        true,
+        "info",
+        format!(
+            "mode={}, budget_profile={}",
+            policy.mode.as_str(),
+            policy.budget_profile
+        ),
+    ));
+
+    let declared = cfg.mode.trim().to_lowercase();
+    if !declared.is_empty() && declared != policy.mode.as_str() {
+        checks.push(DoctorCheck::new(
+            "autopilot_mode_typo",
+            false,
+            "warn",
+            format!(
+                "autopilot.yaml mode='{declared}' is not recognized; using '{}'.",
+                policy.mode.as_str()
+            ),
+        ));
+    }
+    checks
 }
 
 /// `_validate_vault` / `_validate_enterprise_vault` (compartidas).

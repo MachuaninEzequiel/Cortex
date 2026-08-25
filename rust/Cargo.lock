@@ -426,6 +426,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-autopilot"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cortex-enterprise",
+ "cortex-workspace",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+]
+
+[[package]]
 name = "cortex-brain"
 version = "0.1.0"
 dependencies = [
@@ -470,6 +483,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cortex-app",
+ "cortex-autopilot",
  "cortex-config",
  "cortex-enterprise",
  "cortex-workspace",

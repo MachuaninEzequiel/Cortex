@@ -29,7 +29,6 @@ STUB_TABLE = {
     "webgraph_dependencies": ("warn", "cortex.webgraph.setup"),
     "sessions_active_pointer": ("warn", "cortex.session.storage"),
     "sessions_parsed": ("warn", "cortex.session.storage"),
-    "autopilot_policy": ("warn", "cortex.autopilot.policies"),
     "session_hooks_installed": ("warn", "cortex.session.hooks"),
     "pm_documenter_module": ("fail", "cortex.documenter"),
     "pm_documenter_interactive": ("warn", "cortex.documenter.interactive"),
@@ -122,6 +121,12 @@ def build(out_dir: Path) -> int:
     root = make_legacy(workdir, "with_sessions", with_org=False, with_sessions=True)
     sections.append(normalize_checks(run_doctor(root)))
 
+    # 6. autopilot.yaml con typo de modo → autopilot_mode_typo warn.
+    root = make_legacy(workdir, "ap_typo", with_org=False, with_sessions=False)
+    # Legacy ⇒ workspace_root == root.
+    (root / "autopilot.yaml").write_text("mode: auto\n", encoding="utf-8")
+    sections.append(normalize_checks(run_doctor(root)))
+
     body = "".join(
         f"### {name}\n{section}"
         for name, section in zip(
@@ -131,6 +136,7 @@ def build(out_dir: Path) -> int:
                 "enterprise_missing_org",
                 "new_layout",
                 "legacy_with_sessions",
+                "autopilot_typo",
             ],
             sections,
         )

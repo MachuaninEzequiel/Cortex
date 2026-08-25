@@ -154,15 +154,21 @@ fn main() {
     let root = make_legacy(&workdir, "with_sessions", false, true);
     let s5 = render(&run_doctor(&root, DoctorScope::Project).unwrap());
 
+    // 6. autopilot.yaml con typo de modo → autopilot_mode_typo warn.
+    let root = make_legacy(&workdir, "ap_typo", false, false);
+    std::fs::write(root.join("autopilot.yaml"), "mode: auto\n").unwrap();
+    let s6 = render(&run_doctor(&root, DoctorScope::Project).unwrap());
+
     let names = [
         "legacy_project",
         "legacy_all",
         "enterprise_missing_org",
         "new_layout",
         "legacy_with_sessions",
+        "autopilot_typo",
     ];
     let mut actual = String::new();
-    for (name, section) in names.iter().zip([&s1, &s2, &s3, &s4, &s5]) {
+    for (name, section) in names.iter().zip([&s1, &s2, &s3, &s4, &s5, &s6]) {
         actual.push_str(&format!("### {name}\n{section}"));
     }
 
