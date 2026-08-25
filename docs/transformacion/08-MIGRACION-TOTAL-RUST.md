@@ -99,13 +99,6 @@ consume `cortex-app` in-process.
 | **P9** 🅱 | crate `cortex-mcp` con rmcp (SDK oficial Rust) | golden contract list_tools.json byte-a-byte |
 | **P10** 🅿️ EN CURSO por stream paralelo del dueño | cortex-branding (paleta/máscaras/wordmark/render half-block) + cortex-tui (splash/Home ratatui) + logo en banner del brain | snapshot render + latencia <50ms ✅ VERDE (73 tests del stream) |
 
-| **P7** | ContextEnricher + budget | bundles --json idénticos |
-| **P8** | Setup/templates + 11 IDE adapters (minijinja) | renders byte-parity sobre proyectos fixture |
-| **P9** | MCP server rmcp | golden contract list_tools.json byte-a-byte |
-| **P10** | TUI ratatui (Home <50ms) + cerebro ASCII degradado (definición estética pendiente del dueño) | snapshot render + latencia |
-| **P11** | Cola larga (ci, tutor, hu, pr_context…) uno por commit | parity por comando |
-| **P12** | Cierre: brain in-process, default Rust, Python app layer eliminada, wheels solo-Rust | suite completa Rust + bench final vs baseline |
-
 ## 4b. Coordinación DUAL-STREAM (P6+P7 ∥ P8+P9) — activa 2026-08-24
 
 Dos agentes en paralelo sobre el MISMO working tree:
