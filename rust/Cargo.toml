@@ -26,6 +26,8 @@ members = [
     "crates/cortex-webgraph-server",
     # Obra 07 P12B-3 (enterprise models/config/governance, stream B): doc 09 §3.10/§7
     "crates/cortex-enterprise",
+    # Obra 07 P12B-4 (doctor, stream B): doc 09 §3.10/§7
+    "crates/cortex-doctor",
 ]
 
 [workspace.package]

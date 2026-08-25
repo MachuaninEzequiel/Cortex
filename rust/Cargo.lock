@@ -465,6 +465,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-doctor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cortex-app",
+ "cortex-config",
+ "cortex-enterprise",
+ "cortex-workspace",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+]
+
+[[package]]
 name = "cortex-embed"
 version = "0.1.0"
 dependencies = [

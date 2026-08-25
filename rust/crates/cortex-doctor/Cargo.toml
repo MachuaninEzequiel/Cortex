@@ -1,0 +1,18 @@
+[package]
+name = "cortex-doctor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_yaml = { workspace = true }
+cortex-app = { path = "../cortex-app" }
+cortex-config = { path = "../cortex-config" }
+cortex-enterprise = { path = "../cortex-enterprise" }
+cortex-workspace = { path = "../cortex-workspace" }
+
+[dev-dependencies]
+tempfile = "3"
