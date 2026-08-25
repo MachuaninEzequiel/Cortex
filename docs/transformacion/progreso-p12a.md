@@ -125,6 +125,7 @@ suite Python oráculo completa verde (--no-cov).
 | P12A-3 pr_context: PRContext + pr_capture + PRService.store | ✅ | `bench/parity/p12a3_golden.py` verify PASS + `p12a3_check` S01–S12 PARIDAD COMPLETA byte-a-byte (JSON pydantic idéntico, payload de store exacto); suite oráculo verde | `8e90ee6` |
 | P12A-4 doc_generator/doc_validator/doc_verifier | ✅ | `bench/parity/p12a4_golden.py` verify PASS + `p12a4_check` S01–S14 PARIDAD COMPLETA byte-a-byte (contenido/filenames, issues, clasificación y JSON); suite oráculo verde | `d682bee` |
 | P12A-5 cortex-services: SpecService + NoteService | ✅ | `bench/parity/p12a5_golden.py` verify PASS + `p12a5_check` S01–S10 PARIDAD COMPLETA byte-a-byte (contenido, payloads, proposal/hooks/session y rollback); suite oráculo verde | `fffc4cd` |
+| P12A-6 documentation/migration (docs-migrate) | ✅ | `bench/parity/p12a6_golden.py` verify PASS + `p12a6_check` S01–S12 PARIDAD COMPLETA byte-a-byte (dry-run/apply/idempotencia/force/inferencia/report/legacy/backups/status/validate/títulos/fechas); suite oráculo verde | `bc9d218` |
 
 ## Micro-ADR: toque quirúrgico en cortex-setup::writers (normalize_pydantic_datetime)
 
@@ -274,6 +275,48 @@ Verificación: oráculo determinista + checker PARIDAD COMPLETA · cargo test -p
 cortex-services 4 passed · clippy/fmt/metadata limpios · suite Python completa
 verde (`PYTEST_RC=0`).
 
+## P12A-6 — documentation/migration (docs-migrate)
+
+Estado: ✅ COMPLETADA (gate verde + suite Python oráculo verde).
+
+Módulo **`rust/crates/cortex-services/src/migration.rs`** (~1400 líneas con
+tests) que replica `cortex/documentation/migration.py`:
+
+- `migrate_vault` dry-run/apply con idempotencia (`schema_version=1` +
+  `doc_type` string), `force`, exclusión de `.cortex/backups` y `_archived`,
+  orden `rglob("*.md") sorted`, backup tar.gz previo al apply.
+- Frontmatter canónico: título `str.title()` CPython, fechas ISO (rama string:
+  naive ⇒ UTC aware; clamp updated≥created; mtime fallback), tags/status con
+  mapeos generated→completed / imported→backlog y default primer status
+  ordenado, wikilinks dedup+sort, fingerprint SHA-256 del body, type-specific
+  por DocType (ADR/INC/PM desde stem regex, session_id derivado con slug,
+  HU/glossary/changelog/runbook/decision/architecture), preservación
+  `legacy_*` en orden original del YAML.
+- `create_backup`: shell-out a `tar czf` (contenido del archivo NO es
+  contrato; sólo existencia/nombre normalizado {{STAMP}}).
+- `validate_vault` estructural: errores EXACTOS "No frontmatter in…",
+  "doc_type field is required…", "doc_type must be a string, got int",
+  "Unknown doc_type: 'x'", "vault_scope must be 'local' or 'enterprise', got
+  'cloud'"; fallos de schema pydantic colapsados a {{SCHEMA_ERR}} y YAML
+  inválido a {{YAML_ERR}} (volcados internos no contrato), contadores de
+  validez idénticos vía campos requeridos por tipo.
+- Divergencias documentadas en cabecera del módulo: parser serde_yaml vs
+  PyYAML y timestamps planos no resueltos (los fixtures citan fechas, ambos
+  lados van por la rama string).
+
+Gate `p12a6` S01–S12: dry-run, apply, idempotencia, force, matriz de
+inferencia (11 carpetas + design), unclassifiable+format_report,
+preserve/drop legacy, backups+exclusiones, status mapping, payloads JSON de
+validate_vault, títulos/derives y resolución de datetimes (+02:00/Z/clamp/
+mtime). Normalizaciones pactadas {{ROOT}}/{{TS}}/{{STAMP}}/{{SCHEMA_ERR}}/
+{{YAML_ERR}}; fechas deterministas fijadas además en líneas clave=valor.
+
+Verificación: oráculo determinista + checker PARIDAD COMPLETA · cargo test -p
+cortex-services 10 passed · clippy/fmt limpios · suite Python completa verde
+(`PYTEST_RC=0`). Nota operativa: se encontró `.cortex/heavy.lock` como archivo
+huérfano sin proceso vivo (bloqueaba ambos streams bajo la convención mkdir);
+fue eliminado antes del gate.
+
 ## Cola restante (orden de dependencias)
 
 | Tarea | Estado |
@@ -282,7 +325,7 @@ verde (`PYTEST_RC=0`).
 | ~~P12A-3 pr_context (~623) + gate CliRunner→checker~~ | ✅ completada |
 | ~~P12A-4 doc_generator/doc_validator/doc_verifier (~590)~~ | ✅ completada |
 | ~~P12A-5 spec_service + note_service (~541)~~ | ✅ completada |
-| P12A-6 documentation/migration docs-migrate (~565) | pendiente |
+| ~~P12A-6 documentation/migration docs-migrate (~565)~~ | ✅ completada |
 | P12A-7 context extras observer/telemetry/domain/filters/presenter (~1902) | pendiente |
 | P12A-8 documenter/interactive (~342) | pendiente |
 | P12A-9 mcp handlers in-process (~2056) · escritura espera decisión wire-format §4.8 | pendiente |
