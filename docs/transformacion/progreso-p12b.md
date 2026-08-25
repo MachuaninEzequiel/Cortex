@@ -787,6 +787,28 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   como subconjunto fiel de los campos que policies/lifecycle consumen;
   invariante lifecycle defensivo incluido para el doctor futuro.
 
+### Diseño P12B-6 — cortex-pipeline
+
+- **Hallazgo**: runners/github.py es un GENERADOR PURO de workflow YAML
+  (sin cliente HTTP); los stages ejecutan comandos locales vía subprocess.
+  ⇒ NO se requiere reqwest (la nota §7.2.8 anticipaba API client que el
+  código Python nunca tuvo). Sin deps nuevas.
+- **Crate** `rust/crates/cortex-pipeline`: domain/types (StageType/Status,
+  StageResult con icon/passed/failed/to_dict, PipelineReport con
+  summary/to_markdown/to_dict), domain/context (PipelineContext +
+  stage_outputs compartido), trait PipelineStage (structural → trait),
+  orchestrator (gate enforcement: abort al fallar bloqueante y marcar
+  restantes SKIPPED; abort_early=false corre todo).
+- **Stages nativos**: Test/Lint/Security (detección de comando por tipo de
+  proyecto, subprocess con timeout por polling, parsing de salida pytest/
+  ruff/pip-audit, coverage threshold) y Documentation (lectura vault).
+- **runners/github**: generador byte-parity del workflow PR
+  (_build_steps/_step_security/_step_lint/_step_test/_step_documentation).
+- **Gate**: `bench/parity/pipeline_golden_p12b.py` — generator YAML para
+  sets canónicos de stages + orquestador con stages falsos (pass/fail/
+  skip flows) + renderings summary/markdown/dict con clock fijo;
+  `examples/pipeline_check.rs` byte-parity.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
