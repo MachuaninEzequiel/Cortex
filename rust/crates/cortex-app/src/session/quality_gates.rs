@@ -30,6 +30,16 @@ pub enum ReviewAction {
     Warn,
 }
 
+impl ReviewAction {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Accept => "accept",
+            Self::Redelegate => "redelegate",
+            Self::Warn => "warn",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ReviewVerdict {
     pub accepted: bool,

@@ -10,10 +10,14 @@
 //!   `cortex_ping` completo (estado starting/degraded/ok + ventana de
 //!   errores). El transporte stdio rmcp vive en [`server::serve_stdio`].
 //!
+//! - [`handlers_sessions`]: handlers in-process de la familia sesiones
+//!   (P12A-9, stream A) sobre un backend inyectable nativo.
+//!
 //! Paridad: los tools que dependen de backends aún no nativos devuelven
 //! fallo explícito documentado (patrón P6) — no se finge paridad
 //! conductual; el gate de P9 es el contrato list_tools byte-a-byte +
 //! dispatch de ping.
 
+pub mod handlers_sessions;
 pub mod server;
 pub mod tools_catalog;

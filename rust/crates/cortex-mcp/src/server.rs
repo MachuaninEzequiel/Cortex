@@ -59,6 +59,10 @@ pub trait MemoryBackend: Send + Sync {
     fn sync_vault(&mut self) -> Result<u64, String>;
 }
 
+/// Handlers in-process de la familia sesiones (P12A-9).
+pub use crate::handlers_sessions as sessions_handlers;
+pub use crate::handlers_sessions::SessionsBackend;
+
 /// Contador simple de documentos indexados (tests / modo embebido).
 #[derive(Default)]
 pub struct CountingMemory {
@@ -79,6 +83,8 @@ pub struct CortexMcpServer<M: MemoryBackend = CountingMemory> {
     error_history: VecDeque<ErrorEntry>,
     memory: Option<M>,
     models_loaded: Vec<String>,
+    /// Backend in-process de sesiones (P12A-9). None ⇒ fallo explícito.
+    sessions_backend: Option<std::sync::Arc<std::sync::Mutex<dyn SessionsBackend + Send>>>,
 }
 
 /// Tabla de ruteo nombre → handler. CONGELADA por
@@ -160,7 +166,17 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
             error_history: VecDeque::with_capacity(ERROR_HISTORY_MAXLEN),
             memory,
             models_loaded: Vec::new(),
+            sessions_backend: None,
         }
+    }
+
+    /// Wirea el backend in-process de sesiones (P12A-9).
+    pub fn with_sessions_backend(
+        mut self,
+        backend: std::sync::Arc<std::sync::Mutex<dyn SessionsBackend + Send>>,
+    ) -> Self {
+        self.sessions_backend = Some(backend);
+        self
     }
 
     /// Inyecta el reloj (segundos desde epoch) para tests deterministas.
@@ -268,6 +284,28 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
                 if name == "cortex_ping" {
                     return Ok(self.ping_text());
                 }
+                // Familia sesiones (P12A-9): in-process cuando hay backend.
+                const SESSION_TOOLS: &[&str] = &[
+                    "cortex_session_open",
+                    "cortex_session_checkpoint",
+                    "cortex_session_close",
+                    "cortex_session_status",
+                    "cortex_session_list",
+                    "cortex_session_task_list",
+                    "cortex_session_task_update",
+                    "cortex_review_checkpoint",
+                    "cortex_close_session",
+                    "cortex_save_session",
+                    "cortex_validate_handoff",
+                    "cortex_verify_session_claims",
+                ];
+                if SESSION_TOOLS.contains(&name) {
+                    if let Some(b) = &self.sessions_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        let project_root = std::env::current_dir().unwrap_or_default();
+                        return dispatch_session_tool(name, _arguments, &mut *guard, &project_root);
+                    }
+                }
                 // Fallo explícito documentado (patrón P6): el backend del
                 // handler aún no es nativo. NO se finge paridad conductual.
                 Err(format!(
@@ -281,6 +319,31 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
     /// Catálogo `list_tools` completo (congelado byte-a-byte vs golden).
     pub fn list_tools(&self) -> Vec<serde_json::Value> {
         build_tool_definitions()
+    }
+}
+
+/// Ruta in-process de la familia sesiones (P12A-9).
+fn dispatch_session_tool(
+    name: &str,
+    args: &serde_json::Value,
+    b: &mut dyn SessionsBackend,
+    project_root: &std::path::Path,
+) -> Result<String, String> {
+    use sessions_handlers as h;
+    match name {
+        "cortex_session_open" => h::session_open_text(b, args),
+        "cortex_session_checkpoint" => h::session_checkpoint_text(b, args),
+        "cortex_session_close" => h::session_close_text(b, args),
+        "cortex_session_status" => h::session_status_text(b, args),
+        "cortex_session_list" => h::session_list_text(b, args),
+        "cortex_session_task_list" => h::session_task_list_text(b, args),
+        "cortex_session_task_update" => h::session_task_update_text(b, args),
+        "cortex_review_checkpoint" => h::review_checkpoint_text(b, args, Some(project_root)),
+        "cortex_close_session" => h::close_session_text(b, args),
+        "cortex_save_session" => h::save_session_text(b, args),
+        "cortex_validate_handoff" => h::validate_handoff_text(args),
+        "cortex_verify_session_claims" => h::verify_session_claims_text(args, project_root),
+        _ => Err(format!("Herramienta desconocida: {name}")),
     }
 }
 
