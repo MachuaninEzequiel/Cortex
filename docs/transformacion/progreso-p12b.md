@@ -712,6 +712,32 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   en el checker para orden de inserción Python (breakdown local→enterprise,
   rows governance); sort_keys=True solo en el payload curado de reporting.
 
+### Diseño aprobado P12B-4 — cortex-doctor
+
+- **Crate** `rust/crates/cortex-doctor` (deps: workspace/app/enterprise/config;
+  dirección doctor→enterprise, sin ciclo). Tipos `DoctorCheck{name,ok,severity,detail}`
+  y `DoctorReport{project_root,checks,has_failures,has_warnings}`.
+- **Nativos completos**: project_root, layout_mode, config_yaml,
+  config_validation (`cortex-config`), vault_dir, episodic_store
+  (`resolve_episodic_persist_dir` + GITHUB_ACTIONS), cortex_workspace,
+  agent_guidelines, workspace_yaml/layout_version, git_repository/branch,
+  gitignore:* (git_policy), vault_markdown+validaciones (DocValidator),
+  pm_workspace_layout_v2, pm_documenter_default_mode, pm_git_available y TODO
+  el bloque enterprise (scope enterprise/all).
+- **Stubs contractuales** (patrón P6/P9; backend Python sin porteño):
+  webgraph_dependencies, sessions_* profundos, autopilot_policy/typo (real en
+  P12B-5), session_hooks_*, pm_documenter_module/interactive,
+  pm_verification_runner, pm_mcp_tools_registered. Texto congelado:
+  severity contractual + detail "backend no nativo aún (<módulo>)"; el
+  oráculo normaliza esos checks al mismo texto antes de comparar.
+- **Seam**: `NativeDoctorBackend` implementa
+  `cortex_enterprise::reporting::DoctorBackend` (local→Project,
+  enterprise/all→Enterprise).
+- **Gate**: `bench/parity/doctor_golden_p12b.py` (fixtures legacy+new-layout;
+  scopes project/enterprise/all; oráculo = doctor Python real + tabla de
+  normalización de stubs) + `examples/doctor_check.rs` byte-parity con solo
+  {{ROOT}}/{{TS}}. Fuera de alcance: clap `cortex doctor` (P12B-8).
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
