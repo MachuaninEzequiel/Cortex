@@ -462,17 +462,26 @@ fn normalized_hooks(v: Option<&Value>) -> Value {
 /// Normaliza un ISO-8601 a la forma que emite pydantic v2 para UTC:
 /// `%Y-%m-%dT%H:%M:%S[.%f]Z`, sin fracción cuando es 0.
 pub fn normalize_pydantic_datetime(raw: &str) -> String {
-    match DateTime::parse_from_rfc3339(raw) {
-        Ok(dt) => {
-            let utc = dt.with_timezone(&Utc);
-            if utc.timestamp_subsec_nanos() == 0 {
-                utc.format("%Y-%m-%dT%H:%M:%SZ").to_string()
-            } else {
-                utc.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string()
-            }
+    fn a_pydantic_utc(dt: DateTime<chrono::FixedOffset>) -> String {
+        let utc = dt.with_timezone(&Utc);
+        if utc.timestamp_subsec_nanos() == 0 {
+            utc.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+        } else {
+            utc.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string()
         }
-        Err(_) => raw.to_string(),
     }
+    if let Ok(dt) = DateTime::parse_from_rfc3339(raw) {
+        return a_pydantic_utc(dt);
+    }
+    // P12A-2: el servicio workitems recibe datetimes de providers y los pasa
+    // en la forma `str(datetime)` de Python (separador espacio,
+    // "2026-08-22 14:03:00+00:00"); el frontmatter pydantic los serializa
+    // como RFC3339 con `T`. Reintento con esa forma antes de rendirme.
+    let alt = raw.replacen(' ', "T", 1);
+    if let Ok(dt) = DateTime::parse_from_rfc3339(&alt) {
+        return a_pydantic_utc(dt);
+    }
+    raw.to_string()
 }
 
 fn iso_z(dt: DateTime<Utc>) -> String {

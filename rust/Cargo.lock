@@ -357,6 +357,7 @@ dependencies = [
  "chrono",
  "cortex-config",
  "cortex-embed",
+ "cortex-setup",
  "minijinja",
  "regex",
  "serde",

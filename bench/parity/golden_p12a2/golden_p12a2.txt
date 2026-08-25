@@ -1,0 +1,85 @@
+### S01 import+get canonical
+rc=0
+path=vault/hu/HU-COR-482.md
+encontrado=vault/hu/HU-COR-482.md### S02 contenido nota ({{TS}}/{{ROOT}})
+rc=0
+---
+schema_version: 1
+doc_type: hu
+title: 'COR-482: HU COR-482 búsqueda semántica'
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- hu
+- jira
+- story
+- rag
+status: backlog
+links: []
+vault_scope: local
+fingerprint: d5c35a5a87e94ef21575b04b27c2a4acb9af100ea9f7c291daa25b1f5039e67b
+external_id: COR-482
+source: jira
+kind: story
+assignee: chucho
+external_url: https://empresa.atlassian.net/browse/COR-482
+synced_at: '2026-08-22T14:03:00Z'
+---
+
+## Description
+
+Como usuario quiero buscar en mi bóveda semánticamente.
+
+## Acceptance Criteria
+
+- [ ] búsqueda híbrida responde <1s
+
+## Metadata
+
+- **External ID:** `COR-482`
+- **Source:** jira
+- **Kind:** story
+- **Assignee:** chucho- **External URL:** https://empresa.atlassian.net/browse/COR-482- **Last sync:** 2026-08-22 14:03:00+00:00### S03 legacy slug
+rc=0
+vault/hu/cor-999.md### S04 no existente
+rc=1
+FileNotFoundError: Tracked item not found in vault: NOPE-1### S05 providers
+rc=0
+desconocido=False
+fake_ok=True
+FAKE_normaliza=False
+nope=KeyError: 'Unknown work item provider: nope'
+sin_conf=RuntimeError: Provider 'fake' is not configured.### S06 re-import noop
+rc=0
+noop_igual=True
+archivos=['HU-A-1.md', 'cor-999.md']### S07 duplicado distinto
+rc=1
+DuplicateDocumentError: Document already exists with different content: {{ROOT}}/vault/hu/HU-DUP-7.md. Pass overwrite=True to replace, or choose a different title.### S08 remember episódico+semantic
+rc=0
+{
+ "episodico": [
+  {
+   "content": "Tracked item: EP-3\nTitle: HU EP-3 búsqueda semántica\nDescription: Como usuario quiero buscar en mi bóveda semánticamente.\nAcceptance: búsqueda híbrida responde <1s",
+   "extra_metadata": {
+    "workspace": "obra07"
+   },
+   "files": [
+    "hu/HU-EP-3.md"
+   ],
+   "memory_type": "hu",
+   "tags": [
+    "hu",
+    "jira",
+    "story"
+   ]
+  }
+ ],
+ "semantic": [
+  "hu/HU-EP-3.md"
+ ]
+}### S09 list ordenado
+rc=0
+vault/hu/HU-A-1.md
+vault/hu/HU-B-2.md
+vault/hu/HU-C-3.md
+vault/hu/cor-999.md

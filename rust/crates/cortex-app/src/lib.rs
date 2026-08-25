@@ -22,6 +22,7 @@ pub mod git;
 pub mod security;
 pub mod semantic;
 pub mod session;
+pub mod workitems;
 
 /// Identificación de build para parity logs y `--version`.
 pub const BUILD_TAG: &str = concat!("cortex-app ", env!("CARGO_PKG_VERSION"));
