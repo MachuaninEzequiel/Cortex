@@ -818,6 +818,19 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   a mano en el checker (artifacts anidados a 4 espacios, último elemento
   sin coma) — BTreeMap no preserva orden de inserción Python.
 
+- **[P12B-7] El tutor era portear-barato**: los 3 escenarios dramáticos del
+  doc 09 se resolvieron con exploración — sin SessionService ni AgentMemory,
+  solo layout + contenido. Lección: verificar deps reales antes de heredar
+  advertencias históricas.
+- **[P12B-7] Fixtures de hints FUERA del repo**: `ProjectState.detect` vía
+  `discover()` camina hacia arriba; fixtures dentro del árbol de Cortex
+  heredaban `has_config=true` del repo de desarrollo (L0 nunca matcheaba).
+  Regla para gates futuros con detección de estado: mkdtemp externo.
+- **[P12B-7] Contenido como include_str!**: los cuerpos renderizados se
+  capturan una vez con rich `record=True + export_text()` y se embeben;
+  paridad de contenido garantizada por construcción, divergencia solo en
+  estilos ANSI.
+
 ## Tabla de tareas P12B
 
 | Tarea | Estado | Evidencia | Commit |
@@ -828,7 +841,7 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
 | P12B-4 doctor (~925) | ✅ | Gate: `bench/parity/doctor_golden_p12b.py` (5 escenarios: legacy/all/enterprise-sin-org/new-layout/con-sessions; oráculo doctor Python real + STUB_TABLE contractual) + `examples/doctor_check.rs` **byte-parity** → `✅ PARIDAD P12B-4`. Suite Rust crate: 5 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. Suite Python: mismo set de fallos preexistentes de trunk que el baseline previo (29F+3E e2e setup/autopilot/tui/artefact); **0 regresiones B**. | `31b3f3c` |
 | P12B-5 autopilot (~1902, capa de decisión) | ✅ | Gate: `doctor_golden_p12b.py` ampliado a 6 escenarios (autopilot_policy REAL + autopilot_mode_typo) + `doctor_check.rs` byte-parity `✅ PARIDAD P12B-4`. Suite Rust: autopilot 5 + doctor 5 tests ✅ · clippy/fmt ✅. Suite Python: mismo set preexistente de trunk (29F+3E e2e); unit tests/unit/autopilot sin fallos. service/cli/mcp_tools con fallo explícito hasta motor de sesiones nativo. | `8bc4c6d` |
 | P12B-6 pipeline SDDwork (~1708) | ✅ | Gate: `bench/parity/pipeline_golden_p12b.py` (2 workflows GH Actions byte-exactos + flows pass/fail-bloqueante/skip + abort_early + no-bloqueante + summary/markdown/to_dict con clock fijo) + `examples/pipeline_check.rs` **byte-parity** → `✅ PARIDAD P12B-6`. Suite Rust crate: 4 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. **Sin reqwest**: el runner Python es generador puro de YAML, nunca hubo cliente HTTP (hallazgo vs §7.2.8). Documentation stage stub hasta AgentMemory nativo. | `c8a04d3` |
-| P12B-7 tutor (~862) | ⏳ decisión del dueño pendiente | se documentarán las 3 opciones (porte fiel vs ratatui vs no migrar) aquí al cierre | — |
+| P12B-7 tutor (~862, porte fiel — opción A) | ✅ | Gate: `bench/parity/tutor_golden_p12b.py` (metadata JSON de 7 topics por introspección + hints L0/L1/L7 en fixtures FUERA del repo) + `examples/tutor_check.rs` **byte-parity** → `✅ PARIDAD P12B-7`. Suite Rust crate: 4 tests ✅ · clippy/fmt ✅. Hallazgo: dependencias reales = layout + contenido estático (sin sesiones/AgentMemory) ⇒ el "NO portear ciego" del doc 09 queda desmontado. Divergencia cosmética: cuerpos embebidos vía rich `export_text()` sin ANSI. | `0e6b936`+`2fd035c`/`600cc04` |
 | P12B-8 CLI clap nativo (~2995, ÚLTIMO) | ⏳ pendiente | punto de sincronización final; CORTEX_PY=1 rollback; cold-start <100ms | — |
 
 ## Notas de coordinación dual-stream
