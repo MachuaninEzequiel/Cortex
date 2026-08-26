@@ -84,6 +84,16 @@ Coincide con el registro de P12B-8: **29F+3E+1E-colección**, todos e2e
 trunk (doc 12 §6: deuda de la recatorización, no culpa de P12).
 Cero fallos unit/integration.
 
+## Nota de orden de ejecución (2026-08-25)
+
+La cola del prompt es "orden de valor", no dependencia dura. Tras cerrar T1
+(gate verde + commit `21536f5`), la sesión reordena: **T5 pasa antes que
+T2/T3/T4** porque (a) es REQUISITO duro para autorizar la baja definitiva,
+(b) no depende de T2-T4 (limpia tests e2e rotos por la recatorización),
+y (c) deja al trunk en el mejor estado posible si la sesión muere.
+T2/T3/T4 quedan con fundación puesta (backends in-process de T1 reusables
+por el CLI/autopilot/pipeline) y se ejecutan en la continuación.
+
 ## Cola de tareas
 
 | Tarea | Estado | Evidencia | Commit |
