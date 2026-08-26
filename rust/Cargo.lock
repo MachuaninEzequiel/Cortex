@@ -607,8 +607,11 @@ dependencies = [
 name = "cortex-tui"
 version = "0.1.0"
 dependencies = [
+ "cortex-app",
  "cortex-branding",
  "ratatui",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

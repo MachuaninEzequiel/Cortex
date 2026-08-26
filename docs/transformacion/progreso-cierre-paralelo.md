@@ -25,7 +25,39 @@
 - T7 refresco documental: quien termine ÚLTIMO.
 
 [CLAIM] T3 iniciada 2026-08-25
-[DONE] T3 completada 2026-08-26
+[DONE] T3 completada 2026-08-26 (commit e089a25)
+[CLAIM] T6 iniciada 2026-08-26
+[DONE] T6 completada 2026-08-26
+
+## Evidencia T6
+
+- `rust/crates/cortex-tui/src/sessions.rs` NUEVO: pantalla sesiones ratatui
+  (reemplazo de la rich vieja, decisión doc 09 §3.8). `SessionRow` =
+  espejo EXACTO de `_record_summary` (los 7 campos que emite
+  `session list --json`); `SessionsScreenData::from_service` con la misma
+  semántica de `list_command` (filtro status opcional, sort newest-first
+  por opened_at, activa resuelta). Render puro snapshot→frame, read-only.
+- `rust/crates/cortex-tui/tests/sessions_screen.rs` NUEVO (gate T6):
+  (a) datos mostrados == `session list --json` (cada valor del payload
+  aparece en el render; filas serializadas idénticas al dict del oráculo
+  — verificado con SessionService nativo y sesiones REALES en tmp);
+  (b) orden newest-first + marca de activa; (c) filtro por status +
+  closed_at/mode inferido al cerrar (byo); (d) estado vacío
+  "(no sessions on disk)"; (e) determinismo; (f) render promedio <50ms
+  (RENDER_BUDGET_MS, N=200) — **5 passed**.
+- Dependencias: cortex-tui += cortex-app (nativo), serde_json, tempfile
+  (dev). Cero paquetes nuevos (todo ya en Cargo.lock).
+- INTEGRACIÓN CLI PENDIENTE (documentada, NO hecha): wirear
+  `cortex session watch/tui` nativo requiere tocar
+  `cortex-cli/src/commands/session_cmd.rs` y/o `main.rs` (WIP T2 del
+  principal) ⇒ prohibido por reglas anti-colisión. El siguiente agente
+  debe agregar el subcomando que construya `SessionsScreenData` vía
+  `SessionService` y llame `cortex_tui::sessions::render` en el loop
+  (poll + Ctrl+C, contrato v1 read-only).
+- Gates: fmt ✅ · clippy -D warnings ✅ (cortex-tui) · cargo test -p
+  cortex-tui 16 ✅ (5 gate + 8 snapshots + 2 lib + 1 doc) · suite oráculo
+  COMPLETA pre-commit: **2552 passed, 21 skipped, 0F 0E** (177s, bajo
+  lock `.cortex/heavy.lock`).
 
 ## Evidencia T3
 
@@ -68,5 +100,5 @@
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
-| T3 autopilot service+cli+mcp×5 | ✅ | gates 1-5 arriba | pendiente |
-| T6 pantalla ratatui sesiones | ⏳ | | |
+| T3 autopilot service+cli+mcp×5 | ✅ | gates 1-5 arriba | `e089a25` |
+| T6 pantalla ratatui sesiones | ✅ | gate T6 (5 tests) + oráculo 2552 | pendiente |

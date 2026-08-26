@@ -17,6 +17,7 @@
 
 pub mod home;
 pub mod renderer;
+pub mod sessions;
 pub mod splash;
 
 pub use cortex_branding::ansi::ColorMode;
