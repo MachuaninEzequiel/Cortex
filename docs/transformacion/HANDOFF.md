@@ -90,6 +90,28 @@ paquete de baja definitiva separado).
 
 **OBRA 07 — CIERRE COMPLETO.** T1–T7 gateados; oráculo 100% verde.
 
+**RUTA 1 BAJA DEFINITIVA — COMPLETA (2026-08-26).** Tras la Obra 07, el
+paquete "BAJA DEFINITIVA — RUTA 1" (doc
+`PROMPT-BAJA-DEFINITIVA-RUTA1.md`) wireó en dos mitades paralelas A/B
+(territorios disjuntos, main.rs/mod.rs congelados por scaffold):
+
+- MITAD A (`14bfcfd`+`24885b8`): session task ×5, session hooks ×4,
+  remember/forget (portes SessionService::list_tasks/update_task_status y
+  NativeEpisodicStore::delete; ensure_ascii=False local).
+- MITAD B (`ebc0cad`+`6934564`): ide ×4, docs validate/restore/
+  list-backups/routing-table (portes list_backups/restore_backup tar y
+  RouteSpec completo).
+- Gates: `cierre_leaves_a_golden` 33 casos (188 líneas) +
+  `cierre_leaves_b_golden` 26 casos (554 líneas), byte-parity vs CLI
+  Python REAL. Oráculo **2552 passed, 21 skipped, 0F 0E** (120 s, lock).
+- Cold start N=20: livianos 2.4–6.4 ms; remember/forget ~117–187 ms (ONNX
+  honesto). Revisión por tarea + fix rounds: ambas Approved.
+- Passthrough restante = SOLO leaves "de diseño" (hu import, webgraph
+  serve/doctor, autopilot doctor/install/uninstall) — ruta 2 pendiente;
+  decisión de archivo/borrado de Python pendiente del dueño.
+
+Registros del paquete: `progreso-baja-a.md` + `progreso-baja-b.md`.
+
 Métricas:
 - Suite Python ORÁCULO: **2552 passed, 21 skipped, 0 failed, 0 errors**
   (primera vez verde desde la recatorización).

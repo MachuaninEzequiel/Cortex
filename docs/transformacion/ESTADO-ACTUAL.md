@@ -49,31 +49,21 @@ stdio bounded), T3 `cierre_autopilot_golden` (236 líneas) + `cierre_autopilot_c
 
 ### Lo que TODAVÍA depende de Python (deuda residual documentada)
 
-Tras el cierre de la Obra 07, el passthrough de `cortex-cli` se redujo al
-rollback `CORTEX_PY=1` más los siguientes leaves fuera del inventario T2-cola
-(brief prohibió expandir sin requisito vinculante). Son deuda abierta, no
-falla del cierre:
+Tras el cierre de la Obra 07 + RUTA 1 de la baja definitiva, el passthrough
+de `cortex-cli` se redujo al rollback `CORTEX_PY=1` más SOLO los leaves de
+"diseño" (pendientes de ruta 2): `hu import` (excepción no portable),
+`webgraph serve/doctor` (server axum), `autopilot doctor/install/uninstall`
+(instaladores interactivos). Son deuda abierta, no falla del cierre.
 
-- `session task {list,done,in-progress,skip,block}` y
-  `session hooks {list,install,uninstall,status}`
-- `ide {list,setup,remove,status}`
-- `docs {validate,restore,list-backups,routing-table}` (solo search/migrate
-  están en el inventario)
-- `hu import` (traceback Python no portable; list/show ya nativos)
-- `{remember,forget,init,inject,sync-enterprise-vault,sync-ide,
-  verify-docs,validate-docs,index-docs}`
-- `webgraph {serve,doctor}` (el cálculo ya es nativo)
-- `autopilot doctor/install/uninstall` (delegan por diseño documentado)
-
-Lo nativo en esta Obra (P0–P12 + cierre T1–T7): motores híbridos
+Lo nativo en esta Obra (P0–P12 + cierre T1–T7 + RUTA 1): motores híbridos
 (vault/embeddings/context/session/documenter/persister), CLI clap
-(search/context/stats/session ×9/next/hu ×2/pr-context ×5/docs ×2/
-ci ×4/setup ×5/mcp-serve/reindex), MCP handlers no-sesión (T1), autopilot
-service+cli+mcp×5 (T3-paralelo), pipeline stage Documentation (T4), pantalla
-ratatui sesiones + integración `session watch/tui` (T6/T6-b). Auditoría
-exhaustiva pre-cierre: `docs/transformacion/12-AUDITORIA-PYTHON-RESIDUAL.md`
-§9.2; registro de la propia sesión: `progreso-cierre.md` y
-`progreso-cierre-paralelo.md`.
+(search/context/stats/session ×14/next/hu ×2/pr-context ×5/docs ×6/
+ci ×4/setup ×5/ide ×4/remember/forget/reindex/mcp-serve), MCP handlers
+no-sesión (T1), autopilot service+cli+mcp×5 (T3-paralelo), pipeline stage
+Documentation (T4), pantalla ratatui sesiones + `session watch/tui`
+(T6/T6-b). Auditoría exhaustiva: `docs/transformacion/12-AUDITORIA-
+PYTHON-RESIDUAL.md` §9.2/§9.5; registro del paquete: `progreso-baja-a.md`
+y `progreso-baja-b.md`.
 
 ### Próximos pasos (post-cierre — baja definitiva de Python)
 

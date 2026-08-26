@@ -177,15 +177,21 @@ gates byte-parity, no textual.
 ### 9.2 Brecha restante tras P12 (NO deprecable — porte pendiente real)
 
 > **Estado post-cierre (2026-08-26): los ítems 1–6 fueron resueltos por la
-> Obra 07 (cierre T1–T7).** El passthrough de `cortex-cli` quedó reducido al
-> rollback `CORTEX_PY=1` + deuda residual documentada (session task/hooks,
-> ide, docs validate/restore, hu import, remember/forget, webgraph
-> serve/doctor, autopilot doctor/install/uninstall). Ver §9.4.
+> Obra 07 (cierre T1–T7) + RUTA 1 de la baja definitiva (session task/hooks,
+> remember/forget, ide, docs validate/restore/list-backups/routing-table).**
+> El passthrough de `cortex-cli` quedó reducido al rollback `CORTEX_PY=1` +
+> solo leaves "de diseño" documentados (hu import, webgraph serve/doctor,
+> autopilot doctor/install/uninstall) — ver §9.4 y
+> `PROMPT-BAJA-DEFINITIVA-RUTA1.md`.
 
 1. **Subcomandos CLI no-wireados**: ✅ RESUELTO. Wireados nativos
    (commits T2/T2-cola `c210cef`→`16bb8b7`, gate `cierre_cli_golden`
-   39 casos + MCP stdio bounded exchange): search/context/stats/reindex/
-   next/session ×9/hu ×2/pr-context ×5/docs ×2/ci ×4/setup ×5/mcp-serve.
+   39 casos + MCP stdio bounded exchange; RUTA 1 baja: session task ×5 +
+   hooks ×4 + remember/forget + ide ×4 + docs validate/restore/
+   list-backups/routing-table, gates `cierre_leaves_a_golden` 33 casos +
+   `cierre_leaves_b_golden` 26 casos): search/context/stats/reindex/
+   next/session ×14/hu ×2/pr-context ×5/docs ×6/ci ×4/setup ×5/mcp-serve/
+   ide ×4/remember/forget.
 2. **Handlers MCP no-sesión**: ✅ RESUELTO (T1 `21536f5`, gate
    `cierre_mcp_golden` 51 escenarios byte-a-byte).
 3. **autopilot service/cli/mcp_tools** (~800): ✅ RESUELTO (T3-paralelo
@@ -232,15 +238,40 @@ el cierre T1–T7; el oráculo quedó 100% verde. Métricas finales:
   `9d4de37`).
 - Cold start release N=20: livianos 2–9 ms (<100 ms); memoria/ONNX
   (pr-context store/search/full) ~308–366 ms (reporte honesto, no
-  debilitado).
+  debilitado). RUTA 1: task list 3.6 ms · hooks list 2.4 ms · ide 2.5–4.2 ms
+  · docs 2.6–6.4 ms; remember 186.7 ms / forget 117.4 ms (ONNX honesto).
 
-Passthrough residual post-cierre (deuda documentada, NO falla del cierre):
-session task/hooks, ide, docs validate/restore, hu import, remember/forget,
-webgraph serve/doctor, autopilot doctor/install/uninstall. El brief T2-cola
-prohibió expandir sin requisito vinculante; estos leaves quedan para el
-paquete separado de baja definitiva de Python.
+### 9.5 RUTA 1 de la baja definitiva — wireado leaves "solo alcance" (2026-08-26)
 
-Registros de la sesión: `progreso-cierre.md` (stream principal) y
-`progreso-cierre-paralelo.md` (stream paralelo). Este archivo ("lo que
-todavía depende de Python") debe leerse junto a `ESTADO-ACTUAL.md` y
-`HANDOFF.md`, actualizados en T7.
+**BAJA DEFINITIVA — RUTA 1 COMPLETA.** Dos mitades en paralelo (A/B) sobre
+el mismo árbol, territorios disjuntos (matriz en
+`PROMPT-BAJA-DEFINITIVA-RUTA1.md`):
+
+- **MITAD A** (`14bfcfd` + fix `24885b8`): `session task` ×5
+  (list/done/in-progress/skip/block, portes `SessionService::list_tasks`/
+  `update_task_status`), `session hooks` ×4 (glue `HookInstaller` nativo),
+  `remember`/`forget` (portes `NativeEpisodicStore::delete`,
+  `ensure_ascii=False` local). Gate `cierre_leaves_a_golden` **33 casos**
+  (188 líneas, ≥2 reales por subcomando, non-ASCII incluido).
+- **MITAD B** (`ebc0cad` + fix `6934564`): `ide` ×4 (list/setup/remove/
+  status sobre `cortex-setup::ide` + HookInstaller), `docs validate`
+  (validate_vault nativo), `docs restore`/`list-backups` (portes
+  `list_backups`/`restore_backup` tar en migration), `docs routing-table`
+  (RouteSpec completo, 13 doc_types). Gate `cierre_leaves_b_golden`
+  **26 casos** (554 líneas). Divergencias doc-vs-oráculo resueltas a favor
+  del oráculo (setup/remove sin hooks, ide list sin --project-root,
+  list-backups sin --json).
+- Verificación: fmt/clippy `-D warnings` ✓ · cargo test cortex-cli 73/0 +
+  cortex-app 105/0 ✓ · gates A+B build/verify PASS ✓ · oráculo Python
+  **2552 passed, 21 skipped, 0F 0E** bajo lock (120 s) ✓.
+- Revisión por tarea (spec+quality) y fix rounds: ambas Approved tras ronda
+  1/5 (quota de gate y ensure_ascii corregidas).
+
+Passthrough residual AHORA (solo leaves "de diseño", pendientes de ruta 2):
+`hu import` (excepción no portable), `webgraph serve/doctor` (server axum),
+`autopilot doctor/install/uninstall` (instaladores interactivos). La decisión
+de archivo/borrado de Python y goldens queda pendiente del dueño.
+
+Registros del paquete: `progreso-baja-a.md` (mitad A) y
+`progreso-baja-b.md` (mitad B). Este archivo debe leerse junto a
+`ESTADO-ACTUAL.md` y `HANDOFF.md` (actualizados en T7 y RUTA 1).
