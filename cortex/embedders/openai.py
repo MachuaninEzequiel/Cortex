@@ -1,9 +1,14 @@
 """
 cortex.embedders.openai
 -----------------------
+DEPRECATED (dueño, 2026-08-25 — doc 12 §4.3): backend remoto que contradice
+el principio "todo local, cero keys" de Cortex. Sin porte a Rust planificado;
+se elimina en la baja definitiva de Python. Migrar a `embedding.backend: onnx`
+(MiniLM/e5 nativos vía cortex-embed).
+
 OpenAI backend — text-embedding-3-small via API.
 
-Enterprise option for teams that want cloud-hosted embeddings.
+Legacy enterprise option for teams that want cloud-hosted embeddings.
 Requires an ``OPENAI_API_KEY`` environment variable and the
 ``openai`` package.
 
@@ -20,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import os
+import warnings
 from typing import Literal
 
 logger = logging.getLogger(__name__)
@@ -37,6 +43,12 @@ class OpenAIEmbedder:
     """
 
     def __init__(self, model_name: str = "text-embedding-3-small") -> None:
+        warnings.warn(
+            "OpenAIEmbedder está DEPRECATED (doc 12 §4.3): use embedding "
+            "backend onnx (MiniLM/e5 nativos). Se elimina en la baja de Python.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._model_name = model_name
 
     @property

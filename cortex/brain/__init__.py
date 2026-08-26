@@ -1,6 +1,10 @@
-"""cortex.brain — asistente local experto del proyecto (Obra 06 BRAIN v1).
+"""cortex.brain — DEPRECATED (dueño, 2026-08-25 — doc 12 §4.2).
 
-Permisos estrictos (dueño, 2026-08-23):
+Duplicado legacy del brain oficial `cortex-brain` (Rust + llama.cpp, Obra 06
+fase final). Solo se mantiene como oráculo hasta la baja definitiva de
+Python; el subcomando nativo ya no pasa por acá.
+
+Permisos históricos (dueño, 2026-08-23):
 - READ: consulta pura (search/doctor/stats/sesión).
 - SAFE_ACTION: side-effects no destructivos whitelisteables (webgraph serve).
 - Mutaciones NUNCA: se proponen con el comando CLI exacto ("propone, no ejecuta").

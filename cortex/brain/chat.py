@@ -1,4 +1,6 @@
-"""Loop de chat del brain (BRAIN-1, sin LLM).
+"""DEPRECATED (2026-08-25, doc 12 §4.2): ver cortex/brain/__init__.py.
+
+Loop de chat del brain (BRAIN-1, sin LLM).
 
 ``ChatSession`` es inyectable (input_fn/console) para testear sin TTY y
 sin modelo. BRAIN-2 agrega el backend llama.cpp ENCIMA de este loop vía

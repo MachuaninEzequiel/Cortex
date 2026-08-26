@@ -1,4 +1,6 @@
-"""Router determinista del brain (BRAIN-1): intents → herramientas sin LLM.
+"""DEPRECATED (2026-08-25, doc 12 §4.2): ver cortex/brain/__init__.py.
+
+Router determinista del brain (BRAIN-1): intents → herramientas sin LLM.
 
 Fallback degradado y red de seguridad: cubre lo rutinario con 0 tokens.
 El LLM (BRAIN-2) se agrega ENCIMA, no en lugar de esto.

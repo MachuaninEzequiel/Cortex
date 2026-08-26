@@ -53,8 +53,12 @@ Paridad: cada fase tiene su oráculo en `bench/parity/*_golden*.py`
 6. Brain: propone-nunca-muta; LFM2.5 GGUF vía llama.cpp.
 7. Fachada passthrough cortex-cli (G6): subcomandos nativos se agregan ahí
    cuando existan, sin romper el passthrough mientras dure la transición.
-8. MCP wire-format exacto (nulls explícitos vs omisión rmcp): decisión
-   PENDIENTE DEL DUEÑO antes de portear handlers (registrado por stream B).
+8. MCP wire-format exacto (nulls explícitos vs omisión rmcp): RESUELTO
+   por el dueño (2026-08-24): OMISIÓN rmcp como formato canónico del
+   ENVELOPE (stdio y http); payloads de tools siguen byte-a-byte; gate de
+   equivalencia estructural contra golden list_tools.json (null ≡ ausente,
+   descriptions/schemas profundos idénticos). Análisis completo:
+   docs/transformacion/11-COMPANION-ENGINE-P13.md Anexo A.
 9. Los motores no-nativos devuelven fallo EXPLÍCITO documentado (patrón
    P6/P9): nunca se finge paridad conductual.
 

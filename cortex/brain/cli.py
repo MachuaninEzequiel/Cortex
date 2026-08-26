@@ -1,4 +1,6 @@
-"""Comando `cortex brain` — asistente local experto del proyecto."""
+"""DEPRECATED (2026-08-25, doc 12 §4.2): ver cortex/brain/__init__.py.
+
+Comando `cortex brain` — asistente local experto del proyecto."""
 
 from __future__ import annotations
 

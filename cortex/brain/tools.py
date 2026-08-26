@@ -1,4 +1,6 @@
-"""Herramientas del brain — read-only + safe-action, sobre servicios existentes.
+"""DEPRECATED (2026-08-25, doc 12 §4.2): ver cortex/brain/__init__.py.
+
+Herramientas del brain — read-only + safe-action, sobre servicios existentes.
 
 Contrato (doc 06 §BRAIN v1):
 - ``Tier.READ``: consulta pura, sin side-effects.
