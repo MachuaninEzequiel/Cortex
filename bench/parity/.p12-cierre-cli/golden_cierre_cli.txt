@@ -1,0 +1,700 @@
+### S01 search legacy texto
+rc=0
+
+Query: 'JWT refresh tokens'
+
+Unified Results (RRF-fused across both sources):
+  [EPISODIC] [SESSION] Implementamos login con JWT  (id={{MEMID}}, files=src/auth.py)  score=0.0164
+  [SEMANTIC] Auth spec  ({{ROOT}}/.cortex/vault/specs/auth.md)  score=0.0164
+  [EPISODIC] [SESSION] Refactor del módulo de pagos en Rust  (id={{MEMID}}, files=src/pagos.rs)  score=0.0161
+
+### S02 search --json
+rc=0
+{
+  "query": "pagos rust",
+  "episodic_hits": [
+    {
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Refactor del módulo de pagos en Rust",
+        "memory_type": "session",
+        "tags": [
+          "pagos"
+        ],
+        "files": [
+          "src/pagos.rs"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "score": : 0.6281,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": ""
+    },
+    {
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Implementamos login con JWT",
+        "memory_type": "session",
+        "tags": [
+          "auth"
+        ],
+        "files": [
+          "src/auth.py"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "score": : 0.0282,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": ""
+    }
+  ],
+  "semantic_hits": [
+    {
+      "path": "{{ROOT}}/.cortex/vault/notes/decisions.md",
+      "title": "Decisiones",
+      "content": "Decidimos usar Rust para el núcleo de pagos.",
+      "links": [],
+      "tags": [
+        "pagos"
+      ],
+      "score": : 0.61,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "path": "{{ROOT}}/.cortex/vault/specs/auth.md",
+      "title": "Auth spec",
+      "content": "## Goal\n\nAutenticación con JWT y refresh tokens para el módulo de pagos.",
+      "links": [],
+      "tags": [
+        "auth",
+        "jwt"
+      ],
+      "score": : 0.1742,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "path": "{{ROOT}}/.cortex/vault/specs/2026-08-25_demo.md",
+      "title": "Demo",
+      "content": "cuerpo demo",
+      "links": [],
+      "tags": [],
+      "score": : 0.0594,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ],
+  "unified_hits": [
+    {
+      "source": "episodic",
+      "score": : 0.0164,
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Refactor del módulo de pagos en Rust",
+        "memory_type": "session",
+        "tags": [
+          "pagos"
+        ],
+        "files": [
+          "src/pagos.rs"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "doc": null,
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "[SESSION] Refactor del módulo de pagos en Rust",
+      "display_content": "Refactor del módulo de pagos en Rust",
+      "display_path": "id={{MEMID}}, files=src/pagos.rs"
+    },
+    {
+      "source": "semantic",
+      "score": : 0.0164,
+      "entry": null,
+      "doc": {
+        "path": "{{ROOT}}/.cortex/vault/notes/decisions.md",
+        "title": "Decisiones",
+        "content": "Decidimos usar Rust para el núcleo de pagos.",
+        "links": [],
+        "tags": [
+          "pagos"
+        ],
+        "score": : 0.61,
+        "origin_scope": "local",
+        "origin_project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": "",
+        "matched_chunk_id": null,
+        "matched_section_title": null
+      },
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "Decisiones",
+      "display_content": "Decidimos usar Rust para el núcleo de pagos.",
+      "display_path": "{{ROOT}}/.cortex/vault/notes/decisions.md"
+    },
+    {
+      "source": "episodic",
+      "score": : 0.0161,
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Implementamos login con JWT",
+        "memory_type": "session",
+        "tags": [
+          "auth"
+        ],
+        "files": [
+          "src/auth.py"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "doc": null,
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "[SESSION] Implementamos login con JWT",
+      "display_content": "Implementamos login con JWT",
+      "display_path": "id={{MEMID}}, files=src/auth.py"
+    }
+  ],
+  "source_breakdown": {}
+}
+
+### S03 search vacío
+rc=0
+{
+  "query": "zzzznoexiste",
+  "episodic_hits": [
+    {
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Refactor del módulo de pagos en Rust",
+        "memory_type": "session",
+        "tags": [
+          "pagos"
+        ],
+        "files": [
+          "src/pagos.rs"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "score": : 0.1393,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": ""
+    },
+    {
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Implementamos login con JWT",
+        "memory_type": "session",
+        "tags": [
+          "auth"
+        ],
+        "files": [
+          "src/auth.py"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "score": : 0.0428,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": ""
+    }
+  ],
+  "semantic_hits": [
+    {
+      "path": "{{ROOT}}/.cortex/vault/notes/decisions.md",
+      "title": "Decisiones",
+      "content": "Decidimos usar Rust para el núcleo de pagos.",
+      "links": [],
+      "tags": [
+        "pagos"
+      ],
+      "score": : 0.1799,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "path": "{{ROOT}}/.cortex/vault/specs/2026-08-25_demo.md",
+      "title": "Demo",
+      "content": "cuerpo demo",
+      "links": [],
+      "tags": [],
+      "score": : 0.1353,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "path": "{{ROOT}}/.cortex/vault/specs/auth.md",
+      "title": "Auth spec",
+      "content": "## Goal\n\nAutenticación con JWT y refresh tokens para el módulo de pagos.",
+      "links": [],
+      "tags": [
+        "auth",
+        "jwt"
+      ],
+      "score": : 0.0903,
+      "origin_scope": "local",
+      "origin_project_id": "",
+      "origin_vault": "",
+      "origin_persist_dir": "",
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ],
+  "unified_hits": [
+    {
+      "source": "episodic",
+      "score": : 0.0164,
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Refactor del módulo de pagos en Rust",
+        "memory_type": "session",
+        "tags": [
+          "pagos"
+        ],
+        "files": [
+          "src/pagos.rs"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "doc": null,
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "[SESSION] Refactor del módulo de pagos en Rust",
+      "display_content": "Refactor del módulo de pagos en Rust",
+      "display_path": "id={{MEMID}}, files=src/pagos.rs"
+    },
+    {
+      "source": "semantic",
+      "score": : 0.0164,
+      "entry": null,
+      "doc": {
+        "path": "{{ROOT}}/.cortex/vault/notes/decisions.md",
+        "title": "Decisiones",
+        "content": "Decidimos usar Rust para el núcleo de pagos.",
+        "links": [],
+        "tags": [
+          "pagos"
+        ],
+        "score": : 0.1799,
+        "origin_scope": "local",
+        "origin_project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": "",
+        "matched_chunk_id": null,
+        "matched_section_title": null
+      },
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "Decisiones",
+      "display_content": "Decidimos usar Rust para el núcleo de pagos.",
+      "display_path": "{{ROOT}}/.cortex/vault/notes/decisions.md"
+    },
+    {
+      "source": "episodic",
+      "score": : 0.0161,
+      "entry": {
+        "id": "{{MEMID}}",
+        "content": "Implementamos login con JWT",
+        "memory_type": "session",
+        "tags": [
+          "auth"
+        ],
+        "files": [
+          "src/auth.py"
+        ],
+        "timestamp": "{{TS}}",
+        "metadata": {},
+        "confidence": null
+      },
+      "doc": null,
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "[SESSION] Implementamos login con JWT",
+      "display_content": "Implementamos login con JWT",
+      "display_path": "id={{MEMID}}, files=src/auth.py"
+    },
+    {
+      "source": "semantic",
+      "score": : 0.0161,
+      "entry": null,
+      "doc": {
+        "path": "{{ROOT}}/.cortex/vault/specs/2026-08-25_demo.md",
+        "title": "Demo",
+        "content": "cuerpo demo",
+        "links": [],
+        "tags": [],
+        "score": : 0.1353,
+        "origin_scope": "local",
+        "origin_project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": "",
+        "matched_chunk_id": null,
+        "matched_section_title": null
+      },
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "Demo",
+      "display_content": "cuerpo demo",
+      "display_path": "{{ROOT}}/.cortex/vault/specs/2026-08-25_demo.md"
+    },
+    {
+      "source": "semantic",
+      "score": : 0.0159,
+      "entry": null,
+      "doc": {
+        "path": "{{ROOT}}/.cortex/vault/specs/auth.md",
+        "title": "Auth spec",
+        "content": "## Goal\n\nAutenticación con JWT y refresh tokens para el módulo de pagos.",
+        "links": [],
+        "tags": [
+          "auth",
+          "jwt"
+        ],
+        "score": : 0.0903,
+        "origin_scope": "local",
+        "origin_project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": "",
+        "matched_chunk_id": null,
+        "matched_section_title": null
+      },
+      "metadata": {
+        "scope": "local",
+        "project_id": "",
+        "origin_vault": "",
+        "origin_persist_dir": ""
+      },
+      "display_title": "Auth spec",
+      "display_content": "## Goal\n\nAutenticación con JWT y refresh tokens para el módulo de pagos.",
+      "display_path": "{{ROOT}}/.cortex/vault/specs/auth.md"
+    }
+  ],
+  "source_breakdown": {}
+}
+
+### S04 context markdown
+rc=0
+🧠 Cortex Context — Found 1 related memories
+
+### [SEMANTIC] Auth spec
+  auth, jwt
+  ## Goal
+
+Autenticación con JWT y refresh tokens para el módulo de pagos.…
+  Matched by: topic_search, file_search
+
+Run `cortex context --expand` for full details
+
+### S05 context compact
+rc=0
+## 🧠 Cortex Context (1 memories found)
+
+### Auth spec [SEMANTIC]
+## Goal  Autenticación con JWT y refresh tokens para el módulo de pagos.
+Matched by: topic, file
+
+
+### S06 context json
+rc=0
+{
+  "work": {
+    "source": "manual",
+    "changed_files": [
+      "auth.py"
+    ],
+    "new_files": [],
+    "deleted_files": [],
+    "keywords": [],
+    "imports": [],
+    "function_names": [],
+    "class_names": [],
+    "detected_domain": "auth",
+    "domain_confidence": 0.6,
+    "pr_title": null,
+    "pr_body": null,
+    "pr_labels": [],
+    "search_queries": [
+      "auth ",
+      "auth"
+    ]
+  },
+  "items": [
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/.cortex/vault/specs/auth.md",
+      "title": "Auth spec",
+      "content": "## Goal\n\nAutenticación con JWT y refresh tokens para el módulo de pagos.",
+      "score": : 0.4058,
+      "enriched_score": : 0.6086,
+      "matched_by": [
+        "topic_search",
+        "file_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [
+        "auth",
+        "jwt"
+      ],
+      "confidence": null,
+      "doc_type": "spec",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ],
+  "total_searches": 2,
+  "total_raw_hits": 10,
+  "total_items": 1,
+  "total_chars": 131,
+  "within_budget": true,
+  "enricher_run_id": "{{RUN}}"
+}
+
+### S07 stats
+rc=0
+{
+  "episodic_count": 2,
+  "semantic_docs": 3,
+  "vault_path": "{{ROOT}}/.cortex/vault",
+  "persist_dir": "{{ROOT}}/.cortex/memory",
+  "enterprise_topology": "project-only (no .cortex/org.yaml)"
+}
+
+### S08 reindex dry-run
+rc=0
+[dry-run] reindex plan:
+  model/backend : all-MiniLM-L6-v2 / onnx
+  vault         : {{ROOT}}/.cortex/vault
+  no existing vector cache to back up
+  would rebuild : full sync + embeddings for every vault doc
+
+### S09 session current
+rc=0
+2026-08-25_demo
+
+### S10 session current --json
+rc=0
+{"session_id": "2026-08-25_demo"}
+
+### S11 session show --json
+rc=0
+{
+  "session_id": "2026-08-25_demo",
+  "spec_path": "{{ROOT}}/.cortex/vault/specs/2026-08-25_demo.md",
+  "spec_summary": "demo",
+  "start_commit": "{{SHA}}",
+  "start_branch": "master",
+  "opened_at": "{{TS}}",
+  "status": "open",
+  "mode": "unknown",
+  "checkpoints": [
+    {
+      "timestamp": "{{TS}}",
+      "source": "manual",
+      "verified_claims": [],
+      "unverified_claims": [],
+      "artifacts_touched": [],
+      "note": "trabajo inicial"
+    }
+  ],
+  "verification_results": [],
+  "tasks": [],
+  "closed_at": null,
+  "end_commit": null,
+  "documenter_decision": null,
+  "session_note_path": null,
+  "adrs_created": []
+}
+
+### S12 session list --json
+rc=0
+[{"session_id": "2026-08-25_demo", "status": "open", "mode": "unknown", "opened_at": "{{TS}}", "closed_at": null, "checkpoint_count": 1, "spec_summary": "demo"}]
+
+### S13 session checkpoint --json
+rc=0
+{"session_id": "2026-08-25_demo", "checkpoint_count": 2, "source": "manual"}
+
+### S14 session switch inexistente
+rc=1
+
+--stderr--
+no-existe
+
+### S15 next --json
+rc=0
+{
+  "elapsed_ms": {{ELAPSED}},
+  "acciones": [
+    {
+      "id": "vault.validate_docs",
+      "title": "Validar los documentos del vault",
+      "category": "quality",
+      "effect": "corre DocValidator sobre hasta 200 .md del vault e informa errores",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "quality.run_gates",
+      "title": "Correr quality gates sobre el último checkpoint",
+      "category": "quality",
+      "effect": "review_checkpoint(checkpoint, spec) de la primera sesión OPEN con checkpoints",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "session.checkpoint_now",
+      "title": "Registrar checkpoint de los archivos cambiados",
+      "category": "maintenance",
+      "effect": "agrega un checkpoint manual a la sesión activa",
+      "cost": "seconds",
+      "reversible": false,
+      "auto_ok": false,
+      "score": 5.0
+    },
+    {
+      "id": "vault.reindex",
+      "title": "Re-indexar el vault semántico",
+      "category": "maintenance",
+      "effect": "parse+chunk+embed de vault/ via AgentMemory.sync_vault()",
+      "cost": "seconds",
+      "reversible": true,
+      "auto_ok": false,
+      "score": 5.0
+    },
+    {
+      "id": "learn.topic",
+      "title": "Aprender un tópico del tutor hoy",
+      "category": "learning",
+      "effect": "sugiere un tópico del tutor (rotación diaria) con deep-link a su guía",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 3.0
+    }
+  ]
+}
+
+### S16 next texto
+rc=0
+🧠 Cortex · 5 acción(es) sugeridas:
+
+ [1] Validar los documentos del vault
+     id: vault.validate_docs · costo: instant [auto-ok] · score: 8.0
+     efecto: corre DocValidator sobre hasta 200 .md del vault e informa errores
+
+ [2] Correr quality gates sobre el último checkpoint
+     id: quality.run_gates · costo: instant [auto-ok] · score: 8.0
+     efecto: review_checkpoint(checkpoint, spec) de la primera sesión OPEN con checkpoints
+
+ [3] Registrar checkpoint de los archivos cambiados
+     id: session.checkpoint_now · costo: seconds · score: 5.0
+     efecto: agrega un checkpoint manual a la sesión activa
+
+ [4] Re-indexar el vault semántico
+     id: vault.reindex · costo: seconds · score: 5.0
+     efecto: parse+chunk+embed de vault/ via AgentMemory.sync_vault()
+
+ [5] Aprender un tópico del tutor hoy
+     id: learn.topic · costo: instant [auto-ok] · score: 3.0
+     efecto: sugiere un tópico del tutor (rotación diaria) con deep-link a su guía
+
+
+[dim]{{ELAPSED}}ms · ejecutá `cortex next --json` para salida machine-readable[/dim]
+
+### S17 hu list vacío
+rc=0
+No tracked items imported yet.
+
+### S18 hu show inexistente
+rc=1
+
+--stderr--
+Tracked item not found in vault: PROJ-999
+
+### S20 pr-context capture
+rc=0
+PR context captured -> .pr-context.json
+   title: Demo PR
+   author: ana
+   branch: feat/x
+   files changed: 0
+
+ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha|files_changed|diff_summary|db_migrations|api_changes|labels|lint_result|audit_result|test_result

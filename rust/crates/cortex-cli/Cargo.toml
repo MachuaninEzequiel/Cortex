@@ -23,6 +23,16 @@ cortex-tutor = { path = "../cortex-tutor" }
 cortex-autopilot = { path = "../cortex-autopilot" }
 cortex-webgraph-server = { path = "../cortex-webgraph-server" }
 cortex-workspace = { path = "../cortex-workspace" }
+# Cierre T2: familias memoria/sesiones/acciones/servicios in-process.
+cortex-app = { path = "../cortex-app" }
+cortex-embed = { path = "../cortex-embed" }
+cortex-actions = { path = "../cortex-actions" }
+cortex-services = { path = "../cortex-services" }
+cortex-setup = { path = "../cortex-setup" }
+cortex-mcp = { path = "../cortex-mcp" }
+cortex-config = { path = "../cortex-config" }
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 
 [dev-dependencies]

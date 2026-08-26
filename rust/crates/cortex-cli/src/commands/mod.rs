@@ -2,10 +2,14 @@
 
 pub mod autopilot;
 pub mod doctor;
+pub mod hu_cmd;
 pub mod memory_report;
 pub mod misc;
+pub mod next_cmd;
 pub mod org_config;
+pub mod pr_context_cmd;
 pub mod promote;
 pub mod review;
+pub mod session_cmd;
 pub mod tutor;
 pub mod webgraph;

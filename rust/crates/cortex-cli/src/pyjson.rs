@@ -42,6 +42,51 @@ pub fn stdlib_dumps_indent2(v: &PyVal) -> String {
     out
 }
 
+/// `json.dumps(value)` una-línea (separadores default ", " / ": ",
+/// ensure_ascii=True) sobre un array PyVal.
+pub fn stdlib_dumps_compact_array(items: &[PyVal]) -> String {
+    let v = PyVal::Arr(items.to_vec());
+    let mut out = String::new();
+    write_compact(&v, &mut out);
+    out
+}
+
+fn write_compact(v: &PyVal, out: &mut String) {
+    match v {
+        PyVal::Arr(items) => {
+            out.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                write_compact(item, out);
+            }
+            out.push(']');
+        }
+        PyVal::Obj(items) => {
+            out.push('{');
+            for (i, (k, val)) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                write_escaped(k, out);
+                out.push_str(": ");
+                write_compact(val, out);
+            }
+            out.push('}');
+        }
+        other => write(other, 0, out),
+    }
+}
+
+/// `model_dump_json(indent=2)` de pydantic v2: idéntico al stdlib writer
+/// pero con UTF-8 crudo (sin ensure_ascii).
+pub fn pydantic_dumps_indent2(v: &PyVal) -> String {
+    let mut out = String::new();
+    write_utf8(v, 0, &mut out);
+    out
+}
+
 fn indent(n: usize) -> String {
     " ".repeat(n * 2)
 }
@@ -90,6 +135,63 @@ fn write(v: &PyVal, level: usize, out: &mut String) {
             out.push_str(&indent(level));
             out.push('}');
         }
+    }
+}
+
+fn write_utf8(v: &PyVal, level: usize, out: &mut String) {
+    match v {
+        PyVal::Str(s) => {
+            out.push('"');
+            for c in s.chars() {
+                match c {
+                    '"' => out.push_str("\\\""),
+                    '\\' => out.push_str("\\\\"),
+                    '\n' => out.push_str("\\n"),
+                    '\r' => out.push_str("\\r"),
+                    '\t' => out.push_str("\\t"),
+                    c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+                    c => out.push(c),
+                }
+            }
+            out.push('"');
+        }
+        PyVal::Arr(items) => {
+            if items.is_empty() {
+                out.push_str("[]");
+                return;
+            }
+            out.push_str("[\n");
+            for (i, item) in items.iter().enumerate() {
+                out.push_str(&indent(level + 1));
+                write_utf8(item, level + 1, out);
+                if i + 1 < items.len() {
+                    out.push(',');
+                }
+                out.push('\n');
+            }
+            out.push_str(&indent(level));
+            out.push(']');
+        }
+        PyVal::Obj(items) => {
+            if items.is_empty() {
+                out.push_str("{}");
+                return;
+            }
+            out.push_str("{\n");
+            for (i, (k, val)) in items.iter().enumerate() {
+                out.push_str(&indent(level + 1));
+                write_escaped(k, out);
+                out.push_str(": ");
+                write_utf8(val, level + 1, out);
+                if i + 1 < items.len() {
+                    out.push(',');
+                }
+                out.push('\n');
+            }
+            out.push_str(&indent(level));
+            out.push('}');
+        }
+        other => write(other, level, out),
     }
 }
 

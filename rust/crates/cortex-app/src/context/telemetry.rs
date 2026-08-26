@@ -517,6 +517,11 @@ fn rotated_path(path: &Path) -> PathBuf {
     path.with_file_name(format!("{}.1.jsonl", stem.to_string_lossy()))
 }
 
+/// Nuevo run_id (hex12 de uuid4) — público para el CLI (Cierre T2).
+pub fn new_run_id() -> String {
+    uuid_v4_hex12()
+}
+
 fn uuid_v4_hex12() -> String {
     uuid::Uuid::new_v4().simple().to_string()[..12].to_string()
 }

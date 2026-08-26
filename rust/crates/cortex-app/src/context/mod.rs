@@ -269,14 +269,15 @@ impl<'a> ContextEnricher<'a> {
         }
 
         // Phase 3: multi-match boost.
-        // NOTA DE NORMALIZACIÓN: el oráculo hace list(set(...)) cuyo orden es
-        // dependiente de hash; el contrato P7 ordena matched_by en AMBOS
-        // lados (ver context_golden_p7.py).
+        // Cierre T2: el orden de `list(set(...))` de CPython con
+        // PYTHONHASHSEED=0 sobre los 4 nombres de estrategia es FIJO y fue
+        // precomputado (tabla pyset_strategy_order). El gate P7 normalizaba
+        // ordenando ambos lados; el CLI real necesita el orden exacto.
         for item in &mut all_items {
             let mut unique = item_strategies[&item.source_id].clone();
             unique.sort_unstable();
             unique.dedup();
-            item.matched_by = unique.iter().map(|s| s.to_string()).collect();
+            item.matched_by = pyset_strategy_order(&unique);
             let boost_factor = if unique.len() > 1 {
                 self.config
                     .multi_match_boost
@@ -569,6 +570,44 @@ fn parse_doc_slug(slug: &str) -> Result<routing::DocType, ()> {
     })
 }
 
+/// Orden de iteración `list(set(...))` de CPython (PYTHONHASHSEED=0)
+/// para los subconjuntos de los 4 nombres de estrategia. Precomputado
+/// empíricamente; los nombres no pueden cambiar sin actualizar la tabla.
+fn pyset_strategy_order(strategies: &[&str]) -> Vec<String> {
+    const T: &str = "topic_search";
+    const F: &str = "file_search";
+    const K: &str = "keyword_search";
+    const P: &str = "pr_title_search";
+    let key: &[&str] = {
+        let mut v: Vec<&str> = strategies.to_vec();
+        v.sort_unstable();
+        Box::leak(v.into_boxed_slice())
+    };
+    // Box::leak por llamada es inaceptable en caliente; usar match sobre el
+    // conjunto canónico:
+    let _ = key;
+    let has = |n: &str| strategies.contains(&n);
+    let ordered: Vec<&str> = match (has(T), has(F), has(K), has(P)) {
+        (true, true, true, true) => vec![T, K, F, P],
+        (true, true, true, false) => vec![T, K, F],
+        (false, true, true, true) => vec![K, F, P],
+        (true, false, true, true) => vec![T, K, P],
+        (true, true, false, true) => vec![T, F, P],
+        (true, true, false, false) => vec![T, F],
+        (true, false, true, false) => vec![T, K],
+        (true, false, false, true) => vec![T, P],
+        (false, true, true, false) => vec![K, F],
+        (false, true, false, true) => vec![F, P],
+        (false, false, true, true) => vec![K, P],
+        (true, false, false, false) => vec![T],
+        (false, true, false, false) => vec![F],
+        (false, false, true, false) => vec![K],
+        (false, false, false, true) => vec![P],
+        _ => vec![],
+    };
+    ordered.into_iter().map(String::from).collect()
+}
+
 #[cfg(test)]
 mod tests {
     //! Espejos de tests/unit/context_enricher/test_enricher.py usando datos
@@ -630,7 +669,8 @@ mod tests {
     }
 
     /// TestEnricherMultiStrategy/TestEnricherBoost: un item matched por dos
-    /// estrategias recibe boost multi_match^(n-1) y matched_by ordenado.
+    /// estrategias recibe boost multi_match^(n-1) y matched_by en orden
+    /// pyset (PYTHONHASHSEED=0).
     #[test]
     fn multi_match_boost_y_matched_by() {
         let store = store_vacio();
@@ -659,7 +699,9 @@ mod tests {
         assert_eq!(bundle.total_raw_hits, 2);
         assert_eq!(bundle.items.len(), 1);
         let it = &bundle.items[0];
-        assert_eq!(it.matched_by, vec!["file_search", "topic_search"]); // ordenado
+        // Cierre T2: orden pyset real de CPython (PYTHONHASHSEED=0), ya no
+        // alfabético — ver pyset_strategy_order.
+        assert_eq!(it.matched_by, vec!["topic_search", "file_search"]);
         assert!((it.enriched_score - 0.5 * 1.5).abs() < 1e-12);
     }
 

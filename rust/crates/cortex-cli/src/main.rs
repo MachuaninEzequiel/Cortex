@@ -119,6 +119,16 @@ fn dispatch_native(argv: &[String]) -> bool {
         }
         "webgraph" => commands::webgraph::run(rest),
         "autopilot" => commands::autopilot::run(rest),
+        "search" => cortex_cli::memory_cmds::run_search(rest),
+        "context" => cortex_cli::memory_cmds::run_context(rest),
+        "stats" => cortex_cli::memory_cmds::run_stats(rest),
+        "session" => cortex_cli::commands::session_cmd::run(argv),
+        "next" => cortex_cli::commands::next_cmd::run(rest),
+        "hu" => cortex_cli::commands::hu_cmd::run(rest),
+        "pr-context" if rest.first().map(String::as_str) == Some("capture") => {
+            commands::pr_context_cmd::run_capture(&rest[1..])
+        }
+        "reindex" => cortex_cli::memory_cmds::run_reindex(rest),
         _ => false,
     }
 }

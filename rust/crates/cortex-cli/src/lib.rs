@@ -5,6 +5,8 @@
 
 pub mod commands;
 pub mod fallback;
+pub mod memory;
+pub mod memory_cmds;
 pub mod paths;
 pub mod pyjson;
 pub mod rich_panel;
