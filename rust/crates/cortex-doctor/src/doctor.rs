@@ -279,12 +279,13 @@ fn run_doctor_inner(
     // ── Autopilot policy (real desde P12B-5) ─────────────────────
     checks.extend(validate_autopilot_policy(&layout));
 
-    // ── Session hooks (stub) ──────────────────────────────────────
+    // ── Session hooks (stub) + eventos recientes (real, Cierre T3) ──
     checks.push(stub(
         "session_hooks_installed",
         "cortex.session.hooks",
         "warn",
     ));
+    checks.extend(session_hooks_recent_events(&layout));
 
     // ── Pluggable Middle health ───────────────────────────────────
     checks.extend(pluggable_middle_health(&layout));
@@ -437,6 +438,34 @@ fn validate_sessions(layout: &WorkspaceLayout) -> Vec<DoctorCheck> {
     ));
     checks.push(stub("sessions_parsed", "cortex.session.storage", "warn"));
     checks
+}
+
+/// Cola de `_validate_session_hooks`: si hay sesión activa cargable,
+/// reporta cuántos checkpoints `ide-hook` tiene (¿está disparando el hook?).
+fn session_hooks_recent_events(layout: &WorkspaceLayout) -> Vec<DoctorCheck> {
+    use cortex_app::session::{CheckpointSource, SessionStorage};
+
+    let storage = SessionStorage::new(layout.repo_root.join(".cortex").join("sessions"));
+    let Some(active_id) = storage.get_active_session_id() else {
+        return vec![];
+    };
+    if !storage.exists(&active_id) {
+        return vec![];
+    }
+    let Ok(record) = storage.load(&active_id) else {
+        return vec![];
+    };
+    let ide_hook_count = record
+        .checkpoints
+        .iter()
+        .filter(|cp| cp.source == CheckpointSource::IdeHook)
+        .count();
+    vec![DoctorCheck::new(
+        "session_hooks_recent_events",
+        true,
+        "info",
+        format!("{ide_hook_count} ide-hook checkpoint(s) in active session {active_id}"),
+    )]
 }
 
 /// `_validate_pluggable_middle_health`: portables + stubs.

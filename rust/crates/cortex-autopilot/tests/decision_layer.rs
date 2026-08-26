@@ -108,7 +108,7 @@ fn resolve_detectors_rules_match_python() {
     assert_eq!(res.task_type, "ambiguous");
 
     // Sin candidatos >0.3: fallback al de mayor confianza (docs keyword).
-    let only_noop: Vec<Box<dyn AutopilotDetector>> = vec![Box::new(NoopDetector)];
+    let only_noop: Vec<Box<dyn AutopilotDetector + Send>> = vec![Box::new(NoopDetector)];
     let res = resolve_detectors(&only_noop, &request(None, &[]));
     assert_eq!(res.reason, "Noop fallback");
 }
@@ -227,7 +227,7 @@ fn enforcer_hooks_match_python_texts() {
     let results = e.on_checkpoint(&s, &cp, Some(&["in/a.md".to_string()]));
     assert!(results.iter().any(|r| r
         .reason
-        .starts_with("Checkpoint touches files outside spec scope: [\"out/x.md\"]")));
+        .starts_with("Checkpoint touches files outside spec scope: ['out/x.md']")));
 
     // on_pre_close: autopilot sin verificado ⇒ BLOCK.
     let ap = enforcer(AutopilotMode::Autopilot);

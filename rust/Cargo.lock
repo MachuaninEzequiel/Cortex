@@ -443,8 +443,11 @@ name = "cortex-autopilot"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "cortex-app",
  "cortex-enterprise",
+ "cortex-mcp",
  "cortex-workspace",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

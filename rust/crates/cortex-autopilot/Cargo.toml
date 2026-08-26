@@ -9,8 +9,14 @@ chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 serde_yaml = { workspace = true }
+cortex-app = { path = "../cortex-app" }
 cortex-enterprise = { path = "../cortex-enterprise" }
 cortex-workspace = { path = "../cortex-workspace" }
 
 [dev-dependencies]
 tempfile = "3"
+cortex-mcp = { path = "../cortex-mcp" }
+# ADR chico (Cierre T3): solo para el checker de gate — normalizaciones
+# {{TS}}/{{MIN}} y edición del timestamp del fixture A08. `regex 1.x` ya
+# está en Cargo.lock (cortex-app/cortex-mcp) — cero paquetes nuevos.
+regex = "1"

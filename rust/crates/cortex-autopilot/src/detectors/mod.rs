@@ -20,7 +20,7 @@ pub trait AutopilotDetector {
 }
 
 /// `default_detectors()` en el orden canónico de Python.
-pub fn default_detectors() -> Vec<Box<dyn AutopilotDetector>> {
+pub fn default_detectors() -> Vec<Box<dyn AutopilotDetector + Send>> {
     vec![
         Box::new(AmbiguousRequestDetector),
         Box::new(QuestionOnlyDetector),
@@ -49,11 +49,11 @@ fn complexity_rank(c: &str) -> i32 {
 /// 4. ambiguous_request con >0.6 bloquea;
 /// 5. mayor confidence; 6. empate → complejidad más conservadora.
 pub fn resolve_detectors(
-    detectors: &[Box<dyn AutopilotDetector>],
+    detectors: &[Box<dyn AutopilotDetector + Send>],
     request: &DetectionRequest,
 ) -> DetectionResult {
     let mut results: Vec<(&str, DetectionResult)> = Vec::new();
-    for det in detectors {
+    for det in detectors.iter().map(|b| b.as_ref()) {
         if let Ok(res) = det.detect(request) {
             results.push((det.name(), res));
         }

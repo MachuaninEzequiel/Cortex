@@ -326,8 +326,8 @@ impl PolicyEnforcer {
                     let mut sorted: Vec<String> = drift.into_iter().cloned().collect();
                     sorted.sort();
                     results.push(EnforcementResult::warn(format!(
-                        "Checkpoint touches files outside spec scope: {:?}",
-                        sorted
+                        "Checkpoint touches files outside spec scope: {}",
+                        py_list_repr(&sorted)
                     )));
                 }
             }
@@ -370,4 +370,11 @@ impl PolicyEnforcer {
         }
         results
     }
+}
+
+/// `repr(list_de_str_python)`: elementos con comillas simples
+/// (`['a', 'b']`), formato canónico de `{sorted(drift)}` en el oráculo.
+pub(crate) fn py_list_repr(items: &[String]) -> String {
+    let inner: Vec<String> = items.iter().map(|s| format!("'{s}'")).collect();
+    format!("[{}]", inner.join(", "))
 }

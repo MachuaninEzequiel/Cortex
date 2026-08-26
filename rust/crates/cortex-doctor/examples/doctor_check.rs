@@ -159,6 +159,30 @@ fn main() {
     std::fs::write(root.join("autopilot.yaml"), "mode: auto\n").unwrap();
     let s6 = render(&run_doctor(&root, DoctorScope::Project).unwrap());
 
+    // 7. autopilot end-to-end: policy real + sesión activa REAL abierta vía
+    // SessionService nativo (gitless). Los checks de sesiones emiten stubs
+    // contractuales; autopilot_policy refleja el YAML (espejo del golden).
+    let root = make_legacy(&workdir, "ap_e2e", false, false);
+    std::fs::write(
+        root.join("autopilot.yaml"),
+        "mode: assist\ndefault_budget_profile: deep_code\n",
+    )
+    .unwrap();
+    {
+        use cortex_app::session::service::SessionService;
+        use cortex_app::session::SessionStorage;
+
+        let storage = SessionStorage::new(root.join(".cortex").join("sessions"));
+        SessionService::new(storage, &root)
+            .open(
+                "2026-05-16_demo",
+                "vault/specs/2026-05-16_demo.md",
+                "Demo summary",
+            )
+            .unwrap();
+    }
+    let s7 = render(&run_doctor(&root, DoctorScope::Project).unwrap());
+
     let names = [
         "legacy_project",
         "legacy_all",
@@ -166,9 +190,10 @@ fn main() {
         "new_layout",
         "legacy_with_sessions",
         "autopilot_typo",
+        "autopilot_e2e",
     ];
     let mut actual = String::new();
-    for (name, section) in names.iter().zip([&s1, &s2, &s3, &s4, &s5, &s6]) {
+    for (name, section) in names.iter().zip([&s1, &s2, &s3, &s4, &s5, &s6, &s7]) {
         actual.push_str(&format!("### {name}\n{section}"));
     }
 

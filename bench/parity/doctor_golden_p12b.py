@@ -127,6 +127,24 @@ def build(out_dir: Path) -> int:
     (root / "autopilot.yaml").write_text("mode: auto\n", encoding="utf-8")
     sections.append(normalize_checks(run_doctor(root)))
 
+    # 7. autopilot end-to-end: policy real + sesión activa REAL abierta vía
+    # SessionService (gitless). Los checks de sesiones se normalizan vía
+    # STUB_TABLE; autopilot_policy refleja el YAML.
+    root = make_legacy(workdir, "ap_e2e", with_org=False, with_sessions=False)
+    (root / "autopilot.yaml").write_text(
+        "mode: assist\ndefault_budget_profile: deep_code\n", encoding="utf-8"
+    )
+    from cortex.session.service import SessionService
+    from cortex.session.storage import SessionStorage
+
+    storage = SessionStorage(root / ".cortex" / "sessions")
+    SessionService(storage, root).open(
+        spec_id="2026-05-16_demo",
+        spec_path=Path("vault/specs/2026-05-16_demo.md"),
+        spec_summary="Demo summary",
+    )
+    sections.append(normalize_checks(run_doctor(root)))
+
     body = "".join(
         f"### {name}\n{section}"
         for name, section in zip(
@@ -137,6 +155,7 @@ def build(out_dir: Path) -> int:
                 "new_layout",
                 "legacy_with_sessions",
                 "autopilot_typo",
+                "autopilot_e2e",
             ],
             sections,
         )

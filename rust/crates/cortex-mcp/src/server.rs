@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use crate::tools_catalog::{build_tool_definitions, SERVER_VERSION};
-use crate::{handlers_docs, handlers_finish, handlers_search, handlers_spec};
+use crate::{handlers_autopilot, handlers_docs, handlers_finish, handlers_search, handlers_spec};
 
 /// Grace de arranque: `starting` durante los primeros 2.0 s (espejo de
 /// `_STARTUP_GRACE_SECONDS`).
@@ -93,6 +93,9 @@ pub struct CortexMcpServer<M: MemoryBackend = CountingMemory> {
     spec_backend: Option<std::sync::Arc<std::sync::Mutex<dyn handlers_spec::SpecBackend + Send>>>,
     finish_backend:
         Option<std::sync::Arc<std::sync::Mutex<dyn handlers_finish::FinishBackend + Send>>>,
+    /// Backend in-process de la familia autopilot (Cierre T3).
+    autopilot_backend:
+        Option<std::sync::Arc<std::sync::Mutex<dyn handlers_autopilot::AutopilotBackend + Send>>>,
     /// Estado transversal de la familia spec (`_called_tools` + stamp del
     /// gap de proposal). Se alimenta con CADA tool llamada, como el
     /// `_log_tool_call` de Python.
@@ -185,6 +188,7 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
             docs_backend: None,
             spec_backend: None,
             finish_backend: None,
+            autopilot_backend: None,
             spec_state: handlers_spec::SpecServerState::default(),
             project_root: std::env::current_dir().unwrap_or_default(),
         }
@@ -232,6 +236,17 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
         backend: std::sync::Arc<std::sync::Mutex<dyn handlers_finish::FinishBackend + Send>>,
     ) -> Self {
         self.finish_backend = Some(backend);
+        self
+    }
+
+    /// Wirea el backend in-process de la familia autopilot (Cierre T3).
+    pub fn with_autopilot_backend(
+        mut self,
+        backend: std::sync::Arc<
+            std::sync::Mutex<dyn crate::handlers_autopilot::AutopilotBackend + Send>,
+        >,
+    ) -> Self {
+        self.autopilot_backend = Some(backend);
         self
     }
 
@@ -461,6 +476,36 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
                                 handlers_finish::finish_session_text(&mut *guard, arguments)
                             }
                             _ => handlers_finish::documenter_briefing_text(&mut *guard, arguments),
+                        };
+                    }
+                }
+
+                // Familia autopilot (Cierre T3).
+                const AUTOPILOT_TOOLS: &[&str] = &[
+                    "cortex_autopilot_start",
+                    "cortex_autopilot_preflight",
+                    "cortex_autopilot_checkpoint",
+                    "cortex_autopilot_finish",
+                    "cortex_autopilot_status",
+                ];
+                if AUTOPILOT_TOOLS.contains(&name) {
+                    if let Some(b) = &self.autopilot_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        use crate::handlers_autopilot as ha;
+                        return match name {
+                            "cortex_autopilot_start" => {
+                                ha::autopilot_start_text(&mut *guard, arguments)
+                            }
+                            "cortex_autopilot_preflight" => {
+                                ha::autopilot_preflight_text(&mut *guard, arguments)
+                            }
+                            "cortex_autopilot_checkpoint" => {
+                                ha::autopilot_checkpoint_text(&mut *guard, arguments)
+                            }
+                            "cortex_autopilot_finish" => {
+                                ha::autopilot_finish_text(&mut *guard, arguments)
+                            }
+                            _ => ha::autopilot_status_text(&mut *guard, arguments),
                         };
                     }
                 }
