@@ -10,7 +10,20 @@ name = "cortex-cli"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4", default-features = false, features = ["std", "help", "usage"] }
+unicode-width = "0.2"
+clap = { version = "4", default-features = false, features = [
+    "std",
+    "help",
+    "usage",
+    "derive",
+] }
+cortex-doctor = { path = "../cortex-doctor" }
+cortex-enterprise = { path = "../cortex-enterprise" }
+cortex-tutor = { path = "../cortex-tutor" }
+cortex-autopilot = { path = "../cortex-autopilot" }
+cortex-webgraph-server = { path = "../cortex-webgraph-server" }
+cortex-workspace = { path = "../cortex-workspace" }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 
 [dev-dependencies]
 tempfile = "3"

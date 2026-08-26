@@ -293,12 +293,16 @@ pub fn write_enterprise_config(
 /// `render_enterprise_config_yaml`: header exacto + safe_dump
 /// (sort_keys=False, allow_unicode=False).
 pub fn render_enterprise_config_yaml(config: &EnterpriseOrgConfig) -> String {
+    format!("{HEADER}{}", dump_enterprise_config_yaml(config))
+}
+
+/// safe_dump del payload SIN header (para el CLI `org-config`, que imprime
+/// `yaml.safe_dump(config.model_dump(mode='json'), sort_keys=False,
+/// allow_unicode=False)` tras el bloque de líneas descriptivas).
+pub fn dump_enterprise_config_yaml(config: &EnterpriseOrgConfig) -> String {
     let payload =
         serde_json::to_value(config).expect("config serializable a JSON (model_dump mode=json)");
-    format!(
-        "{HEADER}{}",
-        pyyaml::dump_with(&json_to_yaml(&payload), false)
-    )
+    pyyaml::dump_with(&json_to_yaml(&payload), false)
 }
 
 /// Resumen de topología (orden exacto de líneas Python, unidas por ", ").

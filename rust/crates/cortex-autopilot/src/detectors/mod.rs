@@ -66,10 +66,20 @@ pub fn resolve_detectors(
         .collect();
 
     if candidates.is_empty() {
+        // Python `max(results, key=confidence)` devuelve el PRIMER máximo;
+        // `iter().max_by` de Rust devuelve el último ⇒ primer-máximo manual.
         return match results
             .iter()
-            .max_by(|a, b| a.1.confidence.total_cmp(&b.1.confidence))
-        {
+            .fold(None::<&(_, DetectionResult)>, |acc, item| match acc {
+                None => Some(item),
+                Some(cur) => {
+                    if item.1.confidence > cur.1.confidence {
+                        Some(item)
+                    } else {
+                        acc
+                    }
+                }
+            }) {
             Some((_, r)) => r.clone(),
             None => DetectionResult::noop("No detectors returned results"),
         };

@@ -95,6 +95,12 @@ impl SemanticSource {
 
     /// load_records: itera el índice nativo (sorted por rel) y proyecta.
     pub fn load_records(&self, include_embeddings: bool) -> Vec<SemanticRecord> {
+        // Paridad del warning de vault_reader.py (logger.warning ⇒ stderr
+        // en CLI pipado) cuando el vault no existe.
+        if !self.vault_path.exists() {
+            eprintln!("Vault path does not exist: {}", self.vault_path.display());
+            return Vec::new();
+        }
         let index = match cortex_app::semantic::SemanticIndex::build(&self.vault_path) {
             Ok(idx) => idx,
             Err(_) => return Vec::new(),

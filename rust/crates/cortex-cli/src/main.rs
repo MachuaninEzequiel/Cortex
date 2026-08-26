@@ -1,73 +1,124 @@
-// cortex-cli — fachada nativa de arranque instantáneo (Gate G6, decisión
-// del dueño 2026-08-24b: "fachada sobre CLI Python").
+// cortex-cli — CLI nativo clap nivel-1 (P12B-8, cierre del Stream B).
 //
-// Los servicios (session/actions/context/documenter…) siguen Python hasta
-// Obra E: este binario reenvía TODO el argv al CLI existente con stdio
-// heredado, así que la salida —incluida --json— es idéntica por construcción
-// (paridad G6). Lo único nativo hoy es el arranque y `--cli-version`.
+// Arquitectura de dispatch (diseño aprobado en progreso-p12b.md):
+//   1. `CORTEX_PY=1` → passthrough TOTAL inmediato (rollback, fachada G6).
+//   2. `--cli-version` → línea nativa (compat contrato fachada).
+//   3. Primer token ∈ subárboles wireados → clap parsea ESE subárbol y
+//      ejecuta nativo contra los crates B.
+//   4. Cualquier otra cosa → reenvío del argv ORIGINAL al CLI Python:
+//      errores de comando desconocido/args de comandos no wireados salen
+//      del propio Typer ⇒ paridad gratis.
 //
-// Nota de diseño: el plan original mencionaba clap, pero declarar
-// subcomandos en clap interceptaría los --help/--json del CLI real y rompería
-// la paridad. El passthrough puro es el contrato correcto para una fachada.
-// Cuando los servicios migren a Rust (Obra E), los subcomands nativos se
-// agregan acá sin tocar la fachada.
-//
-// Override para tests/desarrollo: env CORTEX_BIN.
+// Paridad: comandos funcionales wireados = byte-parity vs oráculo Python
+// (gate bench/parity/cli_golden_p12b.py). Textos --help/errores de comandos
+// wireados = self-golden (Typer y clap formatean distinto por diseño).
 
-use std::io::Write;
-use std::process::Command;
+use cortex_cli::{commands, fallback};
 
-/// Versión de esta fachada nativa.
+/// Versión de este binario nativo.
 const CLI_VERSION: &str = "0.1.0";
 
-const AYUDA_FACHADA: &str = "\
-cortex-cli {CLI_VERSION} — fachada nativa del CLI Cortex.
-
-Uso: cortex-cli <COMANDO [args…]>   (reenvía al CLI Cortex tal cual)
-
-El binario `cortex` resuelve en este orden:
-  1. $CORTEX_BIN si está definido
-  2. `cortex` en PATH
-
-Flags propias de esta fachada (no se reenvían):
-  --cli-version    versión del binario nativo
-
-Todo lo demás —incluidos --help, --version y --json— se reenvía sin tocar:
-la salida es idéntica a `cortex …` porque ES `cortex …`.";
+/// Árbol raíz solo para el texto de ayuda self-golden (el dispatch real es
+/// manual por primer token; ver `dispatch_native`).
+fn root_command() -> clap::Command {
+    use clap::Command;
+    Command::new("cortex-cli")
+        .disable_version_flag(true)
+        .disable_help_subcommand(true)
+        .about("Cortex -- hybrid cognitive memory for AI agents (CLI nativo)")
+        .subcommand(
+            Command::new("doctor")
+                .about("Validate Cortex runtime prerequisites and governance state"),
+        )
+        .subcommand(Command::new("tutor").about("Guía interactiva offline de Cortex. Zero tokens."))
+        .subcommand(
+            Command::new("hint").about("Tip contextual: qué hacer ahora con Cortex. Zero tokens."),
+        )
+        .subcommand(
+            Command::new("org-config").about("Display the resolved enterprise organization config"),
+        )
+        .subcommand(
+            Command::new("promote-knowledge")
+                .about("Promote reviewed knowledge candidates into the enterprise vault"),
+        )
+        .subcommand(
+            Command::new("review-knowledge")
+                .about("Enterprise review queue (pending/approve/reject/candidate)"),
+        )
+        .subcommand(
+            Command::new("memory-report")
+                .about("Report enterprise memory health and promotion visibility"),
+        )
+        .subcommand(
+            Command::new("webgraph")
+                .about("Webgraph snapshots (export nativo; serve/doctor delegan)"),
+        )
+        .subcommand(
+            Command::new("autopilot")
+                .about("Autopilot decision layer (preflight nativo; resto delega)"),
+        )
+        .subcommand(Command::new("agent-guidelines").about("Display agent behavior guidelines"))
+        .subcommand(
+            Command::new("install-skills").about("Install Obsidian skills into the project"),
+        )
+        .after_help(
+            "Los demás comandos se delegan al CLI Python (CORTEX_PY=1 fuerza la delegación total).",
+        )
+}
 
 fn main() {
     let argv: Vec<String> = std::env::args().skip(1).collect();
 
-    match argv.first().map(String::as_str) {
-        Some("--cli-version") => {
-            println!("cortex-cli {CLI_VERSION}");
-            std::process::exit(0);
-        }
-        Some("--help") | Some("-h") if argv.len() == 1 => {
-            println!("{AYUDA_FACHADA}");
-            std::process::exit(0);
-        }
-        _ => {}
+    // 1. Rollback total: delega al CLI Python como la fachada G6.
+    if std::env::var("CORTEX_PY").as_deref() == Ok("1") {
+        fallback::passthrough(&argv);
     }
 
-    let bin = std::env::var("CORTEX_BIN").unwrap_or_else(|_| String::from("cortex"));
+    // 2. Flag propio de la fachada nativa.
+    if argv.first().map(String::as_str) == Some("--cli-version") {
+        println!("cortex-cli {CLI_VERSION}");
+        std::process::exit(0);
+    }
 
-    let status = Command::new(&bin)
-        .args(&argv)
-        .stdin(std::process::Stdio::inherit())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .status();
+    // 2b. Help raíz self-golden (Typer ≠ clap por diseño; texto congelado).
+    if matches!(argv.as_slice(), [a] if *a == "--help" || *a == "-h") {
+        print!("{}", root_command().render_help());
+        std::process::exit(0);
+    }
 
-    match status {
-        Ok(s) => std::process::exit(s.code().unwrap_or(1)),
-        Err(e) => {
-            let _ = writeln!(
-                std::io::stderr(),
-                "cortex-cli: no pude ejecutar '{bin}' ({e}).\n\
-                 Instalá Cortex (pip install -e .) o apuntá CORTEX_BIN al CLI."
-            );
-            std::process::exit(127);
+    // 3. Subárboles wireados (se pueblan tarea por tarea).
+    if dispatch_native(&argv) {
+        return;
+    }
+
+    // 4. Passthrough residual.
+    fallback::passthrough(&argv);
+}
+
+/// Intenta despachar nativamente `argv`. Devuelve false si el primer token
+/// no pertenece a ningún subárbol wireado (⇒ passthrough).
+fn dispatch_native(argv: &[String]) -> bool {
+    let Some(first) = argv.first().map(String::as_str) else {
+        return false;
+    };
+    let rest = &argv[1..];
+    match first {
+        "doctor" => commands::doctor::run(rest),
+        "agent-guidelines" => {
+            commands::misc::agent_guidelines();
+            true
         }
+        "install-skills" => commands::misc::install_skills(rest),
+        "tutor" => commands::tutor::run(rest),
+        "hint" => commands::tutor::run_hint(),
+        "org-config" => commands::org_config::run(rest),
+        "promote-knowledge" => commands::promote::run(rest),
+        "review-knowledge" => commands::review::run(rest),
+        "memory-report" if commands::memory_report::is_native(rest) => {
+            commands::memory_report::run(rest)
+        }
+        "webgraph" => commands::webgraph::run(rest),
+        "autopilot" => commands::autopilot::run(rest),
+        _ => false,
     }
 }

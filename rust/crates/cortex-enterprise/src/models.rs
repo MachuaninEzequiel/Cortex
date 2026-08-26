@@ -36,6 +36,10 @@ string_enum!(Classification { Public => "public", Internal => "internal", Confid
 #[serde(default)]
 pub struct OrganizationConfig {
     pub name: String,
+    // Python: `slug: str = ""` — el default de DESERIALIZACIÓN es vacío (el
+    // validador `_normalize_slug` completa desde `name`). El Default::default()
+    // del tipo preserva "cortex-organization" para el path de presets.
+    #[serde(default)]
     pub slug: String,
     pub profile: OrgProfile,
 }
