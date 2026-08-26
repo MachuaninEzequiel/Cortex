@@ -103,11 +103,13 @@ evidencia: `cargo test -p cortex-cli --test t_lea_b_ide --test t_lea_b_docs`
 
 ## Gate propio (Nivel 2) — `bench/parity/cierre_leaves_b_golden.py`
 
-Patrón de `cierre_cli_golden.py`; 25 casos reales (≥2 por subcomando):
+Patrón de `cierre_cli_golden.py`; 26 casos reales (≥2 por subcomando):
 
 - ide list (texto+json), ide setup sin --ide (err), ide status nope (err),
   ide status all (texto+json), ide status pi (texto+json pre-setup),
-  ide setup pi real, ide status pi post-setup json, ide remove pi real.
+  ide setup pi real, ide status pi post-setup json, ide remove pi real,
+  ide remove sin --ide (err, fix ronda 2 — misma `_require_ide` con
+  action "remove", rc 2).
 - docs validate (texto+json issues; texto+json vault válido [valid-proj]),
   docs list-backups (vacío [no-backups] + con 2 backups), docs restore
   (nombre corto, ruta completa, inexistente), docs routing-table (texto all,
@@ -129,8 +131,8 @@ Estabilidad del fixture (lecciones):
   de los miembros ⇒ el tamaño listado (`{name}\t{size} bytes`) sería
   run-dependente si los mtimes variaran.
 
-`build` → `golden_cierre_b.txt` (545 líneas); `verify` →
-**byte-parity post-normalización 545 líneas, ✅ PARIDAD**
+`build` → `golden_cierre_b.txt` (554 líneas); `verify` →
+**byte-parity post-normalización 554 líneas, ✅ PARIDAD**
 
 ## Cold start (N=20 por subcomando, binario debug nativo)
 
@@ -167,6 +169,6 @@ Todos « 100 ms (target del brief).
 1. Nivel 1: `cargo fmt --all --check` ✅ · `cargo clippy -p cortex-cli
    --all-targets -- -D warnings` ✅ · `cargo test -p cortex-cli` ✅ (suite
    completa verde, incl. tests de la MITAD A tras su cierre).
-2. Nivel 2: `cierre_leaves_b_golden.py build` ✅ + `verify` ✅ (545 líneas).
+2. Nivel 2: `cierre_leaves_b_golden.py build` ✅ + `verify` ✅ (554 líneas).
 3. Nivel 3: suite Python completa bajo lock R3 una sola vez — ver reporte
    `task-b-report.md` (esperado 2552/21/0/0).

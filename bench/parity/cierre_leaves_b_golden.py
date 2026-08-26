@@ -172,6 +172,9 @@ def casos(root: Path) -> list[tuple[str, list[str]]]:
         ("B23 ide setup pi real", ["ide", "setup", "--ide", "pi", "--project-root", r()]),
         ("B24 ide status pi post-setup json", ["ide", "status", "--ide", "pi", "--project-root", r(), "--json"]),
         ("B25 ide remove pi real", ["ide", "remove", "--ide", "pi", "--project-root", r()]),
+        # Error path sin --ide: misma _require_ide que B03 con action "remove"
+        # (determinista, sin efectos; rc 2).
+        ("B26 ide remove sin --ide", ["ide", "remove", "--project-root", r()]),
     ]
 
 
