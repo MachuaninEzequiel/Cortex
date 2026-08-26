@@ -1106,6 +1106,87 @@ pub fn create_backup(vault_path: &Path) -> Result<PathBuf, String> {
     Ok(backup_path)
 }
 
+/// `cortex.documentation.backup.list_backups`: backups en `backups_dir`
+/// (globo `vault-*.tar.gz`) ordenados por nombre (timestamp asc).
+/// Espejo de `sorted(backups_dir.glob("vault-*" + ".tar.gz"))`.
+pub fn list_backups(backups_dir: &Path) -> Vec<PathBuf> {
+    if !backups_dir.exists() {
+        return Vec::new();
+    }
+    let mut out: Vec<PathBuf> = match std::fs::read_dir(backups_dir) {
+        Ok(rd) => rd
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.is_file()
+                    && p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.starts_with("vault-") && n.ends_with(".tar.gz"))
+                        .unwrap_or(false)
+            })
+            .collect(),
+        Err(_) => Vec::new(),
+    };
+    out.sort();
+    out
+}
+
+/// `cortex.documentation.backup.restore_backup(backup_path, target_parent)`.
+///
+/// Extrae el tar.gz con `tar xzf` (mismo patrón shell-out que
+/// [`create_backup`]) y devuelve la raíz restaurada
+/// `target_parent / top`, donde `top` es el nombre del primer miembro del
+/// archivo (la carpeta original del vault).
+///
+/// Seguridad tar-slip espejo del oráculo: se rechaza cualquier miembro que
+/// resuelva fuera de `target_parent`. Errores exactos del oráculo:
+/// `backup not found: {path}` y `empty backup: {path}`.
+pub fn restore_backup(backup_path: &Path, target_parent: &Path) -> Result<PathBuf, String> {
+    if !backup_path.exists() {
+        return Err(format!("backup not found: {}", backup_path.display()));
+    }
+    // Listar miembros con `tar tzf` (validación + resolución del top).
+    let listing = Command::new("tar")
+        .arg("-tzf")
+        .arg(backup_path)
+        .output()
+        .map_err(|e| format!("tar failed: {e}"))?;
+    if !listing.status.success() {
+        return Err("tar exited non-zero".into());
+    }
+    let members: Vec<String> = String::from_utf8_lossy(&listing.stdout)
+        .lines()
+        .map(str::to_string)
+        .filter(|l| !l.is_empty())
+        .collect();
+    if members.is_empty() {
+        return Err(format!("empty backup: {}", backup_path.display()));
+    }
+    let top = members[0].split('/').next().unwrap_or("").to_string();
+    if top.is_empty() {
+        return Err(format!("empty backup: {}", backup_path.display()));
+    }
+    // Tar-slip: espejo de `(target_parent / member).resolve().is_relative_to(
+    // resolved_target)` — rechaza absolutos, ".." y escapes del target.
+    for member in &members {
+        if member.starts_with('/') || member.split('/').any(|c| c == "..") {
+            return Err(format!("unsafe member in backup archive: {member:?}"));
+        }
+    }
+    std::fs::create_dir_all(target_parent).map_err(|e| e.to_string())?;
+    let status = Command::new("tar")
+        .arg("-xzf")
+        .arg(backup_path)
+        .arg("-C")
+        .arg(target_parent)
+        .status()
+        .map_err(|e| format!("tar failed: {e}"))?;
+    if !status.success() {
+        return Err("tar exited non-zero".into());
+    }
+    Ok(target_parent.join(top))
+}
+
 // ---------------------------------------------------------------------------
 // Validación estructural (validate_vault)
 //
