@@ -165,13 +165,17 @@ por el CLI/autopilot/pipeline) y se ejecutan en la continuación.
 
 ## Estado al cierre de esta sesión (2026-08-25)
 
-**Completadas y gateadas:** T1 (`21536f5`) · T5 (`f6fb828`) · T2-núcleo (`c210cef`+`adac124`).
-Punto de partida de la próxima sesión: leer ESTE archivo + `git log --oneline -12`.
+**Completadas y gateadas:** T1 (`21536f5`) · T5 (`f6fb828`) ·
+T2-núcleo (`c210cef`+`33871a7`) · T3-paralelo (`e089a25`).
+Punto de partida de la próxima sesión: leer **`PROMPT-REANUDAR-C.md`**
+(el handoff completo para el próximo agente) + ESTE archivo +
+`git log --oneline -16`.
 
 **Cola restante:** T2-cola (docs{search,migrate}, ci ×4, setup ×5,
 pr-context {store,search,generate,full}, mcp-serve, list/show texto con
-tablas rich) · T4 pipeline Documentation · T7 integrando registros principal
-+ paralelo (progreso-cierre-paralelo.md). Cargo.lock compartido pendiente.
+tablas rich) · T4 pipeline Documentation · T6 (paralelo, en curso) ·
+T7 integrando registros principal + paralelo. Cargo.lock compartido en
+flujo (lo integra quien cierre último).
 
 **Verificación final de la sesión (re-run):**
 - Suite Python completa `-p no:randomly`: **2552 passed, 21 skipped, 0F, 0E**
