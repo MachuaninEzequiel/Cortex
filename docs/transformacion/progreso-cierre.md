@@ -269,6 +269,64 @@ Todos los comandos livianos cumplen `<100ms`. Los de memoria/embeddings
 
 `CORTEX_PY=1` sigue siendo el rollback total explícito (main.rs paso 1).
 
+## Cierre T4 — DocumentationStage real (2026-08-26)
+
+Commit `65c5a40` — `feat(obra07 cierre T4): DocumentationStage real — DocVerifier +
+session service + persister nativo (P5/P12A-5)`. Reemplaza el stub (`Skipped`
+`backend no nativo aún`) por la implementación real espejando
+`cortex/pipeline/stages/documentation.py`.
+
+**Red→Green (TDD):** `rust/crates/cortex-pipeline/tests/documentation_stage.rs` ×6.
+RED: contra el stub devuelven todos `Skipped` (0/6). GREEN: solo la implementación
+nueva — 6/6 ok:
+1. docs-present → `PASSED` + `has_agent_docs=true` + `indexed=1` (msg oráculo).
+2. no-docs → fallback REAL (`reconstruct_gitless` → `build_create_args` →
+   `NoteService::create`) → `PASSED` + `has_agent_docs=false` + nota en disco (msg
+   `No agent docs found. Fallback generated: <path>`).
+3. no-docs + `block_on_failure=true` → `FAILED`.
+4. sin pr_ctx → fallback `skipped` (`fallback_path: null`).
+5. sesión malformada (git-claim en repo no-git) → `ERROR`
+   (`Documentation stage error: reconstruct: diff: …`).
+6. glue episódico: store_pr_context escribe la fila `pr` en el JSONL nativo.
+Fixture real (vault tmp + sesión gitless + spec en disco); sin mocks.
+
+**Wiring nativo:** `DocVerifier::verify_from_list` (paso 2, fallback sessions-dir
+no-bloqueante) · `SemanticIndex::build` como equiv. de `sync_vault` (paso 3) ·
+`SessionService::find_for_pr` + `load_spec` + `reconstruct_gitless/git` +
+`persister::build_create_args` + `cortex_services::note::NoteService::create`
+(paso 4) · `PRService::store_pr_context` sobre `NativeEpisodicStore` con
+`feature_embed` determinista (paso 1, glue documentado; `memory_jsonl` ausente ⇒
+skip con log). Mensajes byte-a-byte del oráculo; `block_on_failure=false` por
+defecto; divergencias P6/P9 documentadas en el header del módulo.
+
+**Verificación niveles:**
+- N1: `cargo fmt --all --check` ✅ · `cargo clippy -p cortex-pipeline --all-targets
+  -- -D warnings` ✅ · `cargo test -p cortex-pipeline` ✅ (4 existentes + 6 nuevos).
+- N2 gate: `pipeline_golden_p12b.py build` → `[OK] golden generado` y `verify` →
+  `[PASS] golden_pipeline.txt determinista` (diff 0). Flows A–D verificados
+  byte-idénticos al golden previo (10179 chars). Instrumentación: nuevo checker
+  `rust/crates/cortex-pipeline/examples/documentation_gate.rs` corre el
+  DocumentationStage REAL sobre fixture gitless FUERA del repo (lección P12B-7:
+  `is_git_repo` usa `rev-parse`, ancestros) y congela el `StageResult` con reloj
+  fijo (`FIXED_TS 2026-08-25T12:00:00+00:00`, `duration_ms=0`), normalización
+  pactada `{{ROOT}}`/`{{ID}}`. Nuevo segmento del golden:
+
+```
+### DOCUMENTATION
+## CASE docs_present
+{"stage_name":"Documentation","status":"passed","message":"Agent documentation found and indexed (1 docs).","artifacts":{"has_agent_docs":true,"indexed":1},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}
+## CASE no_docs_fallback
+{"stage_name":"Documentation","status":"passed","message":"No agent docs found. Fallback generated: {{ROOT}}/.cortex/vault/sessions/{{ID}}.md","artifacts":{"fallback_path":"{{ROOT}}/.cortex/vault/sessions/{{ID}}.md","has_agent_docs":false},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}
+## CASE no_docs_block
+{"stage_name":"Documentation","status":"failed","message":"No agent docs found. Fallback generated: {{ROOT}}/.cortex/vault/sessions/{{ID}}.md","artifacts":{"fallback_path":"{{ROOT}}/.cortex/vault/sessions/{{ID}}.md","has_agent_docs":false},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}
+```
+
+Cargo.lock: hunk propio `65c5a40` solo agrega las aristas de `cortex-pipeline`
+(`cortex-app`, `cortex-services`, `cortex-workspace` dev) — cero paquetes nuevos.
+- N3 oráculo completo pre-commit bajo lock: `timeout 1200 .venv/bin/python -m pytest
+  tests/unit tests/integration tests/e2e --no-cov --tb=no -p no:randomly` →
+  **2552 passed, 21 skipped, 0 failed, 0 errors** (117.6s).
+
 ## Cola de tareas
 
 | Tarea | Estado | Evidencia | Commit |
@@ -276,7 +334,7 @@ Todos los comandos livianos cumplen `<100ms`. Los de memoria/embeddings
 | T1 handlers MCP no-sesión | ✅ | `bench/parity/cierre_mcp_golden.py` build/verify (51 escenarios, 261 líneas) + `examples/cierre_check.rs` **byte-parity** → `[PASS] cierre_check byte-parity` / `✅ PARIDAD CIERRE T1`. Oráculo = dispatcher Python REAL (`_dispatch_tool_sync`) con fakes deterministas y motores P5/P7 patcheados; write_doc usa writers REALES sobre vault tmp. Familias: search/search_vector/context (to_prompt/to_prompt_format byte-exact, budget resolver real), sync_ticket (candidatos reales vía resolve_safe), emit_proposal (pydantic 2.13 byte-a-byte: string_too_short/long, too_short/long, missing, extra_forbidden, value_error field+model, truncado de repr >50 → 25+"..."+24), create_spec (gobernanza+gap 2.0s con reloj congelado), self_review_note, write_doc ×11 doc_types (validaciones handler + writers P8b: duplicados por fingerprint, local-only, enterprise fields), design note, import/get_hu, finish_session/documenter_briefing (serialización completa del ReconstructionOutput). Autopilot-tools ×5: diferido a T3 (requiere AutopilotService nativo). Suite oráculo: **2455 passed, 18 skipped** (-p no:randomly; flaky HermesAdapter documentado en P12A-3). cargo test -p cortex-mcp: 25 ✅ · clippy `-D warnings` ✅ · fmt ✅. ADR chico: regex "1" ya en lock (cero paquetes nuevos) | `21536f5` |
 | T2 subcomandos CLI restantes | ✅ COMPLETA (núcleo `c210cef`+`33871a7` + cola `7d988a7`) | Núcleo: gate 19 casos (700 líneas), search/context/stats/reindex/session{current,list--json,show--json,checkpoint,switch,diff,abandon}/next/hu/list,show/pr-context capture. **Cola (`7d988a7`)**: docs{search,migrate} (enricher nativo + P12A-7 filtros; migrate vía `cortex-services::migration`), ci ×4 (validate-pr/open/report/close sobre `cortex-app::ci`, exits 0-3 contrato), setup ×5 (`cortex-setup` in-process, `--non-interactive`; full con `--ide pi`), pr-context {store,search,generate,full} (remember/retrieve glue + `cortex-app::doc_generator`), session{list,show} texto Rich-compat, mcp-server/serve stdio rmcp (envelope Anexo A). Gate extendido **19→39 casos + MCP stdio bounded exchange** (initialize+tools/list+tools/call) → `[PASS] cierre_cli byte-parity post-normalización (2123 líneas)` / `✅ PARIDAD CIERRE T2`. Tests Rust nuevos `t2_tail_native.rs` (4, RED→GREEN). Cargo.lock hunk T2 commiteado. Detalle y cold start en sección "Cierre T2-cola" abajo | `c210cef`+`33871a7`+`7d988a7` |
 | T3 autopilot service+cli | ✅ | Gate `cierre_autopilot_golden.py` + checker `cierre_autopilot_check` byte-parity; service e2e + MCP ×5 + CLI dual; doctor_golden ampliado | `e089a25` | |
-| T4 pipeline Documentation | ⏳ | | |
+| T4 pipeline Documentation | ✅ | Stage real nativo: `DocumentationStage` (stub → `DocVerifier` + `SessionService::find_for_pr` + `reconstruct_gitless/git` → `build_create_args` → `NoteService::create`; glue episódico `PRService::store_pr_context`). Tests `documentation_stage.rs` ×6 RED→GREEN; gate `pipeline_golden_p12b.py` + segmento `### DOCUMENTATION` (3 casos congelados, reloj fijo) — A–D byte-idénticos, `build`+`verify` diff 0. Oráculo 2552/21/0/0. Detalle en sección "Cierre T4" abajo | `65c5a40` | |
 | T5 oráculo 100% verde | ✅ | Suite completa `-p no:randomly`: **2552 passed, 21 skipped, 0 failed, 0 errors** (128s) — primera vez verde desde la recatorización. Commit de tests `f6fb828`. Detalle de cambios por archivo abajo | `f6fb828` |
 | T6 pantalla ratatui | ✅ | `cargo test -p cortex-tui` sessions_screen (5 tests) — datos == session list --json, render <50ms | `fa11473` | |
 | T7 refresco documental | ⏳ | | |
