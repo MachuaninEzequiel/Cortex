@@ -1,11 +1,12 @@
-//! Comandos `cortex session …` (Cierre T2) — espejo de cli/session.py.
+//! Comandos `cortex session …` (Cierre T2 + T6-b) — espejo de cli/session.py.
 //!
 //! Cubre current/list/show/diff/switch/checkpoint/abandon sobre
-//! SessionService nativo (P4). El JSON de record replica
+//! SessionService nativo (P4) y watch/tui sobre la pantalla ratatui nativa
+//! de cortex-tui (T6/T6-b). El JSON de record replica
 //! `model_dump(mode="json")` con orden pydantic. La tabla rich de `list`
-//! texto se replica para los casos del gate; watch/TUI queda en passthrough
-//! (decisión doc 09 §3.8 — reemplazo ratatui es T6).
+//! texto se replica para los casos del gate; hooks/task quedan en passthrough.
 
+use std::io::IsTerminal;
 use std::io::Write as _;
 
 use clap::Parser;
@@ -43,6 +44,17 @@ const VALID_STATUSES: &str = "open, closed, handoff, abandoned";
 const SOURCES_LIST: &str =
     "cortex-sync, cortex-SDDwork, cortex-code-explorer, cortex-code-implementer, \
      cortex-code-designer, user-skill, ide-hook, manual, ci-bot";
+
+/// Mapeo `string → SessionStatus` (misma semántica que `session list`).
+fn parse_status_filter(s: &str) -> Option<SessionStatus> {
+    match s {
+        "open" => Some(SessionStatus::Open),
+        "closed" => Some(SessionStatus::Closed),
+        "handoff" => Some(SessionStatus::Handoff),
+        "abandoned" => Some(SessionStatus::Abandoned),
+        _ => None,
+    }
+}
 
 fn resolve_record(cli: &SessionCli, session_id: Option<&String>) -> Result<SessionRecord, i32> {
     match session_id {
@@ -880,8 +892,184 @@ fn render_table(headers: &[&str], rows: &[Vec<String>], title: Option<&str>) -> 
     lines.join("\n")
 }
 
+// ---------------------------------------------------------------------------
+// watch / tui — pantalla ratatui nativa (T6-b)
+// ---------------------------------------------------------------------------
+
+#[derive(Parser, Debug)]
+#[command(
+    name = "watch",
+    disable_help_subcommand = true,
+    disable_version_flag = true
+)]
+pub struct WatchArgs {
+    #[arg(long)]
+    pub project_root: Option<String>,
+    /// Filtrar por estado: uno de {open, closed, handoff, abandoned}.
+    #[arg(long)]
+    pub status: Option<String>,
+}
+
+/// `cortex session watch` / `cortex session tui` — mismo entrypoint sobre la
+/// pantalla sesiones de cortex-tui (`SessionsScreenData::from_service` +
+/// `render`, contrato v1 read-only). En consola no-interactiva (CI) emite un
+/// snapshot único en vez de fallar: rc 0 + la tabla del mismo storage.
+pub fn run_watch(argv: &[String]) -> bool {
+    let args = match WatchArgs::try_parse_from(
+        std::iter::once("watch".to_string()).chain(argv.iter().cloned()),
+    ) {
+        Ok(a) => a,
+        Err(e) => {
+            eprint!("{e}");
+            return true;
+        }
+    };
+    let status_filter = match &args.status {
+        Some(s) => match parse_status_filter(s) {
+            Some(f) => Some(f),
+            None => {
+                eecho(&format!(
+                    "Invalid status '{s}'. Must be one of: {VALID_STATUSES}"
+                ));
+                return true;
+            }
+        },
+        None => None,
+    };
+    let cli = build_service(args.project_root.as_deref());
+    if !std::io::stdout().is_terminal() {
+        return snapshot_once(&cli, status_filter);
+    }
+    interactive_loop(&cli, status_filter)
+}
+
+/// Consola no-interactiva (pipes, CI): render único vía `TestBackend` de
+/// dimensiones fijas y salida por stdout, rc 0. Los asserts del gate son
+/// sobre ids/marca presentes, no sobre bytes exactos de la tabla.
+fn snapshot_once(cli: &SessionCli, status_filter: Option<SessionStatus>) -> bool {
+    use ratatui::backend::TestBackend;
+    use ratatui::{Terminal, TerminalOptions, Viewport};
+
+    let data =
+        match cortex_tui::sessions::SessionsScreenData::from_service(&cli.service, status_filter) {
+            Ok(d) => d,
+            Err(e) => {
+                eecho(&e);
+                return true;
+            }
+        };
+    let (w, h) = (100u16, 40u16);
+    let mut terminal = match Terminal::with_options(
+        TestBackend::new(w, h),
+        TerminalOptions {
+            viewport: Viewport::Fixed(ratatui::prelude::Rect::new(0, 0, w, h)),
+        },
+    ) {
+        Ok(t) => t,
+        Err(e) => {
+            eecho(&format!("watch: {e}"));
+            return true;
+        }
+    };
+    if let Err(e) = terminal.draw(|f| cortex_tui::sessions::render(f, &data)) {
+        eecho(&format!("watch: {e}"));
+        return true;
+    }
+    let buf = terminal.backend().buffer();
+    let mut lines: Vec<String> = (0..buf.area.height)
+        .map(|y| {
+            (0..buf.area.width)
+                .map(|x| buf[(x, y)].symbol().to_string())
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect();
+    while lines.last().is_some_and(|l| l.is_empty()) {
+        lines.pop();
+    }
+    echo(&lines.join("\n"));
+    eecho("watch: terminal no interactivo — snapshot emitido; usá un terminal real para el modo en vivo.");
+    true
+}
+
+/// Loop ratatui read-only mínimo (contrato v1): tick ~250 ms, reconstruye el
+/// snapshot en cada tick (las sesiones cambian en disco) y sale con `q` o
+/// `Ctrl+C`. La restauración del terminal es RAII (drop/panic incluidos).
+fn interactive_loop(cli: &SessionCli, status_filter: Option<SessionStatus>) -> bool {
+    use ratatui::crossterm::cursor::Show;
+    use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+    use ratatui::crossterm::execute;
+    use ratatui::crossterm::terminal::{
+        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    };
+
+    /// Restaura pantalla alterna, cursor y modo raw pase lo que pase.
+    struct Restore;
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
+            let _ = disable_raw_mode();
+        }
+    }
+
+    let mut stdout = std::io::stdout();
+    if enable_raw_mode().is_err() {
+        eecho("watch: no se pudo habilitar el modo raw.");
+        return true;
+    }
+    // El guard vive desde que el raw mode queda activo: restaura sí o sí.
+    let _guard = Restore;
+    if execute!(stdout, EnterAlternateScreen, Show).is_err() {
+        eecho("watch: no se pudo entrar a la pantalla alterna.");
+        return true;
+    }
+
+    let backend = ratatui::backend::CrosstermBackend::new(stdout);
+    let mut terminal = match ratatui::Terminal::new(backend) {
+        Ok(t) => t,
+        Err(e) => {
+            eecho(&format!("watch: {e}"));
+            return true;
+        }
+    };
+    let tick = std::time::Duration::from_millis(250);
+    loop {
+        let drawn =
+            terminal.draw(|f| {
+                match cortex_tui::sessions::SessionsScreenData::from_service(
+                    &cli.service,
+                    status_filter,
+                ) {
+                    Ok(data) => cortex_tui::sessions::render(f, &data),
+                    Err(e) => {
+                        f.render_widget(
+                            ratatui::widgets::Paragraph::new(format!(
+                                "cortex · sesiones · error: {e}"
+                            )),
+                            f.area(),
+                        );
+                    }
+                }
+            });
+        let _ = drawn;
+        if event::poll(tick).unwrap_or(false) {
+            if let Ok(Event::Key(key)) = event::read() {
+                let quit = key.kind == KeyEventKind::Press
+                    && (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
+                        || (key.code == KeyCode::Char('c')
+                            && key.modifiers.contains(KeyModifiers::CONTROL)));
+                if quit {
+                    break;
+                }
+            }
+        }
+    }
+    true
+}
+
 /// Despachador de la familia `session`. Devuelve false para pasar al CLI
-/// Python (subcomandos no wireados: watch, hooks y task).
+/// Python (subcomandos no wireados: hooks y task).
 pub fn run(argv: &[String]) -> bool {
     // argv[0] = "session"; el subcomando es argv[1].
     let Some(second) = argv.get(1).map(String::as_str) else {
@@ -896,6 +1084,7 @@ pub fn run(argv: &[String]) -> bool {
         "abandon" => run_abandon(rest),
         "list" => run_list(rest),
         "show" => run_show(rest),
+        "watch" | "tui" => run_watch(rest),
         _ => false,
     }
 }

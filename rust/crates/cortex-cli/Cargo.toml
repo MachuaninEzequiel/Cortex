@@ -31,6 +31,10 @@ cortex-services = { path = "../cortex-services" }
 cortex-setup = { path = "../cortex-setup" }
 cortex-mcp = { path = "../cortex-mcp" }
 cortex-config = { path = "../cortex-config" }
+# Cierre T6-b: pantalla ratatui nativa para session watch/tui (ratatui 0.30
+# ya está en el workspace vía cortex-tui; crossterm llega re-exportada).
+cortex-tui = { path = "../cortex-tui" }
+ratatui = "0.30"
 serde_yaml = { workspace = true }
 chrono = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
