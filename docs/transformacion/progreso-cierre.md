@@ -258,8 +258,7 @@ Todos los comandos livianos cumplen `<100ms`. Los de memoria/embeddings
 
 **Auditoría passthrough residual (leaves que aún invocan Python vía
 `fallback::passthrough`, con motivo):**
-- `session watch` — TUI interactivo rich; integración ratatui = T6-b pendiente.
-- `session task {list,done,in-progress,skip,block}` y `session hooks {list,install,uninstall,status}` — fuera del inventario de esta tarea (no son leaves T2-cola listados en el brief).
+- `session watch`/`session tui` — ahora NATIVOS (pantalla ratatui de cortex-tui, T6-b `9d4de37`). Quedan en passthrough: `session task {list,done,in-progress,skip,block}` y `session hooks {list,install,uninstall,status}` — fuera del inventario de esta tarea (no son leaves T2-cola listados en el brief).
 - `ide {list,setup,remove,status}` — fuera del inventario T2-cola.
 - `docs {validate,restore,list-backups,routing-table}` — docs search/migrate son los únicos leaves del inventario; el resto no tiene requisito vinculante (no expandir).
 - `hu import` — lanza excepción no manejada en Python (traceback rich no portable); mejora deliberada documentada para S19. list/show ya nativos.
@@ -327,6 +326,47 @@ Cargo.lock: hunk propio `65c5a40` solo agrega las aristas de `cortex-pipeline`
   tests/unit tests/integration tests/e2e --no-cov --tb=no -p no:randomly` →
   **2552 passed, 21 skipped, 0 failed, 0 errors** (117.6s).
 
+## Cierre T6-b — integración CLI de la pantalla sesiones (2026-08-26)
+
+Commit `9d4de37` — `feat(obra07 cierre T6-b): …`. Wirea el brazo nativo
+`cortex session watch` / `cortex session tui` (mismo entrypoint) al
+renderer ratatui ya gateado por T6 (`cortex-tui::sessions`, contrato v1
+read-only), cerrando el paso que T6 dejó documentado como pendiente.
+
+**Deps:** `cortex-cli` gana `cortex-tui` (path) + `ratatui = "0.30"`
+(ya en el workspace vía cortex-tui; crossterm llega re-exportada por
+`ratatui::crossterm`). Cargo.lock: solo dos aristas nuevas de cortex-cli,
+cero paquetes nuevos. No se rompe current/checkpoint/switch/diff/abandon/
+list/show (passthrough restante: `session task …`, `session hooks …`).
+
+**Loop (TTY real):** `build_service()` → `SessionsScreenData::from_service`
+reconstruido en cada tick (~250 ms, las sesiones cambian en disco);
+alternate screen + raw mode + cursor oculto con restauración RAII
+(drop/panic incluidos, guard activo desde el raw mode); salida con `q` o
+`Ctrl+C`; errores de storage se pintan en la pantalla sin romper el loop.
+`--status open|closed|handoff|abandoned` mapea a `SessionStatus`
+(`parse_status_filter`, misma semántica que `session list`).
+
+**No-TTY (CI):** `is_terminal()` falso ⇒ snapshot único del mismo render
+vía `TestBackend` 100×40 fijo, rc 0 + aviso breve en stderr; el gate no
+depende de TTY real.
+
+**TDD RED→GREEN** (`rust/crates/cortex-cli/tests/t6b_session_watch.rs` ×3):
+RED — antes del brazo `session watch` caía al passthrough Python (rc 127,
+`no pude ejecutar 'cortex'`); GREEN — con el brazo, sobre fixtures reales
+en tmp (`.cortex/config.yaml` marca de layout + `SessionService` real): rc 0,
+ids del snapshot == ids de `session list --json` del mismo fixture, marca
+`*` de la activa presente, `(no sessions on disk)` con fixture vacío y con
+filtro sin resultados, y `tui` compartiendo entrypoint con `watch`.
+
+**Verificación nativa:** `cargo test -p cortex-cli` 49/49 (3 nuevos) ·
+`cargo test -p cortex-tui` 16/16 (5 sessions_screen verdes, gate T6
+preservado) · `cargo fmt --all --check` ✅ · `cargo clippy -p cortex-cli
+--all-targets -- -D warnings` ✅ · `cargo build -p cortex-cli --bin
+cortex-cli` ✅ · smoke manual no-TTY con fixture real (rc 0, tabla con
+`*` sobre la activa). Oráculo Python no re-ejecutado (los cambios no
+tocan Python; sin riesgo detectado).
+
 ## Cola de tareas
 
 | Tarea | Estado | Evidencia | Commit |
@@ -337,4 +377,5 @@ Cargo.lock: hunk propio `65c5a40` solo agrega las aristas de `cortex-pipeline`
 | T4 pipeline Documentation | ✅ | Stage real nativo: `DocumentationStage` (stub → `DocVerifier` + `SessionService::find_for_pr` + `reconstruct_gitless/git` → `build_create_args` → `NoteService::create`; glue episódico `PRService::store_pr_context`). Tests `documentation_stage.rs` ×6 RED→GREEN; gate `pipeline_golden_p12b.py` + segmento `### DOCUMENTATION` (3 casos congelados, reloj fijo) — A–D byte-idénticos, `build`+`verify` diff 0. Oráculo 2552/21/0/0. Detalle en sección "Cierre T4" abajo | `65c5a40` | |
 | T5 oráculo 100% verde | ✅ | Suite completa `-p no:randomly`: **2552 passed, 21 skipped, 0 failed, 0 errors** (128s) — primera vez verde desde la recatorización. Commit de tests `f6fb828`. Detalle de cambios por archivo abajo | `f6fb828` |
 | T6 pantalla ratatui | ✅ | `cargo test -p cortex-tui` sessions_screen (5 tests) — datos == session list --json, render <50ms | `fa11473` | |
+| T6-b integración CLI watch/tui | ✅ | Brazo nativo `watch`/`tui` en `session_cmd.rs::run()` (mismo entrypoint): cortex-tui + ratatui 0.30 como deps de cortex-cli, `--status` mapeado a `SessionStatus`, `SessionsScreenData::from_service` + loop ratatui read-only (tick ~250 ms, rebuild del snapshot por tick, salida con q/Ctrl+C, restauración RAII incluso en panic); no-TTY (CI) ⇒ snapshot único rc 0 + aviso breve. TDD `t6b_session_watch.rs` ×3 RED→GREEN (RED: `session watch` caía al passthrough rc 127); asserts sobre ids == `session list --json`, marca `*` de la activa y `(no sessions on disk)` — fixtures reales en tmp + SessionService real. Gates: cortex-cli 49/49, cortex-tui 16/16 (5 sessions_screen verdes), `cargo fmt --check` y `cargo clippy -p cortex-cli --all-targets -- -D warnings` limpios; detalle en "Cierre T6-b" arriba | `9d4de37` | |
 | T7 refresco documental | ⏳ | | |
