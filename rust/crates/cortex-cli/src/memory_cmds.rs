@@ -105,10 +105,7 @@ pub fn run_search(argv: &[String]) -> bool {
         }
         if args.show_scores {
             echo("");
-            echo(&format!(
-                "Source breakdown: {}",
-                serde_json::json!({}).to_string()
-            ));
+            echo(&format!("Source breakdown: {}", serde_json::json!({})));
         }
     } else {
         if result.episodic_hits.is_empty() {
@@ -292,7 +289,7 @@ fn unified_hit_pv(hit: &UnifiedHit<'_>) -> PyVal {
     ])
 }
 
-fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
+pub(crate) fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
     let v = PyVal::obj(vec![
         ("query", PyVal::s(r.query.clone())),
         (

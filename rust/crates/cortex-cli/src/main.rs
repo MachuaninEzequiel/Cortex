@@ -125,9 +125,11 @@ fn dispatch_native(argv: &[String]) -> bool {
         "session" => cortex_cli::commands::session_cmd::run(argv),
         "next" => cortex_cli::commands::next_cmd::run(rest),
         "hu" => cortex_cli::commands::hu_cmd::run(rest),
-        "pr-context" if rest.first().map(String::as_str) == Some("capture") => {
-            commands::pr_context_cmd::run_capture(&rest[1..])
-        }
+        "docs" => commands::docs_cmd::run(rest),
+        "ci" => commands::ci_cmd::run(rest),
+        "setup" => commands::setup_cmd::run(rest),
+        "pr-context" => commands::pr_context_cmd::run(rest),
+        "mcp-server" | "mcp-serve" => commands::mcp_cmd::run(rest),
         "reindex" => cortex_cli::memory_cmds::run_reindex(rest),
         _ => false,
     }

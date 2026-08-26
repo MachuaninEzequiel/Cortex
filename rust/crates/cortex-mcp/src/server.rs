@@ -633,7 +633,7 @@ mod transport {
     use super::*;
     use rmcp::model::{
         CallToolRequestParam, CallToolResult, Content, Implementation, ListToolsResult,
-        PaginatedRequestParam, ProtocolVersion, ServerCapabilities, ServerInfo,
+        PaginatedRequestParam, ProtocolVersion, ServerCapabilities, ServerInfo, ToolsCapability,
     };
     use rmcp::{ErrorData as McpError, RoleServer, ServerHandler, ServiceExt};
 
@@ -655,13 +655,21 @@ mod transport {
         fn get_info(&self) -> ServerInfo {
             ServerInfo {
                 protocol_version: ProtocolVersion::LATEST,
-                capabilities: ServerCapabilities::builder().enable_tools().build(),
-                server_info: Implementation::from_build_env(),
-                instructions: Some(
-                    "Cortex MCP nativo (Obra 07 P9). Contrato list_tools \
-                     congelado contra golden Python."
-                        .into(),
-                ),
+                capabilities: ServerCapabilities {
+                    experimental: Some(Default::default()),
+                    tools: Some(ToolsCapability {
+                        list_changed: Some(false),
+                    }),
+                    ..Default::default()
+                },
+                server_info: Implementation {
+                    name: "cortex".into(),
+                    title: None,
+                    version: "2.1".into(),
+                    icons: None,
+                    website_url: None,
+                },
+                instructions: None,
             }
         }
 

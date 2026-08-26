@@ -473,14 +473,23 @@ version = "0.1.0"
 name = "cortex-cli"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "clap",
+ "cortex-actions",
+ "cortex-app",
  "cortex-autopilot",
+ "cortex-config",
  "cortex-doctor",
+ "cortex-embed",
  "cortex-enterprise",
+ "cortex-mcp",
+ "cortex-services",
+ "cortex-setup",
  "cortex-tutor",
  "cortex-webgraph-server",
  "cortex-workspace",
  "serde_json",
+ "serde_yaml",
  "tempfile",
  "unicode-width",
 ]

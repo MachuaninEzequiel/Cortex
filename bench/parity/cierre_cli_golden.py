@@ -71,6 +71,10 @@ def construir_fixture(root: Path) -> None:
         p = vault / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(cuerpo, encoding="utf-8")
+        # `docs migrate` conserva el contrato histórico root/vault.
+        legacy = root / "vault" / rel
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text(cuerpo, encoding="utf-8")
 
     # Episódico real: store chroma + export JSONL para el lado nativo.
     from cortex.episodic.memory_store import EpisodicMemoryStore
@@ -124,6 +128,7 @@ def construir_fixture(root: Path) -> None:
     spec = vault / "specs" / "2026-08-25_demo.md"
     spec.write_text("---\ntitle: Demo\ndoc_type: spec\n---\n\ncuerpo demo\n", encoding="utf-8")
     rec = svc.open(spec_id="2026-08-25_demo", spec_path=spec, spec_summary="demo")
+    (root / "gate.diff").write_text("--- a/auth.py\n+++ b/auth.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n", encoding="utf-8")
     svc.checkpoint(rec.session_id, source=__import__(
         "cortex.session.models", fromlist=["CheckpointSource"]
     ).CheckpointSource.MANUAL, note="trabajo inicial")
@@ -155,6 +160,10 @@ def normalize(text: str, root: Path) -> str:
         "{{TS}}",
         text,
     )
+    # Rich session tables split timestamps into date/time cells.
+    text = re.sub(r"(?<=│ )\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?=\s+│)", "{{TS}}", text)
+    text = re.sub(r"(?<=│ )\d{4}-\d{2}-\d{2}(?=\s+│)", "{{TS}}", text)
+    text = re.sub(r"(?<=│ )\d{2}:\d{2}(?::\d{2})?(?=\s+│)", "{{TS}}", text)
     text = re.sub(r'"elapsed_ms": \d+', '"elapsed_ms": {{ELAPSED}}', text)
     text = re.sub(r"\b\d+ms \u00b7 ejecut\u00e1", "{{ELAPSED}}ms · ejecutá", text)
     text = re.sub(r'"enricher_run_id": "[0-9a-f]{12}"', '"enricher_run_id": "{{RUN}}"', text)
@@ -172,6 +181,8 @@ def normalize(text: str, root: Path) -> str:
 
 def casos(root: Path) -> list[tuple[str, list[str]]]:
     """Casos (nombre, argv) — ≥2 por familia wireada."""
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    today = __import__("datetime").datetime.now(__import__("datetime").UTC).strftime("%Y-%m-%d")
     return [
         ("S01 search legacy texto", ["search", "JWT refresh tokens", "--top-k", "5"]),
         ("S02 search --json", ["search", "pagos rust", "--top-k", "3", "--json"]),
@@ -205,12 +216,75 @@ def casos(root: Path) -> list[tuple[str, list[str]]]:
             "--body", "cuerpo del PR", "--author", "ana",
             "--branch", "feat/x", "--labels", "api, core",
         ]),
+        ("S21 session list texto", ["session", "list"]),
+        ("S22 session show texto", ["session", "show"]),
+        # docs search está cubierto por el test Rust enfocado: el comando Python
+        # real está roto en HEAD (AgentMemory.from_config fue retirado).
+        ("S25 docs migrate dry-run texto", ["docs", "migrate"]),
+        ("S26 docs migrate dry-run json", ["docs", "migrate", "--json"]),
+        ("S27 ci validate json", ["ci", "validate-pr", "--diff", "gate.diff", "--format", "json"]),
+        ("S28 ci validate texto", ["ci", "validate-pr", "--diff", "gate.diff", "--format", "text"]),
+        ("S29 ci open texto", ["ci", "open-review-session", "--base-commit", sha, "--head-branch", "feat/review", "--pr-number", "42"]),
+        ("S30 ci open json", ["ci", "open-review-session", "--base-commit", sha, "--head-branch", "feat/review-json", "--pr-number", "43", "--json"]),
+        ("S31 ci report json", ["ci", "report-checkpoint", "--session-id", f"{today}_pr-42-review", "--manual-claim", "ok", "--json"]),
+        ("S32 ci close json", ["ci", "close-review-session", "--session-id", f"{today}_pr-42-review", "--status", "closed", "--json"]),
+        ("S33 setup agent dry", ["setup", "agent", "--dry-run", "--non-interactive"]),
+        ("S34 setup pipeline dry", ["setup", "pipeline", "--dry-run", "--non-interactive"]),
+        ("S35 setup full dry", ["setup", "full", "--dry-run", "--non-interactive", "--ide", "pi"]),
+        ("S36 setup webgraph dry", ["setup", "webgraph", "--dry-run"]),
+        ("S37 setup enterprise custom error", ["setup", "enterprise", "--non-interactive", "--preset", "custom"]),
+        ("S38 setup enterprise error", ["setup", "enterprise", "--non-interactive"]),
+        ("S39 pr-context store", ["pr-context", "store"]),
+        ("S40 pr-context search", ["pr-context", "search", "--top-k", "2"]),
+        ("S41 pr-context generate", ["pr-context", "generate", "--vault", "generated-vault"]),
+        ("S42 pr-context full", ["pr-context", "full", "--title", "Full Demo", "--author", "ana", "--branch", "feat/full", "--vault", "full-vault", "--context-file", ".full-context.json"]),
     ]
 
 
 CASE_OUTPUT_FILE = {
     "S20 pr-context capture": ".pr-context.json",
+    "S40 pr-context search": ".past-context.json",
+    "S42 pr-context full": ".full-context.json",
 }
+
+
+def _drop_nulls(value):
+    """Anexo A: rmcp omission is canonical; null and absent are equivalent."""
+    if isinstance(value, dict):
+        return {k: _drop_nulls(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [_drop_nulls(v) for v in value]
+    return value
+
+
+def mcp_exchange(binary: list[str], root: Path) -> list[dict]:
+    proc = subprocess.Popen(
+        binary + ["mcp-server", "--project-root", str(root)], cwd=root,
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding="utf-8", bufsize=1, env={**os.environ, "OMP_NUM_THREADS": "2"},
+    )
+    assert proc.stdin is not None and proc.stdout is not None
+    requests = [
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"cierre-cli","version":"1"}}},
+        {"jsonrpc":"2.0","method":"notifications/initialized"},
+        {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}},
+        {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"cortex_self_review_note","arguments":{"body":"Implemented native CLI.","verification_hooks_passed":True}}},
+    ]
+    responses = []
+    try:
+        for request in requests:
+            proc.stdin.write(json.dumps(request, ensure_ascii=False) + "\n")
+            proc.stdin.flush()
+            if "id" in request:
+                responses.append(_drop_nulls(json.loads(proc.stdout.readline())))
+        proc.stdin.close()
+        proc.wait(timeout=30)
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.read() if proc.stderr else "MCP exited non-zero")
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    return responses
 
 
 def recolectar(binary: list[str], root: Path) -> str:
@@ -222,9 +296,12 @@ def recolectar(binary: list[str], root: Path) -> str:
         if artifact and (root / artifact).exists():
             data = json.loads((root / artifact).read_text(encoding="utf-8"))
             extra = f"\nARTIFACT_KEYS={'|'.join(data.keys())}"
-            (root / artifact).unlink()
+            if artifact != ".pr-context.json":
+                (root / artifact).unlink()
         norm = normalize(out + (f"\n--stderr--\n{err}" if err.strip() else ""), root)
         blocks.append(f"### {name}\nrc={rc}\n{norm}{extra}")
+    exchange = mcp_exchange(binary, root)
+    blocks.append("### MCP stdio initialize + tools/list + tools/call\n" + json.dumps(exchange, ensure_ascii=False, indent=2))
     return "\n".join(blocks) + "\n"
 
 

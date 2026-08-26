@@ -165,9 +165,7 @@ impl NativeMemory {
 
     /// Variante sin embeddings para comandos que no retrieval (`stats`,
     /// `reindex --dry-run`): evita cargar el modelo ONNX (~150 ms).
-    pub fn open_without_embeddings(
-        project_root: Option<&Path>,
-    ) -> Result<Self, MemoryOpenError> {
+    pub fn open_without_embeddings(project_root: Option<&Path>) -> Result<Self, MemoryOpenError> {
         Self::open_with_embeddings(project_root, false)
     }
 
@@ -348,7 +346,7 @@ pub fn rrf_fuse<'a>(
                     dropped: false,
                     entry: ep
                         .iter()
-                        .find(|(e, _)| &e.id == rest)
+                        .find(|(e, _)| e.id == rest)
                         .map(|(e, _)| (*e).clone()),
                     doc: None,
                     matched_chunk_id: None,
@@ -356,7 +354,7 @@ pub fn rrf_fuse<'a>(
                 }
             } else {
                 let path = key.strip_prefix("semantic:").unwrap_or(key);
-                let found = sem.iter().find(|(d, _)| &d.path == path);
+                let found = sem.iter().find(|(d, _)| d.path == path);
                 UnifiedHit {
                     source: "semantic",
                     score: scores[i],

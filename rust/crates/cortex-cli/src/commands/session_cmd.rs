@@ -162,7 +162,7 @@ pub fn run_checkpoint(argv: &[String]) -> bool {
     // y rc=1; el mensaje nativo va a stderr y rc=1 también.
     match cli.service.checkpoint(
         &record.session_id,
-        source.clone(),
+        source,
         args.verified_claim.clone(),
         args.unverified_claim.clone(),
         args.artifact.clone(),
@@ -209,7 +209,7 @@ fn parse_source(s: &str) -> Option<CheckpointSource> {
     })
 }
 
-fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
+pub(crate) fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
     use cortex_app::session::SessionMode as M;
     match m {
         M::Unknown => "unknown",
@@ -274,7 +274,7 @@ pub fn run_switch(argv: &[String]) -> bool {
     };
     let cli = build_service(args.project_root.as_deref());
     // Espejo del mensaje canónico: SessionNotFound(str) lleva SOLO el id.
-    if let Err(_) = cli.service.get(&args.session_id) {
+    if cli.service.get(&args.session_id).is_err() {
         eecho(&args.session_id);
         std::process::exit(1);
     }
@@ -463,12 +463,6 @@ pub fn run_list(argv: &[String]) -> bool {
             return true;
         }
     };
-    if !args.json {
-        // Tabla rich de texto: passthrough al CLI Python (paridad gratis).
-        let mut full = vec!["session".to_string()];
-        full.extend_from_slice(argv);
-        crate::fallback::passthrough(&full);
-    }
     let filter = match &args.status {
         None => None,
         Some(s) => match s.as_str() {
@@ -495,9 +489,53 @@ pub fn run_list(argv: &[String]) -> bool {
     // sort(key=opened_at, reverse=True) — string ISO compara cronológico.
     let mut records = records;
     records.sort_by(|a, b| b.opened_at.cmp(&a.opened_at));
-    let _active_id = cli.service.get_active().map(|r| r.session_id);
-    let items: Vec<crate::pyjson::PyVal> = records.iter().map(record_summary_pv).collect();
-    echo(&crate::pyjson::stdlib_dumps_compact_array(&items));
+    let active_id = cli.service.get_active().map(|r| r.session_id);
+    if args.json {
+        let items: Vec<crate::pyjson::PyVal> = records.iter().map(record_summary_pv).collect();
+        echo(&crate::pyjson::stdlib_dumps_compact_array(&items));
+        return true;
+    }
+    if records.is_empty() {
+        echo("(no sessions on disk)");
+        return true;
+    }
+    let rows: Vec<Vec<String>> = records
+        .iter()
+        .map(|r| {
+            vec![
+                if active_id.as_deref() == Some(&r.session_id) {
+                    "►".into()
+                } else {
+                    String::new()
+                },
+                r.session_id.clone(),
+                r.status.as_str().into(),
+                mode_str(r.mode).into(),
+                r.opened_at
+                    .get(..16)
+                    .unwrap_or(&r.opened_at)
+                    .replace('T', "\n"),
+                r.checkpoints.len().to_string(),
+                r.spec_summary.chars().take(60).collect(),
+            ]
+        })
+        .collect();
+    echo(&render_table(
+        &[
+            "",
+            "ID",
+            "STATUS",
+            "MODE",
+            "OPENED",
+            "CHECKPOINTS",
+            "SUMMARY",
+        ],
+        &rows,
+        None,
+    ));
+    if let Some(id) = active_id {
+        echo(&format!("► = active session ({id})"));
+    }
     true
 }
 
@@ -534,7 +572,64 @@ pub fn run_show(argv: &[String]) -> bool {
         Ok(r) => r,
         Err(_) => return true,
     };
-    echo(&record_dump_json(&record));
+    if args.json {
+        echo(&record_dump_json(&record));
+        return true;
+    }
+    echo(&format!("Session: {}", record.session_id));
+    echo(&format!("  status:      {}", record.status.as_str()));
+    echo(&format!("  mode:        {}", mode_str(record.mode)));
+    echo(&format!("  spec:        {}", record.spec_path));
+    echo(&format!("  summary:     {}", record.spec_summary));
+    echo(&format!("  opened:      {}", record.opened_at));
+    echo(&format!("  branch:      {}", record.start_branch));
+    echo(&format!("  start commit:{}", record.start_commit));
+    if let Some(closed) = &record.closed_at {
+        echo(&format!("  closed:      {closed}"));
+        echo(&format!(
+            "  end commit:  {}",
+            record.end_commit.as_deref().unwrap_or("None")
+        ));
+        echo(&format!(
+            "  decision:    {}",
+            record
+                .documenter_decision
+                .map(|s| s.as_str())
+                .unwrap_or("None")
+        ));
+    }
+    echo("");
+    if record.checkpoints.is_empty() {
+        echo("(no checkpoints)");
+    } else {
+        let rows: Vec<Vec<String>> = record
+            .checkpoints
+            .iter()
+            .map(|c| {
+                vec![
+                    c.timestamp
+                        .get(..19)
+                        .unwrap_or(&c.timestamp)
+                        .replace('T', " "),
+                    source_str(&c.source).into(),
+                    c.verified_claims.len().to_string(),
+                    c.artifacts_touched.len().to_string(),
+                    c.note.chars().take(60).collect(),
+                ]
+            })
+            .collect();
+        echo(&render_table(
+            &["TIMESTAMP", "SOURCE", "VERIFIED", "ARTIFACTS", "NOTE"],
+            &rows,
+            Some("Checkpoints"),
+        ));
+    }
+    if let Some(note) = &record.session_note_path {
+        echo(&format!("\nsession note: {note}"));
+    }
+    if !record.adrs_created.is_empty() {
+        echo(&format!("ADRs created: {}", record.adrs_created.len()));
+    }
     true
 }
 
@@ -631,8 +726,162 @@ pub fn record_dump_json(r: &SessionRecord) -> String {
     crate::pyjson::pydantic_dumps_indent2(&v)
 }
 
+fn cell_width(s: &str) -> usize {
+    use unicode_width::UnicodeWidthStr;
+    UnicodeWidthStr::width(s)
+}
+
+fn wrap_cell(s: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![String::new()];
+    }
+    let mut all = Vec::new();
+    for source in s.split('\n') {
+        let mut out = Vec::new();
+        let mut cur = String::new();
+        let mut used = 0;
+        for ch in source.chars() {
+            use unicode_width::UnicodeWidthChar;
+            let w = ch.width().unwrap_or(0);
+            if used + w > width && !cur.is_empty() {
+                out.push(std::mem::take(&mut cur));
+                used = 0;
+            }
+            cur.push(ch);
+            used += w;
+        }
+        if cur.is_empty() && out.is_empty() {
+            out.push(String::new())
+        } else if !cur.is_empty() {
+            out.push(cur)
+        }
+        all.extend(out);
+    }
+    all
+}
+
+/// Render mínimo del box `rich.table.Table` en consola no-TTY de 80 columnas.
+fn render_table(headers: &[&str], rows: &[Vec<String>], title: Option<&str>) -> String {
+    let n = headers.len();
+    let mut widths: Vec<usize> = (0..n)
+        .map(|i| {
+            rows.iter()
+                .flat_map(|r| r[i].split('\n'))
+                .map(cell_width)
+                .chain(std::iter::once(cell_width(headers[i])))
+                .max()
+                .unwrap_or(1)
+        })
+        .collect();
+    let list_table = headers
+        == [
+            "",
+            "ID",
+            "STATUS",
+            "MODE",
+            "OPENED",
+            "CHECKPOINTS",
+            "SUMMARY",
+        ];
+    if list_table {
+        widths = vec![2, 13, 6, 7, 12, 11, 7];
+    } else {
+        if headers.first() == Some(&"") {
+            widths[0] = 2;
+        }
+        let budget = 80usize.saturating_sub(3 * n + 1);
+        while widths.iter().sum::<usize>() > budget {
+            if let Some((i, _)) = widths
+                .iter()
+                .enumerate()
+                .filter(|(_, w)| **w > 3)
+                .max_by_key(|(_, w)| **w)
+            {
+                widths[i] -= 1
+            } else {
+                break;
+            }
+        }
+    }
+    let line = |left: char, mid: char, right: char, fill: char| {
+        let mut s = String::new();
+        s.push(left);
+        for (i, w) in widths.iter().enumerate() {
+            s.extend(std::iter::repeat_n(fill, w + 2));
+            if i + 1 < n {
+                s.push(mid)
+            }
+        }
+        s.push(right);
+        s
+    };
+    let mut lines = Vec::new();
+    if let Some(t) = title {
+        let total = widths.iter().sum::<usize>() + 3 * n + 1;
+        let pad = total.saturating_sub(cell_width(t)) / 2;
+        let right = total.saturating_sub(pad + cell_width(t));
+        lines.push(format!("{}{}{}", " ".repeat(pad), t, " ".repeat(right)));
+    }
+    lines.push(line('┏', '┳', '┓', '━'));
+    let emit = |cells: Vec<Vec<String>>, lines: &mut Vec<String>, heavy: bool| {
+        let height = cells.iter().map(Vec::len).max().unwrap_or(1);
+        for row in 0..height {
+            let edge = if heavy { "┃" } else { "│" };
+            let mut s = String::from(edge);
+            for i in 0..n {
+                let raw = cells[i].get(row).map(String::as_str).unwrap_or("");
+                let clipped = if list_table && i == 1 && cell_width(raw) > widths[i] {
+                    format!("{}…", raw.chars().take(widths[i] - 1).collect::<String>())
+                } else {
+                    raw.to_string()
+                };
+                let val = &clipped;
+                let pad = widths[i].saturating_sub(cell_width(val));
+                let right = matches!(headers[i], "CHECKPOINTS" | "VERIFIED" | "ARTIFACTS");
+                if right {
+                    s.push_str(&format!(" {}{} {edge}", " ".repeat(pad), val));
+                } else {
+                    s.push_str(&format!(" {}{} {edge}", val, " ".repeat(pad)));
+                }
+            }
+            lines.push(s)
+        }
+    };
+    emit(
+        headers
+            .iter()
+            .enumerate()
+            .map(|(i, h)| wrap_cell(h, widths[i]))
+            .collect(),
+        &mut lines,
+        true,
+    );
+    lines.push(line('┡', '╇', '┩', '━'));
+    for r in rows {
+        emit(
+            r.iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    if list_table && i == 1 && cell_width(c) > widths[i] {
+                        vec![format!(
+                            "{}…",
+                            c.chars().take(widths[i] - 1).collect::<String>()
+                        )]
+                    } else {
+                        wrap_cell(c, widths[i])
+                    }
+                })
+                .collect(),
+            &mut lines,
+            false,
+        );
+    }
+    lines.push(line('└', '┴', '┘', '─'));
+    lines.join("\n")
+}
+
 /// Despachador de la familia `session`. Devuelve false para pasar al CLI
-/// Python (subcomandos no wireados: watch, hooks, task, show/list en texto).
+/// Python (subcomandos no wireados: watch, hooks y task).
 pub fn run(argv: &[String]) -> bool {
     // argv[0] = "session"; el subcomando es argv[1].
     let Some(second) = argv.get(1).map(String::as_str) else {
@@ -645,21 +894,8 @@ pub fn run(argv: &[String]) -> bool {
         "switch" => run_switch(rest),
         "diff" => run_diff(rest),
         "abandon" => run_abandon(rest),
-        "list" | "show" => {
-            // Texto sin --json ⇒ passthrough (tablas rich); --json nativo.
-            let wants_json = rest.iter().any(|a| a == "--json");
-            if wants_json {
-                if second == "list" {
-                    run_list(rest)
-                } else {
-                    run_show(rest)
-                }
-            } else {
-                let mut full = vec!["session".to_string()];
-                full.extend_from_slice(argv);
-                crate::fallback::passthrough(&full);
-            }
-        }
+        "list" => run_list(rest),
+        "show" => run_show(rest),
         _ => false,
     }
 }
