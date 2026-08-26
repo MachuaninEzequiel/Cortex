@@ -831,6 +831,75 @@ git commit -m "docs(obra07 P12B): progreso P12B-3 completada — enterprise y re
   paridad de contenido garantizada por construcción, divergencia solo en
   estilos ANSI.
 
+### Lecciones P12B-8
+
+- **[P12B-8] Los f-strings capitalizan bools**: `f"{True}"` → `"True"`;
+  el texto de memory-report lo replica con `py_bool()` (el JSON usa
+  true/false nativo — dos semánticas en el mismo comando).
+- **[P12B-8] `format!("{}", 0.0_f64)` da `"0"` ≠ repr Python `"0.0"`**:
+  `_emit` texto de autopilot usa el formateador de pyjson
+  (fract==0 ⇒ `{:.1}`).
+- **[P12B-8] Rust `max_by` devuelve el ÚLTIMO máximo, Python `max()` el
+  PRIMERO**: con empate de confidences 0.0 el noop reason divergía
+  ("Noop fallback" vs "Request appears sufficiently specific"). Fix en
+  cortex-autopilot::detectors con fold primer-máximo.
+- **[P12B-8] `#[serde(default)]` de contenedor cae al `Default` del tipo,
+  no a `String::default()`**: OrganizationConfig.slug deserializaba como
+  "cortex-organization" (default de presets) en vez de "" ⇒ el validator
+  no normalizaba desde name. Fix: default a nivel campo.
+- **[P12B-8] serde_json::Value::Object es BTreeMap (ordena claves)**:
+  activar `preserve_order` cambiaría el build unificado del workspace
+  entero ⇒ writers PyVal propios con reorden canónico por esquema
+  (payload doctor, snapshot webgraph, candidates).
+- **[P12B-8] Sin org.yaml el oráculo Python revienta con traceback no
+  capturado** (`promote-knowledge` sobre fixture l1): caso excluido del
+  gate; el contrato se verifica con org.yaml válido.
+- **[P12B-8] tutor <slug> queda self-golden**: los cuerpos embebidos de
+  cortex-tutor son capturas ~98 col (herencia P12B-7) ⇒ paridad live solo
+  para hint (panel replicado a width-80); documentado, no fingido.
+- **[P12B-8] Locks huérfanos**: `.cortex/heavy.lock` puede quedar como
+  archivo de sesiones muertas — verificar `pgrep` antes de esperar el
+  loop R3; si nadie sostiene, eliminar y readquirir.
+
+## Stream B completo — cierre de la cola P12B
+
+Al quedar verde P12B-8, el Stream B entrega su cola completa. El trunk
+queda listo para el punto 8 de §4 del doc 09 (baja de Python), que
+corresponde al dueño.
+
+**Crates entregados por B (todos con gate byte-parity + suite oráculo):**
+
+| Tarea | Crate | Contenido porteño |
+|---|---|---|
+| P12B-1 | cortex-workspace | layout/handoff/git_policy/skills/runtime_context |
+| P12B-2 | cortex-webgraph-server | servidor axum + federación + snapshots |
+| P12B-3 | cortex-enterprise | config/governance/promoción/review/retrieval/reporting |
+| P12B-4 | cortex-doctor | run_doctor nativo + NativeDoctorBackend |
+| P12B-5 | cortex-autopilot | capa de decisión (config/detectors/policies/lifecycle) |
+| P12B-6 | cortex-pipeline | orquestador SDDwork + generador GH Actions |
+| P12B-7 | cortex-tutor | engine/topics/hint byte-exactos |
+| P12B-8 | cortex-cli | dispatch clap nivel-1 + 11 subcomandos nativos + passthrough/rollback |
+
+**Passthrough residual post-P12** (delegan al CLI Python vía
+`external_subcommand`; funcionan hoy, migración posterior documentada):
+`session` (SessionService nativa existe; falta portear presentación,
+845 LOC py), `setup` flujos interactivos, `ide`, `ci`, `docs`,
+`pr-context`, `hu`, `next`, `brain`, `embedding`, `mcp-server/mcp-serve`,
+trío documenting (`create-spec/save-session/finish`),
+`search/context/remember/forget/stats/init`, Home TUI sin args,
+`webgraph serve/doctor`, `autopilot start/checkpoint/finish/status`
+(service requiere motor de sesiones wireado — decisión P12B-5),
+`memory-report --telemetry`.
+
+**Stubs/fallos explícitos heredados** (ya asentados en tareas previas):
+sessions storage profundo, Documentation stage del pipeline (hasta
+AgentMemory nativo), nodos enterprise del webgraph (GAP P12B-3),
+checks stub del doctor según STUB_TABLE.
+
+**Corresponde al dueño** (fuera de territorio B): actualizar
+HANDOFF.md, ESTADO-ACTUAL.md y doc 09 §5 con la medición de cold start;
+decidir baja de código Python (§4 paso 8).
+
 ### Diseño aprobado P12B-8 — cortex-cli clap nativo (cierre del Stream B)
 
 - **ADR chico — activación de clap 4 en cortex-cli**: clap 4 ya figuraba
@@ -1105,7 +1174,7 @@ snapshots inline).
 | P12B-5 autopilot (~1902, capa de decisión) | ✅ | Gate: `doctor_golden_p12b.py` ampliado a 6 escenarios (autopilot_policy REAL + autopilot_mode_typo) + `doctor_check.rs` byte-parity `✅ PARIDAD P12B-4`. Suite Rust: autopilot 5 + doctor 5 tests ✅ · clippy/fmt ✅. Suite Python: mismo set preexistente de trunk (29F+3E e2e); unit tests/unit/autopilot sin fallos. service/cli/mcp_tools con fallo explícito hasta motor de sesiones nativo. | `8bc4c6d` |
 | P12B-6 pipeline SDDwork (~1708) | ✅ | Gate: `bench/parity/pipeline_golden_p12b.py` (2 workflows GH Actions byte-exactos + flows pass/fail-bloqueante/skip + abort_early + no-bloqueante + summary/markdown/to_dict con clock fijo) + `examples/pipeline_check.rs` **byte-parity** → `✅ PARIDAD P12B-6`. Suite Rust crate: 4 tests ✅ · clippy `-D warnings` ✅ · fmt ✅. **Sin reqwest**: el runner Python es generador puro de YAML, nunca hubo cliente HTTP (hallazgo vs §7.2.8). Documentation stage stub hasta AgentMemory nativo. | `c8a04d3` |
 | P12B-7 tutor (~862, porte fiel — opción A) | ✅ | Gate: `bench/parity/tutor_golden_p12b.py` (metadata JSON de 7 topics por introspección + hints L0/L1/L7 en fixtures FUERA del repo) + `examples/tutor_check.rs` **byte-parity** → `✅ PARIDAD P12B-7`. Suite Rust crate: 4 tests ✅ · clippy/fmt ✅. Hallazgo: dependencias reales = layout + contenido estático (sin sesiones/AgentMemory) ⇒ el "NO portear ciego" del doc 09 queda desmontado. Divergencia cosmética: cuerpos embebidos vía rich `export_text()` sin ANSI. | `0e6b936`+`2fd035c`/`600cc04` |
-| P12B-8 CLI clap nativo (~2995, ÚLTIMO) | 🚧 en curso | punto de sincronización final; CORTEX_PY=1 rollback; cold-start <100ms | — |
+| P12B-8 CLI clap nativo (~2995, ÚLTIMO) | ✅ | Gate: `bench/parity/cli_golden_p12b.py` build/verify determinista (**30 casos**: 11 wireados × texto/--json, errores, passthrough desconocido, rollback CORTEX_PY=1 ×2; STUB_TABLE a nivel de datos; fixtures mkdtemp externos) + `examples/cli_check.rs` **byte-parity** → `✅ PARIDAD P12B-8` + self-golden de --help/errores clap (`tests/cli_self_golden.rs`). Suite Rust crate: **42 tests** ✅ · clippy `-D warnings` ✅ · fmt ✅. Gates previos re-verificados tras tocar enterprise/autopilot/webgraph-server: P12B-2/P12B-3/P12B-4 ✅ sin regresiones. Suite Python oráculo: **29F+3E+1E-colección e2e trunk preexistentes (set idéntico al baseline), 0 fallos unit/integration**. Cold start release N=20: **hint mediana 1 ms vs 699 ms CLI Python (~700×); objetivo <100 ms cumplido**. Rollback `CORTEX_PY=1` verificado en gate. | `2f8a64b` |
 
 ## Notas de coordinación dual-stream
 
