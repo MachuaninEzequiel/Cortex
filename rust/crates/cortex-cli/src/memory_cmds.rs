@@ -676,7 +676,7 @@ pub fn run_stats(argv: &[String]) -> bool {
         }
     };
     let root = resolve_project_root(args.project_root.as_deref());
-    let mem = match NativeMemory::open(Some(&root)) {
+    let mem = match NativeMemory::open_without_embeddings(Some(&root)) {
         Ok(m) => m,
         Err(e) => {
             echo(&e.message());
@@ -735,6 +735,7 @@ pub fn run_reindex(argv: &[String]) -> bool {
     let start = resolve_project_root(args.project_root.as_deref());
     let layout = cortex_workspace::WorkspaceLayout::discover(&start);
     let config_path = layout.config_path();
+    // (reindex --dry-run no abre memoria ni embeddings: sólo config+rutas.)
     if !config_path.exists() {
         echo(&format!(
             "\u{274c} No Cortex config found at `{}`.",

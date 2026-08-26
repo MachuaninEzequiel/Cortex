@@ -160,6 +160,21 @@ pub struct RetrievalResultMirror<'a> {
 impl NativeMemory {
     /// Espejo de `_load_memory(project_root)` (common.py).
     pub fn open(project_root: Option<&Path>) -> Result<Self, MemoryOpenError> {
+        Self::open_with_embeddings(project_root, true)
+    }
+
+    /// Variante sin embeddings para comandos que no retrieval (`stats`,
+    /// `reindex --dry-run`): evita cargar el modelo ONNX (~150 ms).
+    pub fn open_without_embeddings(
+        project_root: Option<&Path>,
+    ) -> Result<Self, MemoryOpenError> {
+        Self::open_with_embeddings(project_root, false)
+    }
+
+    fn open_with_embeddings(
+        project_root: Option<&Path>,
+        want_embeddings: bool,
+    ) -> Result<Self, MemoryOpenError> {
         let root_str: Option<String> = project_root.map(|p| p.to_string_lossy().into_owned());
         let start = crate::paths::resolve_project_root(root_str.as_deref());
         let layout = WorkspaceLayout::discover(&start);
@@ -181,8 +196,10 @@ impl NativeMemory {
         // Chunks+embeddings del vault con el MISMO modelo que el oráculo
         // (imprescindible para que los scores semánticos bit-matcheen).
         let mut semantic = semantic;
-        if let Some(emb) = embedder.as_mut() {
-            let _ = semantic.attach_embeddings_with(emb);
+        if want_embeddings {
+            if let Some(emb) = embedder.as_mut() {
+                let _ = semantic.attach_embeddings_with(emb);
+            }
         }
         // Espejo de `self._runtime_episodic_dir` / `_vault_path_resolved`.
         let get = |key: &str, default: &'static str| -> String {
