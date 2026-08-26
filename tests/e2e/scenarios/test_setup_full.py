@@ -16,6 +16,9 @@ class TestSetupFull:
         result = run_cortex(
             isolated_git_repo,
             "setup", "full", "--git-depth", "5",
+            # Post-recatorización: setup full prompt-ea IDE salvo
+            # --non-interactive (Fase 6); los e2e corren sin TTY.
+            "--non-interactive", "--ide", "pi",
         )
         assert result.returncode == 0, result.stderr
 
@@ -39,6 +42,9 @@ class TestSetupFull:
         run_cortex(
             isolated_git_repo,
             "setup", "full", "--git-depth", "5",
+            # Post-recatorización: setup full prompt-ea IDE salvo
+            # --non-interactive (Fase 6); los e2e corren sin TTY.
+            "--non-interactive", "--ide", "pi",
         )
         script = isolated_git_repo / ".cortex" / "scripts" / "devsecdocops.sh"
         assert script.exists()
@@ -49,6 +55,9 @@ class TestSetupFull:
         run_cortex(
             isolated_git_repo,
             "setup", "full", "--git-depth", "5",
+            # Post-recatorización: setup full prompt-ea IDE salvo
+            # --non-interactive (Fase 6); los e2e corren sin TTY.
+            "--non-interactive", "--ide", "pi",
         )
         skills_dir = isolated_git_repo / ".cortex" / "skills"
         assert (skills_dir / "obsidian-markdown" / "SKILL.md").exists()
@@ -58,6 +67,9 @@ class TestSetupFull:
         run_cortex(
             isolated_git_repo,
             "setup", "full", "--git-depth", "5",
+            # Post-recatorización: setup full prompt-ea IDE salvo
+            # --non-interactive (Fase 6); los e2e corren sin TTY.
+            "--non-interactive", "--ide", "pi",
         )
         cortex = isolated_git_repo / ".cortex"
         assert (cortex / "AGENT.md").exists()

@@ -102,11 +102,19 @@ def _spawn_watch(
     project_root: Path,
     refresh: float = 0.5,
 ) -> subprocess.Popen[bytes]:
-    """Spawn ``cortex session watch`` as a subprocess."""
+    """Spawn ``cortex session watch`` as a subprocess.
+
+    Cierre T5: la TUI (rich Live) exige stdout interactivo — con pipes hace
+    ``exit(1)`` inmediato. En POSIX usamos un pty para que el smoke test
+    ejercite el boot real de la TUI; en Windows se conserva el pipe
+    (el smoke acepta rc=1 no-TTY como salida válida).
+    """
     cmd = [
         sys.executable,
         "-m",
-        "cortex",
+        # Cierre T5: el paquete cortex ya no expone __main__ (recatorización);
+        # la entrada canónica del CLI es cortex.cli.main.
+        "cortex.cli.main",
         "session",
         "watch",
         "--refresh",
@@ -119,6 +127,19 @@ def _spawn_watch(
     creationflags = (
         subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
     )
+    if sys.platform != "win32":
+        import os as _os
+        import pty as _pty
+
+        master_fd, slave_fd = _pty.openpty()
+        return subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            start_new_session=True,
+            close_fds=True,
+        )
     return subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,

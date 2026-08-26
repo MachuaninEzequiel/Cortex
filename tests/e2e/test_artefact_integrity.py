@@ -327,13 +327,18 @@ class TestMcpCliAlignment:
 
     @pytest.fixture(scope="class")
     def mcp_tools(self):
-        """Extrae la lista de tools del MCP server mediante regex sobre el código fuente."""
-        server_file = REPO_ROOT / "cortex" / "mcp" / "server.py"
-        content = server_file.read_text(encoding="utf-8")
+        """Extrae la lista de tools del catálogo MCP (cortex/mcp/schemas.py).
+
+        Cierre Obra 07 (T5): durante la recatorización el catálogo se movió de
+        server.py a schemas.py (build_tool_definitions); server.py conserva la
+        tabla de ruteo sin los literales name="...".
+        """
+        schemas_file = REPO_ROOT / "cortex" / "mcp" / "schemas.py"
+        content = schemas_file.read_text(encoding="utf-8")
 
         # Extraer nombres de tools: name="cortex_..."
         names = re.findall(r'name="(cortex_[\w_]+)"', content)
-        assert names, "No se encontraron tools en cortex/mcp/server.py"
+        assert names, "No se encontraron tools en cortex/mcp/schemas.py"
         return names
 
     def test_mcp_tools_list_is_not_empty(self, mcp_tools):

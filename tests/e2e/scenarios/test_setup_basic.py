@@ -56,8 +56,12 @@ class TestSetupBasic:
             isolated_git_repo,
             "setup", "agent", "--git-depth", "5", "--ide", "pi",
         )
+        # Post-recatorización (Ola Fase 04): la instalación de hooks de sesión
+        # vive en `cortex session hooks install`; doctor strict exige hooks.
+        run_cortex(isolated_git_repo, "session", "hooks", "install", "--ide", "pi")
         (isolated_git_repo / ".gitignore").write_text(
-            ".cortex/memory/\n.cortex/vault/sessions/\n", encoding="utf-8"
+            ".cortex/memory/\n.cortex/vault/sessions/\n.cortex/session.lock\n",
+            encoding="utf-8",
         )
         result = run_cortex(isolated_git_repo, "doctor", "--strict")
         assert result.returncode == 0, result.stderr

@@ -1,10 +1,20 @@
 """E2E scenarios: budget and context metrics per profile.
 
-Validates that each task type respects its budget contract:
-- question_only: zero chars, zero items, no embeddings
-- docs_only: low chars, low items, no subagents
-- fast_code: moderate chars/items
-- deep_code: allows subagents, records deep_track_reason
+Cierre Obra 07 (T5): actualizado a la arquitectura post-recatorización.
+
+- El contrato estático de presupuestos vive hoy en
+  ``cortex.context_enricher.budget_resolver`` (gateado también por
+  ``tests/unit/context_enricher/test_budget_resolver.py``); el viejo
+  ``cortex.autopilot.context_budget`` fue eliminado.
+- El ``StateStore`` de ``.cortex/run/autopilot/sessions/*.json`` ya no
+  existe: la detección se expone en el payload ``--json`` de ``preflight``
+  y el presupuesto se resuelve en retrieval vía ``resolve_budget_profile``.
+
+Valida que cada task type respeta su contrato de presupuesto:
+- question-only: cero items/carácteres
+- docs-only: bajo
+- fast-code: moderado
+- deep-code: amplio (+ razón de deep track en preflight)
 """
 from __future__ import annotations
 
@@ -14,180 +24,98 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from cortex.autopilot.cli import app
-from cortex.autopilot.context_budget import (
-    BUDGET_PROFILES,
-    get_budget_profile,
-    profile_for_task_type,
-)
+from cortex.context_enricher.budget_resolver import resolve_budget_profile
 
 runner = CliRunner()
 
 
 class TestBudgetProfiles:
-    """Validate static budget profile contracts."""
+    """Validate static budget profile contracts (budget_resolver actual)."""
 
     def test_question_only_zero_budget(self) -> None:
-        prof = get_budget_profile("question_only")
+        prof = resolve_budget_profile("question-only")
+        assert prof["top_k"] == 0
         assert prof["max_chars"] == 0
-        assert prof["max_items"] == 0
-        assert prof["embeddings"] is False
-        assert prof["subagents"] is False
 
     def test_docs_only_low_budget(self) -> None:
-        prof = get_budget_profile("docs_only")
+        prof = resolve_budget_profile("docs-only")
+        assert prof["top_k"] == 3
         assert prof["max_chars"] == 1200
-        assert prof["max_items"] == 3
-        assert prof["embeddings"] is True
-        assert prof["subagents"] is False
 
     def test_fast_code_moderate_budget(self) -> None:
-        prof = get_budget_profile("fast_code")
+        prof = resolve_budget_profile("fast-code")
+        assert prof["top_k"] == 5
         assert prof["max_chars"] == 2000
-        assert prof["max_items"] == 5
-        assert prof["embeddings"] is True
-        assert prof["subagents"] is False
 
-    def test_deep_code_allows_subagents(self) -> None:
-        prof = get_budget_profile("deep_code")
+    def test_deep_code_allows_more_context(self) -> None:
+        prof = resolve_budget_profile("deep-code")
+        assert prof["top_k"] == 8
         assert prof["max_chars"] == 3500
-        assert prof["max_items"] == 8
-        assert prof["embeddings"] is True
-        assert prof["subagents"] is True
 
-    def test_finish_only_no_embeddings(self) -> None:
-        prof = get_budget_profile("finish_only")
-        assert prof["max_chars"] == 2000
-        assert prof["embeddings"] is False
-        assert prof["subagents"] is False
+    def test_unknown_task_falls_back_to_default(self) -> None:
+        unknown = resolve_budget_profile("some-future-type")
+        default = resolve_budget_profile(None)
+        assert unknown == default
+        assert unknown["top_k"] == 5
 
 
-class TestBudgetAtRuntime:
-    """Measure budget snapshot persisted in state after preflight/finish."""
+class TestDetectionAtRuntime:
+    """La detección que alimenta el presupuesto se expone en preflight."""
 
-    def test_question_only_persists_zero_context(self, autopilot_workspace: Path) -> None:
-        r1 = runner.invoke(
-            app, ["start", "--project-root", str(autopilot_workspace), "--json"]
-        )
-        sid = json.loads(r1.output)["session_id"]
-
-        runner.invoke(
+    def test_question_only_detected(
+        self, autopilot_workspace: Path, autopilot_session: str
+    ) -> None:
+        del autopilot_session  # la detección es stateless; sesión no requerida
+        r = runner.invoke(
             app,
             [
                 "preflight",
                 "--project-root",
                 str(autopilot_workspace),
-                "--session-id",
-                sid,
                 "--request",
                 "What is the auth flow?",
                 "--json",
             ],
         )
-        runner.invoke(
-            app,
-            [
-                "finish",
-                "--project-root",
-                str(autopilot_workspace),
-                "--session-id",
-                sid,
-                "--auto",
-                "--json",
-            ],
-        )
-        state_path = (
-            autopilot_workspace
-            / ".cortex"
-            / "run"
-            / "autopilot"
-            / "sessions"
-            / f"{sid}.json"
-        )
-        state = json.loads(state_path.read_text(encoding="utf-8"))
-        budget = state["budget"]
-        # question-only path does not call build_context, so defaults remain
-        assert budget["chars_injected"] == 0
-        assert budget["items_retrieved"] == 0
-        assert budget["embeddings_used"] is False
-        assert budget["subagents_spawned"] == 0
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output)
+        assert data["task_type"] == "question-only"
 
-    def test_fast_code_budget_greater_than_zero_on_context(self, autopilot_workspace: Path) -> None:
-        """If build_context is called, fast_code should cap chars <= 2000."""
-        from cortex.autopilot.service import AutopilotService
-        from cortex.autopilot.state_store import StateStore
-
-        store = StateStore(autopilot_workspace / ".cortex")
-        svc = AutopilotService(state_store=store)
-
-        start = svc.start(
-            type("Request", (), {
-                "project_root": str(autopilot_workspace),
-                "workspace_root": str(autopilot_workspace / ".cortex"),
-                "mode": "assist",
-                "user_request": "Implement feature",
-                "title_hint": None,
-            })()
-        )
-        sid = start.session_id
-
-        # Simulate detection state
-        state = store.load_state(sid)
-        state.detected_task_type = "fast-code"
-        state.complexity = "fast"
-        store.save_state(state)
-
-        # build_context with None memory triggers fallback (empty) but still records budget
-        prompt, budget = svc.build_context(sid, memory=None)
-        # Fallback empty prompt => 0 chars, but profile fast_code allows up to 2000
-        assert budget.chars_injected <= 2000
-        assert budget.items_retrieved <= 5
-        assert budget.embeddings_used is False  # fallback path does not use embeddings
-        assert budget.subagents_spawned == 0
-
-    def test_deep_code_records_deep_track_reason(self, autopilot_workspace: Path) -> None:
-        r1 = runner.invoke(
-            app, ["start", "--project-root", str(autopilot_workspace), "--json"]
-        )
-        sid = json.loads(r1.output)["session_id"]
-
+    def test_deep_code_records_reason(
+        self, autopilot_workspace: Path, autopilot_session: str
+    ) -> None:
         files = [f"m{i}.py" for i in range(6)]
         cmd = [
             "preflight",
             "--project-root",
             str(autopilot_workspace),
-            "--session-id",
-            sid,
             "--request",
             "Migrate legacy modules to new architecture",
             "--json",
         ]
         for f in files:
             cmd.extend(["--file", f])
-        runner.invoke(app, cmd)
-
-        state_path = (
-            autopilot_workspace
-            / ".cortex"
-            / "run"
-            / "autopilot"
-            / "sessions"
-            / f"{sid}.json"
-        )
-        state = json.loads(state_path.read_text(encoding="utf-8"))
-        assert state["complexity"] == "deep"
-        assert state["budget"]["deep_track_reason"] is not None
-        assert len(state["budget"]["deep_track_reason"]) > 0
+        r = runner.invoke(app, cmd)
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output)
+        assert data["task_type"] == "deep-code"
+        # La razón del deep track hoy viaja en el propio payload.
+        assert len(data.get("reason", "")) > 0
 
     def test_profile_mapping_consistency(self) -> None:
-        """Every task type maps to a known profile name."""
-        for task_type in [
-            "question-only",
-            "docs-only",
-            "fast-code",
-            "deep-code",
-            "security",
-            "ambiguous",
-            "noop",
-        ]:
-            profile = profile_for_task_type(task_type)
-            assert profile in BUDGET_PROFILES, f"{task_type} -> {profile} not in profiles"
+        """Every task type maps to its known budget envelope."""
+        esperados = {
+            "question-only": (0, 0),
+            "docs-only": (3, 1200),
+            "fast-code": (5, 2000),
+            "deep-code": (8, 3500),
+            "security": (8, 3500),
+            "ambiguous": (3, 1500),
+            "noop": (0, 0),
+        }
+        for task_type, (top_k, max_chars) in esperados.items():
+            profile = resolve_budget_profile(task_type)
+            assert (profile["top_k"], profile["max_chars"]) == (
+                top_k,
+                max_chars,
+            ), f"{task_type} -> {(profile['top_k'], profile['max_chars'])}"

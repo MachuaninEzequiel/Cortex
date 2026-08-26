@@ -37,7 +37,12 @@ class TestSetupOnFixtures:
         subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=project, check=True, capture_output=True)
         subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=project, check=True, capture_output=True)
 
-        result = run_cortex(project, "setup", "full", "--git-depth", "5")
+        result = run_cortex(
+            project,
+            "setup", "full", "--git-depth", "5",
+            # Post-recatorización: prompt de IDE exige --non-interactive sin TTY.
+            "--non-interactive", "--ide", "pi",
+        )
         assert result.returncode == 0, result.stderr
 
         # Verificar estructura mínima
@@ -89,7 +94,12 @@ class TestSetupOnFixtures:
         subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=project, check=True, capture_output=True)
         subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=project, check=True, capture_output=True)
 
-        result = run_cortex(project, "setup", "full", "--git-depth", "5")
+        result = run_cortex(
+            project,
+            "setup", "full", "--git-depth", "5",
+            # Post-recatorización: prompt de IDE exige --non-interactive sin TTY.
+            "--non-interactive", "--ide", "pi",
+        )
         assert result.returncode == 0, result.stderr
 
         # Verificar que archivos legacy no fueron destruidos
@@ -106,11 +116,18 @@ class TestSetupOnFixtures:
         subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=project, check=True, capture_output=True)
         subprocess.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=project, check=True, capture_output=True)
 
-        run_cortex(project, "setup", "full", "--git-depth", "5")
+        run_cortex(
+            project,
+            "setup", "full", "--git-depth", "5",
+            # Post-recatorización: sin TTY exige --non-interactive + --ide.
+            "--non-interactive", "--ide", "pi",
+        )
 
         (project / ".gitignore").write_text(
-            ".memory/\n*.chroma/\nvault/sessions/\n", encoding="utf-8"
+            ".memory/\n*.chroma/\nvault/sessions/\n.cortex/session.lock\n",
+            encoding="utf-8",
         )
+        run_cortex(project, "session", "hooks", "install", "--ide", "pi")
 
         # En legacy, el doctor puede reportar warnings de layout mixto
         result = run_cortex(project, "doctor", check=False)
