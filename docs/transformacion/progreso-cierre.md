@@ -88,7 +88,7 @@ Cero fallos unit/integration.
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
-| T1 handlers MCP no-sesión | ⏳ | | |
+| T1 handlers MCP no-sesión | ✅ | `bench/parity/cierre_mcp_golden.py` build/verify (51 escenarios, 261 líneas) + `examples/cierre_check.rs` **byte-parity** → `[PASS] cierre_check byte-parity` / `✅ PARIDAD CIERRE T1`. Oráculo = dispatcher Python REAL (`_dispatch_tool_sync`) con fakes deterministas y motores P5/P7 patcheados; write_doc usa writers REALES sobre vault tmp. Familias: search/search_vector/context (to_prompt/to_prompt_format byte-exact, budget resolver real), sync_ticket (candidatos reales vía resolve_safe), emit_proposal (pydantic 2.13 byte-a-byte: string_too_short/long, too_short/long, missing, extra_forbidden, value_error field+model, truncado de repr >50 → 25+"..."+24), create_spec (gobernanza+gap 2.0s con reloj congelado), self_review_note, write_doc ×11 doc_types (validaciones handler + writers P8b: duplicados por fingerprint, local-only, enterprise fields), design note, import/get_hu, finish_session/documenter_briefing (serialización completa del ReconstructionOutput). Autopilot-tools ×5: diferido a T3 (requiere AutopilotService nativo). Suite oráculo: **2455 passed, 18 skipped** (-p no:randomly; flaky HermesAdapter documentado en P12A-3). cargo test -p cortex-mcp: 25 ✅ · clippy `-D warnings` ✅ · fmt ✅. ADR chico: regex "1" ya en lock (cero paquetes nuevos) | `21536f5` |
 | T2 subcomandos CLI restantes | ⏳ | | |
 | T3 autopilot service+cli | ⏳ | | |
 | T4 pipeline Documentation | ⏳ | | |
