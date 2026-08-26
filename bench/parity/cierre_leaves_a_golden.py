@@ -142,6 +142,11 @@ def construir_fixture(root: Path) -> None:
     import datetime as _dt
 
     svc = _build_session_svc(root)
+    # Sesión sin tasks (casos "empty") — se abre PRIMERO para que la sesión
+    # demo quede como activa al final del fixture.
+    vacio = vault / "specs" / "2026-08-26_vacio.md"
+    vacio.write_text("---\ntitle: Vacio\ndoc_type: spec\n---\n\ncuerpo\n", encoding="utf-8")
+    svc.open(spec_id="2026-08-26_vacio", spec_path=vacio, spec_summary="vacio")
     spec = vault / "specs" / "2026-08-25_demo.md"
     spec.write_text("---\ntitle: Demo\ndoc_type: spec\n---\n\ncuerpo\n", encoding="utf-8")
     rec = svc.open(spec_id="2026-08-25_demo", spec_path=spec, spec_summary="demo")
@@ -159,9 +164,11 @@ def construir_fixture(root: Path) -> None:
         completed_at=_dt.datetime.now(_dt.timezone.utc),
         note="hecha en la ronda 1",
     ))
+    # Ojo: "módulo" lleva tilde a propósito — prueba non-ASCII crudo en
+    # `task list --json` (el oráculo usa json.dumps(ensure_ascii=False)).
     svc.add_task(rec.session_id, Task(
         id="T2",
-        description="Tarea dos: accionar el modulo de pagos",
+        description="Tarea dos: accionar el módulo de pagos",
         files_in_scope=["lib/pagos.rs", "lib/wallet.rs", "tests/pagos.rs", "benches/pagos.rs"],
         status=TaskStatus.IN_PROGRESS,
     ))
@@ -211,35 +218,50 @@ def normalize(text: str, root: Path) -> str:
 def casos(root: Path) -> list[tuple[str, list[str]]]:
     r = str(root)
     return [
-        # session task ×5 (texto + --json cuando existe en el oráculo)
+        # session task list ×9 (texto + --json + filtros + errores + empty)
         ("A01 task list texto", ["session", "task", "list", "--project-root", r]),
         ("A02 task list --json", ["session", "task", "list", "--json", "--project-root", r]),
         ("A03 task list --status pending", ["session", "task", "list", "--status", "pending", "--project-root", r]),
         ("A04 task list --status done --json", ["session", "task", "list", "--status", "done", "--json", "--project-root", r]),
         ("A05 task list --status bogus", ["session", "task", "list", "--status", "bogus", "--project-root", r]),
-        ("A06 task done --note", ["session", "task", "done", "T1", "--note", "primer fix", "--project-root", r]),
-        ("A07 task in-progress --json", ["session", "task", "in-progress", "T1", "--json", "--project-root", r]),
-        ("A08 task skip --reason", ["session", "task", "skip", "T1", "--reason", "falta contexto", "--project-root", r]),
-        ("A09 task block --reason --json", ["session", "task", "block", "T1", "--reason", "depende de T2", "--json", "--project-root", r]),
-        ("A10 task list tras mutaciones", ["session", "task", "list", "--project-root", r]),
-        ("A11 task done inexistente", ["session", "task", "done", "T99", "--project-root", r]),
-        ("A12 task list sesion inexistente", ["session", "task", "list", "--session-id", "2099-01-01_nope", "--project-root", r]),
-        # session hooks ×4 (texto + --json)
-        ("A14 hooks list texto", ["session", "hooks", "list", "--project-root", r]),
-        ("A15 hooks list --json", ["session", "hooks", "list", "--json", "--project-root", r]),
-        ("A16 hooks install pi", ["session", "hooks", "install", "--ide", "pi", "--project-root", r]),
-        ("A17 hooks install pi segunda vez", ["session", "hooks", "install", "--ide", "pi", "--project-root", r]),
-        ("A18 hooks install claude-code --json", ["session", "hooks", "install", "--ide", "claude-code", "--json", "--project-root", r]),
-        ("A19 hooks status pi", ["session", "hooks", "status", "--ide", "pi", "--project-root", r]),
-        ("A20 hooks status todo --json", ["session", "hooks", "status", "--json", "--project-root", r]),
-        ("A21 hooks install ide desconocido", ["session", "hooks", "install", "--ide", "bogus", "--project-root", r]),
-        ("A22 hooks status ide desconocido", ["session", "hooks", "status", "--ide", "bogus", "--project-root", r]),
-        ("A23 hooks uninstall pi", ["session", "hooks", "uninstall", "--ide", "pi", "--project-root", r]),
+        ("A06 task list sesion inexistente", ["session", "task", "list", "--session-id", "2099-01-01_nope", "--project-root", r]),
+        # session task done ×3 (texto + --json + error)
+        ("A07 task done --note", ["session", "task", "done", "T1", "--note", "primer fix", "--project-root", r]),
+        ("A08 task done --json", ["session", "task", "done", "T1", "--json", "--project-root", r]),
+        ("A09 task done inexistente", ["session", "task", "done", "T99", "--project-root", r]),
+        # session task in-progress ×2 (texto + --json)
+        ("A10 task in-progress", ["session", "task", "in-progress", "T1", "--project-root", r]),
+        ("A11 task in-progress --json", ["session", "task", "in-progress", "T1", "--json", "--project-root", r]),
+        # session task skip ×2 (texto + --json)
+        ("A12 task skip --reason", ["session", "task", "skip", "T1", "--reason", "falta contexto", "--project-root", r]),
+        ("A13 task skip --reason --json", ["session", "task", "skip", "T1", "--reason", "falta contexto", "--json", "--project-root", r]),
+        # session task block ×2 (texto + --json)
+        ("A14 task block --reason", ["session", "task", "block", "T1", "--reason", "depende de T2", "--project-root", r]),
+        ("A15 task block --reason --json", ["session", "task", "block", "T1", "--reason", "depende de T2", "--json", "--project-root", r]),
+        # Estado final tras mutaciones + variantes de sesión sin tasks
+        ("A16 task list tras mutaciones", ["session", "task", "list", "--project-root", r]),
+        ("A17 task list empty sesion", ["session", "task", "list", "--session-id", "2026-08-26_vacio", "--project-root", r]),
+        ("A18 task list empty sesion --json", ["session", "task", "list", "--json", "--session-id", "2026-08-26_vacio", "--project-root", r]),
+        # session hooks list ×2 (texto + --json)
+        ("A19 hooks list texto", ["session", "hooks", "list", "--project-root", r]),
+        ("A20 hooks list --json", ["session", "hooks", "list", "--json", "--project-root", r]),
+        # session hooks install ×4 (pi ×2, claude-code --json, error)
+        ("A21 hooks install pi", ["session", "hooks", "install", "--ide", "pi", "--project-root", r]),
+        ("A22 hooks install pi segunda vez", ["session", "hooks", "install", "--ide", "pi", "--project-root", r]),
+        ("A23 hooks install claude-code --json", ["session", "hooks", "install", "--ide", "claude-code", "--json", "--project-root", r]),
+        ("A24 hooks install ide desconocido", ["session", "hooks", "install", "--ide", "bogus", "--project-root", r]),
+        # session hooks status ×3 (individual + todos --json + error)
+        ("A25 hooks status pi", ["session", "hooks", "status", "--ide", "pi", "--project-root", r]),
+        ("A26 hooks status todo --json", ["session", "hooks", "status", "--json", "--project-root", r]),
+        ("A27 hooks status ide desconocido", ["session", "hooks", "status", "--ide", "bogus", "--project-root", r]),
+        # session hooks uninstall ×2 (texto + --json)
+        ("A28 hooks uninstall pi", ["session", "hooks", "uninstall", "--ide", "pi", "--project-root", r]),
+        ("A29 hooks uninstall pi --json", ["session", "hooks", "uninstall", "--ide", "pi", "--json", "--project-root", r]),
         # remember / forget
-        ("A24 remember sesion", ["remember", "Implementamos login con JWT en auth.py", "--type", "session", "--tag", "auth", "--file", "src/auth.py"]),
-        ("A25 remember refactor --branch", ["remember", "Refactor del modulo de pagos en Rust", "--type", "refactor", "--branch", "feat/pagos"]),
-        ("A26 forget ok", ["forget", "mem_aaaa1111"]),
-        ("A27 forget inexistente", ["forget", "mem_zzzz9999"]),
+        ("A30 remember sesion", ["remember", "Implementamos login con JWT en auth.py", "--type", "session", "--tag", "auth", "--file", "src/auth.py"]),
+        ("A31 remember refactor --branch", ["remember", "Refactor del modulo de pagos en Rust", "--type", "refactor", "--branch", "feat/pagos"]),
+        ("A32 forget ok", ["forget", "mem_aaaa1111"]),
+        ("A33 forget inexistente", ["forget", "mem_zzzz9999"]),
     ]
 
 
@@ -276,9 +298,9 @@ def main() -> int:
 
         if args.mode == "bench":
             binary = [args.rust_bin_bench]
-            for name, argv in casos(root):
-                if not name.startswith(("A01", "A14", "A24", "A26")):
-                    continue
+            # Un subcomando representativo por familia (independiente de ids).
+            for key in ("task list", "hooks list", "remember", "forget"):
+                name, argv = next((n, a) for n, a in casos(root) if key in n)
                 # Medición honesta: cada corrida parte de cero (carga fría).
                 times = []
                 for _ in range(args.n):

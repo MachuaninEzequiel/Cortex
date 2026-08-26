@@ -8,13 +8,13 @@ rc=0
 │      │             │ para probar el             │                            │
 │ T1.2 │ done        │ Sub tarea                  │ x.py                       │
 │ T2   │ in-progress │ Tarea dos: accionar el     │ lib/pagos.rs,              │
-│      │             │ modulo de pagos            │ lib/wallet.rs,             │
+│      │             │ módulo de pagos            │ lib/wallet.rs,             │
 │      │             │                            │ tests/pagos.rs (+1)        │
 └──────┴─────────────┴────────────────────────────┴────────────────────────────┘
 
 ### A02 task list --json
 rc=0
-[{"id": "T1", "description": "Tarea uno con una descripcion bastante larga para probar el truncado de 60 caracteres en la tabla", "files_in_scope": ["a.py", "b.py", "c.py", "d.py"], "depends_on": [], "status": "pending", "completed_at": null, "checkpoint_index": null, "note": ""}, {"id": "T1.2", "description": "Sub tarea", "files_in_scope": ["x.py"], "depends_on": [], "status": "done", "completed_at": "{{TS}}", "checkpoint_index": null, "note": "hecha en la ronda 1"}, {"id": "T2", "description": "Tarea dos: accionar el modulo de pagos", "files_in_scope": ["lib/pagos.rs", "lib/wallet.rs", "tests/pagos.rs", "benches/pagos.rs"], "depends_on": [], "status": "in-progress", "completed_at": null, "checkpoint_index": null, "note": ""}]
+[{"id": "T1", "description": "Tarea uno con una descripcion bastante larga para probar el truncado de 60 caracteres en la tabla", "files_in_scope": ["a.py", "b.py", "c.py", "d.py"], "depends_on": [], "status": "pending", "completed_at": null, "checkpoint_index": null, "note": ""}, {"id": "T1.2", "description": "Sub tarea", "files_in_scope": ["x.py"], "depends_on": [], "status": "done", "completed_at": "{{TS}}", "checkpoint_index": null, "note": "hecha en la ronda 1"}, {"id": "T2", "description": "Tarea dos: accionar el módulo de pagos", "files_in_scope": ["lib/pagos.rs", "lib/wallet.rs", "tests/pagos.rs", "benches/pagos.rs"], "depends_on": [], "status": "in-progress", "completed_at": null, "checkpoint_index": null, "note": ""}]
 
 ### A03 task list --status pending
 rc=0
@@ -35,23 +35,51 @@ rc=1
 --stderr--
 Invalid --status 'bogus'. Must be one of: pending, in-progress, done, skipped, blocked
 
-### A06 task done --note
+### A06 task list sesion inexistente
+rc=1
+
+--stderr--
+Session not found: 2099-01-01_nope
+
+### A07 task done --note
 rc=0
 T1 → done
 
-### A07 task in-progress --json
+### A08 task done --json
+rc=0
+{"session_id": "2026-08-25_demo", "task_id": "T1", "status": "done"}
+
+### A09 task done inexistente
+rc=1
+
+--stderr--
+Task id 'T99' not found in session '2026-08-25_demo'
+
+### A10 task in-progress
+rc=0
+T1 → in-progress
+
+### A11 task in-progress --json
 rc=0
 {"session_id": "2026-08-25_demo", "task_id": "T1", "status": "in-progress"}
 
-### A08 task skip --reason
+### A12 task skip --reason
 rc=0
 T1 → skipped
 
-### A09 task block --reason --json
+### A13 task skip --reason --json
+rc=0
+{"session_id": "2026-08-25_demo", "task_id": "T1", "status": "skipped"}
+
+### A14 task block --reason
+rc=0
+T1 → blocked
+
+### A15 task block --reason --json
 rc=0
 {"session_id": "2026-08-25_demo", "task_id": "T1", "status": "blocked"}
 
-### A10 task list tras mutaciones
+### A16 task list tras mutaciones
 rc=0
 ┏━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ ID   ┃ STATUS      ┃ DESCRIPTION                ┃ FILES                      ┃
@@ -61,23 +89,19 @@ rc=0
 │      │             │ para probar el             │                            │
 │ T1.2 │ done        │ Sub tarea                  │ x.py                       │
 │ T2   │ in-progress │ Tarea dos: accionar el     │ lib/pagos.rs,              │
-│      │             │ modulo de pagos            │ lib/wallet.rs,             │
+│      │             │ módulo de pagos            │ lib/wallet.rs,             │
 │      │             │                            │ tests/pagos.rs (+1)        │
 └──────┴─────────────┴────────────────────────────┴────────────────────────────┘
 
-### A11 task done inexistente
-rc=1
+### A17 task list empty sesion
+rc=0
+(no tasks)
 
---stderr--
-Task id 'T99' not found in session '2026-08-25_demo'
+### A18 task list empty sesion --json
+rc=0
+[]
 
-### A12 task list sesion inexistente
-rc=1
-
---stderr--
-Session not found: 2099-01-01_nope
-
-### A14 hooks list texto
+### A19 hooks list texto
 rc=0
 ┏━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ IDE         ┃ INSTALLED ┃ SUPPORTED ┃ DETAIL                                 ┃
@@ -92,65 +116,69 @@ rc=0
 │             │           │           │ not exist                              │
 └─────────────┴───────────┴───────────┴────────────────────────────────────────┘
 
-### A15 hooks list --json
+### A20 hooks list --json
 rc=0
 [{"ide": "claude-code", "installed": false, "supported": true, "detail": "{{ROOT}}/.claude/settings.json does not exist"}, {"ide": "cursor", "installed": false, "supported": true, "detail": "{{ROOT}}/.git/hooks/post-commit does not exist"}, {"ide": "opencode", "installed": false, "supported": true, "detail": "{{ROOT}}/.opencode/hooks.md does not exist"}, {"ide": "pi", "installed": false, "supported": true, "detail": "{{ROOT}}/justfile does not exist"}]
 
-### A16 hooks install pi
+### A21 hooks install pi
 rc=0
 ✓ pi: installed cortex recipes in {{ROOT}}/justfile
   modified: {{ROOT}}/justfile
 
-### A17 hooks install pi segunda vez
+### A22 hooks install pi segunda vez
 rc=0
 ✓ pi: already installed in {{ROOT}}/justfile
 
-### A18 hooks install claude-code --json
+### A23 hooks install claude-code --json
 rc=0
 {"ide": "claude-code", "installed": true, "modified_paths": ["{{ROOT}}/.claude/settings.json"], "message": "installed PostToolUse hook in {{ROOT}}/.claude/settings.json"}
 
-### A19 hooks status pi
+### A24 hooks install ide desconocido
+rc=1
+
+--stderr--
+"unknown IDE adapter 'bogus'; available: claude-code, cursor, opencode, pi"
+
+### A25 hooks status pi
 rc=0
 ✓ pi: cortex recipes present in {{ROOT}}/justfile
 
-### A20 hooks status todo --json
+### A26 hooks status todo --json
 rc=0
 [{"ide": "claude-code", "installed": true, "supported": true, "detail": "PostToolUse hook present in {{ROOT}}/.claude/settings.json"}, {"ide": "cursor", "installed": false, "supported": true, "detail": "{{ROOT}}/.git/hooks/post-commit does not exist"}, {"ide": "opencode", "installed": false, "supported": true, "detail": "{{ROOT}}/.opencode/hooks.md does not exist"}, {"ide": "pi", "installed": true, "supported": true, "detail": "cortex recipes present in {{ROOT}}/justfile"}]
 
-### A21 hooks install ide desconocido
+### A27 hooks status ide desconocido
 rc=1
 
 --stderr--
 "unknown IDE adapter 'bogus'; available: claude-code, cursor, opencode, pi"
 
-### A22 hooks status ide desconocido
-rc=1
-
---stderr--
-"unknown IDE adapter 'bogus'; available: claude-code, cursor, opencode, pi"
-
-### A23 hooks uninstall pi
+### A28 hooks uninstall pi
 rc=0
 ✓ pi: removed (file had no other content) {{ROOT}}/justfile
   removed: {{ROOT}}/justfile
 
-### A24 remember sesion
+### A29 hooks uninstall pi --json
+rc=0
+{"ide": "pi", "uninstalled": false, "removed_paths": [], "message": "{{ROOT}}/justfile does not exist"}
+
+### A30 remember sesion
 rc=0
 Memory stored -> {{MEMID}}
    type: session
    summary: Implementamos login con JWT en auth.py
 
-### A25 remember refactor --branch
+### A31 remember refactor --branch
 rc=0
 Memory stored -> {{MEMID}}
    type: refactor
    summary: Refactor del modulo de pagos en Rust
 
-### A26 forget ok
+### A32 forget ok
 rc=0
 Memory {{MEMID}} deleted.
 
-### A27 forget inexistente
+### A33 forget inexistente
 rc=1
 
 --stderr--

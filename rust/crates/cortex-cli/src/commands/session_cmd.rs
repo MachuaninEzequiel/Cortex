@@ -1181,7 +1181,7 @@ pub fn run_task_list(argv: &[String]) -> bool {
     };
     if args.json {
         let items: Vec<crate::pyjson::PyVal> = tasks.iter().map(task_pv).collect();
-        echo(&crate::pyjson::stdlib_dumps_compact_array(&items));
+        echo(&compact_dumps_utf8(&crate::pyjson::PyVal::Arr(items)));
         return true;
     }
     if tasks.is_empty() {
@@ -1399,7 +1399,7 @@ pub fn run_hooks_list(argv: &[String]) -> bool {
     let statuses = installer.status_all(&target);
     if args.json {
         let items: Vec<crate::pyjson::PyVal> = statuses.iter().map(hook_status_pv).collect();
-        echo(&crate::pyjson::stdlib_dumps_compact_array(&items));
+        echo(&compact_dumps_utf8(&crate::pyjson::PyVal::Arr(items)));
         return true;
     }
     let rows: Vec<Vec<String>> = statuses
@@ -1467,6 +1467,50 @@ fn json_quote_list(xs: &[std::path::PathBuf]) -> String {
         .map(|p| json_quote(&p.to_string_lossy()))
         .collect();
     format!("[{}]", items.join(", "))
+}
+
+/// `json.dumps(ensure_ascii=False)` compacta (separadores ", " / ": ")
+/// sobre un valor PyVal — para `task list --json` / `hooks list --json` /
+/// `hooks status --json`, que en el oráculo NO escapan no-ASCII (a
+/// diferencia de `pyjson::stdlib_dumps_compact_array`, ensure_ascii=True).
+fn compact_dumps_utf8(v: &crate::pyjson::PyVal) -> String {
+    let mut out = String::new();
+    write_compact_utf8(v, &mut out);
+    out
+}
+
+fn write_compact_utf8(v: &crate::pyjson::PyVal, out: &mut String) {
+    use crate::pyjson::{Num, PyVal};
+    match v {
+        PyVal::Null => out.push_str("null"),
+        PyVal::Bool(true) => out.push_str("true"),
+        PyVal::Bool(false) => out.push_str("false"),
+        PyVal::Num(Num::Int(i)) => out.push_str(&i.to_string()),
+        PyVal::Num(Num::Float(f)) => out.push_str(&crate::pyjson::format_float(*f)),
+        PyVal::Str(s) => out.push_str(&json_quote(s)),
+        PyVal::Arr(items) => {
+            out.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                write_compact_utf8(item, out);
+            }
+            out.push(']');
+        }
+        PyVal::Obj(items) => {
+            out.push('{');
+            for (i, (k, val)) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&json_quote(k));
+                out.push_str(": ");
+                write_compact_utf8(val, out);
+            }
+            out.push('}');
+        }
+    }
 }
 
 pub fn run_hooks_install(argv: &[String]) -> bool {
@@ -1611,7 +1655,7 @@ pub fn run_hooks_status(argv: &[String]) -> bool {
     };
     if args.json {
         let items: Vec<crate::pyjson::PyVal> = statuses.iter().map(hook_status_pv).collect();
-        echo(&crate::pyjson::stdlib_dumps_compact_array(&items));
+        echo(&compact_dumps_utf8(&crate::pyjson::PyVal::Arr(items)));
         return true;
     }
     for s in &statuses {

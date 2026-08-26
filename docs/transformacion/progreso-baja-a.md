@@ -82,14 +82,18 @@
   verify compara el binario nativo post-normalización; `bench` mide cold start).
 - Normalizaciones SOLO las pactadas: `{{ROOT}}`, `{{TS}}`, `{{ELAPSED}}`,
   `{{RUN}}`, `{{MEMID}}`, `{{SHA}}`, scores a 4 decimales.
-- **27 casos reales** (≥2 por subcomando, texto + `--json` cuando el oráculo
-  lo tiene): task list texto/json/filtros ×6, done/in-progress/skip/block
-  texto+json, errores (status inválido, task inexistente, sesión inexistente);
-  hooks list texto/json, install×2 (modos distintos), uninstall, status
-  (individual + todos), errores de IDE desconocido; remember ×2 (type+files,
-  type+branch), forget ok + inexistente.
-- `build` → `bench/parity/.p12-cierre-leaves-a/goldens_leaves_a.txt` (160 líneas).
-- `verify` → `[PASS] cierre_leaves_a byte-parity post-normalización (160 líneas)`
+- **33 casos reales** (A01–A33; ≥2 por subcomando, texto + `--json` en cada
+  subcomando donde el oráculo lo tiene): task list ×9 (texto/json/filtros ×5,
+  tras mutaciones, empty texto+json, errores: status inválido y sesión
+  inexistente), done ×3 (texto+json+error), in-progress ×2 (texto+json),
+  skip ×2 (texto+json), block ×2 (texto+json); hooks list ×2 (texto/json),
+  install ×4 (pi×2, claude-code --json, error IDE desconocido), status ×3
+  (individual + todos --json + error), uninstall ×2 (texto+json); remember ×2
+  (type+files, type+branch), forget ok + inexistente. Incluye non-ASCII
+  («módulo» con tilde en la descripción de T2) para probar el `--json`
+  `ensure_ascii=False` (I-2).
+- `build` → `bench/parity/.p12-cierre-leaves-a/goldens_leaves_a.txt` (188 líneas).
+- `verify` → `[PASS] cierre_leaves_a byte-parity post-normalización (188 líneas)`
   / `✅ PARIDAD MITAD A — BAJA DEFINITIVA RUTA 1`.
 - Iteración verificación renderer: divergencia detectada en el fold del
   `DETAIL` de hooks (fabrica `…` cuando fold=false) y en el separador pesado
@@ -113,7 +117,8 @@
    `t_lea_a_ruta1` ×10 y las suites previas T2/T6-b; también las de B en su
    estado actual).
 4. `cargo test -p cortex-app` → 105 passed.
-5. Gate `cierre_leaves_a_golden.py build|verify` → **verde** (160 líneas).
+5. Gate `cierre_leaves_a_golden.py build|verify` → **verde** (188 líneas,
+   33 casos).
 6. Suite Python completa UNA vez bajo lock `.cortex/heavy.lock` (R3, threads=2):
    `timeout 2400 .venv/bin/python -m pytest tests/unit tests/integration
    tests/e2e --no-cov --tb=no -p no:randomly` →
@@ -134,11 +139,12 @@
 ## Riesgos residuales
 
 - `pyjson::write_compact` emite `ensure_ascii=True`; el oráculo usa
-  `ensure_ascii=False` para `task list --json` / `hooks --json`. Con
-  contenido ASCII (fixtures del gate) es idéntico byte-a-byte; con contenido
-  no-ASCII (tildes/emoji en descriptions o rutas) el nativo escaparía `\uXXXX`
-  y Python no — divergencia documentada, fuera del territorio (pyjson no está
-  en la matriz A).
+  `ensure_ascii=False` para `task list --json` / `hooks list --json` /
+  `hooks status --json` — **RESUELTO en la ronda 1/5** con el emitter local
+  `compact_dumps_utf8` en `session_cmd.rs` (mismo patrón que `json_quote`;
+  `pyjson` no se tocó, no está en la matriz A). Un caso non-ASCII del gate
+  (descripción de T2 con «ó») y el test `session_task_list_json_utf8_crudo`
+  lo prueban.
 - `session task list` con descripción >60 caracteres: nativo trunca a 60
   exactamente como el oráculo (`content[:60]` por chars).
 - El `--json` de `task list` y `hooks` replica `json.dumps(…, ensure_
@@ -146,3 +152,19 @@
 - Errores de parseo de args (p.ej. `skip` sin `--reason`) quedan como
   self-golden (clap ≠ Typer por diseño) — no son casos del gate (igual que
   el precedente T2).
+
+## Ronda 1/5 — fixes del review
+
+- **I-1**: gate `casos()` → 33 casos (≥2 reales por subcomando; variantes
+  faltantes agregadas: `in-progress` texto, `skip` --json, `block` texto,
+  `uninstall` --json, + empty `task list` texto/json sobre sesión
+  `2026-08-26_vacio`). Golden REBUILD con el CLI Python REAL (188 líneas) +
+  `verify` PASS. Conteos corregidos acá y en el reporte (eran 26 reales / 27
+  declarados; «task list ×6» era 5). `bench` selecciona por keyword.
+- **I-2**: emitter local `ensure_ascii=False` para los tres `--json` nuevos;
+  caso non-ASCII en el gate + test Rust `session_task_list_json_utf8_crudo`
+  (t_lea_a_ruta1 ×11).
+- Verificación ronda 1/5: fmt limpio; clippy -D warnings limpio;
+  `cargo test -p cortex-cli` 73/0 (17 suites); `cargo test -p cortex-app`
+  105/0; gate build+verify PASS (188 líneas). Python sin cambios
+  (oráculo verde 2552/21/0/0).

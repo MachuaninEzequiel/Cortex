@@ -42,7 +42,7 @@ checkpoints: []
 verification_results: []
 tasks:
 - id: T1
-  description: Primera tarea con una descripcion razonable
+  description: Primera tarea con una descripción razonable
   files_in_scope:
   - a.py
   - b.py
@@ -311,6 +311,35 @@ fn session_task_errores_native() {
     assert_eq!(
         stderr(&o).trim(),
         "Invalid --status 'bogus'. Must be one of: pending, in-progress, done, skipped, blocked"
+    );
+}
+
+#[test]
+fn session_task_list_json_utf8_crudo() {
+    // I-2: `task list --json` (y hooks list/status --json) deben replicar
+    // json.dumps(ensure_ascii=False): con no-ASCII el nativo emite UTF-8
+    // crudo, nunca \uXXXX.
+    let tmp = session_fixture();
+    let o = cli(
+        tmp.path(),
+        &[
+            "session",
+            "task",
+            "list",
+            "--json",
+            "--project-root",
+            tmp.path().to_str().unwrap(),
+        ],
+    );
+    assert_native(&o, "task list --json utf8");
+    let out = stdout(&o);
+    assert!(
+        out.contains("descripción"),
+        "JSON debe emitir UTF-8 crudo (ó sin escapar): {out}"
+    );
+    assert!(
+        !out.contains("\\u00f3"),
+        "no debe escapar ó como \\uXXXX: {out}"
     );
 }
 
