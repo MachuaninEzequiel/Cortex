@@ -212,14 +212,71 @@ verde con pty, así que no urge hasta la baja de Python.
 actualizan en T7 cuando el cierre esté completo — este archivo es la única
 fuente de verdad de la sesión.
 
+## Cierre T2-cola — cola restante nativa (2026-08-26)
+
+Commit `7d988a7` — `feat(obra07 cierre T2): cola nativa completa`. Continúa el gate `bench/parity/cierre_cli_golden.py` desde los 19 casos del núcleo.
+
+**Red→Green (TDD):** `rust/crates/cortex-cli/tests/t2_tail_native.rs` ×4
+(`docs_migrate_and_session_text_are_native`, `docs_search_uses_native_enricher`,
+`ci_setup_and_pr_context_are_native`, `mcp_aliases_start_native_stdio`).
+RED: quitando las rutas de dispatch (`docs`/`ci`/`setup`/`pr-context`/`mcp-server`,
+como en BASE `d8b77a6`) los 4 tests fallan — derivan a `fallback::passthrough` y
+mueren con exit 127 (CORTEX_BIN inválido) o broken pipe. GREEN: reestablecidas las
+rutas nativas, 4/4 ok (`cargo test -p cortex-cli --test t2_tail_native`).
+
+**Verificación niveles:**
+- N1: `cargo fmt --all --check` ✅ · `cargo clippy -p cortex-cli --all-targets -- -D warnings` ✅ · `cargo test -p cortex-cli` ✅ (todos los bins)
+- N2 gates vecinos (sin regresión por server.rs / session_cmd.rs):
+  `cargo test -p cortex-mcp` 25 ✅ · `cierre_mcp_golden.py verify` + `cierre_check` `✅ PARIDAD CIERRE T1` · `cierre_autopilot_golden.py verify` + `cierre_autopilot_check` `✅ PARIDAD CIERRE T3` · `cargo test -p cortex-tui` ✅
+- N2 gate T2: `cierre_cli_golden.py build` (golden regenerado desde el CLI Python REAL → auténtico, diff 0) y `verify` → `[PASS] cierre_cli byte-parity post-normalización (2123 líneas)` / `✅ PARIDAD CIERRE T2`. **39 casos** de terminal (S01–S18, S20–S22, S25–S42; S19 retirado por traceback no portable, S23/S24 docs search cubierto por test Rust) + **1 exchange MCP stdio acotado** (initialize + notifications/initialized + tools/list + tools/call cortex_self_review_note, envelope Anexo A null≡omisión).
+- N3 oráculo completo pre-commit bajo lock: `timeout 2400 .venv/bin/python -m pytest tests/unit tests/integration tests/e2e --no-cov --tb=no -p no:randomly` → **2552 passed, 21 skipped, 0 failed, 0 errors** (175s).
+
+**Cold start release N=20 (fixture gate `construir_fixture`):**
+
+| Comando | mediana | min | max | nota |
+|---|---|---|---|---|
+| docs migrate | 2.9ms | 2.8 | 3.4 | liviano |
+| ci validate-pr | 2.9ms | 2.9 | 3.0 | liviano |
+| ci open-review-session | 2.9ms | 2.9 | 3.1 | liviano |
+| ci report-checkpoint | 3.3ms | 3.2 | 4.1 | liviano |
+| ci close-review-session | 3.0ms | 3.0 | 23.9 | liviano (max anómalo init) |
+| setup agent | 2.3ms | 2.2 | 2.9 | liviano |
+| setup pipeline | 2.3ms | 2.2 | 2.7 | liviano |
+| setup full | 2.4ms | 2.2 | 2.6 | liviano |
+| setup webgraph | 2.4ms | 2.2 | 2.8 | liviano |
+| setup enterprise | 3.9ms | 3.1 | 5.0 | liviano |
+| pr-context generate | 3.8ms | 3.3 | 4.3 | liviano |
+| session list | 8.9ms | 7.6 | 10.5 | liviano |
+| session show | 4.6ms | 3.7 | 5.4 | liviano |
+| pr-context store | 307.9ms | 272.4 | 369.2 | ONNX init+inferencia |
+| pr-context search | 316.7ms | 271.0 | 352.4 | ONNX |
+| pr-context full | 365.5ms | 313.8 | 419.0 | ONNX |
+
+Todos los comandos livianos cumplen `<100ms`. Los de memoria/embeddings
+(store/search/full) pagan la inicialización del runtime ONNX+inferencia real
+(costo honesto, no debilitado para medir).
+
+**Auditoría passthrough residual (leaves que aún invocan Python vía
+`fallback::passthrough`, con motivo):**
+- `session watch` — TUI interactivo rich; integración ratatui = T6-b pendiente.
+- `session task {list,done,in-progress,skip,block}` y `session hooks {list,install,uninstall,status}` — fuera del inventario de esta tarea (no son leaves T2-cola listados en el brief).
+- `ide {list,setup,remove,status}` — fuera del inventario T2-cola.
+- `docs {validate,restore,list-backups,routing-table}` — docs search/migrate son los únicos leaves del inventario; el resto no tiene requisito vinculante (no expandir).
+- `hu import` — lanza excepción no manejada en Python (traceback rich no portable); mejora deliberada documentada para S19. list/show ya nativos.
+- `{remember,forget,init,inject,sync-enterprise-vault,sync-ide,verify-docs,validate-docs,index-docs}` — fuera del inventario T2-cola.
+- `webgraph {serve,doctor}` y resto de `autopilot` no-preflight — delegan por diseño (documentado en sus gates).
+- `search-vector` NO es un comando CLI (solo tool MCP) — no inventar.
+
+`CORTEX_PY=1` sigue siendo el rollback total explícito (main.rs paso 1).
+
 ## Cola de tareas
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
 | T1 handlers MCP no-sesión | ✅ | `bench/parity/cierre_mcp_golden.py` build/verify (51 escenarios, 261 líneas) + `examples/cierre_check.rs` **byte-parity** → `[PASS] cierre_check byte-parity` / `✅ PARIDAD CIERRE T1`. Oráculo = dispatcher Python REAL (`_dispatch_tool_sync`) con fakes deterministas y motores P5/P7 patcheados; write_doc usa writers REALES sobre vault tmp. Familias: search/search_vector/context (to_prompt/to_prompt_format byte-exact, budget resolver real), sync_ticket (candidatos reales vía resolve_safe), emit_proposal (pydantic 2.13 byte-a-byte: string_too_short/long, too_short/long, missing, extra_forbidden, value_error field+model, truncado de repr >50 → 25+"..."+24), create_spec (gobernanza+gap 2.0s con reloj congelado), self_review_note, write_doc ×11 doc_types (validaciones handler + writers P8b: duplicados por fingerprint, local-only, enterprise fields), design note, import/get_hu, finish_session/documenter_briefing (serialización completa del ReconstructionOutput). Autopilot-tools ×5: diferido a T3 (requiere AutopilotService nativo). Suite oráculo: **2455 passed, 18 skipped** (-p no:randomly; flaky HermesAdapter documentado en P12A-3). cargo test -p cortex-mcp: 25 ✅ · clippy `-D warnings` ✅ · fmt ✅. ADR chico: regex "1" ya en lock (cero paquetes nuevos) | `21536f5` |
-| T2 subcomandos CLI restantes | ✅ PARCIAL (núcleo wireado) | Gate: `bench/parity/cierre_cli_golden.py` build/verify **19 casos** → `[PASS] cierre_cli byte-parity post-normalización (700 líneas)` / `✅ PARIDAD CIERRE T2`. Wireados nativos: search(texto+--json), context(markdown/compact/json), stats, reindex --dry-run, session{current,list--json,show--json,checkpoint,switch,diff,abandon}, next(texto+json), hu{list,show}, pr-context capture. Glue nuevo `memory.rs` (`_load_memory` nativo: layout→config→SemanticIndex+JSONL episódico+ONNX). Normalizaciones pactadas: {{ROOT}}/{{TS}}/{{ELAPSED}}/{{RUN}}/{{MEMID}}/{{SHA}} + scores a 4 decimales (drift ~1e-7 SIMD chroma/ONNX vs cómputo nativo; rankings idénticos — precedente P12A-1). Hallazgo+fix de paridad: matched_by ahora usa orden pyset real CPython seed-0 (tabla precomputada en cortex-app/context/mod.rs; test P7 actualizado). Micro-exposición: telemetry::new_run_id(). Cold start release N=20: session current 3ms · hu list 4ms · next 8ms · stats 142ms · search 221ms · context 519ms — los livianos cumplen <100ms; los de memoria pagan init del runtime ort enlazado (~150ms) + inferencia ONNX real (Python equivalente: ~700ms SOLO de arranque). Optimización lazy-ort = tarea de ingeniería futura, no paridad. PASSTHROUGH residual: list/show texto (tablas rich), watch/hooks/task, docs{search,migrate}, ci ×4, setup ×5, pr-context {store,search,generate,full}, search-vector (no existe como comando CLI — solo tool MCP), embedding-status, mcp-server/serve, ide, brain, documenting trio, remember/forget/init, webgraph serve/doctor, Home TUI. Cargo.lock sin commitear (hunks mixtos con T3 paralela — integra quien cierre último) | `c210cef` |
-| T3 autopilot service+cli | ⏳ | | |
+| T2 subcomandos CLI restantes | ✅ COMPLETA (núcleo `c210cef`+`33871a7` + cola `7d988a7`) | Núcleo: gate 19 casos (700 líneas), search/context/stats/reindex/session{current,list--json,show--json,checkpoint,switch,diff,abandon}/next/hu/list,show/pr-context capture. **Cola (`7d988a7`)**: docs{search,migrate} (enricher nativo + P12A-7 filtros; migrate vía `cortex-services::migration`), ci ×4 (validate-pr/open/report/close sobre `cortex-app::ci`, exits 0-3 contrato), setup ×5 (`cortex-setup` in-process, `--non-interactive`; full con `--ide pi`), pr-context {store,search,generate,full} (remember/retrieve glue + `cortex-app::doc_generator`), session{list,show} texto Rich-compat, mcp-server/serve stdio rmcp (envelope Anexo A). Gate extendido **19→39 casos + MCP stdio bounded exchange** (initialize+tools/list+tools/call) → `[PASS] cierre_cli byte-parity post-normalización (2123 líneas)` / `✅ PARIDAD CIERRE T2`. Tests Rust nuevos `t2_tail_native.rs` (4, RED→GREEN). Cargo.lock hunk T2 commiteado. Detalle y cold start en sección "Cierre T2-cola" abajo | `c210cef`+`33871a7`+`7d988a7` |
+| T3 autopilot service+cli | ✅ | Gate `cierre_autopilot_golden.py` + checker `cierre_autopilot_check` byte-parity; service e2e + MCP ×5 + CLI dual; doctor_golden ampliado | `e089a25` | |
 | T4 pipeline Documentation | ⏳ | | |
 | T5 oráculo 100% verde | ✅ | Suite completa `-p no:randomly`: **2552 passed, 21 skipped, 0 failed, 0 errors** (128s) — primera vez verde desde la recatorización. Commit de tests `f6fb828`. Detalle de cambios por archivo abajo | `f6fb828` |
-| T6 pantalla ratatui (opcional) | ⏳ | | |
+| T6 pantalla ratatui | ✅ | `cargo test -p cortex-tui` sessions_screen (5 tests) — datos == session list --json, render <50ms | `fa11473` | |
 | T7 refresco documental | ⏳ | | |
