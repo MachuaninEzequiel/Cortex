@@ -570,7 +570,10 @@ name = "cortex-pipeline"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "cortex-app",
  "cortex-enterprise",
+ "cortex-services",
+ "cortex-workspace",
  "serde",
  "serde_json",
  "tempfile",

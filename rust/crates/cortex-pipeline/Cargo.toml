@@ -9,6 +9,12 @@ chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 cortex-enterprise = { path = "../cortex-enterprise" }
+# T4: Documentation real — DocVerifier/Session/documenter (P5/P12A-5) +
+# NoteService (write de la nota de sesión fallback). Ambos ya están en el
+# lock vía cortex-enterprise/cortex-cli ⇒ cero paquetes nuevos.
+cortex-app = { path = "../cortex-app" }
+cortex-services = { path = "../cortex-services" }
 
 [dev-dependencies]
 tempfile = "3"
+cortex-workspace = { path = "../cortex-workspace" }
