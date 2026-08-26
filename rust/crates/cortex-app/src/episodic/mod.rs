@@ -332,6 +332,42 @@ impl NativeEpisodicStore {
         self.rows.insert(pos, row);
         Ok(())
     }
+
+    /// Puerto de `EpisodicMemoryStore.delete` (CLI `cortex forget`): borra la
+    /// entrada `mem_*` del JSONL de origen y del vec in-memory.
+    ///
+    /// Ok(true) si el id existía; Ok(false) si no (el archivo queda
+    /// intacto). El resto de las líneas se preserva BYTE-idéntico (se
+    /// reescribe el archivo filtrando solo la fila borrada, sin
+    /// re-serialización del resto).
+    pub fn delete(&mut self, id: &str) -> Result<bool, String> {
+        let text = std::fs::read_to_string(&self.src)
+            .map_err(|e| format!("{}: {e}", self.src.display()))?;
+        let mut kept = String::new();
+        let mut removed = false;
+        for line in text.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let matches = match serde_json::from_str::<serde_json::Value>(line) {
+                Ok(v) => v.get("id").and_then(|i| i.as_str()) == Some(id),
+                // Línea ilegible: preservarla tal cual (nunca perder datos).
+                Err(_) => false,
+            };
+            if matches {
+                removed = true;
+            } else {
+                kept.push_str(line);
+                kept.push('\n');
+            }
+        }
+        if !removed {
+            return Ok(false);
+        }
+        std::fs::write(&self.src, kept).map_err(|e| format!("{}: {e}", self.src.display()))?;
+        self.rows.retain(|r| r.entry.id != id);
+        Ok(true)
+    }
 }
 
 // ── Escritura (P12A-1): serialización estilo Python ────────────────────────
@@ -768,5 +804,58 @@ mod append_tests {
             serde_json::json!(["Nueva"])
         );
         assert_eq!(entry.metadata["origen"], serde_json::json!("prueba"));
+    }
+
+    /// Puerto de `EpisodicMemoryStore.delete` (CLI `cortex forget`): borra la
+    /// entrada del JSONL y del vec in-memory; Ok(false) si no existe.
+    #[test]
+    fn delete_remueve_la_fila_y_preserva_el_resto() {
+        let path = jsonl_tmp("del");
+        let linea1 = fila_base(
+            "mem_aaaa1111",
+            "Se arregló authenticate_user.",
+            "bugfix",
+            "2026-05-10T12:00:00+00:00",
+        );
+        let linea2 = fila_base(
+            "mem_bbbb2222",
+            "Nota sin entidades.",
+            "note",
+            "2026-05-11T12:00:00+00:00",
+        );
+        std::fs::write(&path, format!("{linea1}{linea2}")).unwrap();
+        let bytes_antes = std::fs::read(&path).unwrap();
+
+        let mut store = NativeEpisodicStore::load(&path).unwrap();
+        assert_eq!(store.count(), 2);
+
+        // Id inexistente: Ok(false) y archivo intacto.
+        assert_eq!(store.delete("mem_zzzz9999").unwrap(), false);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes_antes);
+        assert_eq!(store.count(), 2);
+
+        // Id existente: Ok(true), la línea desaparece y el resto sigue igual.
+        assert_eq!(store.delete("mem_aaaa1111").unwrap(), true);
+        assert_eq!(store.count(), 1);
+        let texto = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(texto, linea2, "resto byte-idéntico");
+        assert!(!texto.contains("mem_aaaa1111"));
+        assert!(texto.ends_with('\n'));
+
+        // Recargar desde disco confirma la persistencia.
+        let store2 = NativeEpisodicStore::load(&path).unwrap();
+        assert_eq!(store2.count(), 1);
+        assert_eq!(store2.rows[0].entry.id, "mem_bbbb2222");
+
+        // El borrado no rompe append posteriores.
+        let mut store3 = store;
+        store3
+            .append(
+                AppendParams::new("nueva memoria tras el delete"),
+                &mut fake_embed(),
+            )
+            .unwrap();
+        assert_eq!(store3.count(), 2);
+        assert_eq!(store3.keyword_search("nueva memoria", 5).len(), 1);
     }
 }

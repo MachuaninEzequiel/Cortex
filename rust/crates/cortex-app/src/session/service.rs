@@ -15,7 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::{
-    Checkpoint, CheckpointSource, SessionRecord, SessionStatus, SessionStorage,
+    Checkpoint, CheckpointSource, SessionRecord, SessionStatus, SessionStorage, Task, TaskStatus,
     GITLESS_COMMIT_PLACEHOLDER,
 };
 use crate::git;
@@ -309,5 +309,238 @@ impl SessionService {
             }
             counter += 1;
         }
+    }
+
+    /// `service.list_tasks` (oráculo `cortex session task list`): las tareas
+    /// de una sesión, opcionalmente filtradas por estado. Puerto de
+    /// `cortex/session/service.py::list_tasks`.
+    pub fn list_tasks(
+        &self,
+        session_id: &str,
+        status: Option<TaskStatus>,
+    ) -> Result<Vec<Task>, String> {
+        let record = self.storage.load(session_id)?;
+        Ok(match status {
+            None => record.tasks,
+            Some(s) => record.tasks.into_iter().filter(|t| t.status == s).collect(),
+        })
+    }
+
+    /// `service.update_task_status` (oráculo `cortex session task
+    /// done|in-progress|skip|block`): muta el estado de una tarea y persiste
+    /// la sesión. Espejo de `service.py::update_task_status`:
+    /// - sesión NO OPEN ⇒ `Cannot update task in session with status
+    ///   '<estado>'`;
+    /// - task inexistente ⇒ `Task id '<id>' not found in session
+    ///   '<sid>'`;
+    /// - nota no vacía se escribe;
+    /// - DONE ⇒ `completed_at` automático si faltaba; PENDING/IN_PROGRESS ⇒
+    ///   `completed_at = None` (invariante del modelo).
+    pub fn update_task_status(
+        &self,
+        session_id: &str,
+        task_id: &str,
+        new_status: TaskStatus,
+        note: &str,
+    ) -> Result<Task, String> {
+        let mut record = self.storage.load(session_id)?;
+        if record.status != SessionStatus::Open {
+            return Err(format!(
+                "Cannot update task in session with status '{}'",
+                record.status.as_str()
+            ));
+        }
+        let idx = record
+            .tasks
+            .iter()
+            .position(|t| t.id == task_id)
+            .ok_or_else(|| format!("Task id '{task_id}' not found in session '{session_id}'"))?;
+        {
+            let task = &mut record.tasks[idx];
+            task.status = new_status;
+            if !note.is_empty() {
+                task.note = note.to_string();
+            }
+            match new_status {
+                TaskStatus::Done => {
+                    if task.completed_at.is_none() {
+                        task.completed_at = Some(now_iso());
+                    }
+                }
+                TaskStatus::Pending | TaskStatus::InProgress => {
+                    task.completed_at = None;
+                }
+                TaskStatus::Skipped | TaskStatus::Blocked => {}
+            }
+        }
+        let updated = record.tasks[idx].clone();
+        self.storage.save(&record)?;
+        Ok(updated)
+    }
+}
+
+#[cfg(test)]
+mod task_tests {
+    use super::*;
+
+    fn tmp_svc(tag: &str) -> (SessionService, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!(
+            "cortex_session_service_{tag}_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let storage = SessionStorage::new(dir.join("sessions"));
+        let svc = SessionService::new(storage, &dir);
+        (svc, dir)
+    }
+
+    fn task(id: &str, status: TaskStatus) -> Task {
+        let mut t = Task {
+            id: id.to_string(),
+            description: format!("desc {id}"),
+            files_in_scope: vec![],
+            depends_on: vec![],
+            status,
+            completed_at: None,
+            checkpoint_index: None,
+            note: String::new(),
+        };
+        // Invariante del modelo Python: done ⇒ completed_at seteado.
+        if status == TaskStatus::Done {
+            t.completed_at = Some(now_iso());
+        }
+        t
+    }
+
+    fn seed_session(svc: &SessionService) -> SessionRecord {
+        let record = SessionRecord {
+            session_id: "2026-08-25_demo".to_string(),
+            spec_path: "vault/specs/demo.md".to_string(),
+            spec_summary: "demo".to_string(),
+            start_commit: GITLESS_COMMIT_PLACEHOLDER.to_string(),
+            start_branch: String::new(),
+            opened_at: now_iso(),
+            status: SessionStatus::Open,
+            tasks: vec![
+                task("T1", TaskStatus::Pending),
+                task("T1.2", TaskStatus::Done),
+            ],
+            ..Default::default()
+        };
+        svc.save_new_record(&record).unwrap();
+        record
+    }
+
+    #[test]
+    fn list_tasks_filtra_por_estado() {
+        let (svc, _dir) = tmp_svc("lt");
+        let record = seed_session(&svc);
+
+        let all = svc.list_tasks(&record.session_id, None).unwrap();
+        assert_eq!(all.len(), 2);
+        assert_eq!(all[0].id, "T1");
+        assert_eq!(all[1].id, "T1.2");
+
+        let done = svc
+            .list_tasks(&record.session_id, Some(TaskStatus::Done))
+            .unwrap();
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].id, "T1.2");
+
+        let blocked = svc
+            .list_tasks(&record.session_id, Some(TaskStatus::Blocked))
+            .unwrap();
+        assert!(blocked.is_empty());
+
+        // Sesión inexistente ⇒ error (espejo de SessionNotFound del storage).
+        assert!(svc.list_tasks("2099-01-01_nope", None).is_err());
+    }
+
+    #[test]
+    fn update_task_status_terminal_y_nota() {
+        let (svc, _dir) = tmp_svc("ut");
+        let record = seed_session(&svc);
+        let sid = record.session_id.clone();
+
+        let updated = svc
+            .update_task_status(&sid, "T1", TaskStatus::Done, "primer fix")
+            .unwrap();
+        assert_eq!(updated.status, TaskStatus::Done);
+        assert_eq!(updated.note, "primer fix");
+        assert!(updated.completed_at.is_some(), "done ⇒ completed_at");
+
+        // Persistido: recargar la sesión muestra la mutación.
+        let reloaded = svc.get(&sid).unwrap();
+        let t1 = reloaded.tasks.iter().find(|t| t.id == "T1").unwrap();
+        assert_eq!(t1.status, TaskStatus::Done);
+        assert_eq!(t1.completed_at.as_deref(), updated.completed_at.as_deref());
+        assert_eq!(t1.note, "primer fix");
+        assert!(t1.completed_at.is_some());
+        // La otra tarea no se tocó.
+        let t12 = reloaded.tasks.iter().find(|t| t.id == "T1.2").unwrap();
+        assert_eq!(t12.status, TaskStatus::Done);
+        assert!(t12.completed_at.is_some());
+    }
+
+    #[test]
+    fn update_task_status_resetea_completed_at() {
+        let (svc, _dir) = tmp_svc("ur");
+        let record = seed_session(&svc);
+        let sid = record.session_id.clone();
+
+        let up = svc
+            .update_task_status(&sid, "T1.2", TaskStatus::InProgress, "")
+            .unwrap();
+        assert_eq!(up.status, TaskStatus::InProgress);
+        assert!(up.completed_at.is_none(), "in-progress ⇒ completed_at None");
+
+        let up = svc
+            .update_task_status(&sid, "T1.2", TaskStatus::Pending, "")
+            .unwrap();
+        assert_eq!(up.status, TaskStatus::Pending);
+        assert!(up.completed_at.is_none());
+
+        // done sobre una ya hecha conserva completed_at existente.
+        let first = svc
+            .update_task_status(&sid, "T1", TaskStatus::Done, "")
+            .unwrap();
+        let second = svc
+            .update_task_status(&sid, "T1", TaskStatus::Done, "")
+            .unwrap();
+        assert_eq!(first.completed_at, second.completed_at);
+    }
+
+    #[test]
+    fn update_task_status_errores_del_oraculo() {
+        let (svc, _dir) = tmp_svc("ue");
+        let record = seed_session(&svc);
+        let sid = record.session_id.clone();
+
+        let err = svc
+            .update_task_status(&sid, "T99", TaskStatus::Done, "")
+            .unwrap_err();
+        assert_eq!(err, "Task id 'T99' not found in session '2026-08-25_demo'");
+
+        // Sesión cerrada ⇒ invalid state transition del oráculo.
+        let closed = SessionRecord {
+            session_id: "2026-08-24_cerrada".to_string(),
+            spec_path: "x.md".to_string(),
+            spec_summary: "x".to_string(),
+            start_commit: GITLESS_COMMIT_PLACEHOLDER.to_string(),
+            start_branch: String::new(),
+            opened_at: now_iso(),
+            status: SessionStatus::Closed,
+            closed_at: Some(now_iso()),
+            end_commit: Some(GITLESS_COMMIT_PLACEHOLDER.to_string()),
+            documenter_decision: Some(SessionStatus::Closed),
+            tasks: vec![task("T1", TaskStatus::Pending)],
+            ..Default::default()
+        };
+        svc.save_new_record(&closed).unwrap();
+        let err = svc
+            .update_task_status(&closed.session_id, "T1", TaskStatus::Done, "")
+            .unwrap_err();
+        assert_eq!(err, "Cannot update task in session with status 'closed'");
     }
 }
