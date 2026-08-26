@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use crate::tools_catalog::{build_tool_definitions, SERVER_VERSION};
+use crate::{handlers_docs, handlers_finish, handlers_search, handlers_spec};
 
 /// Grace de arranque: `starting` durante los primeros 2.0 s (espejo de
 /// `_STARTUP_GRACE_SECONDS`).
@@ -85,6 +86,19 @@ pub struct CortexMcpServer<M: MemoryBackend = CountingMemory> {
     models_loaded: Vec<String>,
     /// Backend in-process de sesiones (P12A-9). None ⇒ fallo explícito.
     sessions_backend: Option<std::sync::Arc<std::sync::Mutex<dyn SessionsBackend + Send>>>,
+    /// Backends in-process de las familias no-sesión (Cierre T1).
+    search_backend:
+        Option<std::sync::Arc<std::sync::Mutex<dyn handlers_search::SearchBackend + Send>>>,
+    docs_backend: Option<std::sync::Arc<std::sync::Mutex<dyn handlers_docs::DocsBackend + Send>>>,
+    spec_backend: Option<std::sync::Arc<std::sync::Mutex<dyn handlers_spec::SpecBackend + Send>>>,
+    finish_backend:
+        Option<std::sync::Arc<std::sync::Mutex<dyn handlers_finish::FinishBackend + Send>>>,
+    /// Estado transversal de la familia spec (`_called_tools` + stamp del
+    /// gap de proposal). Se alimenta con CADA tool llamada, como el
+    /// `_log_tool_call` de Python.
+    spec_state: handlers_spec::SpecServerState,
+    /// Raíz del proyecto para `_extract_candidate_files` / claims.
+    pub project_root: std::path::PathBuf,
 }
 
 /// Tabla de ruteo nombre → handler. CONGELADA por
@@ -167,6 +181,12 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
             memory,
             models_loaded: Vec::new(),
             sessions_backend: None,
+            search_backend: None,
+            docs_backend: None,
+            spec_backend: None,
+            finish_backend: None,
+            spec_state: handlers_spec::SpecServerState::default(),
+            project_root: std::env::current_dir().unwrap_or_default(),
         }
     }
 
@@ -176,6 +196,42 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
         backend: std::sync::Arc<std::sync::Mutex<dyn SessionsBackend + Send>>,
     ) -> Self {
         self.sessions_backend = Some(backend);
+        self
+    }
+
+    /// Wirea el backend in-process de la familia search/context (Cierre T1).
+    pub fn with_search_backend(
+        mut self,
+        backend: std::sync::Arc<std::sync::Mutex<dyn handlers_search::SearchBackend + Send>>,
+    ) -> Self {
+        self.search_backend = Some(backend);
+        self
+    }
+
+    /// Wirea el backend in-process de docs/HU (Cierre T1).
+    pub fn with_docs_backend(
+        mut self,
+        backend: std::sync::Arc<std::sync::Mutex<dyn handlers_docs::DocsBackend + Send>>,
+    ) -> Self {
+        self.docs_backend = Some(backend);
+        self
+    }
+
+    /// Wirea el backend in-process de spec/proposal (Cierre T1).
+    pub fn with_spec_backend(
+        mut self,
+        backend: std::sync::Arc<std::sync::Mutex<dyn handlers_spec::SpecBackend + Send>>,
+    ) -> Self {
+        self.spec_backend = Some(backend);
+        self
+    }
+
+    /// Wirea el backend in-process de finish/briefing (Cierre T1).
+    pub fn with_finish_backend(
+        mut self,
+        backend: std::sync::Arc<std::sync::Mutex<dyn handlers_finish::FinishBackend + Send>>,
+    ) -> Self {
+        self.finish_backend = Some(backend);
         self
     }
 
@@ -266,6 +322,11 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
         name: &str,
         _arguments: &serde_json::Value,
     ) -> Result<String, String> {
+        // Espejo de `_log_tool_call`: TODA llamada se registra en
+        // `_called_tools` ANTES de routear (el guard de gobernanza lo
+        // consume; ping incluido, como handle_call_tool en Python).
+        self.spec_state.called_tools.insert(name.to_string());
+
         // Ruta especial histórica: inline contra memory.sync_vault().
         if name == "cortex_sync_vault" {
             let count = match self.memory.as_mut() {
@@ -284,6 +345,10 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
                 if name == "cortex_ping" {
                     return Ok(self.ping_text());
                 }
+                // Espejo de `_log_tool_call`: la tool ya quedó registrada
+                // al inicio del dispatcher.
+                let arguments = _arguments;
+
                 // Familia sesiones (P12A-9): in-process cuando hay backend.
                 const SESSION_TOOLS: &[&str] = &[
                     "cortex_session_open",
@@ -303,9 +368,103 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
                     if let Some(b) = &self.sessions_backend {
                         let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
                         let project_root = std::env::current_dir().unwrap_or_default();
-                        return dispatch_session_tool(name, _arguments, &mut *guard, &project_root);
+                        return dispatch_session_tool(name, arguments, &mut *guard, &project_root);
                     }
                 }
+
+                // Familia search/context/sync_ticket (Cierre T1).
+                const SEARCH_TOOLS: &[&str] = &[
+                    "cortex_search",
+                    "cortex_search_vector",
+                    "cortex_context",
+                    "cortex_sync_ticket",
+                ];
+                if SEARCH_TOOLS.contains(&name) {
+                    if let Some(b) = &self.search_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        return match name {
+                            "cortex_search" => {
+                                handlers_search::search_text_dispatch(&mut *guard, arguments)
+                            }
+                            "cortex_search_vector" => {
+                                handlers_search::search_vector_text(&mut *guard, arguments)
+                            }
+                            "cortex_context" => {
+                                handlers_search::context_text(&mut *guard, arguments)
+                            }
+                            _ => handlers_search::build_sync_ticket_context(
+                                &mut *guard,
+                                arguments,
+                                &self.project_root,
+                            ),
+                        };
+                    }
+                }
+
+                // Familia docs/HU (Cierre T1).
+                const DOCS_TOOLS: &[&str] = &[
+                    "write_design_note_canonical",
+                    "cortex_write_doc",
+                    "cortex_import_hu",
+                    "cortex_get_hu",
+                ];
+                if DOCS_TOOLS.contains(&name) {
+                    if let Some(b) = &self.docs_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        return match name {
+                            "write_design_note_canonical" => {
+                                handlers_docs::write_design_note_text(&mut *guard, arguments)
+                            }
+                            "cortex_write_doc" => {
+                                handlers_docs::write_doc_text(&mut *guard, arguments)
+                            }
+                            "cortex_import_hu" => {
+                                handlers_docs::import_hu_text(&mut *guard, arguments)
+                            }
+                            _ => handlers_docs::get_hu_text(&mut *guard, arguments),
+                        };
+                    }
+                }
+
+                // Familia spec/proposal (Cierre T1).
+                if name == "cortex_create_spec" || name == "cortex_emit_proposal" {
+                    let now_epoch = (self.now_epoch)();
+                    if name == "cortex_emit_proposal" {
+                        return handlers_spec::emit_proposal_text(
+                            &mut self.spec_state,
+                            arguments,
+                            now_epoch,
+                        );
+                    }
+                    if let Some(b) = &self.spec_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        return handlers_spec::create_spec_text(
+                            &mut self.spec_state,
+                            &mut *guard,
+                            arguments,
+                            now_epoch,
+                        );
+                    }
+                }
+                if name == "cortex_self_review_note" {
+                    return handlers_spec::self_review_note_text(arguments);
+                }
+
+                // Familia finish/briefing (Cierre T1).
+                const FINISH_TOOLS: &[&str] =
+                    &["cortex_finish_session", "cortex_documenter_briefing"];
+                if FINISH_TOOLS.contains(&name) {
+                    if let Some(b) = &self.finish_backend {
+                        let mut guard = b.lock().map_err(|_| "poisoned state".to_string())?;
+                        return match name {
+                            "cortex_finish_session" => {
+                                handlers_finish::finish_session_text(&mut *guard, arguments)
+                            }
+                            _ => handlers_finish::documenter_briefing_text(&mut *guard, arguments),
+                        };
+                    }
+                }
+
                 // Fallo explícito documentado (patrón P6): el backend del
                 // handler aún no es nativo. NO se finge paridad conductual.
                 Err(format!(
