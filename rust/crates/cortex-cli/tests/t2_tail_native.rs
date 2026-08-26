@@ -100,6 +100,12 @@ fn ci_setup_and_pr_context_are_native() {
         .path()
         .join(".github/workflows/ci-pull-request.yml")
         .is_file());
+    // --ide pi en modo real (no dry): el bundle cortex-pi se copia al root
+    // (oráculo: SetupOrchestrator._install_ide → cortex.ide.inject).
+    assert!(
+        actual.path().join(".pi/settings.json").is_file(),
+        "setup full --ide pi debe inyectar la config de Pi en modo real"
+    );
     let out = cli(
         actual.path(),
         &[

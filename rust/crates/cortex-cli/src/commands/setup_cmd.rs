@@ -1,9 +1,13 @@
 //! In-process setup profiles using `cortex_setup` detectors and templates.
+use chrono::Utc;
 use clap::Parser;
 use cortex_setup::detector::ProjectContext;
+use cortex_setup::ide::adapters::all_adapters;
+use cortex_setup::ide::prompts::build_all_prompts;
+use cortex_setup::ide::IdeCtx;
 use cortex_setup::setup_templates as tpl;
 use std::io::Write as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn echo(s: &str) {
     let _ = writeln!(std::io::stdout(), "{s}");
@@ -103,6 +107,28 @@ fn summary(profile: &str, items: &[&str]) {
         echo(&format!("  ✓ {i}"));
     }
 }
+
+/// Porteo de `cortex.ide.inject(ide, project_root)`: inyecta perfiles y
+/// config MCP del adapter nativo en modo real (el oráculo Python lo hace
+/// en `SetupOrchestrator._install_ide` para agent/full con `--ide`).
+fn install_ide(root: &Path, ide: &str) -> Result<Vec<String>, String> {
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root.to_path_buf());
+    let ctx = IdeCtx {
+        project_root: root,
+        home: &home,
+        now: Utc::now(),
+    };
+    let adapter = all_adapters()
+        .into_iter()
+        .find(|a| a.name() == ide)
+        .ok_or_else(|| format!("Unknown IDE '{ide}'"))?;
+    let prompts = build_all_prompts(&ctx);
+    let mut made = adapter.inject_profiles(&ctx, &prompts)?;
+    made.extend(adapter.inject_mcp(&ctx)?);
+    Ok(made)
+}
 fn common(argv: &[String], profile: &str) -> bool {
     let a = match Common::try_parse_from(
         std::iter::once(profile.to_string()).chain(argv.iter().cloned()),
@@ -154,12 +180,16 @@ fn common(argv: &[String], profile: &str) -> bool {
     let root = std::env::current_dir().unwrap_or_default();
     let ctx = ProjectContext::detect(&root);
     let result = (|| {
-        let mut made = Vec::new();
+        let mut made: Vec<String> = Vec::new();
         if profile != "pipeline" {
-            made.extend(install_agent(&root, &ctx)?);
+            made.extend(install_agent(&root, &ctx)?.into_iter().map(str::to_string));
         }
         if profile != "agent" {
-            made.extend(install_pipeline(&root, &ctx)?);
+            made.extend(
+                install_pipeline(&root, &ctx)?
+                    .into_iter()
+                    .map(str::to_string),
+            );
         }
         if profile == "full" {
             write(
@@ -167,12 +197,22 @@ fn common(argv: &[String], profile: &str) -> bool {
                 ".cortex/webgraph/workspace.yaml",
                 "projects:\n  - path: .\n".into(),
             )?;
-            made.push("webgraph");
+            made.push("webgraph".into());
+        }
+        if let Some(ide) = &a.ide {
+            // Mismo orden que el oráculo: `_install_ide()` es el último paso
+            // de agent/full. E2E requiere `--non-interactive --ide <name>`
+            // para que el IDE quede configurado de verdad.
+            made.push(format!("IDE profiles injected ({ide})"));
+            made.extend(install_ide(&root, ide)?);
         }
         Ok::<_, String>(made)
     })();
     match result {
-        Ok(m) => summary(profile, &m),
+        Ok(m) => {
+            let items: Vec<&str> = m.iter().map(String::as_str).collect();
+            summary(profile, &items);
+        }
         Err(e) => err(&e),
     };
     true

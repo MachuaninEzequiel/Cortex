@@ -1079,14 +1079,16 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Detected task type (question-only | docs-only | fast-code | deep-code | security | ambiguous | noop). When supplied, the server sizes the retrieval envelope via cortex.context_enricher.budget_resolver. Unknown values fall back to fast-code defaults."
+                "description": "Detected task type (question-only | docs-only | fast-code | deep-code | security | ambiguous | noop). When supplied, the server sizes the retrieval envelope via cortex.context_enricher.budget_resolver. Unknown values fall back to fast-code defaults.",
+                "default": null
               },
               "complexity": {
                 "type": [
                   "string",
                   "null"
                 ],
-                "description": "Reserved for Phase 09 complexity tuning. Currently accepted but unused."
+                "description": "Reserved for Phase 09 complexity tuning. Currently accepted but unused.",
+                "default": null
               }
             },
             "required": [
@@ -1710,7 +1712,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "default": null
               },
               "adrs_created": {
                 "type": "array",
@@ -1737,7 +1740,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "default": null
               }
             }
           }
@@ -1753,7 +1757,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id to finish (default: active session)."
+                "description": "Session id to finish (default: active session).",
+                "default": null
               },
               "intent": {
                 "type": "string",
@@ -1770,6 +1775,7 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
+                "default": null,
                 "description": "Required when intent != 'auto'."
               }
             }
@@ -1786,7 +1792,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id (default: active session)."
+                "description": "Session id (default: active session).",
+                "default": null
               },
               "run_hooks": {
                 "type": "boolean",
@@ -1807,7 +1814,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id (default: active session)."
+                "description": "Session id (default: active session).",
+                "default": null
               },
               "status": {
                 "type": "string",
@@ -1823,7 +1831,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Optional absolute path to the persisted session note (returned by write_session_note_canonical)."
+                "description": "Optional absolute path to the persisted session note (returned by write_session_note_canonical).",
+                "default": null
               },
               "adrs_created": {
                 "type": "array",
@@ -1856,7 +1865,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "handoff",
                   "abandoned",
                   null
-                ]
+                ],
+                "default": null
               }
             }
           }
@@ -2008,7 +2018,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id (default: active)."
+                "description": "Session id (default: active).",
+                "default": null
               },
               "status": {
                 "type": [
@@ -2022,7 +2033,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "skipped",
                   "blocked",
                   null
-                ]
+                ],
+                "default": null
               }
             }
           }
@@ -2038,7 +2050,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id (default: active)."
+                "description": "Session id (default: active).",
+                "default": null
               },
               "task_id": {
                 "type": "string",
@@ -2074,7 +2087,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                 "type": [
                   "integer",
                   "null"
-                ]
+                ],
+                "default": null
               }
             },
             "required": [
@@ -2094,7 +2108,8 @@ ARTIFACT_KEYS=pr_number|title|body|author|source_branch|target_branch|commit_sha
                   "string",
                   "null"
                 ],
-                "description": "Session id (default: active)."
+                "description": "Session id (default: active).",
+                "default": null
               },
               "checkpoint_index": {
                 "type": "integer",

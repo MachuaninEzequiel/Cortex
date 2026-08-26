@@ -248,13 +248,36 @@ CASE_OUTPUT_FILE = {
 }
 
 
+# Anexo A.4 (firmado): `null ≡ ausente` aplica SOLO al envelope estructural
+# (protocolVersion, capabilities, serverInfo, instructions). Los payloads de
+# tools (tools, content, structuredContent) permanecen byte-a-byte: un null
+# genuino en un payload nunca debe enmascararse como "diferencia de transporte".
+STRUCTURAL_ENVELOPE_FIELDS = frozenset(
+    ("protocolVersion", "capabilities", "serverInfo", "instructions")
+)
+
+
 def _drop_nulls(value):
-    """Anexo A: rmcp omission is canonical; null and absent are equivalent."""
+    """Deep `null ≡ absent` para un subtree del envelope estructural."""
     if isinstance(value, dict):
         return {k: _drop_nulls(v) for k, v in value.items() if v is not None}
     if isinstance(value, list):
         return [_drop_nulls(v) for v in value]
     return value
+
+
+def _normalize_mcp(msg):
+    """Anexo A.4: normaliza null ≡ absent solo en los campos del envelope
+    estructural; todo lo demás (incluidos los payloads de tools) se conserva
+    byte-a-byte."""
+    if isinstance(msg, dict):
+        return {
+            k: _drop_nulls(v) if k in STRUCTURAL_ENVELOPE_FIELDS else _normalize_mcp(v)
+            for k, v in msg.items()
+        }
+    if isinstance(msg, list):
+        return [_normalize_mcp(v) for v in msg]
+    return msg
 
 
 def mcp_exchange(binary: list[str], root: Path) -> list[dict]:
@@ -276,7 +299,7 @@ def mcp_exchange(binary: list[str], root: Path) -> list[dict]:
             proc.stdin.write(json.dumps(request, ensure_ascii=False) + "\n")
             proc.stdin.flush()
             if "id" in request:
-                responses.append(_drop_nulls(json.loads(proc.stdout.readline())))
+                responses.append(_normalize_mcp(json.loads(proc.stdout.readline())))
         proc.stdin.close()
         proc.wait(timeout=30)
         if proc.returncode != 0:
