@@ -101,4 +101,4 @@
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
 | T3 autopilot service+cli+mcp×5 | ✅ | gates 1-5 arriba | `e089a25` |
-| T6 pantalla ratatui sesiones | ✅ | gate T6 (5 tests) + oráculo 2552 | pendiente |
+| T6 pantalla ratatui sesiones | ✅ | gate T6 (5 tests) + oráculo 2552 | `fa11473` |
