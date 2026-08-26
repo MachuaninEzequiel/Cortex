@@ -176,20 +176,27 @@ gates byte-parity, no textual.
 
 ### 9.2 Brecha restante tras P12 (NO deprecable — porte pendiente real)
 
-1. **Subcomandos CLI no-wireados**: search/context/session/next/docs/ci/
-   hu/pr/setup/vault/mcp… siguen passthrough Python. Wirearlos es pegamento
-   sobre crates existentes (patrón P12B-8).
-2. **Handlers MCP no-sesión** (search/context/sync_ticket/proposal/
-   autopilot/documenter-briefing/finish/write-doc): fallo explícito vigente;
-   DESBLOQUEADOS ahora por la firma wire-format §4.8 + layout P12B-1.
-3. **autopilot service/cli/mcp_tools** (~800): capa de decisión ya nativa
-   (P12B-5); falta orquestación sobre sesiones nativas.
-4. **pipeline stage Documentation**: stub hasta servicios de memoria
-   expuestos (P12B-6).
-5. **TUI rich vieja** session_tui+tui.core (~1081): reemplazo ratatui aún
-   no construido (decisión doc 09 §3.8 vigente).
-6. **32F+3E tests e2e rotos preexistentes**: limpiar ANTES de la baja
-   final (el oráculo roto no valida la última fase).
+> **Estado post-cierre (2026-08-26): los ítems 1–6 fueron resueltos por la
+> Obra 07 (cierre T1–T7).** El passthrough de `cortex-cli` quedó reducido al
+> rollback `CORTEX_PY=1` + deuda residual documentada (session task/hooks,
+> ide, docs validate/restore, hu import, remember/forget, webgraph
+> serve/doctor, autopilot doctor/install/uninstall). Ver §9.4.
+
+1. **Subcomandos CLI no-wireados**: ✅ RESUELTO. Wireados nativos
+   (commits T2/T2-cola `c210cef`→`16bb8b7`, gate `cierre_cli_golden`
+   39 casos + MCP stdio bounded exchange): search/context/stats/reindex/
+   next/session ×9/hu ×2/pr-context ×5/docs ×2/ci ×4/setup ×5/mcp-serve.
+2. **Handlers MCP no-sesión**: ✅ RESUELTO (T1 `21536f5`, gate
+   `cierre_mcp_golden` 51 escenarios byte-a-byte).
+3. **autopilot service/cli/mcp_tools** (~800): ✅ RESUELTO (T3-paralelo
+   `e089a25`, gate `cierre_autopilot_golden` + `cierre_autopilot_check`).
+4. **pipeline stage Documentation**: ✅ RESUELTO (T4 `65c5a40`, nativo
+   DocVerifier + SessionService + persister; gate `pipeline_golden_p12b`
+   3 casos Documentation + flows A–D).
+5. **TUI rich vieja**: ✅ RESUELTO. Pantalla ratatui + integración CLI
+   `session watch/tui` (T6-paralelo `fa11473` + T6-b `9d4de37`, 5 + 3 tests).
+6. **32F+3E tests e2e rotos preexistentes**: ✅ RESUELTO (T5 `f6fb828`,
+   oráculo 100% verde: 2552 passed, 0 failed, 0 errors).
 
 ### 9.3 Registro oficial de depreciación EJECUTADA (2026-08-25)
 
@@ -204,3 +211,36 @@ gates byte-parity, no textual.
 Regla aplicada: depreciación = marcado formal + plan de baja, NUNCA borrado
 de código vivo del oráculo. La baja física total es el punto 7 de §7 y
 requiere §9.2 resuelto + oráculo 100 % verde.
+
+### 9.4 Resumen oficial de CIERRE OBRA 07 (2026-08-26)
+
+**OBRA 07 — CIERRE COMPLETO.** Los seis ítems de §9.2 fueron resueltos por
+el cierre T1–T7; el oráculo quedó 100% verde. Métricas finales:
+
+- Oráculo Python: **2552 passed, 21 skipped, 0 failed, 0 errors** (primera
+  vez verde desde la recatorización; T5 `f6fb828`).
+- CLI nativo wireado: search, context, stats, reindex, next, session ×9
+  (current/checkpoint/switch/diff/abandon/list/show/watch/tui), hu ×2,
+  pr-context ×5, docs ×2, ci ×4, setup ×5, mcp-server/mcp-serve
+  (`cierre_cli_golden` 39 casos + MCP stdio bounded exchange).
+- Familias MCP in-process: search/context/sync_ticket, write_doc ×11 + design
+  + HU, spec/proposal/governance/gap, finish/briefing (T1 `21536f5`, 51
+  escenarios).
+- Autopilot service + cli + tools MCP ×5 (T3-paralelo `e089a25`).
+- Pipeline Documentation nativo (T4 `65c5a40`, P5 persister/reconstructor).
+- Pantalla sesiones ratatui + `session watch/tui` (T6 `fa11473` + T6-b
+  `9d4de37`).
+- Cold start release N=20: livianos 2–9 ms (<100 ms); memoria/ONNX
+  (pr-context store/search/full) ~308–366 ms (reporte honesto, no
+  debilitado).
+
+Passthrough residual post-cierre (deuda documentada, NO falla del cierre):
+session task/hooks, ide, docs validate/restore, hu import, remember/forget,
+webgraph serve/doctor, autopilot doctor/install/uninstall. El brief T2-cola
+prohibió expandir sin requisito vinculante; estos leaves quedan para el
+paquete separado de baja definitiva de Python.
+
+Registros de la sesión: `progreso-cierre.md` (stream principal) y
+`progreso-cierre-paralelo.md` (stream paralelo). Este archivo ("lo que
+todavía depende de Python") debe leerse junto a `ESTADO-ACTUAL.md` y
+`HANDOFF.md`, actualizados en T7.

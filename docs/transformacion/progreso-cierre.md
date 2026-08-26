@@ -378,4 +378,44 @@ tocan Python; sin riesgo detectado).
 | T5 oráculo 100% verde | ✅ | Suite completa `-p no:randomly`: **2552 passed, 21 skipped, 0 failed, 0 errors** (128s) — primera vez verde desde la recatorización. Commit de tests `f6fb828`. Detalle de cambios por archivo abajo | `f6fb828` |
 | T6 pantalla ratatui | ✅ | `cargo test -p cortex-tui` sessions_screen (5 tests) — datos == session list --json, render <50ms | `fa11473` | |
 | T6-b integración CLI watch/tui | ✅ | Brazo nativo `watch`/`tui` en `session_cmd.rs::run()` (mismo entrypoint): cortex-tui + ratatui 0.30 como deps de cortex-cli, `--status` mapeado a `SessionStatus`, `SessionsScreenData::from_service` + loop ratatui read-only (tick ~250 ms, rebuild del snapshot por tick, salida con q/Ctrl+C, restauración RAII incluso en panic); no-TTY (CI) ⇒ snapshot único rc 0 + aviso breve. TDD `t6b_session_watch.rs` ×3 RED→GREEN (RED: `session watch` caía al passthrough rc 127); asserts sobre ids == `session list --json`, marca `*` de la activa y `(no sessions on disk)` — fixtures reales en tmp + SessionService real. Gates: cortex-cli 49/49, cortex-tui 16/16 (5 sessions_screen verdes), `cargo fmt --check` y `cargo clippy -p cortex-cli --all-targets -- -D warnings` limpios; detalle en "Cierre T6-b" arriba | `9d4de37` | |
-| T7 refresco documental | ⏳ | | |
+| T7 refresco documental | ✅ | `ESTADO-ACTUAL.md` (fases P0–P12+cierre, deuda residual documentada, próximos pasos post-cierre), `HANDOFF.md` (nuevo §"HANDOFF ACTIVO" 2026-08-26 + §7 métricas de cierre con subcomandos/familias/cold start + registros), `12-AUDITORIA-PYTHON-RESIDUAL.md` §9.2 (ítems 1–6 marcados resueltos) + §9.4 (resumen oficial OBRA 07 CIERRE COMPLETO con métricas, passthrough residual, ambos registros). Anuncio "OBRA 07 — CIERRE COMPLETO" con métricas verificadas (oráculo 2552/21/0/0 bajo lock) | docs(obra07 cierre T7) |
+
+---
+
+# OBRA 07 — CIERRE COMPLETO
+
+**2026-08-26.** T1–T7 completas y gateadas; oráculo 100% verde; passthrough
+reducido a `CORTEX_PY=1` + deuda residual documentada.
+
+## Métricas verificadas
+
+- **Oráculo Python** (bajo lock `.cortex/heavy.lock`, `-p no:randomly`):
+  **2552 passed, 21 skipped, 0 failed, 0 errors** (177s) — primera vez
+  100% verde desde la recatorización.
+- **CLI nativo wireado** (gate `cierre_cli_golden` 39 casos + MCP stdio
+  bounded exchange, byte-parity vs CLI Python REAL): search, context, stats,
+  reindex, next, session ×9, hu ×2, pr-context ×5, docs ×2, ci ×4, setup ×5,
+  mcp-server/mcp-serve. Cold start N=20: livianos 2–9 ms (<100 ms);
+  memoria/ONNX ~308–366 ms (reporte honesto).
+- **Familias MCP in-process** (gate `cierre_mcp_golden`, 51 escenarios).
+- **Autopilot** service+cli+mcp×5 (gate `cierre_autopilot_golden` +
+  `cierre_autopilot_check`).
+- **Pipeline Documentation** nativo (gate `pipeline_golden_p12b`, 3 casos).
+- **Pantalla sesiones ratatui** + `session watch/tui` (5 + 3 tests).
+
+## Passthrough residual (deuda documentada, NO falla del cierre)
+
+`session task`/`hooks`, `ide`, `docs validate/restore/list-backups`,
+`hu import`, `remember/forget/init`, `webgraph serve/dctor`,
+`autopilot doctor/install/uninstall`. Brief T2-cola prohibió expandir sin
+requisito vinculante. Quedan para el paquete separado de baja definitiva.
+
+## Registros de la sesión
+
+- `progreso-cierre.md` (stream principal: T2-cola, T4, T6-b)
+- `progreso-cierre-paralelo.md` (stream paralelo: T3, T6)
+- Actualizados: `ESTADO-ACTUAL.md`, `HANDOFF.md`,
+  `12-AUDITORIA-PYTHON-RESIDUAL.md` §9.2 + §9.4
+
+El paso siguiente (baja definitiva de Python) es un **paquete separado**,
+fuera de esta Obra.

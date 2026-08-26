@@ -1,34 +1,42 @@
-> **HANDOFF ACTIVO (2026-08-24, cierre dual-stream + verificación integral).**
-> Obra 07: P0–P11 ✅ COMPLETADAS · P12 ABIERTA. Si algo acá contradice
-> historia vieja de este archivo, MANDA ESTA SECCIÓN.
+> **HANDOFF ACTIVO (2026-08-26, cierre completo OBRA 07).**
+> Obra 07: P0–P12 ✅ COMPLETADAS + cierre T1–T7 ✅ · **OBRA 07 — CIERRE
+> COMPLETO**. Si algo acá contradice historia vieja, MANDA ESTA SECCIÓN.
+> El paso siguiente (baja definitiva de Python) es un paquete separado,
+> fuera de esta Obra.
 
 ## 0. Contexto en 30 segundos
 
 Cortex (`cortex-memory` v0.7.0): memoria cognitiva híbrida + gobernanza.
 Programa: migración TOTAL Python→Rust (Obra 07, plan maestro
-`docs/transformacion/08-MIGRACION-TOTAL-RUST.md`). Suite Python = ORÁCULO
-(2455 passed, 18 skipped). Paridad-como-contrato en todo.
+`docs/transformacion/08-MIGRACION-TOTAL-RUST.md`). **Obra 07 EN CIERRE
+COMPLETO** (P0–P12 + cierre T1–T7). Suite Python = ORÁCULO (2552 passed,
+21 skipped, 0 failed, 0 errors). Paridad-como-contrato en todo. Lo que sigue
+(baja definitiva de Python) es un paquete separado.
 
 ## 1. Estado por fases
 
-P0–P11 ✅ (detalle y gates: `ESTADO-ACTUAL.md`). P11 quedó PARCIAL:
-plugin CI ✅ (`ci_golden_p11.py`, commit `0707f08`); restan pr_context,
-hu/workitems, tutor, review_knowledge.
+P0–P12 ✅ + cierre T1–T7 ✅ (detalle y gates: `ESTADO-ACTUAL.md`). El
+CLI nativo clap tiene wireados: search/context/stats/reindex/next/session
+×9/hu ×2/pr-context ×5/docs ×2/ci ×4/setup ×5/mcp-serve; MCP handlers
+no-sesión (T1); autopilot service+cli+mcp×5 (T3); pipeline Documentation
+real (T4); pantalla ratatui + `session watch/tui` (T6/T6-b). Verificación:
+workspace tests + clippy/fmt, suite Python **2552 passed, 21 skipped**.
 
-## 2. LÉEME ANTES DE TOCAR NADA — deuda real
+## 2. LÉEME ANTES DE TOCAR NADA — estado post-cierre
 
-**NO es "todo Rust" todavía.** El comando `cortex` del usuario sigue siendo
-Python detrás de la fachada passthrough `cortex-cli` (decisión G6). El MCP
-nativo tiene catálogo/ruteo congelados pero handlers "no nativo" salvo ping.
-Quedan ~22k líneas Python en dominios secundarios. EL MAPA COMPLETO,
-con LOC, dependencias y orden de ataque sugerido, está en:
+**La Obra 07 está en cierre completo.** El CLI nativo `cortex-cli` tiene
+wireados la mayoría de los subcomandos (ver §1); el passthrough residual
+quedó reducido a `CORTEX_PY=1` (rollback) más leaves fuera del inventario
+T2-cola (brief prohibió expandir sin requisito vinculante):
 
-    docs/transformacion/09-DEUDA-MIGRACION-PYTHON.md
+- `session task/hooks`, `ide`, `docs validate/restore/list-backups`,
+  `hu import`, `remember/forget/init/inject`, `webgraph serve/doctor`,
+  `autopilot doctor/install/uninstall`.
 
-Léelo antes de planear cualquier tarea de migración. Orden resumido §4:
-episodic.append/reindex → hu+pr_context → mcp handlers → workspace/layout →
-doctor → enterprise → webgraph axum → CLI clap nativo → pipeline/autopilot →
-baja definitiva de Python.
+Son deuda abierta documentada (ver `ESTADO-ACTUAL.md` §"deuda residual"),
+no falla del cierre. La auditoría exhaustiva pre-cierre vive en
+`docs/transformacion/12-AUDITORIA-PYTHON-RESIDUAL.md` §9.2 (con ítems
+resueltos marcados post-cierre).
 
 ## 3. Cómo verificar (SIEMPRE)
 
@@ -72,10 +80,41 @@ reglas de memoria: un modelo residente por vez, batches ≤64, caché jamás en
 ## 6. Deudas/decisiones pendientes del dueño
 
 GPU para ≥5× e2e · release 0.7.0 (CHANGELOG normalizado) · ventana pct_motor
-(≥2 semanas uso real) · wire-format MCP (ver §4.8) · tutor: ¿migrar o
-reemplazar por ratatui/no-migrar? · limpieza de untracked (progress.md scratch,
-uv.lock, runtime jsonl/json) cuando corresponda.
+(≥2 semanas uso real) · tutor: ¿migrar o reemplazar por ratatui/no-migrar? ·
+limpieza de untracked (progress.md scratch, uv.lock, runtime jsonl/json)
+cuando corresponda. Wire-format MCP: RESUELTO (ver §4.8). Passthrough
+residual post-cierre: ver §2 (deuda documentada, decisión del dueño para el
+paquete de baja definitiva separado).
 
+## 7. CIERRE OBRA 07 — métricas y registros (2026-08-26)
+
+**OBRA 07 — CIERRE COMPLETO.** T1–T7 gateados; oráculo 100% verde.
+
+Métricas:
+- Suite Python ORÁCULO: **2552 passed, 21 skipped, 0 failed, 0 errors**
+  (primera vez verde desde la recatorización).
+- Subcomandos CLI wireados nativos: search, context, stats, reindex, next,
+  session ×9 (current/checkpoint/switch/diff/abandon/list/show/watch/tui),
+  hu ×2 (list/show), pr-context ×5 (capture/store/search/generate/full),
+  docs ×2 (search/migrate), ci ×4 (validate-pr/open-review-session/
+  report-checkpoint/close-review-session), setup ×5 (agent/pipeline/
+  full/webgraph/enterprise), mcp-server/mcp-serve.
+- Familias MCP in-process: search/context/sync_ticket, write_doc ×11 + design
+  + HU, spec/proposal/governance/gap, finish/briefing (T1, 51 escenarios).
+- Autopilot service + subapp cli + tools MCP ×5 (T3-paralelo, 236 líneas).
+- Pipeline Documentation stage nativa conectada al persister/reconstructor
+  (P5), con gate `pipeline_golden_p12b` (3 casos + flows A–D).
+- Pantalla sesiones ratatui nativa + integración `session watch/tui`
+  (T6/T6-b), 5 + 3 tests.
+- Cold start release N=20: comandos livianos 2–9 ms (<100 ms); comandos con
+  memoria/ONNX (pr-context store/search/full) ~308–366 ms reporte honesto.
+
+Registros de la sesión (fuentes de verdad):
+- `docs/transformacion/progreso-cierre.md` (stream principal T2/T4/T6-b)
+- `docs/transformacion/progreso-cierre-paralelo.md` (stream paralelo T3/T6)
+
+El paso siguiente (baja definitiva de Python, paquete separado) está fuera
+de esta Obra.
 ---
 
 
