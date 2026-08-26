@@ -163,7 +163,45 @@ y (c) deja al trunk en el mejor estado posible si la sesión muere.
 T2/T3/T4 quedan con fundación puesta (backends in-process de T1 reusables
 por el CLI/autopilot/pipeline) y se ejecutan en la continuación.
 
-## Cola de tareas
+## Estado al cierre de esta sesión (2026-08-25)
+
+**Completadas y gateadas:** T1 (commit `21536f5`) y T5 (`f6fb828`).
+Punto de partida de la próxima sesión: leer ESTE archivo + `git log --oneline -12`.
+
+**Verificación final de la sesión (re-run):**
+- Suite Python completa `-p no:randomly`: **2552 passed, 21 skipped, 0F, 0E**
+- `cargo test -p cortex-mcp` 25 ✅ · clippy `-D warnings` ✅ · fmt ✅
+- Gate T1: build/verify + checker byte-parity `✅ PARIDAD CIERRE T1`
+
+**Cómo continuar T2 (fundación ya validada):**
+1. Recrear `cortex-cli/src/memory.rs` (glue `_load_memory`): layout discover →
+   config.yaml → `SemanticIndex::build(vault)` + JSONL episódico vía
+   `resolve_episodic_persist_dir` + `OnnxEmbedder::open(default_model_dir())`.
+   El patrón completo está en `cortex-webgraph-server/src/sources.rs`.
+2. Presentaciones search/context ya existen nativas (presenter.rs P12A-7,
+   models.rs to_json); el wire-format de los handlers T1 es reutilizable.
+3. Superficie REAL del CLI a wirear (verificada contra `cortex session --help`
+   etc.): session{current,list,show,diff,switch,checkpoint,abandon,task,hooks},
+   next (--json con elapsed_ms normalizable {{ELAPSED}}), vault stats
+   (= comando `stats` oculto), reindex (cli/embedding.py), docs search/migrate,
+   ci {validate-pr,open-review-session,report-checkpoint,close-review-session},
+   hu {import,list,show}, pr-context ×5, setup
+   {agent,pipeline,full,webgraph,enterprise} con --non-interactive, mcp-serve.
+4. Gate: crear `bench/parity/cierre_cli_golden.py` (≥2 casos por subcomando,
+   texto+--json, vs CLI Python real; normalizar {{ROOT}}/{{TS}}/{{ELAPSED}})
+   + medición cold start release N=20.
+
+**T3/T4:** los autopilot-tools MCP ×5 entran tras T3 (requiere
+AutopilotService nativo sobre SessionService); pipeline Documentation stage
+se conecta al persister nativo (P5) — ambos con gates propios según plan.
+
+**T6 (opcional):** pendiente de decisión; la smoke e2e del watch rich sigue
+verde con pty, así que no urge hasta la baja de Python.
+
+**No anunciado "OBRA 07 — CIERRE COMPLETO"**: queda condicionado a T2-T4
+(+T6 hecha-o-deuda). HANDOFF.md / ESTADO-ACTUAL.md / doc 12 §9.2 se
+actualizan en T7 cuando el cierre esté completo — este archivo es la única
+fuente de verdad de la sesión.
 
 | Tarea | Estado | Evidencia | Commit |
 |---|---|---|---|
