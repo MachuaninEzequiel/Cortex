@@ -455,6 +455,12 @@ fn check_hooks(layout: &WorkspaceLayout) -> DoctorCheck {
 }
 
 /// 5. `last_finish` — último `SessionRecord` en estado sensible.
+///
+/// Máximo por `opened_at` (ISO-8601; orden lexicográfico = cronológico,
+/// ambos lados listan por nombre de archivo ordenado). EMPATE EXACTO ⇒ gana
+/// el PRIMERO en orden de lista, igual que `max(records, key=lambda r:
+/// r.opened_at)` de Python (doctor.py:123), que devuelve el primer máximo:
+/// el fold usa `>=` a propósito (con `>` ganaría el último del empate).
 fn check_last_finish(layout: &WorkspaceLayout) -> DoctorCheck {
     let storage = SessionStorage::new(layout.sessions_dir());
     let records = match storage.list_all() {
@@ -469,7 +475,10 @@ fn check_last_finish(layout: &WorkspaceLayout) -> DoctorCheck {
         }
     };
     let Some(latest) = records.iter().reduce(|acc, next| {
-        if acc.opened_at > next.opened_at {
+        // `>=` (no `>`): empate exacto de `opened_at` ⇒ gana `acc`, el
+        // primero en orden de lista — primer máximo, como `max(key=...)`
+        // de Python (con `>` ganaría `next`, el último del empate).
+        if acc.opened_at >= next.opened_at {
             acc
         } else {
             next

@@ -186,6 +186,55 @@ fn doctor_explicit_project_root_from_other_cwd() {
     assert!(s.contains("ok: True\n"));
 }
 
+#[test]
+fn doctor_last_finish_tie_keeps_first_like_python_max() {
+    // Paridad de empate del check `last_finish`: el oráculo hace
+    // `latest = max(records, key=lambda r: r.opened_at)` (doctor.py) y
+    // Python devuelve el PRIMER máximo ante opened_at idénticos; el nativo
+    // replica eso con un fold `>=` (no `>`, que ganaría el último). El
+    // orden de lista es determinista en ambos lados (archivos ordenados
+    // por nombre) ⇒ con `2026-08-25_aa-first.yaml` <
+    // `2026-08-25_bb-second.yaml` (slug sin guión bajo: patrón
+    // `YYYY-MM-DD_<slug>`) y el mismo opened_at, el vencedor debe ser la
+    // sesión del archivo `aa-first` (id "2026-08-25_aa-first"), no la del
+    // `bb-second` ("2026-08-25_bb-second"). Con `>` el test fallaría.
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".cortex/sessions")).unwrap();
+    std::fs::write(root.join(".cortex/workspace.yaml"), "layout_version: 2\n").unwrap();
+    std::fs::write(
+        root.join(".cortex/config.yaml"),
+        "semantic:\n  vault_path: vault\n",
+    )
+    .unwrap();
+    for (file, sid) in [
+        ("2026-08-25_aa-first.yaml", "2026-08-25_aa-first"),
+        ("2026-08-25_bb-second.yaml", "2026-08-25_bb-second"),
+    ] {
+        let yaml = SESSION_YAML.replace("2026-08-25_demo", sid);
+        std::fs::write(root.join(".cortex/sessions").join(file), yaml).unwrap();
+    }
+    let out = cli(
+        root,
+        &[
+            "autopilot",
+            "doctor",
+            "--project-root",
+            &root.display().to_string(),
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr: {}", stderr(&out));
+    let s = stdout(&out);
+    assert!(
+        s.contains("Session 2026-08-25_aa-first still OPEN — finish or abandon when ready"),
+        "stdout: {s}"
+    );
+    assert!(
+        !s.contains("Session 2026-08-25_bb-second still OPEN"),
+        "empate debe ganar el primer máximo (aa-first), stdout: {s}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // doctor — --json (payload EXACTO del oráculo)
 // ---------------------------------------------------------------------------

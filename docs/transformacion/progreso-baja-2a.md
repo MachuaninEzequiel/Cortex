@@ -81,6 +81,28 @@ HookInstaller nativo, AutopilotService nativo) + fixtures tmp.
    (doctor.py `_check_service_construction` → `DoctorCheck(name="service")`),
    no `service_construction` como sugería el brief. El payload EXACTO del
    oráculo manda (`"name": "service"`).
+4. **Formato de salida texto del doctor (divergencia implícita)**: el
+   brief pedía `[OK]/[FAIL] name: detail`; el oráculo real
+   (`cli.py::_emit`, cli.py:65) emite líneas `key: value` planas sobre el
+   payload (`project_root`, `ok`, `checks` con `str()` de Python,
+   `warnings`). El nativo sigue al oráculo byte-a-byte (el gate así lo
+   exige): las `[OK]/[FAIL]` nunca existieron en el CLI Python real.
+
+### Fix round 1/5 (2026-08-27) — Finding A-I-1 + divergencia #4
+
+El review aprobó la implementación con UNA finding Important:
+
+- **`last_finish` tie-break**: el reduce usaba `>` (empate ⇒ gana el
+  ÚLTIMO); el oráculo (`max(records, key=lambda r: r.opened_at)`) gana el
+  PRIMERO. Fix de una línea: `>` → `>=` en `commands/autopilot.rs`
+  (semántica primer-máximo documentada en el doc-comment de
+  `check_last_finish`).
+- **Test nuevo** `doctor_last_finish_tie_keeps_first_like_python_max`
+  (dos archivos de sesión con idéntico `opened_at`; orden determinista por
+  nombre de archivo en ambos lados ⇒ gana `aa-first`, no `bb-second`).
+  RED-checkeado contra `>` (falla) → GREEN con `>=`.
+- **Divergencia #4** documentada arriba (formato texto `key: value` del
+  oráculo, no `[OK]/[FAIL]`).
 
 ## Gate — `bench/parity/cierre_leaves2_a_golden.py`
 
