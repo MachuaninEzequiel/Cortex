@@ -1,41 +1,151 @@
 <div align="center">
   <br />
-    <a href="https://github.com/MachuaninEzequiel/Cortex" target="_blank">
-      <img src="assets/logo.png" alt="Cortex Logo" width="420">
-    </a>
+  <a href="https://github.com/MachuaninEzequiel/Cortex" target="_blank">
+    <img src="assets/logo.png" alt="Cortex Logo" width="380" />
+  </a>
   <br />
 
   <h1>CORTEX</h1>
 
   <p>
-    <strong>Memoria cognitiva híbrida, gobernanza y un brain de IA local — para tus agentes y tu equipo.</strong>
+    <strong>Memoria híbrida, gobernanza y un brain de IA local — para tus agentes y tu equipo.</strong>
   </p>
 
   <p>
     <a href="README.md">🇬🇧 English</a> · <a href="README.es.md">🇪🇸 Español</a>
   </p>
-
-  <p>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python 3.11+" /></a>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/Rust-capa%20nativa%20(opt--in)-orange.svg" alt="Capa nativa Rust" /></a>
-    <a href="https://github.com/MachuaninEzequiel/Cortex"><img src="https://img.shields.io/badge/tests-2400%2B%20verdes-brightgreen.svg" alt="tests" /></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
-  </p>
 </div>
 
 ---
 
-Cortex le da a tus agentes de IA **memoria persistente** (episódica +
-semántica), un **ciclo de vida disciplinado** (specs → trabajo verificado →
-sesiones documentadas) y — algo único — un **asistente local con LLM real**
-que consulta tu proyecto sin mutarlo jamás. Todo corre en tu máquina: sin API
-keys para la experiencia central.
+## Qué es Cortex
 
-## 🧠 Conocé `cortex-brain`
+Cortex es una **capa de memoria y gobernanza para agentes de IA**. Vive en
+tu repositorio y les da a todos los agentes que uses — Claude Code, Cursor,
+Codex, OpenCode, Pi o cualquier herramienta con MCP — el mismo contexto
+persistente, el mismo flujo disciplinado y el mismo cierre verificable que
+tiene un buen equipo de ingeniería: *specs → trabajo verificado → sesiones
+documentadas*.
 
-Un asistente nativo (Rust + llama.cpp) que conoce **este** proyecto. Responde
-preguntas, ejecuta tools de solo lectura y — si quiere ejecutar algo — te lo
-tiene que pedir:
+Todo corre **en tu máquina**. La experiencia central no necesita API keys,
+ni nube, ni telemetría: un binario nativo (Rust), tu vault como markdown y
+— opcionalmente — un LLM local que habla el idioma de tu proyecto.
+
+## Por qué existe
+
+Los agentes de IA son potentes y amnésicos. Cada sesión arranca de cero:
+olvidan decisiones, pierden contexto entre tareas y rara vez dejan evidencia
+verificable de lo que hicieron. Cuantos más agentes usás, peor la
+fragmentación.
+
+Cortex resuelve las tres fallas que vuelven poco confiable el trabajo con
+agentes a escala:
+
+| Falla | Qué hace Cortex |
+|---|---|
+| **Amnesia** | Las sesiones persisten cada decisión y resultado como memoria híbrida (episódica + semántica), consultable en dos idiomas. |
+| **Sin disciplina** | Cada unidad de trabajo es una Sesión spec-driven con checkpoints, quality gates y cierre verificable. "Listo" significa *probado*, no *dicho*. |
+| **Sin contexto compartido** | El mismo vault, las mismas sesiones y las mismas reglas los leen todos los agentes vía CLI y MCP — una sola fuente de verdad por proyecto. |
+
+## La vida dentro de Cortex
+
+Una Sesión es la unidad de trabajo. Abre desde una spec, registra
+checkpoints mientras avanzás y se cierra solo cuando la verificación pasa:
+
+```text
+abrir una sesión  →  cortex session current / checkpoint / task
+hacer el trabajo  →  tu agente, tu IDE, tu forma
+cerrarla          →  cortex finish            (corren los verification hooks)
+¿y ahora?         →  cortex next              (lo sugiere el Action Engine)
+```
+
+El **Action Engine** es la capa proactiva de Cortex: lee el estado del
+proyecto y sugiere el siguiente paso útil — validar docs, re-indexar el
+vault, aprender un tópico — cada uno con costo, score y efecto concreto:
+
+![Action Engine](assets/shots/action-engine.png)
+
+## Tres modos operativos
+
+Cada sesión corre en uno de tres modos, inferidos automáticamente. Describen
+**cómo llegan los checkpoints** a la sesión:
+
+| Modo | Cómo se registra el progreso |
+|---|---|
+| **Managed** | Un skill orquestador verifica cada paso antes de avanzar. |
+| **Observed** | Tu IDE emite checkpoints por hooks (Claude Code, Cursor, Pi, OpenCode…). |
+| **BYO** | Traé tu propio workflow; el reconstructor sintetiza la sesión desde git diff + checkpoints. |
+
+## Interfaces
+
+Cortex no es una herramienta monolítica — es una familia de superficies
+alrededor de un mismo núcleo nativo:
+
+| Superficie | Formato |
+|---|---|
+| **CLI** | 25+ familias de comandos (`session`, `docs`, `ci`, `setup`, `search`, `context`, `next`, `hu`, `pr-context`, `reindex`, `ide`…). Texto y `--json`. |
+| **TUI** | Interfaz de terminal ratatui: splash, home y pantalla de sesiones. |
+| **Servidor MCP** | `cortex mcp-serve` expone 30+ tools canónicas a cualquier cliente MCP. |
+| **Integración IDE** | 11 adapters validados instalan hooks, prompts y skills en tu editor/agente. |
+| **Brain** | El asistente local de IA (solo lectura por diseño). |
+
+### La TUI
+
+![Splash](assets/shots/splash-full.png)
+
+![Home](assets/shots/home-es.png)
+
+![Sesiones](assets/shots/sessions-real.png)
+
+### El CLI
+
+```text
+cortex session list      sesiones en disco, tabla viva
+cortex next              sugerencias del Action Engine
+cortex search "auth"     retrieval híbrido episódico + semántico
+cortex context           bundle de contexto enriquecido para la tarea
+cortex doctor            chequeo de salud de gobernanza
+cortex tutor             guía interactiva offline
+```
+
+### El servidor MCP
+
+Un comando expone Cortex a cualquier agente con MCP:
+
+```text
+cortex mcp-serve   →  initialize / list_tools / call_tool por stdio
+```
+
+Las tools se agrupan por familia: **búsqueda** (`cortex_search`,
+`cortex_search_vector`, `cortex_context`), **spec y docs**
+(`cortex_create_spec`, `cortex_write_doc`, `cortex_emit_proposal`),
+**sesiones** (`cortex_session_open/checkpoint/close`, `cortex_save_session`,
+`cortex_finish_session`), **revisión** (`cortex_self_review_note`,
+`cortex_review_checkpoint`, `cortex_verify_session_claims`), **work items**
+(`cortex_import_hu`, `cortex_get_hu`) y **autopilot**
+(`cortex_autopilot_start/preflight/checkpoint/finish/status`).
+
+## Sus partes
+
+| Parte | Rol |
+|---|---|
+| `rust/crates/cortex-app` | Servicios núcleo: sesiones, documenter, retrieval, quality gates. |
+| `rust/crates/cortex-cli` | El CLI nativo — salida texto y `--json` para cada comando. |
+| `rust/crates/cortex-tui` | Pantallas ratatui (splash, home, sesiones). |
+| `rust/crates/cortex-mcp` | El servidor MCP con payloads de tools canónicos. |
+| `rust/crates/cortex-actions` | El Action Engine (scheduler, registry, learning, signals). |
+| `rust/crates/cortex-setup` | Bootstrap, templates, adapters de IDE y hooks. |
+| `rust/crates/cortex-brain` | El asistente local de IA (llama.cpp, feature opcional). |
+| resto del workspace | embed, webgraph, pipeline, doctor, tutor, enterprise, config. |
+
+## IAs locales
+
+Cortex trae un asistente local y una capa opcional con modelo:
+
+- **cortex-brain** — un asistente nativo (Rust + llama.cpp) que conoce
+  *este* proyecto. Responde preguntas de solo lectura y propone el comando
+  exacto para todo lo demás. Las mutaciones son imposibles por diseño:
+  propone, y corrés vos.
 
 ```text
 🧠 cortex-brain — backend: llama.cpp (GGUF)
@@ -44,260 +154,36 @@ Vos: ¿cuántas notas hay en el vault?
 🔧 sugerencia del modelo [read]: vault.stats
 ¿Ejecutás 'vault.stats' ? [s/N]: s
 Vault: 128 notas .md
-
-Vos: borrá los archivos temporales
-El brain NUNCA ejecuta mutaciones: propone el comando exacto.
-  → cortex vault.reindex --dry-run   (revisalo y corrélo vos)
 ```
 
-| | |
+- Sin modelo, degrada a un router determinista (cero tokens).
+- Los embedders son **por idioma**: español (`multilingual-e5-large`,
+  MRR@10 0.96) e inglés (`MiniLM-L6-v2`, MRR@10 1.0), elegidos por
+  frontmatter o heurística.
+
+## Addons e integraciones
+
+Cortex se adapta a los stacks que ya usás:
+
+| Addon | Qué instala |
 |---|---|
-| **100% local** | GGUF vía llama.cpp (`LFM2.5-1.2B-Instruct`, ~730 MB). Sin nube, sin keys. |
-| **Propone, nunca muta** | Las mutaciones son imposibles por diseño: el registro de tools no tiene tools destructivas; las acciones vuelven como comandos exactos para que los corras **vos**. |
-| **Fallback determinista** | Sin modelo, el router sigue funcionando (`cortex-brain`, cero tokens). |
-| **Bilingüe** | UI en español o inglés (`ui.language`). |
-| **Ventana dedicada** | `cortex-brain --window` abre su propia terminal. |
+| **11 adapters de IDE/agente** | Claude Code, Codex, OpenCode, Pi, Cursor, Windsurf, VS Code, Claude Desktop, Hermes, Antigravity… — cada uno con hooks validados, prompts y skills de agente. |
+| **Skills** | Templates de skill de agente para el workflow orquestador (el modo *Managed*). |
+| **Plugin CI** | `cortex ci validate-pr` y comandos de review-session para pipelines de PR. |
+| **Pipeline** | Un pipeline nativo con stages de security/lint/test/documentation. |
 
-## Por qué Cortex
+## Idioma
 
-- **La amnesia de sesión es cara.** Los agentes olvidan decisiones, incidentes
-  y contexto entre tareas. Cortex los persiste como memoria consultable.
-- **La calidad de retrieval en español importa.** Embeddings por idioma,
-  medidos con nuestra propia suite: MRR@10 en español **0.88 → 0.96** vs el
-  default english-only; en inglés queda **1.0** sobre nuestro dataset.
-- **La confianza necesita verificación.** El trabajo se cierra con checkpoints
-  y verification hooks ejecutables — "listo" significa *probado*, no *dicho*.
-- **Tu notebook alcanza.** La CLI completa corre en ~100 MB de RAM; lo pesado
-  es opt-in y está medido (ver [Hardware](#hardware-números-honestos)).
+UI y salidas son bilingües — español por defecto, inglés a demanda
+(`ui.language` en config, o `LANG=en`). La calidad de retrieval está medida
+por idioma y es deliberadamente alta en ambos.
 
-## Instalación
+## Estado
 
-Requisitos: toolchain de Rust (solo para build) · Linux/macOS/Windows.
+Cortex es **100% nativo Rust** desde la transformación 2026-08: el CLI ya no
+delega en Python, cada comando que el oráculo expone está wireado, y el
+paquete Python sobrevive solo como oráculo de paridad congelado del CI.
+Versión: **0.7.0**.
 
-### Recomendado: instalación por binario (un CLI global, cero contaminación de proyectos)
-
-Cortex es una herramienta de gobernanza transversal: **un** comando global,
-mientras que los datos quedan por proyecto (`config.yaml`, `vault/`,
-`.memory/` viven dentro de cada repo). El CLI es **100% nativo (Rust)** —
-instalá el binario compilado:
-
-```bash
-# Desde un clone de este repositorio:
-git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
-cargo install --path rust/crates/cortex-cli    # → ~/.cargo/bin/cortex-cli
-
-# …o compilá un release y copiá el binario donde quieras:
-cargo build --release --manifest-path rust/Cargo.toml -p cortex-cli
-cp rust/target/release/cortex-cli ~/.local/bin/
-
-cortex-cli doctor    # valida prerequisitos y estado de gobernanza
-```
-
-> El binario se llama `cortex-cli`; usá `alias cortex=cortex-cli` si
-> preferís el nombre corto del resto de este doc.
-
-### Paquete Python: legado congelado (oráculo de CI, no distribución)
-
-El paquete Python `cortex-memory` todavía se compila (`pyproject.toml`,
-`wheels.yml`) **solo** para mantener vivo el oráculo de paridad del CI
-(`ci-gates.yml` corre pytest contra `cortex/`). **No** es un canal de
-distribución: instalá y usá el binario nativo de arriba.
-
-### Para desarrollo
-
-```bash
-git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
-cd rust && cargo build --workspace
-cargo test --workspace
-```
-
-Bootstrap de un proyecto (crea config, vault, skills, adapters IDE):
-
-```bash
-cortex-cli init --non-interactive   # alias de `cortex setup agent` — flujo nuevo usuario
-cortex-cli doctor                   # valida prerequisitos y estado de gobernanza
-cortex-cli tutor                    # guía interactiva offline, cero tokens
-```
-
-### Activar el brain 🧠 (opcional)
-
-```bash
-# Compilar el workspace Rust con la feature llama.cpp (requiere toolchain Rust)
-cd rust && cargo build --release -p cortex-brain --features llama
-
-# Una sola vez: ubicar un GGUF (la ruta default la muestra el binario)
-mkdir -p ~/.cache/cortex/models
-# … dejar ahí LFM2.5-1.2B-Instruct-Q4_K_M.gguf (~730 MB)
-
-./rust/target/release/cortex-brain --model        # chat con LLM real
-./rust/target/release/cortex-brain                # modo determinista, sin modelo
-```
-
-En hardware, el brain pica a **~1.3 GB de RAM** — tranquilo en una laptop de 8 GB.
-
-## Quickstart — 60 segundos
-
-```bash
-cortex init                      # bootstrap del proyecto
-cortex start                     # abrir sesión de trabajo (spec-driven)
-# … hacé el trabajo con tu agente/IDE …
-cortex finish                    # corren los verification hooks y se documenta
-cortex next                      # ¿qué sigue? (acciones sugeridas)
-cortex search "refactor auth"    # búsqueda híbrida episódica + semántica
-cortex context                   # bundle de contexto enriquecido para la tarea
-```
-
-## Los 8 comandos de nivel 0
-
-| Comando | Qué hace |
-|---|---|
-| `brain` | Asistente local experto (solo lectura + safe-actions). |
-| `start` | Persiste una spec de implementación en el vault. |
-| `finish` | Cierra la Sesión: reconstruye, verifica, persiste. |
-| `init` | Bootstrap de Cortex en un proyecto (flujo nuevo usuario). |
-| `doctor` | Valida prerequisitos y estado de gobernanza. |
-| `context` | Contexto enriquecido para el trabajo actual. |
-| `tutor` | Guía interactiva offline (cero tokens). |
-| `search` | Consulta ambas capas de memoria y muestra resultados. |
-
-Debajo hay 35+ comandos más (`reindex`, `embedding-status`, `session`, `ci`,
-`ide`, `stats`, `next`…) — se descubren progresivamente con `tutor` y `doctor`.
-
-## Memoria híbrida, retrieval bilingüe
-
-Dos capas fusionadas con Reciprocal Rank Fusion:
-
-| Capa | Store | Fortaleza |
-|---|---|---|
-| **Episódica** | ChromaDB (`.memory/chroma`) | eventos, decisiones, entidades — *qué pasó* |
-| **Semántica** | Vault markdown (compatible Obsidian) | conocimiento curado — *qué sabemos* |
-
-Los embeddings se configuran **por idioma**, elegidos por frontmatter
-(`lang: es`) o detección heurística:
-
-| Idioma | Modelo | Backend | Calidad medida |
-|---|---|---|---|
-| 🇪🇸 ES | `intfloat/multilingual-e5-large` | fastembed (ONNX) | MRR@10 **0.9615** |
-| 🇬🇧 EN | `all-MiniLM-L6-v2` | ONNX (chromadb) | MRR@10 **1.0** |
-
-Las migraciones de modelo son seguras: los caches firman el modelo activo y
-`cortex reindex --prune-old-caches` reconstruye con backup + rollback.
-
-## Integración con IDEs y agentes
-
-```bash
-cortex ide list                  # 11 IDEs/agentes soportados
-cortex ide setup --ide claude-code   # o cursor, codex, opencode, pi…
-cortex ide status
-```
-
-Los agentes acceden estructuradamente vía el **MCP server**
-(`cortex mcp-server`): tools canónicos de sesiones, specs, notas, design docs
-y review gates — con una golden contract test suite que fija la superficie
-byte-a-byte.
-
-## Sesiones y modos operativos
-
-Cada unidad de trabajo es una **Sesión** con checkpoints. Tres modos,
-inferidos automáticamente:
-
-| Modo | Cómo llegan los checkpoints |
-|---|---|
-| `managed` | El skill orquestador verifica cada paso antes de avanzar. |
-| `observed` | Tu IDE emite checkpoints por hooks (Claude Code, Cursor, Pi, OpenCode…). |
-| `byo` | Traé cualquier workflow; el reconstructor sintetiza desde git diff + hooks. |
-
-Los quality gates vienen integrados: indexación transaccional de notas,
-review en dos etapas (`accept / redelegate / warn`), self-review de drafts e
-inyección de contexto con presupuesto.
-
-## Performance (medida, no prometida)
-
-Una capa nativa escrita en Rust — opt-in por entorno con `CORTEX_NATIVE=1`,
-con paridad bit-a-bit verificada gate por gate:
-
-| Ruta caliente | Baseline Python | Nativo | Speed-up |
-|---|---|---|---|
-| Scoring batch coseno | 51.1 ms | 1.85 ms | **27.6×** |
-| Cold load store vectorial (5k) | 31.6 ms | 5.0 ms | **6.4×** |
-| Ingesta vectorial (5k) | 50 s | 13.6 ms | **3684×** |
-| BM25 p99 | 10.1 ms | 1.85 ms | **5.5×** (gate ≤2 ms cumplido) |
-| Webgraph n=1000 | 3.16 s | 345 ms | **9.2×** |
-| Primera query tras boot (embedder frío) | 457 ms | 22 ms | **20.8×** |
-
-Metodología completa: `bench/results/COMPARE.md` y los ADRs en
-`docs/transformacion/`.
-
-## Hardware: números honestos
-
-Picos medidos en una laptop de gama media (ASUS S5402ZA, 11 GB RAM):
-
-| Operación | Pico de RAM |
-|---|---|
-| `cortex search` (pipeline CLI completo) | ~106 MB |
-| Embedder semántico (MiniLM, batch) | ~465 MB |
-| Multilingual e5-large cargado (ES) | ~2.2 GB |
-| `cortex-brain --model` (LFM2.5, ctx 4096) | ~1.3 GB |
-
-Regla práctica: **un solo modelo residente por vez**. En 8 GB corre todo
-cómodo si no mantenés abiertos juntos el LLM y el embedder grande.
-(Cuantizamos MiniLM a int8 para ahorrar RAM y el gate de calidad lo rechazó —
-paridad 0.947 < 0.99 — así que no lo shipeamos.)
-
-## Arquitectura
-
-```text
-┌──────────────────── Capa de aplicación Python ───────────────────────────┐
-│  CLI (Typer, 8 cmds visibles)   MCP server   TUI Home   ActionEngine     │
-│  Session primitive · quality gates · documenter · retrieval híbrido (RRF)│
-└───────┬────────────────────────┬──────────────────────┬─────────────────┘
-        │ pyo3 (_native, opt-in) │ subprocess           │ chromadb / vault
-┌───────▼──────────┐   ┌─────────▼─────────┐   ┌────────▼─────────┐
-│ cortex-core (RS) │   │ cortex-brain (RS) │   │ storage           │
-│ scoring·BM25·    │   │ llama.cpp + GGUF  │   │ .memory/chroma    │
-│ store·webgraph   │   │ LFM2.5 local LLM  │   │ vault/*.md        │
-└──────────────────┘   └───────────────────┘   └───────────────────┘
-```
-
-## Referencia de configuración
-
-Todo vive en `config.yaml` (por proyecto) — validado por Pydantic al arrancar:
-
-| Bloque | Propósito |
-|---|---|
-| `episodic` | Persistencia ChromaDB, colección, campos legacy de embedding |
-| `embedding` | **Modelos por idioma**: `per_language.es/en` + `language_detection: heuristic\|off` |
-| `semantic` | Ruta del vault (markdown compatible Obsidian) |
-| `retrieval` | `top_k`, pesos RRF por fuente |
-| `llm` / `integrations` | Proveedores cloud opcionales |
-| `documenter` | `default_mode: auto \| interactive` |
-| `ui.language` | `es` \| `en` (TUI + chrome del brain) |
-
-## Solución de problemas
-
-- `cortex doctor` — valida todo y te dice el comando para arreglarlo.
-- `cortex embedding-status` — qué embedder activo por idioma y estado de cache.
-- Los modelos bajan a `~/.cache/cortex/fastembed` (persistente, jamás `/tmp`).
-- ¿Corriendo tools/scripts? Sobreescribí el binario con `CORTEX_BIN=/ruta/cortex`.
-- En redes donde las descargas largas se cortan: al reintentar se reanudan los
-  blobs parciales; nada se pierde a mitad de modelo.
-
-## Estado del proyecto
-
-El Programa de Transformación 2026-08 está **completo**: poda y estructura
-(01), estándar IDE (02), capa nativa Rust (03), embeddings bilingües (04),
-UX/ActionEngine/TUI (05), brain local (06) — más una auditoría de realidad
-con todos sus hallazgos resueltos. Versión actual: **0.7.0**. Ver
-[`CHANGELOG.md`](CHANGELOG.md) y `docs/transformacion/`.
-
-En el roadmap: camino GPU para la última milla de latencia end-to-end,
-subcomandos nativos del CLI (cuando migren los servicios en Obra E) y la
-ventana de uso `pct_motor`.
-
-## Contribuir y licencia
-
-PRs bienvenidos — mantené commits atómicos y los gates verdes
-(`pytest tests/unit tests/integration`, `ruff`, `vulture`,
-`cargo clippy && cargo test`).
-
-MIT — ver [LICENSE](LICENSE).
+> Las guías de instalación y uso viven fuera de este README — ver
+> `docs/` (próximamente). Licencia: MIT (`LICENSE`).
