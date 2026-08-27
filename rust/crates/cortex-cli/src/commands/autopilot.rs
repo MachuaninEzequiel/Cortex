@@ -1,18 +1,26 @@
 //! `cortex autopilot ...` — puerto de `cortex/autopilot/cli.py` (Cierre T3).
 //!
 //! Subcomandos NATIVOS sobre [`cortex_autopilot::service::AutopilotService`]
-//! (SessionService nativo): start / preflight / checkpoint / finish / status.
+//! (SessionService nativo): start / preflight / checkpoint / finish / status
+//! (T3) + doctor (BAJA DEFINITIVA RUTA 2, MITAD A).
 //!
-//! `doctor`, `install` y `uninstall` caen al passthrough
-//! (external_subcommand): doctor vive en el oráculo con checks de sesión
-//! propios del trunk; hooks de IDE viven en `cortex session hooks`.
+//! `install` / `uninstall` fueron ELIMINADOS del oráculo en la Fase 04
+//! (`cortex/autopilot/cli.py` — usar `cortex session hooks`); el nativo los
+//! RECHAZA con el mismo comportamiento que el CLI Python real (comando
+//! desconocido, rc=2) y NUNCA ejecuta Python. Cualquier otro subcomando
+//! desconocido sigue cayendo al passthrough (external_subcommand).
 
+use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
 
+use cortex_app::session::{SessionStatus, SessionStorage};
+use cortex_autopilot::config::load_autopilot_config;
 use cortex_autopilot::policies::AutopilotMode;
 use cortex_autopilot::service::{AutopilotService, ServiceError};
+use cortex_setup::session_hooks::default_installer;
+use cortex_workspace::WorkspaceLayout;
 
 use crate::pyjson::{Num, PyVal};
 
@@ -121,8 +129,17 @@ pub enum AutopilotCmd {
         #[arg(long)]
         json: bool,
     },
-    /// Comandos no wireados (doctor/install/uninstall y desconocidos) →
-    /// passthrough al CLI Python.
+    /// Diagnose the Autopilot installation and state. (Read-only)
+    Doctor {
+        /// Absolute path to the project root.
+        #[arg(long)]
+        project_root: Option<String>,
+        /// Output JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Subcomandos desconocidos → passthrough al CLI Python (install y
+    /// uninstall se rechazan nativamente antes de llegar acá).
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -193,7 +210,22 @@ pub fn run(tokens: &[String]) -> bool {
             project_root.as_deref(),
             json,
         )),
-        AutopilotCmd::Other(_) => false,
+        AutopilotCmd::Doctor { project_root, json } => {
+            std::process::exit(execute_doctor(project_root.as_deref(), json))
+        }
+        AutopilotCmd::Other(tokens) => {
+            // Fase 04: el oráculo ELIMINÓ install/uninstall (comando
+            // desconocido, rc=2). Rechazo nativo: misma semántica, jamás
+            // Python. El resto de subcomandos desconocidos sigue al
+            // passthrough intacto.
+            if let Some(first) = tokens.first() {
+                if first == "install" || first == "uninstall" {
+                    eprintln!("No such command '{first}'.");
+                    std::process::exit(2);
+                }
+            }
+            false
+        }
     }
 }
 
@@ -273,6 +305,277 @@ fn parse_mode(raw: &str) -> Option<AutopilotMode> {
             std::process::exit(2);
         }
     })
+}
+
+// ── doctor (BAJA DEFINITIVA RUTA 2, MITAD A) ──────────────────────────────
+//
+// Port exacto de `cortex/autopilot/doctor.py::run_diagnosis` + `_emit` del
+// oráculo: payload `{project_root, ok, checks, warnings}`, 6 checks en
+// orden (config, sessions_dir, adapters, hooks, last_finish, service),
+// rc 0 siempre (el oráculo NO sale 1 ante checks fallidos; `sessions_dir`
+// se auto-repara con mkdir como el doctor Python).
+
+/// Un check del diagnóstico (espejo de `DoctorCheck`).
+struct DoctorCheck {
+    name: &'static str,
+    ok: bool,
+    detail: String,
+    action: String,
+}
+
+/// `repr()` de CPython para el dominio (ASCII imprimible + unicode):
+/// comillas simples salvo strings con comillas simples (⇒ dobles);
+/// escapes de backslash/quote en el orden de Python.
+fn py_str_repr(s: &str) -> String {
+    if s.contains('\'') && !s.contains('"') {
+        format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+    } else {
+        format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
+    }
+}
+
+/// `str(lista[str])` de Python.
+fn py_str_list_repr(items: &[String]) -> String {
+    let inner: Vec<String> = items.iter().map(|s| py_str_repr(s)).collect();
+    format!("[{}]", inner.join(", "))
+}
+
+/// `str(lista[DoctorCheck])` de Python: dicts en orden de inserción
+/// (name, ok, detail, action).
+fn checks_text_repr(checks: &[DoctorCheck]) -> String {
+    let items: Vec<String> = checks
+        .iter()
+        .map(|c| {
+            format!(
+                "{{'name': {}, 'ok': {}, 'detail': {}, 'action': {}}}",
+                py_str_repr(c.name),
+                if c.ok { "True" } else { "False" },
+                py_str_repr(&c.detail),
+                py_str_repr(&c.action),
+            )
+        })
+        .collect();
+    format!("[{}]", items.join(", "))
+}
+
+/// 1. `config` — `AutopilotConfig` parsea sin error.
+fn check_config(layout: &WorkspaceLayout) -> DoctorCheck {
+    match load_autopilot_config(layout) {
+        Ok(cfg) => DoctorCheck {
+            name: "config",
+            ok: true,
+            detail: format!("mode={}, profile={}", cfg.mode, cfg.default_budget_profile),
+            action: String::new(),
+        },
+        Err(exc) => DoctorCheck {
+            name: "config",
+            ok: false,
+            detail: exc.0.clone(),
+            action: "Fix `autopilot.yaml` syntax or run `cortex setup agent`.".to_string(),
+        },
+    }
+}
+
+/// 2. `sessions_dir` — `.cortex/sessions/` existe y es writable.
+///    El oráculo hace `mkdir(parents=True, exist_ok=True)` y luego
+///    chequea `W_OK` (se auto-repara).
+fn check_sessions_dir(layout: &WorkspaceLayout) -> DoctorCheck {
+    let sessions = layout.sessions_dir();
+    match fs::create_dir_all(&sessions) {
+        Err(exc) => DoctorCheck {
+            name: "sessions_dir",
+            ok: false,
+            detail: exc.to_string(),
+            action: "Run `cortex setup agent` to initialize `.cortex/sessions/`.".to_string(),
+        },
+        Ok(()) => {
+            let writable = fs::metadata(&sessions)
+                .map(|m| !m.permissions().readonly())
+                .unwrap_or(false);
+            if writable {
+                DoctorCheck {
+                    name: "sessions_dir",
+                    ok: true,
+                    detail: sessions.display().to_string(),
+                    action: String::new(),
+                }
+            } else {
+                DoctorCheck {
+                    name: "sessions_dir",
+                    ok: false,
+                    detail: format!("Not writable: {}", sessions.display()),
+                    action: "Ensure the workspace root is writable.".to_string(),
+                }
+            }
+        }
+    }
+}
+
+/// 3. `adapters` — registry devuelve sus nombres conocidos.
+fn check_adapters() -> DoctorCheck {
+    let known: Vec<String> = default_installer()
+        .list_available_adapters()
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    DoctorCheck {
+        name: "adapters",
+        ok: true,
+        detail: format!(
+            "Known IDE adapters (cortex.session.hooks): {}",
+            py_str_list_repr(&known)
+        ),
+        action: String::new(),
+    }
+}
+
+/// 4. `hooks` — adapters instalados bajo el repo root.
+fn check_hooks(layout: &WorkspaceLayout) -> DoctorCheck {
+    let installed: Vec<String> = default_installer()
+        .status_all(&layout.repo_root)
+        .into_iter()
+        .filter(|s| s.installed)
+        .map(|s| s.ide.to_string())
+        .collect();
+    if installed.is_empty() {
+        DoctorCheck {
+            name: "hooks",
+            ok: false,
+            detail: "No Cortex session hooks detected".to_string(),
+            action: "Run `cortex session hooks install --ide <name>`.".to_string(),
+        }
+    } else {
+        DoctorCheck {
+            name: "hooks",
+            ok: true,
+            detail: format!("Installed adapters: {}", py_str_list_repr(&installed)),
+            action: String::new(),
+        }
+    }
+}
+
+/// 5. `last_finish` — último `SessionRecord` en estado sensible.
+fn check_last_finish(layout: &WorkspaceLayout) -> DoctorCheck {
+    let storage = SessionStorage::new(layout.sessions_dir());
+    let records = match storage.list_all() {
+        Ok(r) => r,
+        Err(exc) => {
+            return DoctorCheck {
+                name: "last_finish",
+                ok: false,
+                detail: format!("Could not list sessions: {exc}"),
+                action: String::new(),
+            };
+        }
+    };
+    let Some(latest) = records.iter().reduce(|acc, next| {
+        if acc.opened_at > next.opened_at {
+            acc
+        } else {
+            next
+        }
+    }) else {
+        return DoctorCheck {
+            name: "last_finish",
+            ok: true,
+            detail: "No sessions on disk yet".to_string(),
+            action: String::new(),
+        };
+    };
+    if latest.status == SessionStatus::Open {
+        DoctorCheck {
+            name: "last_finish",
+            ok: true,
+            detail: format!(
+                "Session {} still OPEN — finish or abandon when ready",
+                latest.session_id
+            ),
+            action: String::new(),
+        }
+    } else {
+        DoctorCheck {
+            name: "last_finish",
+            ok: true,
+            detail: format!("Latest: {} ({})", latest.session_id, latest.status.as_str()),
+            action: String::new(),
+        }
+    }
+}
+
+/// 6. `service` — `AutopilotService` se construye (nativo T3).
+fn check_service(layout: &WorkspaceLayout) -> DoctorCheck {
+    match AutopilotService::from_project_root(&layout.repo_root, None) {
+        Ok(_) => DoctorCheck {
+            name: "service",
+            ok: true,
+            detail: "AutopilotService.from_project_root wired OK".to_string(),
+            action: String::new(),
+        },
+        Err(exc) => DoctorCheck {
+            name: "service",
+            ok: false,
+            detail: format!("Could not build AutopilotService: {}", exc.0),
+            action: "Run `cortex setup agent` to configure the workspace.".to_string(),
+        },
+    }
+}
+
+/// `autopilot doctor [--project-root] [--json]` — payload EXACTO y rc del
+/// oráculo (`_emit` sobre `run_diagnosis`).
+pub fn execute_doctor(project_root: Option<&str>, json_mode: bool) -> i32 {
+    let root = resolve_root(project_root);
+    let layout = WorkspaceLayout::discover(&root);
+    let checks = vec![
+        check_config(&layout),
+        check_sessions_dir(&layout),
+        check_adapters(),
+        check_hooks(&layout),
+        check_last_finish(&layout),
+        check_service(&layout),
+    ];
+    let ok = checks.iter().all(|c| c.ok);
+    let warnings: Vec<String> = checks
+        .iter()
+        .filter(|c| !c.ok)
+        .map(|c| c.detail.clone())
+        .collect();
+    let root_str = root.display().to_string();
+    let payload = PyVal::obj(vec![
+        ("project_root", PyVal::s(root_str.clone())),
+        ("ok", PyVal::Bool(ok)),
+        (
+            "checks",
+            PyVal::Arr(
+                checks
+                    .iter()
+                    .map(|c| {
+                        PyVal::obj(vec![
+                            ("name", PyVal::s(c.name)),
+                            ("ok", PyVal::Bool(c.ok)),
+                            ("detail", PyVal::s(c.detail.clone())),
+                            ("action", PyVal::s(c.action.clone())),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+        ("warnings", json_warnings(&warnings)),
+    ]);
+    let pairs = [
+        ("project_root", root_str),
+        (
+            "ok",
+            if ok {
+                "True".to_string()
+            } else {
+                "False".to_string()
+            },
+        ),
+        ("checks", checks_text_repr(&checks)),
+        ("warnings", py_str_list_repr(&warnings)),
+    ];
+    emit(&payload, &pairs, json_mode);
+    0
 }
 
 fn resolve_service(project_root: Option<&str>) -> AutopilotService {
