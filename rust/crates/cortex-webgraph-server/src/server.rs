@@ -421,4 +421,33 @@ pub fn server_endpoint(config: &WebGraphConfig) -> (String, i64) {
     (config.server_host.clone(), config.server_port)
 }
 
+/// Wrapper `run_server` del oráculo (`cortex/webgraph/server.py::run_server`):
+/// construye el router con `create_app` y sirve hasta Ctrl+C/SIGTERM en el
+/// puerto dado, de forma bloqueante. `open_browser` es un no-op documentado
+/// (no hay lib nativa de apertura de navegador; el oráculo usa
+/// `webbrowser.open`, precedente respetado sin implementación).
+///
+/// Uso desde el CLI (`webgraph serve`): resolver root/layout/config igual que
+/// el oráculo, elegir host/port (args o config) y llamarlo.
+///
+/// NOTA: sirve en un thread async propio (tokio Runtime interno); el proceso
+/// queda vivo hasta ser terminado (el gate lo mata tras el smoke, patrón
+/// P12B-2).
+pub fn run_server(router: Router, host: &str, port: i64) -> std::io::Result<()> {
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async move {
+        let addr = format!("{host}:{port}");
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
+        axum::serve(listener, router).await
+    })
+}
+
+/// Constructor del router con la firma que usa `webgraph serve`: raíz del
+/// proyecto + workspace federada opcional (espejo de `create_app` Python).
+/// `episodic_entries`/`embedder` quedan vacíos en el CLI real (sólo los
+/// inyecta el gate P12B-2 para determinismo).
+pub fn build_serve_router(project_root: &Path, workspace_file: Option<&Path>) -> Router {
+    create_app(project_root, Vec::new(), None, workspace_file)
+}
+
 pub type PathBufAlias = PathBuf;

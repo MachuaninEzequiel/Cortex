@@ -1,0 +1,8 @@
+### E01 hu import provider desconocido
+nativo rc=1 core_msg=yes
+oraculo rc=1 core_msg=yes
+equivalente=PASS
+### E02 hu import jira sin credenciales
+nativo rc=1 core_msg=yes
+oraculo rc=1 core_msg=yes
+equivalente=PASS

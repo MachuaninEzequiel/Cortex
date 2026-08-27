@@ -1,0 +1,40 @@
+### B01 webgraph doctor completa
+rc=0
+[OK] project_root: {{ROOT}}
+[OK] config_yaml: {{ROOT}}/.cortex/config.yaml
+[OK] vault_dir: {{ROOT}}/.cortex/vault
+[OK] episodic_store: {{ROOT}}/.cortex/memory/chroma
+[OK] webgraph_dependencies: ok
+
+WebGraph doctor passed.
+
+### B02 webgraph doctor degradada
+rc=1
+[OK] project_root: {{ROOT}}
+[OK] config_yaml: {{ROOT}}/.cortex/config.yaml
+[FAIL] vault_dir: {{ROOT}}/.cortex/vault
+[FAIL] episodic_store: {{ROOT}}/.cortex/memory/chroma
+[OK] webgraph_dependencies: ok
+
+--stderr--
+
+WebGraph doctor found blocking issues. Fix the failing checks and retry.
+
+### B03 webgraph doctor --project-root desde otro cwd
+rc=0
+[OK] project_root: {{ROOT}}
+[OK] config_yaml: {{ROOT}}/.cortex/config.yaml
+[OK] vault_dir: {{ROOT}}/.cortex/vault
+[OK] episodic_store: {{ROOT}}/.cortex/memory/chroma
+[OK] webgraph_dependencies: ok
+
+WebGraph doctor passed.
+
+### B04 hu import exito
+rc=0
+Tracked item imported -> {{ROOT}}/.cortex/vault/hu/HU-PROJ-1.md
+
+### B05 hu import --no-remember
+rc=0
+Tracked item imported -> {{ROOT}}/.cortex/vault/hu/HU-PROJ-1.md
+

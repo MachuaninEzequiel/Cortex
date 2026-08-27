@@ -1,0 +1,4 @@
+smoke_serve
+started=ok
+GET / status=200
+killed=ok

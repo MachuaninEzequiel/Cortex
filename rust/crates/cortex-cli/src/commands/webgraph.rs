@@ -44,7 +44,31 @@ pub enum WebgraphCmd {
         #[arg(long = "workspace-file", alias = "workspace")]
         workspace_file: Option<String>,
     },
-    /// Comandos aún no wireados (serve, doctor) → passthrough.
+    /// Serve the WebGraph UI with the native axum server.
+    Serve {
+        /// Bind host.
+        #[arg(long)]
+        host: Option<String>,
+        /// Bind port.
+        #[arg(long)]
+        port: Option<i64>,
+        /// Do not open browser automatically (no-op documentado).
+        #[arg(long = "no-open")]
+        no_open: bool,
+        /// Absolute path to the target project root (where config.yaml lives).
+        #[arg(long)]
+        project_root: Option<String>,
+        /// Path to a federation workspace YAML file (multi-project mode).
+        #[arg(long = "workspace-file", alias = "workspace")]
+        workspace_file: Option<String>,
+    },
+    /// Validate WebGraph runtime prerequisites for one project.
+    Doctor {
+        /// Absolute path to the target project root (where config.yaml lives).
+        #[arg(long)]
+        project_root: Option<String>,
+    },
+    /// Comandos aún no wireados → passthrough.
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -73,6 +97,24 @@ pub fn run(tokens: &[String]) -> bool {
             }
             std::process::exit(execute(&root, &mode, output.as_deref(), no_cache));
         }
+        WebgraphCmd::Serve {
+            host,
+            port,
+            no_open,
+            project_root,
+            workspace_file,
+        } => {
+            std::process::exit(execute_serve(
+                project_root.as_deref(),
+                workspace_file.as_deref(),
+                host.as_deref(),
+                port,
+                no_open,
+            ));
+        }
+        WebgraphCmd::Doctor { project_root } => {
+            std::process::exit(execute_doctor(project_root.as_deref()));
+        }
         WebgraphCmd::Other(_) => false,
     }
 }
@@ -82,6 +124,110 @@ fn resolve(raw: Option<&str>) -> std::path::PathBuf {
         Some(p) => python_resolve(&expand_user(Path::new(p))),
         None => python_resolve(&std::env::current_dir().unwrap_or_default()),
     }
+}
+
+/// `cortex webgraph serve` — wrapper del router axum nativo (P12B-2) sobre
+/// `create_app` + `server_endpoint` (oráculo cli.py:85-116 + server.py).
+/// `open_browser` es no-op documentado (sin lib nativa de webbrowser;
+/// precedente del oráculo `webbrowser.open`).
+///
+/// Retorna 0 sólo si el server termina limpiamente (nunca en uso real:
+/// sirve hasta que el proceso muere; rc 1 ante errores de arranque).
+fn execute_serve(
+    project_root: Option<&str>,
+    workspace_file: Option<&str>,
+    host: Option<&str>,
+    port: Option<i64>,
+    no_open: bool,
+) -> i32 {
+    use cortex_webgraph_server::federation::resolve_workspace_file;
+    use cortex_webgraph_server::server::{build_serve_router, run_server};
+    use cortex_webgraph_server::WebGraphConfig;
+
+    let root = resolve(project_root);
+    let layout = cortex_workspace::WorkspaceLayout::discover(&root);
+
+    // `_resolve_workspace`: explícito o default; si no existe ⇒ error.
+    let workspace = resolve_workspace_file(workspace_file, Some(&root), Some(&layout));
+    if let Some(ws) = &workspace {
+        if !ws.exists() {
+            eprintln!("Workspace file not found: {}", ws.display());
+            return 1;
+        }
+    }
+    if workspace.is_none() {
+        let config_path = layout.config_path();
+        if !config_path.exists() {
+            eprintln!(
+                "Config not found at {}. Run `cortex setup agent` first or pass a valid --project-root.",
+                config_path.display()
+            );
+            return 1;
+        }
+    }
+
+    let config = WebGraphConfig::load(Some(&root), Some(&layout));
+    let (cfg_host, cfg_port) = cortex_webgraph_server::server::server_endpoint(&config);
+    let final_host = host.filter(|h| !h.is_empty()).unwrap_or(&cfg_host);
+    let final_port = port.unwrap_or(cfg_port);
+
+    // open_browser: no-op documentado (precedente webbrowser.open). En el
+    // gate `--no-open` evita el intento; acá nunca abrimos navegador.
+    let _ = no_open;
+
+    let router = build_serve_router(&root, workspace.as_deref());
+    if let Err(e) = run_server(router, final_host, final_port) {
+        eprintln!("cortex webgraph serve: {e}");
+        return 1;
+    }
+    0
+}
+
+/// `cortex webgraph doctor` — 5 checks en el orden del oráculo cli.py:120-171.
+/// webgraph_dependencies: no-op documentado (el server nativo es axum
+/// embebido, sin deps externas; el oráculo chequea flask/flask-compress).
+fn execute_doctor(project_root: Option<&str>) -> i32 {
+    let root = resolve(project_root);
+    let layout = cortex_workspace::WorkspaceLayout::discover(&root);
+    let config_path = layout.config_path();
+    let vault_path = layout.vault_path();
+    let memory_path = layout.episodic_memory_path().join("chroma");
+
+    let checks: Vec<(&str, bool, String)> = vec![
+        ("project_root", root.exists(), root.display().to_string()),
+        (
+            "config_yaml",
+            config_path.exists(),
+            config_path.display().to_string(),
+        ),
+        (
+            "vault_dir",
+            vault_path.exists(),
+            vault_path.display().to_string(),
+        ),
+        (
+            "episodic_store",
+            memory_path.exists(),
+            memory_path.display().to_string(),
+        ),
+        ("webgraph_dependencies", true, "ok".to_string()),
+    ];
+
+    let mut has_failures = false;
+    for (name, ok, detail) in &checks {
+        let mark = if *ok { "OK" } else { "FAIL" };
+        println!("[{mark}] {name}: {detail}");
+        if !*ok {
+            has_failures = true;
+        }
+    }
+
+    if has_failures {
+        eprintln!("\nWebGraph doctor found blocking issues. Fix the failing checks and retry.");
+        return 1;
+    }
+    println!("\nWebGraph doctor passed.");
+    0
 }
 
 pub fn execute(root: &Path, mode: &str, output: Option<&str>, no_cache: bool) -> i32 {
