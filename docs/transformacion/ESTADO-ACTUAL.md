@@ -49,21 +49,22 @@ stdio bounded), T3 `cierre_autopilot_golden` (236 líneas) + `cierre_autopilot_c
 
 ### Lo que TODAVÍA depende de Python (deuda residual documentada)
 
-Tras el cierre de la Obra 07 + RUTA 1 de la baja definitiva, el passthrough
-de `cortex-cli` se redujo al rollback `CORTEX_PY=1` más SOLO los leaves de
-"diseño" (pendientes de ruta 2): `hu import` (excepción no portable),
-`webgraph serve/doctor` (server axum), `autopilot doctor/install/uninstall`
-(instaladores interactivos). Son deuda abierta, no falla del cierre.
+Tras el cierre de la Obra 07 + RUTA 1 + RUTA 2 de la baja definitiva, el
+passthrough de `cortex-cli` quedó reducido a SOLO el rollback `CORTEX_PY=1`.
+Todo subcomando expuesto por el oráculo es NATIVO. Deuda documentada no
+bloqueante: `hu import` con base_url http(s) real no tiene cliente HTTP
+nativo (requiere ADR de deps en tarea futura; gate hermético con file://).
 
-Lo nativo en esta Obra (P0–P12 + cierre T1–T7 + RUTA 1): motores híbridos
-(vault/embeddings/context/session/documenter/persister), CLI clap
-(search/context/stats/session ×14/next/hu ×2/pr-context ×5/docs ×6/
-ci ×4/setup ×5/ide ×4/remember/forget/reindex/mcp-serve), MCP handlers
-no-sesión (T1), autopilot service+cli+mcp×5 (T3-paralelo), pipeline stage
-Documentation (T4), pantalla ratatui sesiones + `session watch/tui`
-(T6/T6-b). Auditoría exhaustiva: `docs/transformacion/12-AUDITORIA-
-PYTHON-RESIDUAL.md` §9.2/§9.5; registro del paquete: `progreso-baja-a.md`
-y `progreso-baja-b.md`.
+Lo nativo en esta Obra (P0–P12 + cierre T1–T7 + RUTA 1 + RUTA 2): motores
+híbridos (vault/embeddings/context/session/documenter/persister), CLI clap
+(search/context/stats/session ×14/next/hu ×3/pr-context ×5/docs ×6/ci ×4/
+setup ×5/ide ×4/autopilot ×6/remember/forget/reindex/mcp-serve/
+webgraph ×3), MCP handlers no-sesión (T1), autopilot service+cli+mcp×5
+(T3-paralelo), pipeline stage Documentation (T4), pantalla ratatui sesiones
++ `session watch/tui` (T6/T6-b). Auditoría exhaustiva:
+`docs/transformacion/12-AUDITORIA-PYTHON-RESIDUAL.md` §9.2/§9.5/§9.6;
+registros de los paquetes: `progreso-baja-a/b.md` (ruta 1) y
+`progreso-baja-2a/2b.md` (ruta 2).
 
 ### Próximos pasos (post-cierre — baja definitiva de Python)
 

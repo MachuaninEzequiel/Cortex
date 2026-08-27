@@ -275,3 +275,44 @@ de archivo/borrado de Python y goldens queda pendiente del dueño.
 Registros del paquete: `progreso-baja-a.md` (mitad A) y
 `progreso-baja-b.md` (mitad B). Este archivo debe leerse junto a
 `ESTADO-ACTUAL.md` y `HANDOFF.md` (actualizados en T7 y RUTA 1).
+
+### 9.6 RUTA 2 de la baja definitiva — leaves "de diseño" (2026-08-26)
+
+**BAJA DEFINITIVA — RUTA 2 COMPLETA.** Dos mitades en paralelo (A/B) sobre
+el mismo árbol, territorios disjuntos (matriz en
+`PROMPT-BAJA-DEFINITIVA-RUTA2.md`):
+
+- **MITAD A** (`5ad44ab` + fix `f53bdc6`): `autopilot doctor` nativo (port
+  exacto de run_diagnosis: payload {project_root, ok, checks, warnings} en
+  orden del oráculo, 6 checks config/sessions_dir/adapters/hooks/
+  last_finish/service sobre WorkspaceLayout/SessionStorage/HookInstaller/
+  AutopilotService; rc 0 como el oráculo; tie-break de last_finish =
+  primer-máximo como max(key=) de Python). `autopilot install/uninstall`:
+  ELIMINADOS en Fase 04 del oráculo (cli.py:352) — rechazo nativo
+  "No such command" rc=2 SIN Python (centinela CORTEX_BIN probado),
+  passthrough intacto para el resto. Gate `cierre_leaves2_a_golden`
+  5 casos byte-parity + 2 equivalencias Fase 04 (115 líneas).
+  Cold start N=20 avg 2.6 ms.
+- **MITAD B** (`b62b0e1`): `webgraph serve` nativo (wrapper `create_app`
+  axum P12B-2 + `run_server`; host/port de config, `--no-open` no-op
+  documentado; smoke no-terminal P12B-2), `webgraph doctor` (5 checks
+  byte-parity + resumen stdout/stderr + rc 1), `hu import` (glue
+  `WorkItemService::import_item` + `JiraProvider` port de jira.py con
+  fetch `file://` hermético). Gate `cierre_leaves2_b_golden`
+  5 casos + smoke serve + 2 equivalencias S19. Cold start N=20:
+  doctor 2.0 ms · hu 2.5 ms · serve 55 ms.
+- Verificación: fmt/clippy ✓ · cargo test cortex-cli ✓ · gates A+B
+  build/verify PASS ✓ · oráculo **2552 passed, 21 skipped, 0F 0E** bajo
+  lock ✓. Revisión por tarea + fix round 1/5 (A) — ambas Approved.
+
+**DEUDA DOCUMENTADA (no bloqueante, fuera del alcance del paquete):**
+`hu import` con base_url http(s) real NO tiene cliente HTTP nativo (regla
+Cargo congelado del paquete) → error equivalente documentado; el gate usa
+`file://` hermético. Un servidor Jira real requiere un ADR de dependencias
+(cliente HTTP) en una tarea futura. `webgraph_dependencies` del doctor es
+no-op "ok" fuera del venv del gate.
+
+**Passthrough de `cortex-cli` AHORA = SOLO rollback `CORTEX_PY=1`.**
+La decisión de archivo/borrado de Python y goldens queda pendiente del
+dueño (paquete separado). Registros: `progreso-baja-2a.md` y
+`progreso-baja-2b.md`.

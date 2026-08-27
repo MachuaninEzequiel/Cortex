@@ -106,11 +106,24 @@ paquete "BAJA DEFINITIVA — RUTA 1" (doc
   Python REAL. Oráculo **2552 passed, 21 skipped, 0F 0E** (120 s, lock).
 - Cold start N=20: livianos 2.4–6.4 ms; remember/forget ~117–187 ms (ONNX
   honesto). Revisión por tarea + fix rounds: ambas Approved.
-- Passthrough restante = SOLO leaves "de diseño" (hu import, webgraph
-  serve/doctor, autopilot doctor/install/uninstall) — ruta 2 pendiente;
-  decisión de archivo/borrado de Python pendiente del dueño.
 
-Registros del paquete: `progreso-baja-a.md` + `progreso-baja-b.md`.
+**RUTA 2 BAJA DEFINITIVA — COMPLETA (2026-08-26).** Paquete
+`PROMPT-BAJA-DEFINITIVA-RUTA2.md`, dos mitades paralelas A/B:
+- MITAD A (`5ad44ab`+`f53bdc6`): `autopilot doctor` nativo (port exacto de
+  run_diagnosis; rc 0 como el oráculo) — `autopilot install/uninstall`
+  ELIMINADOS en Fase 04 del oráculo: rechazo nativo rc=2 SIN Python.
+- MITAD B (`b62b0e1`): `webgraph serve` (wrapper create_app axum,
+  smoke P12B-2), `webgraph doctor` (5 checks byte-parity), `hu import`
+  (glue WorkItemService + JiraProvider file://).
+- Gates A/B PASS (5+5 casos byte-parity + equivalencias Fase 04/S19 +
+  smoke serve); oráculo **2552/21/0/0**; cold start 2.0–55 ms.
+- DEUDA documentada: hu import con http(s) real requiere cliente HTTP
+  nativo (ADR de deps futuro); webgraph_dependencies no-op fuera del venv.
+
+**Passthrough de `cortex-cli` = SOLO rollback `CORTEX_PY=1`.**
+Ruta 2 resuelta; decisión de archivo/borrado de Python y goldens pendiente
+del dueño (paquete separado). Registros: `progreso-baja-2a.md` +
+`progreso-baja-2b.md`.
 
 Métricas:
 - Suite Python ORÁCULO: **2552 passed, 21 skipped, 0 failed, 0 errors**
