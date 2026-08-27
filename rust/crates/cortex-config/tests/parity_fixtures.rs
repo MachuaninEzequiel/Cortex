@@ -1,5 +1,7 @@
 //! Paridad P1: el dump canónico de cortex-config debe ser byte-a-byte idéntico
-//! al oráculo Python (bench/parity/config_dump.py) para cada fixture.
+//! al oráculo Python (bench/parity/config_dump.py) para cada fixture. Los
+//! goldens viven archivados en bench/parity/archive/golden_config (baja
+//! física); los fixtures siguen vivos en bench/parity/fixtures_config.
 
 use std::fs;
 use std::path::PathBuf;
@@ -11,7 +13,7 @@ fn parity_dir() -> PathBuf {
 #[test]
 fn dumps_identicos_al_oraculo_python_para_cada_fixture() {
     let fixtures = parity_dir().join("fixtures_config");
-    let goldens = parity_dir().join("golden_config");
+    let goldens = parity_dir().join("archive/golden_config");
 
     let mut revisados = 0;
     let entries = fs::read_dir(&fixtures)
@@ -30,7 +32,7 @@ fn dumps_identicos_al_oraculo_python_para_cada_fixture() {
 
         let golden_path = goldens.join(format!("{stem}.json"));
         let golden = fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!("falta golden {golden_path:?} — capturalo con capture_config_golden.py")
+            panic!("falta golden {golden_path:?} — capturalo con bench/parity/archive/capture_config_golden.py")
         });
 
         assert_eq!(

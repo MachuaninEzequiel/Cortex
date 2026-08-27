@@ -22,7 +22,7 @@ const GOLDEN_LIST_TOOLS: &str = concat!(
 );
 const GOLDEN_PING: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../bench/parity/golden_setup/ping/bare_ping.txt"
+    "/../../../bench/parity/archive/golden_setup/ping/bare_ping.txt"
 );
 
 /// ROUTING_ESPERADO del oráculo (test_golden_contract.py), ordenado.

@@ -2,8 +2,9 @@
 //!
 //! Obra 07 fase P1. Contrato: **paridad-como-contrato** — para un mismo YAML,
 //! el dump canónico de este crate debe ser byte-a-byte idéntico al del oráculo
-//! Python (`bench/parity/config_dump.py`). Los goldens viven en
-//! `bench/parity/golden_config/` y los fixtures en `bench/parity/fixtures_config/`.
+//! Python (`bench/parity/config_dump.py`). Los goldens viven archivados en
+//! `bench/parity/archive/golden_config/` y los fixtures en
+//! `bench/parity/fixtures_config/`.
 //!
 //! Detalles de paridad que NO se pueden romper sin revertir:
 //! - Orden de campos JSON = orden de declaración de los structs (= Python).

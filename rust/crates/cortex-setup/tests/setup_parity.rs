@@ -1,5 +1,5 @@
 //! Paridad P8c: renderers de setup/templates byte-a-byte contra el oráculo
-//! Python (bench/parity/golden_setup/setup).
+//! Python (bench/parity/archive/golden_setup/setup).
 
 use std::path::PathBuf;
 
@@ -8,7 +8,7 @@ use cortex_setup::setup_templates;
 
 const GOLDEN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../bench/parity/golden_setup/setup"
+    "/../../../bench/parity/archive/golden_setup/setup"
 );
 
 fn create_project(

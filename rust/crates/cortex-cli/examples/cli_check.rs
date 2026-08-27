@@ -5,8 +5,8 @@
 //! oráculo Python (`cli_golden_p12b.py`); luego compara cada segmento.
 //!
 //! Uso (tras el build del golden):
-//!     .venv/bin/python bench/parity/cli_golden_p12b.py build
-//!     cargo run -p cortex-cli --example cli_check -- ../../bench/parity/.p12b-cli
+//!     .venv/bin/python bench/parity/archive/cli_golden_p12b.py build
+//!     cargo run -p cortex-cli --example cli_check -- ../../bench/parity/archive/.p12b-cli
 //!
 //! Los textos self-golden (--help, errores clap, tutor slug) viven en
 //! `tests/cli_self_golden.rs`; acá se valida la paridad funcional.
@@ -21,7 +21,7 @@ fn main() {
     let golden_dir = args
         .get(1)
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("../../bench/parity/.p12b-cli"));
+        .unwrap_or_else(|| PathBuf::from("../../bench/parity/archive/.p12b-cli"));
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let bin = manifest.join("../../target/debug/cortex-cli");
     let py_bin = manifest.join("../../../.venv/bin/cortex");

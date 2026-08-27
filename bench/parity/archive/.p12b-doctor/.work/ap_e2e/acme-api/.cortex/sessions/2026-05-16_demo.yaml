@@ -1,0 +1,16 @@
+session_id: 2026-05-16_demo
+spec_path: vault/specs/2026-05-16_demo.md
+spec_summary: Demo summary
+start_commit: 33871a7da1b23edbf387471e42e431df1f479e30
+start_branch: feature/transformacion-2026-08
+opened_at: 2026-08-26T10:08:58.130142+00:00
+status: open
+mode: unknown
+checkpoints: []
+verification_results: []
+tasks: []
+closed_at: null
+end_commit: null
+documenter_decision: null
+session_note_path: null
+adrs_created: []

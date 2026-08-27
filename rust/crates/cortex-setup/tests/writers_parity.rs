@@ -1,8 +1,9 @@
 //! Paridad P8b: los writers canónicos de cortex-setup reproducen
 //! byte-a-byte los archivos que escribe `cortex.documentation.writers`
-//! sobre los casos congelados en bench/parity/golden_setup/writers.
+//! sobre los casos congelados en bench/parity/archive/golden_setup/writers
+//! (goldens archivados en la baja física; reactivación: README-archivo.md).
 //!
-//! Oráculo: bench/parity/p8_writers_golden.py (reloj fijo 2026-08-24).
+//! Oráculo: bench/parity/archive/p8_writers_golden.py (reloj fijo 2026-08-24).
 
 use std::path::PathBuf;
 
@@ -13,7 +14,7 @@ use cortex_setup::writers::{build_note, NoteRequest};
 
 const GOLDEN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../bench/parity/golden_setup/writers"
+    "/../../../bench/parity/archive/golden_setup/writers"
 );
 
 fn frozen_now() -> DateTime<Utc> {

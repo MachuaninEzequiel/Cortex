@@ -1,0 +1,59 @@
+# Cortex enterprise memory topology
+# This file governs organization-level memory, promotion and governance behavior.
+# Local runtime mechanics still live in config.yaml.
+
+schema_version: 1
+organization:
+  name: Acme Org
+  slug: acme-org
+  profile: small-company
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: local
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.0
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: balanced
+  ci_profile: advisory
+  version_sessions_in_git: false
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0

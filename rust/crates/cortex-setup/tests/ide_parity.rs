@@ -1,5 +1,6 @@
 //! Paridad P8d: los 11 IDE adapters byte-a-byte contra el oráculo Python
-//! (`bench/parity/p8_ide_golden.py` + `bench/parity/golden_setup/ide/`).
+//! (`bench/parity/archive/p8_ide_golden.py` +
+//! `bench/parity/archive/golden_setup/ide/`).
 //!
 //! Para cada IDE × escenario (fresh / existing / uninstall) se reconstruye
 //! el mismo fixture (proyecto con SSoT `.cortex/` + HOME redirigido con
@@ -24,7 +25,7 @@ use cortex_setup::ide::{IdeCtx, Prompts};
 
 const GOLDEN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../bench/parity/golden_setup/ide"
+    "/../../../bench/parity/archive/golden_setup/ide"
 );
 
 const FROZEN_SECS: (i32, u32, u32, u32, u32, u32) = (2026, 8, 24, 12, 34, 56);

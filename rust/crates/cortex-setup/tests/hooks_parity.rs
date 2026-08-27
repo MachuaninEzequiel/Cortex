@@ -1,6 +1,6 @@
 //! Paridad P8e: installer/uninstaller de session hooks byte-a-byte contra
-//! el oráculo Python (`bench/parity/p8_hooks_golden.py` +
-//! `bench/parity/golden_setup/hooks/`).
+//! el oráculo Python (`bench/parity/archive/p8_hooks_golden.py` +
+//! `bench/parity/archive/golden_setup/hooks/`).
 //!
 //! Cada paso es un fixture target_dir independiente con semántica espejo
 //! exacta del capturador; se compara el payload del resultado (normalizado
@@ -21,7 +21,7 @@ use cortex_setup::session_hooks::default_installer;
 
 const GOLDEN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../bench/parity/golden_setup/hooks"
+    "/../../../bench/parity/archive/golden_setup/hooks"
 );
 
 // Preseeds — DEBEN ser idénticos a p8_hooks_golden.py.

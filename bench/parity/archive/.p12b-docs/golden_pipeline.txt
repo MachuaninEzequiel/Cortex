@@ -1,0 +1,359 @@
+### WORKFLOWS
+### WORKFLOW full
+name: Cortex DevSecDocOps — PR Validation
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'master'
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  cortex-pipeline:
+    name: DevSecDocOps Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore Cortex Memory Cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+
+      - name: Cortex — Capture PR Context
+        id: capture
+        run: |
+          cortex pr-context capture \
+            --title "${{ github.event.pull_request.title }}" \
+            --body "${{ github.event.pull_request.body || '' }}" \
+            --author "${{ github.event.pull_request.user.login }}" \
+            --branch "${{ github.event.pull_request.head.ref }}" \
+            --commit "${{ github.event.pull_request.head.sha }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --target-branch "${{ github.event.pull_request.base.ref }}" \
+            --labels "${{ join(github.event.pull_request.labels.*.name, ',') }}" \
+            --output .pr-context.json
+
+      # ── Security Gate ────────────────────────────────────────────
+      - name: Security Audit
+        id: security
+        run: pip-audit
+        continue-on-error: true
+
+      - name: Cortex — Store Security Result
+        if: always()
+        run: |
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --audit-result "${{ steps.security.outcome }}"
+
+      - name: Check Security Gate
+        if: steps.security.outcome != 'success'
+        run: |
+          echo "❌ Security audit failed. Review vulnerabilities before merging."
+          exit 1
+
+      # ── Lint Gate ────────────────────────────────────────────────
+      - name: Lint
+        id: lint
+        run: ruff check .
+        continue-on-error: true
+
+      - name: Cortex — Store Lint Result
+        if: always()
+        run: |
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --lint-result "${{ steps.lint.outcome }}"
+
+      - name: Check Lint Gate
+        if: steps.lint.outcome != 'success'
+        run: |
+          echo "❌ Lint check failed. Fix errors before merging."
+          exit 1
+
+      # ── Test Gate ────────────────────────────────────────────────
+      - name: Tests
+        id: tests
+        run: |
+          pytest --cov=. --cov-report=term-missing -q 2>&1 | tee /tmp/test-output.txt
+          exit ${{ PIPESTATUS[0] }}
+        continue-on-error: true
+
+      - name: Cortex — Store Test Result
+        if: always()
+        run: |
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --test-result "${{ steps.tests.outcome }}"
+
+      - name: Check Test Gate
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "❌ Tests failed. Fix before merging."
+          exit 1
+
+      # ── Documentation Gate ───────────────────────────────────────
+      - name: Cortex — Verify Agent Docs
+        id: verify_docs
+        if: always()
+        run: |
+          HAS_DOCS=$(cortex verify-docs --vault vault --output .doc-status.json || echo "false")
+          echo "has_agent_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Cortex — Index Agent Docs
+        if: always() && steps.verify_docs.outputs.has_agent_docs == 'true'
+        run: |
+          cortex index-docs --vault vault
+          echo "✅ Agent documentation found and indexed"
+
+      - name: Cortex — Generate Fallback Docs
+        if: always() && steps.verify_docs.outputs.has_agent_docs != 'true'
+        run: |
+          cortex pr-context generate \
+            --context-file .pr-context.json \
+            --vault vault
+          echo "⚠️ No agent docs — fallback session note generated"
+        continue-on-error: true
+
+
+      - name: Cortex — Search Past Context
+        if: always()
+        run: |
+          cortex pr-context search \
+            --context-file .pr-context.json \
+            --output .past-context.json
+        continue-on-error: true
+
+      - name: Cortex — Sync Vault
+        if: always()
+        run: cortex sync-vault
+
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+
+      - name: Auto-commit documentation
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs(cortex): auto-generate DevSecDocOps session docs"
+          file_pattern: "vault/**"
+
+      - name: Upload Cortex Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-context-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: |
+            .pr-context.json
+            .past-context.json
+          retention-days: 14
+
+### WORKFLOW test_only
+name: Cortex DevSecDocOps — PR Validation
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'master'
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  cortex-pipeline:
+    name: DevSecDocOps Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore Cortex Memory Cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+
+      - name: Cortex — Capture PR Context
+        id: capture
+        run: |
+          cortex pr-context capture \
+            --title "${{ github.event.pull_request.title }}" \
+            --body "${{ github.event.pull_request.body || '' }}" \
+            --author "${{ github.event.pull_request.user.login }}" \
+            --branch "${{ github.event.pull_request.head.ref }}" \
+            --commit "${{ github.event.pull_request.head.sha }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --target-branch "${{ github.event.pull_request.base.ref }}" \
+            --labels "${{ join(github.event.pull_request.labels.*.name, ',') }}" \
+            --output .pr-context.json
+
+      # ── Test Gate ────────────────────────────────────────────────
+      - name: Tests
+        id: tests
+        run: |
+          pytest --cov=. --cov-report=term-missing -q 2>&1 | tee /tmp/test-output.txt
+          exit ${{ PIPESTATUS[0] }}
+        continue-on-error: true
+
+      - name: Cortex — Store Test Result
+        if: always()
+        run: |
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --test-result "${{ steps.tests.outcome }}"
+
+      - name: Check Test Gate
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "❌ Tests failed. Fix before merging."
+          exit 1
+
+
+      - name: Cortex — Search Past Context
+        if: always()
+        run: |
+          cortex pr-context search \
+            --context-file .pr-context.json \
+            --output .past-context.json
+        continue-on-error: true
+
+      - name: Cortex — Sync Vault
+        if: always()
+        run: cortex sync-vault
+
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+
+      - name: Auto-commit documentation
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs(cortex): auto-generate DevSecDocOps session docs"
+          file_pattern: "vault/**"
+
+      - name: Upload Cortex Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-context-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: |
+            .pr-context.json
+            .past-context.json
+          retention-days: 14
+
+### ORCHESTRATOR
+{
+ "passed": true,
+ "started_at": "2026-08-25T12:00:00+00:00",
+ "ended_at": "2026-08-25T12:00:00+00:00",
+ "duration_ms": 3702,
+ "results": [
+  {
+   "stage_type": "SECURITY_SCAN",
+   "stage_name": "Security Audit",
+   "status": "passed",
+   "message": "",
+   "artifacts": {
+    "command": "fake"
+   },
+   "duration_ms": 1234,
+   "timestamp": "2026-08-25T12:00:00+00:00"
+  },
+  {
+   "stage_type": "LINT",
+   "stage_name": "Lint",
+   "status": "passed",
+   "message": "",
+   "artifacts": {
+    "command": "fake"
+   },
+   "duration_ms": 1234,
+   "timestamp": "2026-08-25T12:00:00+00:00"
+  },
+  {
+   "stage_type": "TEST",
+   "stage_name": "Tests",
+   "status": "passed",
+   "message": "",
+   "artifacts": {
+    "command": "fake"
+   },
+   "duration_ms": 1234,
+   "timestamp": "2026-08-25T12:00:00+00:00"
+  }
+ ]
+}
+Pipeline PASSED in 3.7s — [✅ Security Audit] [✅ Lint] [✅ Tests]
+[{"stage_name": "Security Audit", "status": "passed"}, {"stage_name": "Lint", "status": "failed"}, {"stage_name": "Tests", "status": "skipped"}]
+passed=False
+["failed", "passed"]
+["failed", "passed"]
+## 🧠 Cortex Pipeline Report
+
+| Stage | Status | Duration | Message |
+|-------|--------|----------|---------|
+| ❌ Docs | failed | 0.0s | - |
+| ✅ Tests | passed | 1.2s | - |
+
+**❌ Pipeline failed** — Total: 1.2s
+### DOCUMENTATION
+## CASE docs_present
+{"stage_name":"Documentation","status":"passed","message":"Agent documentation found and indexed (1 docs).","artifacts":{"has_agent_docs":true,"indexed":1},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}
+## CASE no_docs_fallback
+{"stage_name":"Documentation","status":"passed","message":"No agent docs found. Fallback generated: {{ROOT}}/.cortex/vault/sessions/{{ID}}.md","artifacts":{"fallback_path":"{{ROOT}}/.cortex/vault/sessions/{{ID}}.md","has_agent_docs":false},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}
+## CASE no_docs_block
+{"stage_name":"Documentation","status":"failed","message":"No agent docs found. Fallback generated: {{ROOT}}/.cortex/vault/sessions/{{ID}}.md","artifacts":{"fallback_path":"{{ROOT}}/.cortex/vault/sessions/{{ID}}.md","has_agent_docs":false},"duration_ms":0,"timestamp":"2026-08-25T12:00:00Z"}

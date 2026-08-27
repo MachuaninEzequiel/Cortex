@@ -7,7 +7,7 @@ fn main() {
     let case_name = args.get(1).cloned().unwrap_or_default();
     let golden = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../bench/parity/golden_setup/writers"
+        "/../../../bench/parity/archive/golden_setup/writers"
     );
     let raw = std::fs::read_to_string(format!("{golden}/inputs.json")).unwrap();
     let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();
