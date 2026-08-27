@@ -315,9 +315,10 @@ fn uninstall_rejected_natively_like_oracle() {
 }
 
 #[test]
-fn unknown_autopilot_subcommand_still_passthrough() {
-    // Solo install/uninstall se rechazan nativamente; el resto de
-    // subcomandos desconocidos sigue el flujo de passthrough intacto.
+fn unknown_autopilot_subcommand_rejected_natively() {
+    // Baja física: el passthrough fue eliminado ⇒ TODO subcomando
+    // desconocido de autopilot se rechaza nativo (Typer-like), rc 2, sin
+    // ejecutar /bin/echo. Antes (G6) caía al passthrough.
     let tmp = tempfile::tempdir().unwrap();
     let out = Command::new(env!("CARGO_BIN_EXE_cortex-cli"))
         .args(["autopilot", "bogus"])
@@ -325,6 +326,10 @@ fn unknown_autopilot_subcommand_still_passthrough() {
         .env("CORTEX_BIN", "/bin/echo")
         .output()
         .unwrap();
-    assert!(out.status.success());
-    assert_eq!(stdout(&out), "autopilot bogus\n");
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
+    assert_eq!(
+        String::from_utf8_lossy(&out.stderr),
+        "No such command 'bogus'.\n"
+    );
 }

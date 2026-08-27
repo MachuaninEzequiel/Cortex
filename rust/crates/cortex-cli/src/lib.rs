@@ -4,7 +4,6 @@
 //! comandos y utilidades para tests/examples.
 
 pub mod commands;
-pub mod fallback;
 pub mod memory;
 pub mod memory_cmds;
 pub mod paths;

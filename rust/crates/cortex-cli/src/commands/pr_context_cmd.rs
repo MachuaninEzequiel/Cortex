@@ -392,6 +392,13 @@ pub fn run(argv: &[String]) -> bool {
         Some("search") => run_search(&argv[1..]),
         Some("generate") => run_generate(&argv[1..]),
         Some("full") => run_full(&argv[1..]),
-        _ => false,
+        Some(first) => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
+        None => {
+            eprintln!("cortex pr-context: se requiere un subcomando");
+            std::process::exit(2);
+        }
     }
 }

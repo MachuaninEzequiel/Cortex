@@ -293,6 +293,13 @@ pub fn run(argv: &[String]) -> bool {
         Some("open-review-session") => open(&argv[1..]),
         Some("report-checkpoint") => report(&argv[1..]),
         Some("close-review-session") => close(&argv[1..]),
-        _ => false,
+        Some(first) => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
+        None => {
+            eprintln!("cortex ci: se requiere un subcomando");
+            std::process::exit(2);
+        }
     }
 }

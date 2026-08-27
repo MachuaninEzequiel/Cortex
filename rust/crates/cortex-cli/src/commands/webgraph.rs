@@ -4,7 +4,8 @@
 //! single-project con vault sin markdown y sin store episódico (el embedder
 //! nunca se invoca ⇒ salida determinista) + error sin config. La paridad de
 //! grafos profundos ya fue probada por el gate P12B-2 con fake embeddings.
-//! Si hay workspace federado, el comando completo se delega al CLI Python.
+//! Si hay workspace federado, el comando completo falla explícitamente
+//! (sin passthrough a Python desde la baja física).
 
 use std::path::Path;
 
@@ -68,7 +69,7 @@ pub enum WebgraphCmd {
         #[arg(long)]
         project_root: Option<String>,
     },
-    /// Comandos aún no wireados → passthrough.
+    /// Comandos desconocidos → rechazo nativo (Typer-like), nunca passthrough.
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -86,14 +87,15 @@ pub fn run(tokens: &[String]) -> bool {
             project_root,
             workspace_file,
         } => {
-            // Federación no wireada: si el usuario pide workspace explícito o
-            // existe el default, delegamos TODO el comando.
+            // Federación (multi-projecto) no wireada y sin passthrough desde
+            // la baja física: fallo explícito documentado.
             let root = resolve(project_root.as_deref());
             let default_ws = root.join(".cortex").join("webgraph").join("workspace.yaml");
             let federated =
                 workspace_file.is_some() || (!workspace_file.is_some() && default_ws.exists());
             if federated {
-                return false;
+                eprintln!("webgraph export federado (multi-projecto) no nativo en build Rust — el passthrough a Python fue eliminado; usá el CLI Python legacy");
+                std::process::exit(1);
             }
             std::process::exit(execute(&root, &mode, output.as_deref(), no_cache));
         }
@@ -115,7 +117,14 @@ pub fn run(tokens: &[String]) -> bool {
         WebgraphCmd::Doctor { project_root } => {
             std::process::exit(execute_doctor(project_root.as_deref()));
         }
-        WebgraphCmd::Other(_) => false,
+        WebgraphCmd::Other(tokens) => {
+            // Baja física: subcomando desconocido ⇒ rechazo nativo rc 2.
+            if let Some(first) = tokens.first() {
+                eprintln!("No such command '{first}'.");
+                std::process::exit(2);
+            }
+            false
+        }
     }
 }
 

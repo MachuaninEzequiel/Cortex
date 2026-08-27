@@ -755,11 +755,12 @@ pub fn run_reindex(argv: &[String]) -> bool {
     let vault_resolved = layout.resolve_workspace_relative(Path::new(&config.semantic.vault_path));
     let vectors_dir = layout.workspace_root.join(".cortex").join("vectors");
 
-    // Sólo --dry-run está wireado; el rebuild real sigue en passthrough.
+    // Sólo --dry-run está wireado; el rebuild real no tiene escritor de
+    // vector-cache persistente nativo (verificado: sin NativeVectorCache) ⇒
+    // fallo explícito documentado (P6/P9), nunca passthrough a Python.
     if !args.dry_run {
-        let mut full = vec!["reindex".to_string()];
-        full.extend_from_slice(argv);
-        crate::fallback::passthrough(&full);
+        eprintln!("reindex real no nativo en build Rust — requiere escritor de vectors persistente; usá --dry-run o el CLI Python legacy");
+        std::process::exit(1);
     }
 
     echo("[dry-run] reindex plan:");

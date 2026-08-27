@@ -1,29 +1,18 @@
-//! Paridad G6: la fachada reenvía argv byte-a byte (stdout, stderr y código
-//! de salida idénticos a llamar el binario destino directamente).
+//! Baja física: la fachada de passthrough a Python fue ELIMINADA.
+//!
+//! Antes (G6): `CORTEX_BIN` apuntaba al binario destino y el argv se
+//! reenviaba byte-a-byte con stdio/rc propagados. Post-BAJA DEFINITIVA no
+//! existe ningún reenvío a Python: `CORTEX_BIN`/`CORTEX_PY` no se consultan
+//! y todo comando desconocido falla nativamente con rc 2.
+//!
+//! Estos tests fijan el contrato residual: la variable CORTEX_BIN dejó de
+//! tener efecto (nunca se ejecuta un binario externo) y el arranque nativo
+//! sigue siendo instantáneo.
 
-use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Script destino de prueba: imprime stdout+stderr y sale con código dado.
-fn escribir_stub(dir: &Path, nombre: &str, rc: i32) -> PathBuf {
-    let ruta = dir.join(nombre);
-    std::fs::write(
-        &ruta,
-        format!(
-            "#!/bin/sh\necho 'línea stdout {nombre}'\necho 'línea stderr {nombre}' >&2\nexit {rc}\n"
-        ),
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&ruta, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
-    ruta
-}
-
-/// Corre la fachada con CORTEX_BIN=bin y devuelve (stdout, stderr, rc).
-fn facade(bin: &Path, args: &[&str]) -> (String, String, Option<i32>) {
+/// Corre el binario con CORTEX_BIN "roto" y devuelve (stdout, stderr, rc).
+fn run(bin: &std::path::Path, args: &[&str]) -> (String, String, Option<i32>) {
     let out = Command::new(env!("CARGO_BIN_EXE_cortex-cli"))
         .env("CORTEX_BIN", bin)
         .args(args)
@@ -37,18 +26,22 @@ fn facade(bin: &Path, args: &[&str]) -> (String, String, Option<i32>) {
 }
 
 #[test]
-fn passthrough_stdout_stderr_y_codigo_de_salida() {
+fn cortex_bin_is_no_op_no_external_execution() {
+    // Un script ejecutable de prueba como CORTEX_BIN: si el passthrough
+    // existiera, `bogus` reenviaría argv y veríamos su stdout. Post-baja no
+    // se ejecuta NADA externo ⇒ stdout vacío y error nativo rc 2.
     let tmp = tempfile::tempdir().unwrap();
-    let stub = escribir_stub(tmp.path(), "stub-ok", 3);
-
-    // Directo (referencia):
-    let directo = Command::new(&stub).arg("extra").output().unwrap();
-    // Vía fachada:
-    let (f_out, f_err, f_code) = facade(stub.as_path(), &["extra"]);
-
-    assert_eq!(f_out, String::from_utf8_lossy(&directo.stdout));
-    assert_eq!(f_err, String::from_utf8_lossy(&directo.stderr));
-    assert_eq!(f_code, directo.status.code());
+    let stub = tmp.path().join("stub");
+    std::fs::write(&stub, "#!/bin/sh\necho 'NO DEBE APARECER'\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let (f_out, f_err, f_code) = run(stub.as_path(), &["bogus"]);
+    assert_eq!(f_out, "");
+    assert_eq!(f_err, "No such command 'bogus'.\n");
+    assert_eq!(f_code, Some(2));
 }
 
 #[test]

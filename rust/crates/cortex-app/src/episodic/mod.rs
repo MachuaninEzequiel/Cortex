@@ -830,12 +830,12 @@ mod append_tests {
         assert_eq!(store.count(), 2);
 
         // Id inexistente: Ok(false) y archivo intacto.
-        assert_eq!(store.delete("mem_zzzz9999").unwrap(), false);
+        assert!(!store.delete("mem_zzzz9999").unwrap());
         assert_eq!(std::fs::read(&path).unwrap(), bytes_antes);
         assert_eq!(store.count(), 2);
 
         // Id existente: Ok(true), la línea desaparece y el resto sigue igual.
-        assert_eq!(store.delete("mem_aaaa1111").unwrap(), true);
+        assert!(store.delete("mem_aaaa1111").unwrap());
         assert_eq!(store.count(), 1);
         let texto = std::fs::read_to_string(&path).unwrap();
         assert_eq!(texto, linea2, "resto byte-idéntico");

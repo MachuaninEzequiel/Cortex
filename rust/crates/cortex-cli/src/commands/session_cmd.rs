@@ -4,7 +4,7 @@
 //! SessionService nativo (P4) y watch/tui sobre la pantalla ratatui nativa
 //! de cortex-tui (T6/T6-b). El JSON de record replica
 //! `model_dump(mode="json")` con orden pydantic. La tabla rich de `list`
-//! texto se replica para los casos del gate; hooks/task quedan en passthrough.
+//! y el detalle de `show` se replican byte-a-byte (ver `render_table`).
 
 use std::io::IsTerminal;
 use std::io::Write as _;
@@ -428,7 +428,7 @@ pub fn run_abandon(argv: &[String]) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// list (--json nativo; tabla rich de texto ⇒ passthrough)
+// list (--json y tabla rich de texto nativos; byte-parity vs oráculo)
 // ---------------------------------------------------------------------------
 
 #[derive(Parser, Debug)]
@@ -555,7 +555,7 @@ pub fn run_list(argv: &[String]) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// show (--json nativo; detalle rich de texto ⇒ passthrough)
+// show (--json y detalle rich de texto nativos; byte-parity vs oráculo)
 // ---------------------------------------------------------------------------
 
 #[derive(Parser, Debug)]
@@ -1325,7 +1325,8 @@ fn run_task_update_status(
 
 pub fn run_task(argv: &[String]) -> bool {
     let Some(first) = argv.first().map(String::as_str) else {
-        return false;
+        eprintln!("cortex session task: se requiere un subcomando");
+        std::process::exit(2);
     };
     let rest = &argv[1..];
     match first {
@@ -1334,7 +1335,11 @@ pub fn run_task(argv: &[String]) -> bool {
         "in-progress" => run_task_update_status(rest, "in-progress", TaskStatus::InProgress, false),
         "skip" => run_task_update_status(rest, "skip", TaskStatus::Skipped, true),
         "block" => run_task_update_status(rest, "block", TaskStatus::Blocked, true),
-        _ => false,
+        // Baja física: sin passthrough ⇒ rechazo nativo Typer-like.
+        _ => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
     }
 }
 
@@ -1667,7 +1672,8 @@ pub fn run_hooks_status(argv: &[String]) -> bool {
 
 pub fn run_hooks(argv: &[String]) -> bool {
     let Some(first) = argv.first().map(String::as_str) else {
-        return false;
+        eprintln!("cortex session hooks: se requiere un subcomando");
+        std::process::exit(2);
     };
     let rest = &argv[1..];
     match first {
@@ -1675,7 +1681,11 @@ pub fn run_hooks(argv: &[String]) -> bool {
         "install" => run_hooks_install(rest),
         "uninstall" => run_hooks_uninstall(rest),
         "status" => run_hooks_status(rest),
-        _ => false,
+        // Baja física: sin passthrough ⇒ rechazo nativo Typer-like.
+        _ => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
     }
 }
 
@@ -2017,12 +2027,13 @@ fn render_rich_table(headers: &[&str], rows: &[Vec<String>], justify: &[&str]) -
     out
 }
 
-/// Despachador de la familia `session`. Devuelve false para pasar al CLI
-/// Python (subcomandos no wireados).
+/// Despachador de la familia `session`. Nunca delega al CLI Python (baja
+/// física): subcomando desconocido ⇒ rechazo nativo Typer-like rc 2.
 pub fn run(argv: &[String]) -> bool {
     // argv[0] = "session"; el subcomando es argv[1].
     let Some(second) = argv.get(1).map(String::as_str) else {
-        return false;
+        eprintln!("cortex session: se requiere un subcomando");
+        std::process::exit(2);
     };
     let rest = &argv[2..];
     match second {
@@ -2036,6 +2047,9 @@ pub fn run(argv: &[String]) -> bool {
         "watch" | "tui" => run_watch(rest),
         "task" => run_task(rest),
         "hooks" => run_hooks(rest),
-        _ => false,
+        _ => {
+            eprintln!("No such command '{second}'.");
+            std::process::exit(2);
+        }
     }
 }

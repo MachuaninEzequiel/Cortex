@@ -1,8 +1,8 @@
 //! `cortex memory-report` — puerto de cli/main.py::memory_report.
 //!
 //! Cierra el seam P12B-3→P12B-4: `EnterpriseReportingService` +
-//! `NativeDoctorBackend`. `--telemetry` NO se wirea: si aparece, el comando
-//! completo se delega al CLI Python (passthrough) para no fingir paridad.
+//! `NativeDoctorBackend`. `--telemetry` NO se wirea: fallo explícito
+//! documentado (baja física — sin passthrough a Python).
 
 use std::path::Path;
 
@@ -39,15 +39,15 @@ pub struct MemoryReportArgs {
     pub since_days: i64,
 }
 
-/// True si el argv pertenece al subárbol wireado (sin --telemetry).
-pub fn is_native(argv: &[String]) -> bool {
-    !argv.iter().any(|a| a == "--telemetry")
-}
-
+/// `--telemetry` no es nativo (baja física sin passthrough a Python).
 pub fn run(tokens: &[String]) -> bool {
     let args = MemoryReportArgs::parse_from(
         std::iter::once("memory-report".to_string()).chain(tokens.iter().cloned()),
     );
+    if args.telemetry {
+        eprintln!("memory-report --telemetry no nativo en build Rust — el passthrough a Python fue eliminado; usá el CLI Python legacy");
+        std::process::exit(1);
+    }
     std::process::exit(execute(
         args.project_root.as_deref(),
         &args.scope,

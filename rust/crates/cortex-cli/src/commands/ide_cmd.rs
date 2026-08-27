@@ -636,8 +636,16 @@ pub fn run(argv: &[String]) -> bool {
         Some("setup") => run_setup(&argv[1..]),
         Some("remove") => run_remove(&argv[1..]),
         Some("status") => run_status(&argv[1..]),
-        // Subcomando desconocido ⇒ passthrough (Typer emite el error).
-        _ => false,
+        // Baja física (sin passthrough a Python): subcomando desconocido ⇒
+        // rechazo nativo Typer-like (rc 2); sin subcomando ⇒ `ide` solo.
+        Some(first) => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
+        None => {
+            eprintln!("cortex ide: se requiere un subcomando (list|setup|remove|status)");
+            std::process::exit(2);
+        }
     }
 }
 

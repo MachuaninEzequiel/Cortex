@@ -1,19 +1,18 @@
 // cortex-cli — CLI nativo clap nivel-1 (P12B-8, cierre del Stream B).
 //
-// Arquitectura de dispatch (diseño aprobado en progreso-p12b.md):
-//   1. `CORTEX_PY=1` → passthrough TOTAL inmediato (rollback, fachada G6).
-//   2. `--cli-version` → línea nativa (compat contrato fachada).
+// Arquitectura de dispatch (BAJA DEFINITIVA — fase física):
+//   1. `CORTEX_PY=1` → aviso histórico + CONTINÚA nativo (rollback eliminado).
+//   2. `--cli-version`/`--help`/invocación sin args → línea nativa.
 //   3. Primer token ∈ subárboles wireados → clap parsea ESE subárbol y
 //      ejecuta nativo contra los crates B.
-//   4. Cualquier otra cosa → reenvío del argv ORIGINAL al CLI Python:
-//      errores de comando desconocido/args de comandos no wireados salen
-//      del propio Typer ⇒ paridad gratis.
+//   4. Cualquier otra cosa → error Typer-like `No such command '<first>'.`
+//      rc 2 (precedente: rechazo install/uninstall de autopilot).
 //
 // Paridad: comandos funcionales wireados = byte-parity vs oráculo Python
 // (gate bench/parity/cli_golden_p12b.py). Textos --help/errores de comandos
 // wireados = self-golden (Typer y clap formatean distinto por diseño).
 
-use cortex_cli::{commands, fallback};
+use cortex_cli::commands;
 
 /// Versión de este binario nativo.
 const CLI_VERSION: &str = "0.1.0";
@@ -50,28 +49,28 @@ fn root_command() -> clap::Command {
                 .about("Report enterprise memory health and promotion visibility"),
         )
         .subcommand(
-            Command::new("webgraph")
-                .about("Webgraph snapshots (export nativo; serve/doctor delegan)"),
+            Command::new("webgraph").about("Webgraph snapshots (export/serve/doctor nativos)"),
         )
         .subcommand(
-            Command::new("autopilot")
-                .about("Autopilot decision layer (preflight nativo; resto delega)"),
+            Command::new("autopilot").about("Autopilot decision layer (subarbol 100% nativo)"),
         )
         .subcommand(Command::new("agent-guidelines").about("Display agent behavior guidelines"))
         .subcommand(
             Command::new("install-skills").about("Install Obsidian skills into the project"),
         )
         .after_help(
-            "Los demás comandos se delegan al CLI Python (CORTEX_PY=1 fuerza la delegación total).",
+            "CLI 100% nativo (sin passthrough a Python). Instalá por binario: \
+             `cargo install --path rust/crates/cortex-cli`.",
         )
 }
 
 fn main() {
     let argv: Vec<String> = std::env::args().skip(1).collect();
 
-    // 1. Rollback total: delega al CLI Python como la fachada G6.
+    // 1. CORTEX_PY=1 = rollback histórico de la migración; el CLI es 100%
+    //    nativo ⇒ imprimimos un aviso y CONTINUAMOS el flujo nativo (no delega).
     if std::env::var("CORTEX_PY").as_deref() == Ok("1") {
-        fallback::passthrough(&argv);
+        eprintln!("cortex-cli: CORTEX_PY=1 es rollback histórico de la migración — el CLI es 100% nativo; eliminá la variable");
     }
 
     // 2. Flag propio de la fachada nativa.
@@ -86,17 +85,27 @@ fn main() {
         std::process::exit(0);
     }
 
+    // 2c. Invocación sin argumentos: el Home TUI del oráculo no está wireado
+    //    ⇒ mostramos la ayuda raíz (sin passthrough).
+    if argv.is_empty() {
+        print!("{}", root_command().render_help());
+        std::process::exit(0);
+    }
+
+    let first = argv[0].as_str();
+
     // 3. Subárboles wireados (se pueblan tarea por tarea).
     if dispatch_native(&argv) {
         return;
     }
 
-    // 4. Passthrough residual.
-    fallback::passthrough(&argv);
+    // 4. Comando desconocido: error Typer-like, rc 2. Nunca passthrough.
+    eprintln!("No such command '{first}'.");
+    std::process::exit(2);
 }
 
 /// Intenta despachar nativamente `argv`. Devuelve false si el primer token
-/// no pertenece a ningún subárbol wireado (⇒ passthrough).
+/// no pertenece a ningún subárbol wireado (⇒ catch-all `No such command`).
 fn dispatch_native(argv: &[String]) -> bool {
     let Some(first) = argv.first().map(String::as_str) else {
         return false;
@@ -114,9 +123,7 @@ fn dispatch_native(argv: &[String]) -> bool {
         "org-config" => commands::org_config::run(rest),
         "promote-knowledge" => commands::promote::run(rest),
         "review-knowledge" => commands::review::run(rest),
-        "memory-report" if commands::memory_report::is_native(rest) => {
-            commands::memory_report::run(rest)
-        }
+        "memory-report" => commands::memory_report::run(rest),
         "webgraph" => commands::webgraph::run(rest),
         "autopilot" => commands::autopilot::run(rest),
         "search" => cortex_cli::memory_cmds::run_search(rest),
@@ -134,6 +141,7 @@ fn dispatch_native(argv: &[String]) -> bool {
         "pr-context" => commands::pr_context_cmd::run(rest),
         "mcp-server" | "mcp-serve" => commands::mcp_cmd::run(rest),
         "reindex" => cortex_cli::memory_cmds::run_reindex(rest),
+        "init" => commands::setup_cmd::run_init(rest),
         _ => false,
     }
 }

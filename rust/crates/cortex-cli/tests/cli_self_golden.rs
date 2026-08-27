@@ -23,15 +23,15 @@ Commands:
   promote-knowledge  Promote reviewed knowledge candidates into the enterprise vault
   review-knowledge   Enterprise review queue (pending/approve/reject/candidate)
   memory-report      Report enterprise memory health and promotion visibility
-  webgraph           Webgraph snapshots (export nativo; serve/doctor delegan)
-  autopilot          Autopilot decision layer (preflight nativo; resto delega)
+  webgraph           Webgraph snapshots (export/serve/doctor nativos)
+  autopilot          Autopilot decision layer (subarbol 100% nativo)
   agent-guidelines   Display agent behavior guidelines
   install-skills     Install Obsidian skills into the project
 
 Options:
   -h, --help  Print help
 
-Los demás comandos se delegan al CLI Python (CORTEX_PY=1 fuerza la delegación total).
+CLI 100% nativo (sin passthrough a Python). Instalá por binario: `cargo install --path rust/crates/cortex-cli`.
 "#;
 
 #[test]

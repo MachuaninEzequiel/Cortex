@@ -1,11 +1,11 @@
-//! Tests de dispatch del binario cortex-cli (P12B-8).
+//! Tests de dispatch del binario cortex-cli (P12B-8, baja física actualizados).
 //!
-//! Contrato (diseño aprobado en progreso-p12b.md):
-//! 1. `CORTEX_PY=1` → passthrough TOTAL inmediato (antes de cualquier
-//!    dispatch nativo, incluso `--cli-version`).
+//! Contrato post-BAJA DEFINITIVA (fase física, head `6612449`+):
+//! 1. `CORTEX_PY=1` → aviso histórico en stderr y CONTINÚA nativo (el
+//!    rollback a Python fue eliminado; CORTEX_BIN ya no se consulta).
 //! 2. `--cli-version` → línea nativa `cortex-cli <versión>` rc=0.
-//! 3. argv desconocido → reenvío byte-idéntico del argv original al CLI
-//!    Python (`CORTEX_BIN` override), heredando stdio y propagando el rc.
+//! 3. argv desconocido → error nativo Typer-like `No such command '<first>'.`
+//!    rc=2 (NUNCA delega al CLI Python).
 
 use std::process::Command;
 
@@ -24,42 +24,58 @@ fn cli_version_is_native() {
 }
 
 #[test]
-fn cortex_py_is_checked_before_native_dispatch() {
-    // CORTEX_PY=1 + --cli-version delega al binario externo aunque el flag
-    // sería nativo: prueba que el rollback se evalúa primero.
+fn cortex_py_is_historical_and_native_continues() {
+    // CORTEX_PY=1 ya NO delega: imprime el aviso histórico en stderr y el
+    // flag --cli-version sigue siendo nativo (antes llegaba al Python).
     let out = bin()
         .env("CORTEX_PY", "1")
-        .env("CORTEX_BIN", "/bin/false") // existe y termina rc=1
+        .env("CORTEX_BIN", "/bin/false") // irrelevante: no se ejecuta
         .arg("--cli-version")
         .output()
         .unwrap();
-    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).trim_end(),
+        "cortex-cli 0.1.0"
+    );
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("CORTEX_PY=1 es rollback histórico de la migración"),
+        "aviso histórico ausente: {err}"
+    );
 }
 
 #[test]
-fn unknown_command_passes_through_original_argv() {
+fn unknown_command_reports_no_such_command_rc2() {
+    // Con CORTEX_BIN apuntando a /bin/echo: el catch-all es nativo
+    // (`No such command`) y nunca reenvía el argv al CLI Python (antes
+    // habría impreso "frobnicate --x 1").
     let out = bin()
-        .env("CORTEX_PY", "1")
         .env("CORTEX_BIN", "/bin/echo")
         .args(["frobnicate", "--x", "1"])
         .output()
         .unwrap();
-    assert!(out.status.success());
-    assert_eq!(String::from_utf8_lossy(&out.stdout), "frobnicate --x 1\n");
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
+    assert_eq!(
+        String::from_utf8_lossy(&out.stderr),
+        "No such command 'frobnicate'.\n"
+    );
 }
 
 #[test]
-fn missing_python_bin_reports_127_with_contract_message() {
+fn missing_python_bin_is_irrelevant_no_delegation() {
+    // CORTEX_BIN inexistente ya no produce 127: no hay passthrough que
+    // ejecute Python. Un token no wireado (--version) es comando
+    // desconocido ⇒ rc 2 con el mensaje Typer-like.
     let out = bin()
-        .env("CORTEX_PY", "1")
         .env("CORTEX_BIN", "/no/existe/cortex-bin-xyz")
         .arg("--version")
         .output()
         .unwrap();
-    assert_eq!(out.status.code(), Some(127));
-    let err = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        err.contains("cortex-cli: no pude ejecutar"),
-        "mensaje contractual ausente: {err}"
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(
+        String::from_utf8_lossy(&out.stderr),
+        "No such command '--version'.\n"
     );
 }

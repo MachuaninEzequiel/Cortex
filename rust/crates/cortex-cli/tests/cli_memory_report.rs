@@ -409,7 +409,9 @@ fn utf8_len(b: u8) -> usize {
 }
 
 #[test]
-fn mr_telemetry_delegates_to_python() {
+fn mr_telemetry_fails_explicitly_no_passthrough() {
+    // --telemetry no es nativo y la baja física eliminó el passthrough:
+    // fallo explícito documentado, rc 1, sin delegar (CORTEX_BIN no efecto).
     let tmp = make_l7();
     let out = bin()
         .env("CORTEX_PY", "1")
@@ -418,9 +420,18 @@ fn mr_telemetry_delegates_to_python() {
         .args(["memory-report", "--telemetry"])
         .output()
         .unwrap();
-    assert!(out.status.success());
     assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        "memory-report --telemetry\n"
+        out.status.code(),
+        Some(1),
+        "stdout: {}",
+        String::from_utf8_lossy(&out.stdout)
     );
+    let err = String::from_utf8_lossy(&out.stderr);
+    // El aviso histórico de CORTEX_PY=1 está presente y el fallo explícito
+    // de --telemetry también (sin reenvío a /bin/echo).
+    assert!(
+        err.contains("memory-report --telemetry no nativo en build Rust"),
+        "mensaje de fallo ausente: {err}"
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
 }

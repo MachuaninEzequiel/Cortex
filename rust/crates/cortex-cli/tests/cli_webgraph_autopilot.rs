@@ -156,16 +156,28 @@ fn wg_export_empty_fixture_writes_snapshot_and_echoes_path() {
 }
 
 #[test]
-fn wg_serve_subcommand_delegates_to_python() {
-    // serve no está wireado: external_subcommand ⇒ passthrough.
+fn wg_cortex_py_does_not_delegate_export() {
+    // Post-baja física: CORTEX_PY=1 ya NO reenvía `webgraph export` al
+    // Python. El comando corre nativo (error canónico sin config, rc 1)
+    // ignorando CORTEX_BIN; el aviso histórico va a stderr.
+    let tmp = tempfile::tempdir().unwrap();
     let out = bin()
         .env("CORTEX_PY", "1")
         .env("CORTEX_BIN", "/bin/echo")
-        .args(["webgraph", "serve", "--port", "9"])
+        .current_dir(tmp.path())
+        .args(["webgraph", "export"])
         .output()
         .unwrap();
-    assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        "webgraph serve --port 9\n"
+    assert_eq!(out.status.code(), Some(1));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("Config not found at"),
+        "error canónico nativo ausente: {err}"
     );
+    assert!(
+        err.contains("CORTEX_PY=1 es rollback histórico"),
+        "aviso histórico ausente: {err}"
+    );
+    // Si delegara a /bin/echo, stdout sería "webgraph export\n".
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
 }

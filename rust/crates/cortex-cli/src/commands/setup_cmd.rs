@@ -312,6 +312,27 @@ fn enterprise(argv: &[String]) -> bool {
     true
 }
 
+/// `cortex init` — alias nativo de `setup agent` (oráculo main.py:796-806:
+/// único flag `--non-interactive`). Sin `--non-interactive` el oráculo entra
+/// en modo interactivo; el nativo no tiene TUI ⇒ error como `setup agent`.
+#[derive(Parser)]
+struct Init {
+    #[arg(long)]
+    non_interactive: bool,
+}
+
+pub fn run_init(argv: &[String]) -> bool {
+    let _a =
+        match Init::try_parse_from(std::iter::once("init".to_string()).chain(argv.iter().cloned()))
+        {
+            Ok(a) => a,
+            Err(e) => err(&e.to_string()),
+        };
+    // Dispara `setup agent` con el mismo argv (sólo acepta --non-interactive,
+    // igual que el oráculo `init`).
+    common(argv, "agent")
+}
+
 pub fn run(argv: &[String]) -> bool {
     match argv.first().map(String::as_str) {
         Some("agent") => common(&argv[1..], "agent"),
@@ -319,6 +340,15 @@ pub fn run(argv: &[String]) -> bool {
         Some("full") => common(&argv[1..], "full"),
         Some("webgraph") => web(&argv[1..]),
         Some("enterprise") => enterprise(&argv[1..]),
-        _ => false,
+        Some(first) => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
+        None => {
+            eprintln!(
+                "cortex setup: se requiere un perfil (agent|pipeline|full|webgraph|enterprise)"
+            );
+            std::process::exit(2);
+        }
     }
 }

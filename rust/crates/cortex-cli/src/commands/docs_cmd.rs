@@ -545,6 +545,13 @@ pub fn run(argv: &[String]) -> bool {
         Some("restore") => run_restore(&argv[1..]),
         Some("list-backups") => run_list_backups(&argv[1..]),
         Some("routing-table") => run_routing_table(&argv[1..]),
-        _ => false,
+        Some(first) => {
+            eprintln!("No such command '{first}'.");
+            std::process::exit(2);
+        }
+        None => {
+            eprintln!("cortex docs: se requiere un subcomando");
+            std::process::exit(2);
+        }
     }
 }

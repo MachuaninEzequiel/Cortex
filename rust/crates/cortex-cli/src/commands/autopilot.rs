@@ -8,7 +8,7 @@
 //! (`cortex/autopilot/cli.py` — usar `cortex session hooks`); el nativo los
 //! RECHAZA con el mismo comportamiento que el CLI Python real (comando
 //! desconocido, rc=2) y NUNCA ejecuta Python. Cualquier otro subcomando
-//! desconocido sigue cayendo al passthrough (external_subcommand).
+//! desconocido también se rechaza nativamente (baja física: sin passthrough).
 
 use std::fs;
 use std::path::PathBuf;
@@ -138,8 +138,9 @@ pub enum AutopilotCmd {
         #[arg(long)]
         json: bool,
     },
-    /// Subcomandos desconocidos → passthrough al CLI Python (install y
-    /// uninstall se rechazan nativamente antes de llegar acá).
+    /// Subcomandos desconocidos → rechazo nativo (Typer-like): NUNCA
+    /// passthrough a Python (baja física). `install`/`uninstall` fueron
+    /// ELIMINADOS del oráculo en la Fase 04 (`cortex/autopilot/cli.py`).
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -214,15 +215,12 @@ pub fn run(tokens: &[String]) -> bool {
             std::process::exit(execute_doctor(project_root.as_deref(), json))
         }
         AutopilotCmd::Other(tokens) => {
-            // Fase 04: el oráculo ELIMINÓ install/uninstall (comando
-            // desconocido, rc=2). Rechazo nativo: misma semántica, jamás
-            // Python. El resto de subcomandos desconocidos sigue al
-            // passthrough intacto.
+            // Baja física: el passthrough a Python fue eliminado ⇒ TODO
+            // subcomando desconocido se rechaza nativamente (Typer-like,
+            // precedente Fase 04 install/uninstall): `No such command`, rc 2.
             if let Some(first) = tokens.first() {
-                if first == "install" || first == "uninstall" {
-                    eprintln!("No such command '{first}'.");
-                    std::process::exit(2);
-                }
+                eprintln!("No such command '{first}'.");
+                std::process::exit(2);
             }
             false
         }
