@@ -72,43 +72,51 @@ El brain NUNCA ejecuta mutaciones: propone el comando exacto.
 
 ## Instalación
 
-Requisitos: Python **3.11+** · Linux/macOS/Windows.
+Requisitos: toolchain de Rust (solo para build) · Linux/macOS/Windows.
 
-### Recomendado: pipx (un CLI global, cero contaminación de proyectos)
+### Recomendado: instalación por binario (un CLI global, cero contaminación de proyectos)
 
 Cortex es una herramienta de gobernanza transversal: **un** comando global,
 mientras que los datos quedan por proyecto (`config.yaml`, `vault/`,
-`.memory/` viven dentro de cada repo). `pipx` te da exactamente eso — un
-entorno aislado y el comando `cortex` global:
+`.memory/` viven dentro de cada repo). El CLI es **100% nativo (Rust)** —
+instalá el binario compilado:
 
 ```bash
 # Desde un clone de este repositorio:
-pipx install .
+git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
+cargo install --path rust/crates/cortex-cli    # → ~/.cargo/bin/cortex-cli
 
-# Extras: embeddings multilingües + visualizador de grafo
-pipx inject cortex-memory fastembed webgraph
+# …o compilá un release y copiá el binario donde quieras:
+cargo build --release --manifest-path rust/Cargo.toml -p cortex-cli
+cp rust/target/release/cortex-cli ~/.local/bin/
 
-cortex doctor    # valida prerequisitos y estado de gobernanza
+cortex-cli doctor    # valida prerequisitos y estado de gobernanza
 ```
 
-> Cuando haya releases en PyPI esto queda simplemente en
-> `pipx install cortex-memory` (los wheels multiplataforma ya se compilan en
-> cada tag).
+> El binario se llama `cortex-cli`; usá `alias cortex=cortex-cli` si
+> preferís el nombre corto del resto de este doc.
 
-### Para desarrollo (instalación editable)
+### Paquete Python: legado congelado (oráculo de CI, no distribución)
+
+El paquete Python `cortex-memory` todavía se compila (`pyproject.toml`,
+`wheels.yml`) **solo** para mantener vivo el oráculo de paridad del CI
+(`ci-gates.yml` corre pytest contra `cortex/`). **No** es un canal de
+distribución: instalá y usá el binario nativo de arriba.
+
+### Para desarrollo
 
 ```bash
 git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
-pip install -e ".[dev]"
-pytest tests/unit tests/integration -q --no-cov
+cd rust && cargo build --workspace
+cargo test --workspace
 ```
 
 Bootstrap de un proyecto (crea config, vault, skills, adapters IDE):
 
 ```bash
-cortex init          # alias de `cortex setup agent` — flujo nuevo usuario
-cortex doctor        # valida prerequisitos y estado de gobernanza
-cortex tutor         # guía interactiva offline, cero tokens
+cortex-cli init --non-interactive   # alias de `cortex setup agent` — flujo nuevo usuario
+cortex-cli doctor                   # valida prerequisitos y estado de gobernanza
+cortex-cli tutor                    # guía interactiva offline, cero tokens
 ```
 
 ### Activar el brain 🧠 (opcional)

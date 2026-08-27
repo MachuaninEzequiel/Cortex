@@ -72,42 +72,50 @@ The brain NEVER executes mutations: it proposes the exact command.
 
 ## Installation
 
-Requirements: Python **3.11+** · Linux/macOS/Windows.
+Requirements: Rust toolchain (only to build) · Linux/macOS/Windows.
 
-### Recommended: pipx (one global CLI, zero project pollution)
+### Recommended: binary install (one global CLI, zero project pollution)
 
 Cortex is a cross-project governance tool: **one** global command, while all
 data stays per-project (`config.yaml`, `vault/`, `.memory/` live inside each
-repo). `pipx` gives you exactly that — an isolated environment and a global
-`cortex` command:
+repo). The CLI is **100% native (Rust)** — install the compiled binary:
 
 ```bash
 # From a clone of this repository:
-pipx install .
+git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
+cargo install --path rust/crates/cortex-cli    # → ~/.cargo/bin/cortex-cli
 
-# Extras: multilingual embeddings + webgraph visualizer
-pipx inject cortex-memory fastembed webgraph
+# …or build a release binary and copy it anywhere on PATH:
+cargo build --release --manifest-path rust/Cargo.toml -p cortex-cli
+cp rust/target/release/cortex-cli ~/.local/bin/
 
-cortex doctor    # validate prerequisites & governance state
+cortex-cli doctor    # validate prerequisites & governance state
 ```
 
-> Once releases land on PyPI this becomes simply `pipx install cortex-memory`
-> (multi-platform wheels are already built on every tag).
+> The binary is `cortex-cli`; `alias cortex=cortex-cli` if you prefer the
+> short name used throughout this doc.
 
-### For development (editable install)
+### Python package: frozen legacy (CI oracle, not distribution)
+
+The Python package `cortex-memory` still builds (`pyproject.toml`,
+`wheels.yml`) **only** to keep the CI parity oracle alive (`ci-gates.yml`
+runs pytest against `cortex/`). It is **not** a distribution channel:
+install and use the native binary above.
+
+### For development
 
 ```bash
 git clone https://github.com/MachuaninEzequiel/Cortex && cd Cortex
-pip install -e ".[dev]"
-pytest tests/unit tests/integration -q --no-cov
+cd rust && cargo build --workspace
+cargo test --workspace
 ```
 
 Bootstrap a project (creates config, vault, skills, IDE adapters):
 
 ```bash
-cortex init          # alias of `cortex setup agent` — new-user flow
-cortex doctor        # validate prerequisites & governance state
-cortex tutor         # offline interactive guide, zero tokens
+cortex-cli init --non-interactive   # alias of `cortex setup agent` — new-user flow
+cortex-cli doctor                   # validate prerequisites & governance state
+cortex-cli tutor                    # offline interactive guide, zero tokens
 ```
 
 ### Enabling the brain 🧠 (optional)
