@@ -316,3 +316,39 @@ no-op "ok" fuera del venv del gate.
 La decisión de archivo/borrado de Python y goldens queda pendiente del
 dueño (paquete separado). Registros: `progreso-baja-2a.md` y
 `progreso-baja-2b.md`.
+
+### 9.7 FASE FÍSICA de la baja definitiva — passthrough eliminado (2026-08-27)
+
+**BAJA DEFINITIVA — FASE FÍSICA COMPLETA.** Paquete `PROMPT-BAJA-FISICA.md`
+(commit `a61122c` + `27410dc` + `9611f69`), revisado y Approved:
+
+- **`CORTEX_PY=1` → rollback HISTÓRICO**: main.rs imprime aviso ("CORTEX_PY=1
+  es rollback histórico de la migración — el CLI es 100% nativo; eliminá la
+  variable") y continúa el flujo nativo. Ya NO delega.
+- **Catch-all eliminado**: comando desconocido → `No such command '<cmd>'.`
+  rc 2 (contrato Typer). Módulo `fallback.rs` ELIMINADO.
+- **`reindex` real → fallo explícito P6/P9** rc 1 (no existe escritor de
+  vector-cache persistente nativo); `--dry-run` sigue nativo.
+- **`init` → alias nativo** de `setup agent` (único flag `--non-interactive`,
+  oráculo main.py:796-806).
+- **Subtrees internos**: todos los `=> false` de fall-through eliminados
+  (autopilot/webgraph/ide/session/ci/docs/pr-context/setup/memory-report)
+  con taxonomía consistente: comando desconocido rc 2 / feature no-wireada
+  (reindex real, --telemetry, export federado) rc 1 con mensaje explícito.
+- **Goldens ARCHIVADOS**: ~40 `*_golden*.py` + dirs golden*/.p12b-*/.p12-*
+  → `bench/parity/archive/` con `README-archivo.md` histórico (qué
+  validaban, cómo reactivar). Ningún workflow de CI los corre (re-verificado).
+- **README a binarios**: instalación `cargo install --path
+  rust/crates/cortex-cli`; wheel Python = legado congelado (oráculo CI vivo,
+  no distribución). README.md + README.es.md.
+- Verificación: fmt/clippy workspace `-D warnings` ✓ · `cargo test
+  --workspace` 83/83 ✓ · oráculo Python **2552 passed, 21 skipped, 0F 0E**
+  bajo lock ✓ · smokes manuales (bogus rc 2, CORTEX_PY=1 aviso+nativo,
+  reindex rc 1, init help) ✓.
+- Revisión del diff: Approved (zero Critical/Important; minors cosméticos
+  de mensajes con ruta de revert documentada).
+
+**Resultado: el CLI nativo NO ejerce NINGÚN passthrough a Python.** Queda
+solo para el dueño (fuera del repo): decisión de borrado físico de
+`cortex/`+`tests/`+`pyproject.toml` (si algún día se quiere — hoy son el
+oráculo vivo de CI) y publicación de wheels solo-Rust (release, no repo).

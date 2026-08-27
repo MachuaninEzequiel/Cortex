@@ -1,12 +1,12 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
-> **ACTUALIZADO 2026-08-26 (cierre OBRA 07 — post T2-cola/T4/T6-b, oráculo 2552 verde).**
-> Obra 07 (migración total a Rust): **P0–P12 ✅ COMPLETADAS Y GATEADAS ·
-> CIERRE COMPLETO**. Los motores Y el CLI nativo clap están wireados; el
-> passthrough del `cortex-cli` quedó reducido al rollback `CORTEX_PY=1` más
-> deuda documentada (session task/hooks, ide, docs validate/restore,
-> webgraph serve/doctor, autopilot doctor/install/uninstall). Suite Python
-> ORÁCULO: **2552 passed, 21 skipped, 0 failed, 0 errors**.
+> **ACTUALIZADO 2026-08-27 (ba ja definitiva completa — RUTA 1/2 + FASE FÍSICA).**
+> Obra 07 (migración total a Rust): **P0–P12 ✅ + cierre T1–T7 ✅ · CIERRE
+> COMPLETO · BAJA DEFINITIVA EJECUTADA**. El CLI nativo clap está wireado
+> por completo; el passthrough fue ELIMINADO (`CORTEX_PY=1` = aviso
+> histórico, catch-all = `No such command` rc 2, fallback.rs muerto);
+> goldens archivados en `bench/parity/archive/`; README a binarios. Suite
+> Python ORÁCULO de CI: **2552 passed, 21 skipped, 0 failed, 0 errors**.
 > Handoff activo para agentes: `HANDOFF.md` §"HANDOFF ACTIVO".
 
 ## Estado consolidado al cierre
@@ -49,11 +49,14 @@ stdio bounded), T3 `cierre_autopilot_golden` (236 líneas) + `cierre_autopilot_c
 
 ### Lo que TODAVÍA depende de Python (deuda residual documentada)
 
-Tras el cierre de la Obra 07 + RUTA 1 + RUTA 2 de la baja definitiva, el
-passthrough de `cortex-cli` quedó reducido a SOLO el rollback `CORTEX_PY=1`.
-Todo subcomando expuesto por el oráculo es NATIVO. Deuda documentada no
-bloqueante: `hu import` con base_url http(s) real no tiene cliente HTTP
-nativo (requiere ADR de deps en tarea futura; gate hermético con file://).
+Tras el cierre de la Obra 07 + RUTA 1 + RUTA 2 + FASE FÍSICA de la baja
+definitiva, el passthrough de `cortex-cli` quedó ELIMINADO por completo
+(`CORTEX_PY=1` = aviso histórico que continúa nativo; catch-all =
+`No such command` rc 2; fallback.rs muerto). Todo subcomando expuesto por
+el oráculo es NATIVO. Deuda documentada no bloqueante: `hu import` con
+base_url http(s) real no tiene cliente HTTP nativo (requiere ADR de deps
+en tarea futura; gate hermético con file://); `reindex` real = fallo
+explícito (sin escritor de vectors persistente nativo).
 
 Lo nativo en esta Obra (P0–P12 + cierre T1–T7 + RUTA 1 + RUTA 2): motores
 híbridos (vault/embeddings/context/session/documenter/persister), CLI clap
@@ -68,14 +71,17 @@ registros de los paquetes: `progreso-baja-a/b.md` (ruta 1) y
 
 ### Próximos pasos (post-cierre — baja definitiva de Python)
 
-La Obra 07 (P0–P12 + cierre T1–T7) está completa. El paso siguiente,
-**fuera de esta Obra**, es la baja definitiva de Python:
+La Obra 07 (P0–P12 + cierre T1–T7) está completa, y la **baja definitiva
+EJECUTADA** (RUTA 1 + RUTA 2 + FASE FÍSICA, 2026-08-26/27): todos los
+leaves wireados, `CORTEX_PY=1` = rollback histórico, goldens archivados en
+`bench/parity/archive/`, README a binarios. Queda para el dueño (fuera del
+repo):
 
-1. Baja leaves residuales documentados arriba (session task/hooks, ide,
-   docs validate/restore, hu import, remember/forget, webgraph serve/doctor)
-   — o confirmarlos como deuda aceptada permanente.
-2. `CORTEX_PY=1` pasa a rollback histórico; wheels solo-Rust; README a
-   binarios; goldens archivados.
+1. Decisión de borrado físico de `cortex/` + `tests/` + `pyproject.toml`
+   (hoy son el ORÁCULO VIVO de CI: ci-gates.yml corre pytest 2552; borrarlos
+   requiere mover la verificación a Rust puro primero).
+2. Publicación de wheels solo-Rust (release, no repo) — `cargo install
+   --path rust/crates/cortex-cli` ya es la instalación documentada.
 3. Limpiezas: untracked + deprecaciones runtime.
 
 Hasta ahí llegó esta Obra. Los pasos 2-3 son un **paquete separado** (ver

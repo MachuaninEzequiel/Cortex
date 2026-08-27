@@ -125,6 +125,17 @@ Ruta 2 resuelta; decisión de archivo/borrado de Python y goldens pendiente
 del dueño (paquete separado). Registros: `progreso-baja-2a.md` +
 `progreso-baja-2b.md`.
 
+**FASE FÍSICA EJECUTADA (2026-08-27, `a61122c`+`27410dc`+`9611f69`, paquete
+`PROMPT-BAJA-FISICA.md`):** passthrough ELIMINADO — `CORTEX_PY=1` = aviso
+histórico que continúa nativo, catch-all = `No such command '<cmd>'.` rc 2,
+`fallback.rs` muerto, `reindex` real = fallo explícito rc 1, `init` = alias
+nativo de setup agent; goldens archivados en `bench/parity/archive/` con
+README histórico (ningún workflow de CI los corre); README instalación por
+binario (`cargo install --path rust/crates/cortex-cli`), wheel Python =
+legado congelado (oráculo CI vivo). Verificación: `cargo test --workspace`
+83/83, oráculo **2552/21/0/0**, smokes manuales ✓, revisión Approved.
+**El CLI nativo NO ejerce ningún passthrough a Python.**
+
 Métricas:
 - Suite Python ORÁCULO: **2552 passed, 21 skipped, 0 failed, 0 errors**
   (primera vez verde desde la recatorización).
