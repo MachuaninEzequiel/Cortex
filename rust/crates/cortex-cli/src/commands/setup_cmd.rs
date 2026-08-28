@@ -389,7 +389,12 @@ fn composed(argv: &[String]) -> bool {
                 continue;
             }
             let content = std::fs::read_to_string(&p).map_err(|e| format!("read {name}: {e}"))?;
-            let updated = cortex_setup::ide::base::upsert_marker_block(&content, &block);
+            let updated = cortex_setup::ide::base::upsert_marker_block_with(
+                &content,
+                &block,
+                cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN,
+                cortex_setup::skills_bundle::COMPOSED_MARKER_CLOSE,
+            );
             std::fs::write(&p, updated).map_err(|e| format!("write {name}: {e}"))?;
             docs.push(name.to_string());
         }

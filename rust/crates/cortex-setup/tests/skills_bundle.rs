@@ -167,3 +167,79 @@ fn install_bundles_are_idempotent_and_partial_safe() {
 
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+// ── R12 (Obra 08 A13): el bloque composed debe usar marcadores DEDICADOS ──
+// Los marcadores canónicos CORTEX_MARKER_OPEN/CLOSE son los de la sección
+// codex en AGENTS.md; compartirlos hace que `setup composed` y
+// `setup agent --ide codex` se pisen en silencio (upsert reemplaza todo span).
+
+#[test]
+fn agent_skills_block_uses_dedicated_markers() {
+    let block = cortex_setup::skills_bundle::agent_skills_block();
+    assert!(
+        block.contains(cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN),
+        "el bloque abre con el marcador dedicado"
+    );
+    assert!(
+        block.contains(cortex_setup::skills_bundle::COMPOSED_MARKER_CLOSE),
+        "el bloque cierra con el marcador dedicado"
+    );
+    assert!(
+        !block.contains(cortex_setup::ide::base::CORTEX_MARKER_OPEN),
+        "NO debe llevar los marcadores canónicos (colisión codex, R12)"
+    );
+}
+
+#[test]
+fn composed_and_codex_blocks_coexist_in_one_agents_md() {
+    use cortex_setup::ide::base::{
+        upsert_marker_block, upsert_marker_block_with, CORTEX_MARKER_CLOSE, CORTEX_MARKER_OPEN,
+    };
+    let codex_block =
+        format!("{CORTEX_MARKER_OPEN}\n## Codex workflow\ntriad anchors\n{CORTEX_MARKER_CLOSE}");
+    let composed_block = cortex_setup::skills_bundle::agent_skills_block();
+
+    // estado inicial: sección codex escrita por `setup agent --ide codex`
+    let mut doc = format!("# Mi proyecto\n\n{codex_block}\n");
+
+    // setup composed NO debe tocar la sección codex
+    doc = upsert_marker_block_with(
+        &doc,
+        &composed_block,
+        cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN,
+        cortex_setup::skills_bundle::COMPOSED_MARKER_CLOSE,
+    );
+    assert!(doc.contains("## Codex workflow"), "codex sobrevive");
+    assert!(doc.contains("## Agent skills"), "composed se escribe");
+
+    // codex re-upsert (setup agent --ide codex otra vez) NO debe tocar composed
+    let codex_block2 =
+        format!("{CORTEX_MARKER_OPEN}\n## Codex workflow\ntriad anchors v2\n{CORTEX_MARKER_CLOSE}");
+    doc = upsert_marker_block(&doc, &codex_block2);
+    assert!(doc.contains("## Agent skills"), "composed sobrevive");
+    assert!(doc.contains("triad anchors v2"), "codex se actualiza");
+    assert!(
+        !doc.contains("triad anchors\n"),
+        "el reemplazo codex sigue siendo reemplazo"
+    );
+
+    // idempotencia por ambos lados: un span de cada tras replay
+    doc = upsert_marker_block_with(
+        &doc,
+        &composed_block,
+        cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN,
+        cortex_setup::skills_bundle::COMPOSED_MARKER_CLOSE,
+    );
+    doc = upsert_marker_block(&doc, &codex_block2);
+    assert_eq!(
+        doc.matches(cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN)
+            .count(),
+        1,
+        "composed no se duplica"
+    );
+    assert_eq!(
+        doc.matches(CORTEX_MARKER_OPEN).count(),
+        1,
+        "codex no se duplica"
+    );
+}

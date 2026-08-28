@@ -146,9 +146,19 @@ pub fn install_triad_skills(target_dir: &Path) -> Vec<String> {
     install_bundle(target_dir, TRIAD_SKILLS)
 }
 
+/// Marcadores DEDICADOS del bloque `## Agent skills` (R12, Obra 08 A13).
+/// No son los canónicos (`CORTEX_MARKER_OPEN/CLOSE`, usados por la sección
+/// codex en AGENTS.md): compartirlos hacía que `setup composed` y
+/// `setup agent --ide codex` se pisaran en silencio (upsert reemplaza todo
+/// el span). Cada sección vive entre sus propios marcadores.
+pub const COMPOSED_MARKER_OPEN: &str =
+    "<!-- BEGIN CORTEX AGENT SKILLS (auto-generated, do not edit) -->";
+pub const COMPOSED_MARKER_CLOSE: &str = "<!-- END CORTEX AGENT SKILLS -->";
+
 /// Bloque `## Agent skills` para CLAUDE.md/AGENTS.md, entre los marcadores
-/// canónicos del instalador (`upsert_marker_block`: reemplazo idempotente,
-/// precedente codex AGENTS.md).
+/// DEDICADOS `COMPOSED_MARKER_*` (R12: los canónicos están reservados para
+/// la sección codex; `upsert_marker_block_with` da reemplazo idempotente
+/// por sección, precedente codex AGENTS.md).
 pub fn agent_skills_block() -> String {
     let body = "\
 ## Agent skills
@@ -174,7 +184,6 @@ el contrato del checkpoint — ver `.cortex/skills/composed/INSTALL-COMPOSED.md`
 ";
     format!(
         "{}\n\n{body}\n{}",
-        crate::ide::base::CORTEX_MARKER_OPEN,
-        crate::ide::base::CORTEX_MARKER_CLOSE
+        COMPOSED_MARKER_OPEN, COMPOSED_MARKER_CLOSE
     )
 }

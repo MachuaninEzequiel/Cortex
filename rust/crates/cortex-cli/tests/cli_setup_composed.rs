@@ -83,12 +83,13 @@ fn setup_composed_installs_family_triad_and_agents_block() {
         );
     }
 
-    // sin docs previos ⇒ nace AGENTS.md con el bloque marcado
+    // sin docs previos ⇒ nace AGENTS.md con el bloque marcado (R12:
+    // marcadores DEDICADOS, no los canónicos de la sección codex)
     let agents = read(&root.join("AGENTS.md"));
     assert!(agents.contains("## Agent skills"), "AGENTS.md: {agents}");
     assert!(
-        agents.contains("BEGIN CORTEX SECTION"),
-        "bloque con marcadores"
+        agents.contains("BEGIN CORTEX AGENT SKILLS"),
+        "bloque con marcadores dedicados"
     );
 }
 
@@ -114,7 +115,7 @@ fn setup_composed_upserts_existing_docs_and_preserves_user_edits() {
         "contenido original intacto"
     );
     assert_eq!(
-        claude.matches("BEGIN CORTEX SECTION").count(),
+        claude.matches("BEGIN CORTEX AGENT SKILLS").count(),
         1,
         "el bloque se reemplaza, no se duplica"
     );
@@ -127,6 +128,61 @@ fn setup_composed_upserts_existing_docs_and_preserves_user_edits() {
     std::fs::write(root.join(".cortex/skills/cortex-sync.md"), b"custom").unwrap();
     assert!(bin().args(args).output().unwrap().status.success());
     assert_eq!(read(&root.join(".cortex/skills/cortex-sync.md")), "custom");
+}
+
+#[test]
+fn setup_composed_coexists_with_codex_agents_section() {
+    // R12 (gate A13): la sección codex (marcadores canónicos) y el bloque
+    // composed (marcadores dedicados) conviven en el mismo AGENTS.md sin
+    // pisarse — antes compartían span y upsert se comía al otro.
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    let codex_block = "<!-- BEGIN CORTEX SECTION (auto-generated, do not edit) -->\n## Codex workflow\ntriad anchors\n<!-- END CORTEX SECTION -->";
+    std::fs::write(
+        root.join("AGENTS.md"),
+        format!("# Mi proyecto\n\n{codex_block}\n"),
+    )
+    .unwrap();
+    let args = [
+        "setup",
+        "composed",
+        "--non-interactive",
+        "--project-root",
+        root.to_str().unwrap(),
+    ];
+
+    assert!(bin().args(args).output().unwrap().status.success());
+    let agents = read(&root.join("AGENTS.md"));
+    assert!(
+        agents.contains("## Codex workflow"),
+        "la sección codex sobrevive el setup composed"
+    );
+    assert!(agents.contains("## Agent skills"), "composed se escribe");
+    assert_eq!(
+        agents.matches("BEGIN CORTEX SECTION").count(),
+        1,
+        "codex no duplicado"
+    );
+    assert_eq!(
+        agents.matches("BEGIN CORTEX AGENT SKILLS").count(),
+        1,
+        "composed no duplicado"
+    );
+
+    // replay: ni duplicación ni pisado
+    assert!(bin().args(args).output().unwrap().status.success());
+    let agents = read(&root.join("AGENTS.md"));
+    assert!(agents.contains("## Codex workflow"), "codex sigue vivo");
+    assert_eq!(
+        agents.matches("BEGIN CORTEX SECTION").count(),
+        1,
+        "codex no duplicado tras replay"
+    );
+    assert_eq!(
+        agents.matches("BEGIN CORTEX AGENT SKILLS").count(),
+        1,
+        "composed no duplicado tras replay"
+    );
 }
 
 #[test]
