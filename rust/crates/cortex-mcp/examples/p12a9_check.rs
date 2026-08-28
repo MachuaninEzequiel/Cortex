@@ -427,6 +427,7 @@ fn main() {
                 unverified_claims: cp.unverified_claims.clone(),
                 artifacts_touched: cp.artifacts_touched.clone(),
                 note: cp.note.clone(),
+                phase: None,
             };
             let v = review_checkpoint(&native, &files);
             out.push(j(&json!({

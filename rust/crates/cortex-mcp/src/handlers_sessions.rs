@@ -838,6 +838,7 @@ fn to_native_checkpoint(c: &SCheckpoint) -> cortex_app::session::Checkpoint {
         unverified_claims: c.unverified_claims.clone(),
         artifacts_touched: c.artifacts_touched.clone(),
         note: c.note.clone(),
+        phase: None, /* el contrato MCP con phase llega en A4 (validación dura) */
     }
 }
 

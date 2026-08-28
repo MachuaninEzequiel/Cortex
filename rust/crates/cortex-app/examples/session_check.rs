@@ -90,6 +90,7 @@ fn main() {
         unverified_claims: vec![],
         artifacts_touched: vec![],
         note: String::new(),
+        phase: None,
     };
     let casos: Vec<(&str, Vec<cortex_app::session::Checkpoint>)> = vec![
         ("vacio", vec![]),

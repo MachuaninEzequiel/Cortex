@@ -242,6 +242,7 @@ impl SessionService {
             unverified_claims,
             artifacts_touched,
             note: note.to_string(),
+            phase: None,
         });
         self.storage.save(&record)?;
         Ok(record)

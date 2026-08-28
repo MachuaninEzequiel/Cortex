@@ -59,6 +59,59 @@ pub enum SessionMode {
     CiReview,
 }
 
+/// Fase de un checkpoint COMPOSED (Obra 08 stream A).
+///
+/// Las skills user/model-invoked emiten checkpoints con `phase` para que
+/// Cortex reconozca la cadena de fases sin orquestar (modo COMPOSED).
+/// Campo opcional: los emisores legados no lo llevan y nada cambia para
+/// ellos.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckpointPhase {
+    Grill,
+    Spec,
+    Plan,
+    Implement,
+    Review,
+    Close,
+}
+
+impl CheckpointPhase {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Grill => "grill",
+            Self::Spec => "spec",
+            Self::Plan => "plan",
+            Self::Implement => "implement",
+            Self::Review => "review",
+            Self::Close => "close",
+        }
+    }
+
+    /// Case-sensitive en minúsculas (igual que los demás parsers del repo);
+    /// `None` para cualquier entrada inválida (patrón P6/P9: el servicio
+    /// rechaza con mensaje claro, nunca silencio).
+    pub fn parse(s: &str) -> Option<CheckpointPhase> {
+        match s {
+            "grill" => Some(Self::Grill),
+            "spec" => Some(Self::Spec),
+            "plan" => Some(Self::Plan),
+            "implement" => Some(Self::Implement),
+            "review" => Some(Self::Review),
+            "close" => Some(Self::Close),
+            _ => None,
+        }
+    }
+}
+
+impl std::str::FromStr for CheckpointPhase {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s).ok_or(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CheckpointSource {
     #[serde(rename = "cortex-sync")]
@@ -179,6 +232,9 @@ pub struct Checkpoint {
     pub artifacts_touched: Vec<String>,
     #[serde(default)]
     pub note: String,
+    /// Fase COMPOSED opcional (Obra 08 stream A). Ausente ⇒ emisor legado.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<CheckpointPhase>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -576,4 +632,79 @@ pub fn canonical_json_normalized(record: &SessionRecord, workspace_root: &str) -
     let mut s = serde_json::to_string_pretty(&obj).expect("dump");
     s.push('\n');
     s
+}
+
+// ── Tests: contrato de fases (Obra 08 stream A, G-A1a) ───────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_checkpoint() -> Checkpoint {
+        Checkpoint {
+            timestamp: "2026-08-28T00:00:00.000000Z".to_string(),
+            source: CheckpointSource::UserSkill,
+            verified_claims: Vec::new(),
+            unverified_claims: Vec::new(),
+            artifacts_touched: Vec::new(),
+            note: String::new(),
+            phase: None,
+        }
+    }
+
+    const ALL_PHASES: [CheckpointPhase; 6] = [
+        CheckpointPhase::Grill,
+        CheckpointPhase::Spec,
+        CheckpointPhase::Plan,
+        CheckpointPhase::Implement,
+        CheckpointPhase::Review,
+        CheckpointPhase::Close,
+    ];
+
+    #[test]
+    fn phase_roundtrip_yaml() {
+        for p in ALL_PHASES {
+            let mut cp = base_checkpoint();
+            cp.phase = Some(p);
+            let yaml = serde_yaml::to_string(&cp).unwrap();
+            let back: Checkpoint = serde_yaml::from_str(&yaml).unwrap();
+            assert_eq!(back.phase, Some(p), "roundtrip perdió fase {p:?}");
+        }
+    }
+
+    #[test]
+    fn phase_as_str_parse_roundtrip() {
+        for p in ALL_PHASES {
+            assert_eq!(p.as_str().parse::<CheckpointPhase>(), Ok(p));
+            assert_eq!(CheckpointPhase::parse(p.as_str()), Some(p));
+        }
+    }
+
+    #[test]
+    fn no_phase_backward_compat() {
+        // Checkpoint legado (formato real del storage YAML) SIN campo phase.
+        let yaml = "\
+timestamp: '2026-08-28T00:00:00.000000Z'\nsource: user-skill\nverified_claims: []\nunverified_claims: []\nartifacts_touched: []\nnote: ''\n";
+        let cp: Checkpoint = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(cp.phase, None);
+        assert_eq!(cp.source, CheckpointSource::UserSkill);
+    }
+
+    #[test]
+    fn invalid_phase_string_rejected() {
+        assert_eq!(CheckpointPhase::parse("asdf"), None);
+        assert_eq!(CheckpointPhase::parse(""), None);
+        assert_eq!(CheckpointPhase::parse("Spec"), None); // case-sensitive
+        assert_eq!(CheckpointPhase::parse("implement "), None); // sin trim
+    }
+
+    #[test]
+    fn phase_omitted_in_yaml_when_none() {
+        let cp = base_checkpoint();
+        let yaml = serde_yaml::to_string(&cp).unwrap();
+        assert!(
+            !yaml.contains("phase"),
+            "phase no debe serializarse en None"
+        );
+    }
 }
