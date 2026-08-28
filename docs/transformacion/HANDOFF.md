@@ -164,3 +164,30 @@ de esta Obra.
 ---
 
 
+
+## 8. OBRA 08 STREAM B — Herdr Companion (2026-08-28) — COMPLETO
+
+Estado: tasks B1–B10 con review Approved cada una (fueron necesarias 4 rondas
+de fix: B5 hit-test, B6 comando modal, B7 'q' en Search + deadlock test +
+geometría input, B9 min_herdr_version). Suite workspace: **594 passed / 0
+failed / 1 ignored** (el ignore = rss_measure manual). clippy --all-targets
+-D warnings y fmt limpios.
+
+Superficie: crate `cortex-companion` (ratatui mouse-first, Backend in-process
+con paridad JSON byte-idéntica vs CLI por construcción, run_guarded con
+auditoría, brain híbrido con tools enrutadas 1:1 al engine, menú de 27
+familias anti-olvido) + plugin herdr declarativo (`integrations/herdr/`,
+manifest verificado en herdr 0.7.3 real del dueño).
+
+Deuda/fase 2 (documentada en 14-… §9):
+- Web Hub localhost (axum + /brain/chat SSE) como segunda superficie.
+- Backend MCP/remoto del Companion (costura del trait Backend; P13 encaja).
+- Brain 100% in-process standalone (el Companion ya lo logra para sus tools).
+- Reuso de widgets cortex-tui post-estabilización (P8d/TUI).
+- Integración documenter finalize para close_session real (hoy P6/P9 honesto).
+- `herdr plugin re-link` tras merge: el link actual apunta al worktree
+  /home/chucho/Cortex-obra08-B/integrations/herdr; ejecutar
+  `herdr plugin unlink cortex.companion && herdr plugin link
+  /home/chucho/Cortex/integrations/herdr` tras integrar la rama.
+- Verificación manual del dueño: pane open + navegación por clic en su sesión
+  herdr (los pasos 1-3 de INSTALL.md §Verificación).

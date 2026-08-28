@@ -1,6 +1,6 @@
 # 14 — HERDR COMPANION (Obra 08, stream B)
 
-> Estado: ESPECIFICACIÓN aprobada por el dueño (2026-08-27).
+> Estado: RESUELTO por obra 08 stream B (2026-08-28) — G-B1…G-B6 PASS, ver specs/planes/ledgers. Original: ESPECIFICACIÓN aprobada por el dueño (2026-08-27).
 > Obra 08 = dos streams: A (`13-MODO-COMPOSED-Y-SKILLS-EXPERTAS.md`) + B (este doc).
 > Aditivo: cortex funciona exactamente igual sin `cortex-companion` y sin herdr.
 > Regla rectora: **agregar, casi nunca cambiar**.
