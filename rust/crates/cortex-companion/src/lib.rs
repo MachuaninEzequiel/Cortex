@@ -5,7 +5,10 @@
 //! (run_guarded), B3 app ELM-lite mouse-first, B4 widgets + Home,
 //! B5 Menu anti-olvido, B6 Sessions+Actions con modal integrado a la
 //! máquina de estados (`app::pending` + `effects::apply`), B7 Search con
-//! feedback explícito formato-oráculo (`feedback.rs`).
+//! feedback explícito formato-oráculo (`feedback.rs`), B8 Brain híbrido
+//! (`brain_panel.rs`: reads directas por el engine in-process, propuestas
+//! de mutación con [Ejecutar] → `run_guarded`, router determinista cero
+//! tokens / LLM opcional con protocolo TOOL).
 
 #![forbid(unsafe_code)]
 
@@ -13,6 +16,7 @@ use std::path::PathBuf;
 
 pub mod app;
 pub mod approval;
+pub mod brain_panel;
 pub mod effects;
 pub mod engine;
 pub mod feedback;

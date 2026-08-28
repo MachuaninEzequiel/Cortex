@@ -6,9 +6,14 @@
 //! (B2) con la decisión que el usuario tomó en el modal de la máquina de
 //! estados. Así el flujo auditado es idéntico en producción y en tests
 //! (nada de loops bloqueantes ni lógica duplicada en el binario).
+//!
+//! B8 añade el brain híbrido: `apply_opt` acepta el `LlmBackend` opcional
+//! (None = router determinista, cero tokens; Some = protocolo TOOL del
+//! brain con las tools enrutadas por el engine in-process — `brain_panel`).
 
 use crate::app::{AppState, ApprovalTarget, Effect, OutcomeLine, PendingApproval};
 use crate::approval::{run_guarded, ActionLog, ApprovalRequest, ApprovalUi};
+use crate::brain_panel::{self, BrainMsg};
 use crate::engine::Backend;
 use crate::feedback;
 use crate::menu::MenuOutput;
@@ -31,10 +36,21 @@ impl ApprovalUi for AnsweredUi {
     }
 }
 
-/// Aplica un efecto declarado por el reducer. Los mutantes pasan SIEMPRE por
-/// `run_guarded` con auditoría en `action_log` (patrón P6/P9: nada en
-/// silencio, fallos propagados a la UI).
-pub fn apply<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState, fx: Effect) {
+/// Aplica un efecto declarado por el reducer (sin LLM: modo determinista,
+/// cero tokens — default del brain y del Companion).
+pub fn apply<B: Backend>(be: &B, log: &ActionLog, st: &mut AppState, fx: Effect) {
+    apply_opt(be, log, st, fx, None);
+}
+
+/// Versión con backend LLM opcional (B8): `Some` habilita el protocolo TOOL
+/// del brain sobre el engine; `None` usa el router determinista 1:1.
+pub fn apply_opt<B: Backend>(
+    be: &B,
+    log: &ActionLog,
+    st: &mut AppState,
+    fx: Effect,
+    llm: Option<&mut dyn cortex_brain::chat::LlmBackend>,
+) {
     match fx {
         Effect::RunCommand { family, args } => {
             // Defensivo: las guarded se enrutan al modal en el reducer; si una
@@ -78,6 +94,21 @@ pub fn apply<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState, fx
                     st.search.outcome = Some((format!("ya marcada útil: {memory_id}"), false));
                 }
                 Err(e) => st.search.outcome = Some((e, true)),
+            }
+        }
+        Effect::BrainTurn { text } => {
+            // Un turno de chat: reads directas, propuestas mutantes como
+            // mensajes Proposal (la aprobación llega al clickear
+            // [Ejecutar] — el reducer abre el modal, resolve audita).
+            brain_panel::run_turn(be, &mut st.brain, &text, llm);
+        }
+        Effect::BrainExec { family, args } => {
+            // Defensivo (las propuestas solo se crean para mutantes): una
+            // lectura sugerida se ejecuta directa por el engine, como toda
+            // read del brain — sin modal y sin auditoría.
+            match be.menu_run(&family, &args) {
+                Ok(s) => st.brain.messages.push(BrainMsg::Brain(s)),
+                Err(e) => st.brain.messages.push(BrainMsg::Brain(format!("⚠ {e}"))),
             }
         }
         Effect::ResolveApproval => resolve(be, log, st),
@@ -151,9 +182,32 @@ fn resolve<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState) {
                 st.actions.outcome = Some(("lote denegado — sin cambios".to_string(), false));
             }
         }
+        ApprovalTarget::BrainCommand { family, args } => {
+            // Propuesta del brain aprobada ⇒ ejecución por el engine
+            // (`menu_run`, paridad con el CLI) + auditoría bajo la
+            // audit_key del mensaje. Denegada ⇒ cero ejecución, denied
+            // auditado (run_guarded lo registra). El resultado es visible
+            // en el chat (nunca silencio — P6/P9).
+            let mut out: Option<String> = None;
+            let r = run_guarded(&mut ui, log, &req, || {
+                be.menu_run(&family, &args).map(|s| out = Some(s))
+            });
+            match (answer, r, out) {
+                (true, Ok(()), Some(s)) => {
+                    st.brain.messages.push(BrainMsg::Brain(s));
+                    st.brain.outcome = Some(("ejecutado".to_string(), false));
+                }
+                (true, Ok(()), None) => {
+                    st.brain.outcome = Some(("ejecutado (sin salida)".to_string(), false))
+                }
+                (true, Err(e), _) => st.brain.outcome = Some((e, true)),
+                (false, _, _) => {
+                    st.brain.outcome = Some(("denegado — sin cambios".to_string(), false))
+                }
+            }
+        }
     }
 }
-
 /// Resultado legible para el panel de salida: denegar NO es un error del
 /// sistema (decisión del usuario); ejecutar bien tampoco; fallar sí.
 fn outcome_line(answer: bool, r: Result<(), String>) -> OutcomeLine {

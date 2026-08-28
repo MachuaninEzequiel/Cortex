@@ -30,6 +30,13 @@ chrono = { workspace = true }
 ratatui = "0.30"
 crossterm = "0.29"
 
+[features]
+# B8: backend LLM real del brain (llama.cpp/GGUF) — passthrough OPCIONAL,
+# igual que el brain standalone (default sin modelo: cero tokens, cero RAM).
+# llama-cpp-2 ya está resuelto en Cargo.lock (es opcional de cortex-brain):
+# este feature no añade paquetes nuevos al lock, solo activa la arista.
+llama = ["cortex-brain/llama"]
+
 [lib]
 name = "cortex_companion"
 path = "src/lib.rs"

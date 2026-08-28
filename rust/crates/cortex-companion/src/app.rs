@@ -77,6 +77,21 @@ pub const SEARCH_USEFUL_X: u16 = 58;
 pub const SEARCH_USEFUL_W: u16 = 14;
 pub const SEARCH_DETAIL: Rect = Rect::new(2, 17, 76, 6);
 
+/// Pantalla Brain (B8): status + input de chat + filas expandidas con
+/// columna [Ejecutar] por propuesta. Geometría COMPARTIDA con `hit_test`
+/// (misma consts que `brain_areas`). Input alto 2 — lección B7.
+pub const BRAIN_STATUS: Rect = Rect::new(2, 1, 76, 1);
+pub const BRAIN_INPUT: Rect = Rect::new(2, 2, 76, 2);
+pub const BRAIN_LIST_LEFT: u16 = 2;
+pub const BRAIN_LIST_TOP: u16 = 5;
+pub const BRAIN_LIST_WIDTH: u16 = 76;
+pub const BRAIN_LIST_HEIGHT: u16 = 12;
+pub const BRAIN_EXEC_X: u16 = 62;
+pub const BRAIN_EXEC_W: u16 = 14;
+/// Acceso a Brain desde el footer del Home (mouse-first; Tab = doble
+/// teclado). Rect de hit-test del span pintado por `render_home`.
+pub const HOME_BRAIN_BTN: Rect = Rect::new(2, 23, 22, 1);
+
 /// Acciones semánticas de la app: el input ya viene "traducido".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppAction {
@@ -132,6 +147,12 @@ pub enum AppAction {
     MarkUseful {
         memory_id: String,
     },
+    /// Click en [Ejecutar] de una propuesta del brain (B8): mutante ⇒ modal
+    /// guarded con el comando EXACTO; lectura ⇒ ejecución directa.
+    RunBrainCommand {
+        command: String,
+        audit_key: String,
+    },
     /// Ejecutar un comando del Menu (B5: lecturas directas; mutantes ⇒ modal).
     RunCommand {
         family: &'static str,
@@ -162,6 +183,13 @@ pub enum Effect {
     /// Resolver la aprobación pendiente: el runtime (`effects::apply`)
     /// ejecuta `run_guarded` con la decisión guardada en `pending`.
     ResolveApproval,
+    /// Un turno de chat del brain (B8): el runtime enruta por el engine
+    /// in-process (determinista o protocolo TOOL con el LLM configurado).
+    BrainTurn { text: String },
+    /// Ejecutar directa una LECTURA propuesta por el brain (defensivo: las
+    /// propuestas se crean solo para mutantes; si una lectura llega acá va
+    /// por `menu_run` sin modal ni auditoría).
+    BrainExec { family: String, args: Vec<String> },
 }
 
 /// Qué se va a ejecutar si el usuario aprueba el modal (datos puros; la
@@ -179,6 +207,12 @@ pub enum ApprovalTarget {
     },
     RunMenu {
         family: &'static str,
+        args: Vec<String>,
+    },
+    /// Comando mutante propuesto por el brain (B8): se ejecuta por
+    /// `menu_run` SOLO detrás del modal (el req muestra el comando exacto).
+    BrainCommand {
+        family: String,
         args: Vec<String>,
     },
 }
@@ -215,6 +249,7 @@ pub struct ActionsData {
     pub error: Option<String>,
 }
 
+pub use crate::brain_panel::BrainPanel;
 pub use crate::screens::search_screen::SearchData;
 
 /// IDs de propuestas aptas para el lote auto-ok: reversibles Y costo
@@ -239,6 +274,7 @@ pub struct Areas {
     pub home_open_session_btn: Option<Rect>,
     pub home_menu_btn: Option<Rect>,
     pub menu_back_btn: Option<Rect>,
+    pub home_brain_btn: Option<Rect>,
 }
 
 /// Estado global de la app (máquina ELM-lite).
@@ -265,6 +301,9 @@ pub struct AppState {
     /// Datos de Search (B7): query/hits/marcas — estado del usuario, no se
     /// refresca solo; Enter dispara la búsqueda.
     pub search: SearchData,
+    /// Panel Brain (B8): chat, input y propuestas — los mensajes son estado
+    /// del usuario; el runtime enruta turnos por el engine in-process.
+    pub brain: BrainPanel,
 }
 
 impl AppState {
@@ -278,6 +317,7 @@ impl AppState {
                 home_open_session_btn: Some(HOME_OPEN_SESSION_BTN),
                 home_menu_btn: Some(HOME_MENU_BTN),
                 menu_back_btn: Some(MENU_BACK_BTN),
+                home_brain_btn: Some(HOME_BRAIN_BTN),
             },
             quit: false,
             scroll_offset: 0,
@@ -287,6 +327,7 @@ impl AppState {
             sessions: SessionsData::default(),
             actions: ActionsData::default(),
             search: SearchData::default(),
+            brain: BrainPanel::default(),
         }
     }
 }
@@ -345,44 +386,68 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         // Click ya fue resuelto por `hit_test` en una acción concreta; si llega
         // aquí suelto es porque no había área (no-op).
         AppAction::Click { .. } => None,
-        // ---- B7: input de búsqueda (teclado) ----
+        // ---- B7/B8: input de búsqueda y de chat (teclado dual) ----
         // `/` desde cualquier otra pantalla salta al panel (convención del
-        // keymap TUI del repo); en Search, `/` es texto de la consulta.
-        AppAction::Typed('/') if state.screen != Screen::Search => {
+        // keymap TUI del repo); en Search/Brain, `/` es texto.
+        AppAction::Typed('/') if !matches!(state.screen, Screen::Search | Screen::Brain) => {
             state.stack.push(state.screen);
             state.screen = Screen::Search;
             None
         }
-        // 'q' global: salida fuera de Search (en Search es texto de la
-        // consulta — finding review B7: tipear "query" mataba el proceso).
-        // Ctrl+C sigue cerrando en todas las pantallas (mapeo explícito a
-        // Quit, B3).
-        AppAction::Typed('q') if state.screen != Screen::Search => {
+        // 'q' global: salida fuera de los inputs de texto (Search/Brain),
+        // donde es carácter (finding review B7: tipear "query" mataba el
+        // proceso). Ctrl+C sigue cerrando en todas (mapeo explícito B3).
+        AppAction::Typed('q') if !matches!(state.screen, Screen::Search | Screen::Brain) => {
             state.quit = true;
             None
         }
         AppAction::Typed(c) => {
-            if state.screen == Screen::Search {
-                state.search.query.push(c);
+            match state.screen {
+                Screen::Search => state.search.query.push(c),
+                Screen::Brain => state.brain.input.push(c),
+                _ => {}
             }
             None
         }
         AppAction::Key(KeyCode::Backspace) => {
-            if state.screen == Screen::Search {
-                state.search.query.pop();
+            match state.screen {
+                Screen::Search => {
+                    state.search.query.pop();
+                }
+                Screen::Brain => {
+                    state.brain.input.pop();
+                }
+                _ => {}
             }
             None
         }
-        AppAction::Key(KeyCode::Enter) => {
-            if state.screen != Screen::Search {
-                return None;
+        AppAction::Key(KeyCode::Enter) => match state.screen {
+            Screen::Brain => {
+                let t = state.brain.input.trim().to_string();
+                if t.is_empty() {
+                    // Sin texto NUNCA se enruta nada (misma regla que Search).
+                    return None;
+                }
+                state.brain.input.clear();
+                Some(Effect::BrainTurn { text: t })
             }
-            let q = state.search.query.trim().to_string();
-            if q.is_empty() {
-                // Query vacía ⇒ NUNCA se llama al backend (brief Step 1).
-                return None;
+            Screen::Search => {
+                let q = state.search.query.trim().to_string();
+                if q.is_empty() {
+                    // Query vacía ⇒ NUNCA se llama al backend (brief Step 1).
+                    return None;
+                }
+                Some(Effect::Search { query: q })
             }
-            Some(Effect::Search { query: q })
+            _ => None,
+        },
+        // Doble teclado del acceso a Brain (el footer de Home es mouse-first).
+        AppAction::Key(KeyCode::Tab) => {
+            if state.screen != Screen::Brain {
+                state.stack.push(state.screen);
+                state.screen = Screen::Brain;
+            }
+            None
         }
         // Scroll saturante en ambas direcciones (B3 review: up debe decrementar).
         AppAction::Scroll { down } => {
@@ -466,6 +531,41 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             None
         }
         AppAction::MarkUseful { memory_id } => Some(Effect::MarkUseful { memory_id }),
+        // ---- B8: propuesta del brain [Ejecutar] ----
+        AppAction::RunBrainCommand { command, audit_key } => {
+            let toks = crate::brain_panel::tokenize(&command);
+            if toks.len() < 2 || toks[0] != "cortex" {
+                // Comando no reconocible: se muestra, nunca se ejecuta.
+                state
+                    .brain
+                    .messages
+                    .push(crate::brain_panel::BrainMsg::Brain(format!(
+                        "⚠ comando no reconocible: {command}"
+                    )));
+                return None;
+            }
+            let family = toks[1].clone();
+            let args = toks[2..].to_vec();
+            if menu::command_is_guarded(&family, &args) {
+                // El modal muestra el comando EXACTO (spec §5); la
+                // ejecución la hace `effects::resolve` con run_guarded.
+                state.pending = Some(PendingApproval {
+                    req: ApprovalRequest {
+                        title: "Ejecutar propuesta del brain".to_string(),
+                        effect: command,
+                        audit_key,
+                    },
+                    target: ApprovalTarget::BrainCommand { family, args },
+                    decision: None,
+                });
+                None
+            } else {
+                // Defensivo: las propuestas solo se crean para mutantes; una
+                // lectura llega directa (sin modal, sin auditoría — igual
+                // que las reads del propio brain).
+                Some(Effect::BrainExec { family, args })
+            }
+        }
         AppAction::RunCommand { family, args } => {
             // B6: las mutantes del menú pasan por el modal de la máquina de
             // estados (ya no hay loop bloqueante en el runtime).
@@ -528,6 +628,9 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
             }
             if state.areas.home_menu_btn.is_some_and(|r| r.contains(p)) {
                 return Some(AppAction::Navigate(Screen::Menu));
+            }
+            if state.areas.home_brain_btn.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::Navigate(Screen::Brain));
             }
             None
         }
@@ -607,8 +710,26 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
             // Cuerpo de la fila: seleccionar (abre el snippet en el detalle).
             Some(AppAction::SelectHit { index: idx })
         }
-        // B4+ registra áreas por pantalla aquí.
-        _ => None,
+        Screen::Brain => {
+            // Filas expandidas del chat (mismo mapeo que `render_brain`).
+            if !(BRAIN_LIST_LEFT..BRAIN_LIST_LEFT + BRAIN_LIST_WIDTH).contains(&x)
+                || !(BRAIN_LIST_TOP..BRAIN_LIST_TOP + BRAIN_LIST_HEIGHT).contains(&y)
+            {
+                return None;
+            }
+            let idx = usize::from(y - BRAIN_LIST_TOP) + usize::from(state.scroll_offset);
+            let rows = crate::screens::brain_rows(&state.brain);
+            let row = rows.get(idx)?;
+            if (BRAIN_EXEC_X..BRAIN_EXEC_X + BRAIN_EXEC_W).contains(&x) {
+                if let crate::screens::BrainRow::Proposal { command, audit_key } = row {
+                    return Some(AppAction::RunBrainCommand {
+                        command: command.clone(),
+                        audit_key: audit_key.clone(),
+                    });
+                }
+            }
+            None
+        }
     }
 }
 

@@ -16,7 +16,9 @@ use cortex_branding::gradient::color_for;
 use cortex_branding::pixels::PixelKind;
 use cortex_branding::wordmark;
 
-use crate::app::{HOME_ACTIONS_BTN, HOME_MENU_BTN, HOME_OPEN_SESSION_BTN, HOME_SESSIONS_BTN};
+use crate::app::{
+    HOME_ACTIONS_BTN, HOME_BRAIN_BTN, HOME_MENU_BTN, HOME_OPEN_SESSION_BTN, HOME_SESSIONS_BTN,
+};
 use crate::engine::{ActionProposal, DoctorSummary, SessionSummary, StatsSummary};
 use crate::widgets::{accent, button, panel, to_color, Button, Panel};
 
@@ -43,6 +45,10 @@ pub struct HomeAreas {
     pub actions_btn: Rect,
     pub open_session_btn: Option<Rect>,
     pub menu_btn: Rect,
+    /// Acceso a Brain en el footer (rect de hit-test del span pintado por
+    /// `render_home`; NO es un `Button` con bordes: el footer mide 1 fila y
+    /// `Borders::ALL` se comería la etiqueta — lección de geometría B7).
+    pub brain_btn: Rect,
     pub header: Rect,
     pub body: Rect,
     pub footer: Rect,
@@ -62,6 +68,7 @@ pub fn home_areas(area: Rect) -> HomeAreas {
         actions_btn: HOME_ACTIONS_BTN,
         open_session_btn: Some(HOME_OPEN_SESSION_BTN),
         menu_btn: HOME_MENU_BTN,
+        brain_btn: HOME_BRAIN_BTN,
         header,
         body,
         footer,
@@ -361,12 +368,29 @@ pub fn render_home(
         accent(),
     );
 
-    // Footer: hints.
+    // Footer: acceso a Brain (clic/Tab) + hints. El span del acceso es lo
+    // que pisa el ratón dentro de `HOME_BRAIN_BTN` (misma geometría que
+    // `hit_test`).
+    let brain_hovered = areas.hovered_mouse.is_some_and(|(mx, my)| {
+        areas
+            .brain_btn
+            .contains(ratatui::layout::Position::new(mx, my))
+    });
     f.render_widget(
-        ratatui::widgets::Paragraph::new(Line::from(Span::styled(
-            "mouse: clic navega · rueda scrollea · q/Ctrl+C salir · / buscar",
-            muted_style(),
-        ))),
+        ratatui::widgets::Paragraph::new(Line::from(vec![
+            Span::styled(
+                "▸ brain (clic o Tab)",
+                accent_style().add_modifier(if brain_hovered {
+                    ratatui::style::Modifier::BOLD
+                } else {
+                    ratatui::style::Modifier::empty()
+                }),
+            ),
+            Span::styled(
+                "  ·  clic navega · rueda scrollea · q/Ctrl+C salir · / buscar",
+                muted_style(),
+            ),
+        ])),
         areas.footer,
     );
 

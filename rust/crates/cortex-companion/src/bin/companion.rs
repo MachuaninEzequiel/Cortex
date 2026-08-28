@@ -1,9 +1,11 @@
-//! Binario `cortex-companion` (B4/B5/B6): render de Home, Menu, Sessions y
-//! Actions con ratatui + crossterm, mouse-first (raw mode + mouse capture).
-//! El snapshot no-TTY de B1/B9 se conserva. B6 integra el modal de
-//! aprobación a la máquina de estados: los clicks se resuelven con
+//! Binario `cortex-companion` (B4-B8): render de Home, Menu, Sessions,
+//! Actions, Search y Brain con ratatui + crossterm, mouse-first (raw mode +
+//! mouse capture). El snapshot no-TTY de B1/B9 se conserva. B6 integra el
+//! modal de aprobación a la máquina de estados: los clicks se resuelven con
 //! `hit_test`, el reducer abre `pending`, y `effects::apply` ejecuta SOLO
-//! lo aprobado (`run_guarded`, B2) — sin loops bloqueantes.
+//! lo aprobado (`run_guarded`, B2) — sin loops bloqueantes. B8: el chat del
+//! brain corre en-process (determinista por defecto; `--model` con feature
+//! `llama` habilita el GGUF local vía `LlmBackend` del brain).
 
 #![forbid(unsafe_code)]
 
@@ -13,9 +15,6 @@ use std::path::PathBuf;
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture};
 use crossterm::{execute, terminal};
 use ratatui::backend::CrosstermBackend;
-use ratatui::prelude::{Color, Line, Style};
-use ratatui::text::Span;
-use ratatui::widgets::Paragraph;
 use ratatui::Terminal;
 
 use cortex_companion::app::{self, AppAction, AppState};
@@ -26,12 +25,13 @@ use cortex_companion::screens::home::{home_areas, render_home, BrandAssets, Home
 use cortex_companion::screens::menu_screen::{menu_areas, render_menu};
 use cortex_companion::screens::sessions_screen::{render_sessions, sessions_areas};
 use cortex_companion::screens::{
-    actions_areas, render_actions, render_modal, render_search, search_areas,
+    actions_areas, brain_areas, render_actions, render_brain, render_modal, render_search,
+    search_areas,
 };
 use cortex_companion::{Screen, UiRequest};
 
 fn main() {
-    let root = parse_args();
+    let (root, model) = parse_args();
     let be = match InProcessBackend::open(&root) {
         Ok(be) => be,
         Err(e) => {
@@ -40,6 +40,28 @@ fn main() {
         }
     };
     let log = ActionLog::new(&be.action_log_dir());
+
+    // B8: backend LLM opcional (default sin modelo — mismo contrato que el
+    // brain standalone). --model sin feature `llama` ⇒ aviso honesto y
+    // continúa determinista (nunca silencio, nunca subprocess).
+    let mut llm: Option<Box<dyn cortex_brain::chat::LlmBackend>> = None;
+    if let Some(path) = &model {
+        #[cfg(feature = "llama")]
+        {
+            match cortex_brain::llama::LlamaChatBackend::open(std::path::Path::new(path), None) {
+                Ok(b) => llm = Some(Box::new(b)),
+                Err(e) => eprintln!("⚠ {e} — sigo en modo determinista"),
+            }
+        }
+        #[cfg(not(feature = "llama"))]
+        {
+            let _ = path;
+            eprintln!(
+                "{}",
+                cortex_brain::i18n::warn_sin_llama(cortex_brain::i18n::Lang::Es)
+            );
+        }
+    }
 
     let mut st = AppState::new(UiRequest {
         screen: Screen::Home,
@@ -126,15 +148,10 @@ fn main() {
                     let _info =
                         render_search(f, f.area(), &st.search, st.scroll_offset, &mut areas);
                 }
-                other => {
-                    let label = app::screen_label(other);
-                    f.render_widget(
-                        Paragraph::new(Line::from(Span::styled(
-                            format!("Pantalla {label} — próxima task (B7+)"),
-                            Style::default().fg(Color::DarkGray),
-                        ))),
-                        f.area(),
-                    );
+                Screen::Brain => {
+                    let mut areas = brain_areas(f.area());
+                    areas.hover_mouse = st.mouse;
+                    let _info = render_brain(f, f.area(), &st.brain, st.scroll_offset, &mut areas);
                 }
             }
             // Modal como superficie de la máquina de estados (B6): se pinta
@@ -157,7 +174,13 @@ fn main() {
                         other => other,
                     };
                     if let Some(fx) = app::update(&mut st, action) {
-                        effects::apply(&be, &log, &mut st, fx);
+                        // `Box::as_mut` (no `as_deref_mut`): evita el límite
+                        // del borrow checker con drop-glue de `Box<dyn>` en
+                        // loop (E0499).
+                        let llm_ref = llm
+                            .as_mut()
+                            .map(|b| b.as_mut() as &mut dyn cortex_brain::chat::LlmBackend);
+                        effects::apply_opt(&be, &log, &mut st, fx, llm_ref);
                     }
                 }
             }
@@ -246,8 +269,9 @@ fn home_data(be: &InProcessBackend) -> HomeData {
     }
 }
 
-fn parse_args() -> PathBuf {
+fn parse_args() -> (PathBuf, Option<String>) {
     let mut project_root: Option<String> = None;
+    let mut model: Option<String> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -258,8 +282,20 @@ fn parse_args() -> PathBuf {
                     std::process::exit(2);
                 }
             },
+            // B8: GGUF local opcional (feature `llama`); --no-model =
+            // explícito determinista (default del brain).
+            "--model" => match args.next() {
+                Some(v) if !v.starts_with("--") => model = Some(v),
+                _ => {
+                    eprintln!("--model requiere la ruta de un GGUF (--model <ruta>)");
+                    std::process::exit(2);
+                }
+            },
+            "--no-model" => model = None,
             "-h" | "--help" => {
-                println!("Uso: cortex-companion [--project-root <ruta>]");
+                println!(
+                    "Uso: cortex-companion [--project-root <ruta>] [--model <gguf>|--no-model]"
+                );
                 std::process::exit(0);
             }
             _ => {
@@ -268,8 +304,9 @@ fn parse_args() -> PathBuf {
             }
         }
     }
-    match project_root {
+    let root = match project_root {
         Some(p) => PathBuf::from(p),
         None => std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-    }
+    };
+    (root, model)
 }
