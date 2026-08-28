@@ -113,7 +113,8 @@ crate nuevo `cortex-companion` (bin + lib) + plugin declarativo para herdr.
 
 Uso: `cortex-companion` standalone, o en herdr `herdr plugin link
 <integrations/herdr>` + action "Open Cortex Companion" (pane overlay sticky;
-teclado `?` ayuda, q/Ctrl+C salida). INSTALL en `integrations/herdr/INSTALL.md`.
+teclado: Esc vuelve · q/Ctrl+C salen (q tipea en Search/Brain) · / abre
+Search). INSTALL en `integrations/herdr/INSTALL.md`.
 
 Divergencias declaradas del stream B:
 1. **min_herdr_version = 0.7.0** (R16): la API usada (panes overlay + actions
@@ -127,5 +128,6 @@ Divergencias declaradas del stream B:
 4. **llama feature resuelta no-compilada** (G-B4): misma arquitectura que el
    brain standalone; presupuesto cmake evitado en CI.
 5. **close_session del Companion = P6/P9 explícito** hasta integrarse el
-   documenter finalize (igual que autopilot finish sin backend): el pane
+   documenter finalize (sin backend de documenter, igual que `autopilot
+   finish --auto` sin `DocumenterFinalize`): el pane
    muestra el comando exacto, nunca silencio.

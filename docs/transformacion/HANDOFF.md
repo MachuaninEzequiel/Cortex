@@ -189,5 +189,5 @@ Deuda/fase 2 (documentada en 14-… §9):
   /home/chucho/Cortex-obra08-B/integrations/herdr; ejecutar
   `herdr plugin unlink cortex.companion && herdr plugin link
   /home/chucho/Cortex/integrations/herdr` tras integrar la rama.
-- Verificación manual del dueño: pane open + navegación por clic en su sesión
-  herdr (los pasos 1-3 de INSTALL.md §Verificación).
+- Verificación manual del dueño: pane open (INSTALL.md §Verificar, “Paso
+  manual (UI)”) + navegación por clic en su sesión herdr (INSTALL.md §Uso).
