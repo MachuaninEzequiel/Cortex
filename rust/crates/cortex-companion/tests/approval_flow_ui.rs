@@ -276,6 +276,69 @@ fn batch_auto_ok_only_batchable_items() {
 }
 
 #[test]
+fn batch_with_two_batchables_audits_each_item_separately() {
+    // Minor 3 del review: lote con ≥2 batchables ⇒ cada aprobación audita
+    // por separado (una línea por ítem en action_log).
+    let dir = unique_dir("batch2");
+    let fb = FakeBackend {
+        proposals: vec![
+            proposal("p-a", true, "instant"),
+            proposal("p-b", true, "instant"),
+            proposal("p-c", false, "minutes"),
+        ],
+        ..Default::default()
+    };
+    let mut st = setup(Screen::Actions, &fb);
+    let log = ActionLog::new(&dir);
+
+    let act = hit_test(
+        &st,
+        ACTIONS_BATCH_BTN.x + ACTIONS_BATCH_BTN.width / 2,
+        ACTIONS_BATCH_BTN.y,
+    )
+    .expect("click en lote auto-ok");
+    assert!(matches!(act, AppAction::ApproveBatch));
+    assert!(update(&mut st, act).is_none());
+    let pend = st.pending.clone().expect("modal de lote abierto");
+    assert_eq!(
+        pend.target,
+        cortex_companion::app::ApprovalTarget::ApproveBatch {
+            ids: vec!["p-a".to_string(), "p-b".to_string()]
+        }
+    );
+
+    let act = modal_approve_click(&st);
+    let fx = update(&mut st, act).expect("ResolveApproval");
+    effects::apply(&fb, &log, &mut st, fx);
+
+    assert_eq!(
+        fb.approved_ids(),
+        vec!["p-a".to_string(), "p-b".to_string()]
+    );
+    let lines: Vec<String> = std::fs::read_to_string(log.path())
+        .expect("action_log escrito")
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.to_string())
+        .collect();
+    assert_eq!(lines.len(), 2, "una línea de auditoría por ítem: {lines:?}");
+    assert!(
+        lines[0].contains("\"id\": \"p-a\"") && lines[0].contains("\"approved\": true"),
+        "línea 0: {}",
+        lines[0]
+    );
+    assert!(
+        lines[1].contains("\"id\": \"p-b\"") && lines[1].contains("\"approved\": true"),
+        "línea 1: {}",
+        lines[1]
+    );
+    assert!(lines
+        .iter()
+        .all(|l| l.contains("\"outcome\": \"executed\"")));
+    cleanup(&dir);
+}
+
+#[test]
 fn session_close_button_guards_and_audits() {
     let dir = unique_dir("close");
     let fb = FakeBackend {
@@ -298,13 +361,18 @@ fn session_close_button_guards_and_audits() {
         matches!(act, AppAction::CloseSession { ref session_id } if session_id == "2026-08-28_demo")
     );
     assert!(update(&mut st, act).is_none());
-    assert!(st
-        .pending
-        .as_ref()
-        .unwrap()
-        .req
-        .effect
-        .contains("2026-08-28_demo"));
+    // Fix finding B6 (review): el efecto del modal debe ser un comando
+    // EJECUTABLE del CLI nativo — `cortex finish` (alias documentado);
+    // `cortex session finish` no existe (rc 2). El id de la sesión queda en
+    // el título del modal.
+    let pend = st.pending.as_ref().expect("modal abierto");
+    assert_eq!(pend.req.effect, "cortex finish", "efecto = comando real");
+    assert!(
+        pend.req.title.contains("2026-08-28_demo"),
+        "título identifica la sesión: {}",
+        pend.req.title
+    );
+    assert!(pend.req.audit_key.contains("2026-08-28_demo"));
 
     let act = modal_approve_click(&st);
     let fx = update(&mut st, act).expect("ResolveApproval");

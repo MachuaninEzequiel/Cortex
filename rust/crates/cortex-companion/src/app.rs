@@ -336,8 +336,11 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             state.pending = Some(PendingApproval {
                 req: ApprovalRequest {
                     title: format!("Cerrar sesión {session_id}"),
-                    // El modal muestra SIEMPRE el efecto exacto (spec §5).
-                    effect: format!("cortex session finish {session_id}"),
+                    // El modal muestra SIEMPRE el efecto exacto (spec §5):
+                    // comando EJECUTABLE del CLI nativo — `cortex finish` (alias
+                    // documentado de finish-session; `cortex session finish` no
+                    // existe). La sesión identificada queda en el título.
+                    effect: "cortex finish".to_string(),
                     audit_key: format!("session.close.{session_id}"),
                 },
                 target: ApprovalTarget::CloseSession { session_id },

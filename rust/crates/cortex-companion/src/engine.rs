@@ -487,7 +487,7 @@ impl Backend for InProcessBackend {
         // documenter integrado ⇒ fallo explícito con el comando exacto
         // (patrón P6/P9, nunca un cierre sin gobernanza).
         Err(format!(
-            "el cierre verificado requiere al documenter — corré `cortex finish` (o `cortex session abandon`) para cerrar {session_id}"
+            "el cierre verificado requiere el documenter — corré `cortex finish` (o `cortex session abandon`) para cerrar {session_id}"
         ))
     }
 
