@@ -58,6 +58,10 @@ pub struct SearchHit {
     pub path: String,
     pub score: f64,
     pub snippet: String,
+    /// `id` de la memoria episódica (feedback [Útil], B7); `None` en hits
+    /// semánticos — espejo de `core.py:274` (`getattr(hit.entry, "id", None)`
+    /// ⇒ sin id no hay qué puntuar).
+    pub id: Option<String>,
 }
 
 /// Doctor-lite para Home (v1; se enriquece en B4).
@@ -93,6 +97,15 @@ pub trait Backend: Send + Sync {
     fn checkpoint_session(&self, note: &str) -> Result<(), String>;
     fn approve_action(&self, action_id: &str) -> Result<(), String>;
 
+    /// Feedback explícito "marcar útil" (B7). NO pasa por approval: es la
+    /// marca de aprendizaje del motor (dato del usuario sobre el propio
+    /// índice), con la misma semántica que la tecla `y` de la TUI y el
+    /// `Nº para marcar útil` de `cortex/tui/core.py`. Default honesto
+    /// P6/P9: backends sin store de feedback fallan explícito.
+    fn mark_useful(&self, _memory_id: &str) -> Result<crate::feedback::AppendOutcome, String> {
+        Err("feedback no disponible en este backend".to_string())
+    }
+
     // ---- ejecución del Menu (B5) ----
     /// Ejecuta una familia+args del catálogo. Default honesto P6/P9: cada
     /// backend integra las suyas y el resto falla explícito con el comando
@@ -122,14 +135,14 @@ struct Proposed {
     score: f64,
 }
 
-/// Memoria nativa lazy con **un slot por modo** (G-B1 fix round 1).
+/// Memoria nativa lazy con **un slot por modo** (G-B1 fix round 1 + B7).
 ///
-/// `NativeMemory::open_without_embeddings` carga el embedder pero NO adjunta
-/// vectores a las docs semánticas, y `retrieve(use_embeddings=true)` usa el
-/// path vectorial mientras `embedder.is_some()`. Un singleton único quedaría
-/// mode-locked por el primer accesor (stats→search rompía la paridad en
-/// silencio). Slots separados: cada modo abre su propia instancia; el
-/// lazy-load y el RSS bajo se conservan (modelo ONNX solo en search).
+/// Desde B7, `NativeMemory::open_without_embeddings` NO abre el ort Session
+/// (embedder `None`): los comandos sin retrieve (`stats`, `forget`) no pagan
+/// ~90 MB de RSS ni ~150 ms de carga. El slot con embeddings abre el modelo y
+/// adjunta vectores al vault (búsqueda real). Se mantienen DOS slots: un
+/// singleton único quedaría mode-locked por el primer accesor (stats→search
+/// rompía la paridad en silencio — fix round 1 de G-B1).
 #[derive(Default)]
 struct MemorySlots {
     without_embeddings: Option<NativeMemory>,
@@ -402,6 +415,8 @@ impl Backend for InProcessBackend {
                     path,
                     score: h.score,
                     snippet,
+                    // feedback [Útil] (B7): id episódico; semánticos None.
+                    id: h.entry.as_ref().map(|e| e.id.clone()),
                 }
             })
             .collect())
@@ -493,6 +508,18 @@ impl Backend for InProcessBackend {
 
     fn checkpoint_session(&self, _note: &str) -> Result<(), String> {
         Err("checkpoint interactivo no integrado al Companion — usá `cortex session checkpoint --note '…'`".to_string())
+    }
+
+    /// Escribe el evento explícito positivo con el formato del oráculo
+    /// (`cortex/feedback_store.py` vía `feedback.rs`) en `.cortex/` — mismo
+    /// directorio que el action_log, misma regla de resolución.
+    fn mark_useful(&self, memory_id: &str) -> Result<crate::feedback::AppendOutcome, String> {
+        crate::feedback::append_useful(
+            &self.action_log_dir(),
+            "companion",
+            memory_id,
+            crate::feedback::MAX_BYTES_DEFAULT,
+        )
     }
 
     /// Aprueba y ejecuta una acción del catálogo: MISMO runner nativo que
@@ -606,5 +633,27 @@ mod tests {
         let without: *const NativeMemory = g.without_embeddings.as_ref().unwrap();
         let with: *const NativeMemory = g.with_embeddings.as_ref().unwrap();
         assert_ne!(without, with, "los slots deben ser instancias distintas");
+    }
+
+    /// B7 (ítem obligatorio review B4): el slot SIN embeddings jamás abre el
+    /// ort Session — stats/doctor no cargan el modelo ONNX (~90 MB de RSS).
+    /// Con el modelo instalado en la máquina este test es determinista y
+    /// prueba el desacople: `open_without_embeddings` ⇒ `embedder.is_none()`
+    /// SIEMPRE (post-fix), no solo cuando falta el modelo.
+    #[test]
+    fn stats_slot_never_opens_onnx_model() {
+        let be = InProcessBackend::open(&committed_fixture()).expect("abrir backend");
+        be.stats().expect("stats");
+        let g = be.memory(false).unwrap();
+        let mem = g.without_embeddings.as_ref().unwrap();
+        assert!(
+            mem.embedder.is_none(),
+            "el slot sin embeddings NO debe abrir el modelo ONNX (RSS)"
+        );
+        // Y el slot con embeddings sigue abriéndolo cuando el modelo existe
+        // (paridad de búsqueda intacta).
+        drop(g); // `g` es el guard del Mutex de slots: sin soltarlo,
+                 // be.memory(true) re-lockea el mismo mutex ⇒ deadlock.
+        drop(be.memory(true).unwrap());
     }
 }

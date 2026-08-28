@@ -25,7 +25,9 @@ use cortex_companion::engine::{Backend, InProcessBackend};
 use cortex_companion::screens::home::{home_areas, render_home, BrandAssets, HomeData};
 use cortex_companion::screens::menu_screen::{menu_areas, render_menu};
 use cortex_companion::screens::sessions_screen::{render_sessions, sessions_areas};
-use cortex_companion::screens::{actions_areas, render_actions, render_modal};
+use cortex_companion::screens::{
+    actions_areas, render_actions, render_modal, render_search, search_areas,
+};
 use cortex_companion::{Screen, UiRequest};
 
 fn main() {
@@ -117,6 +119,12 @@ fn main() {
                     areas.hover_mouse = st.mouse;
                     let _info =
                         render_actions(f, f.area(), &st.actions, st.scroll_offset, &mut areas);
+                }
+                Screen::Search => {
+                    let mut areas = search_areas(f.area());
+                    areas.hover_mouse = st.mouse;
+                    let _info =
+                        render_search(f, f.area(), &st.search, st.scroll_offset, &mut areas);
                 }
                 other => {
                     let label = app::screen_label(other);

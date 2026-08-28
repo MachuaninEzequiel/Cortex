@@ -10,6 +10,7 @@
 use crate::app::{AppState, ApprovalTarget, Effect, OutcomeLine, PendingApproval};
 use crate::approval::{run_guarded, ActionLog, ApprovalRequest, ApprovalUi};
 use crate::engine::Backend;
+use crate::feedback;
 use crate::menu::MenuOutput;
 
 /// `ApprovalUi` que reporta una decisión YA tomada en la máquina de estados
@@ -42,6 +43,42 @@ pub fn apply<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState, fx
                 Ok(s) => MenuOutput::ok(s),
                 Err(e) => MenuOutput::err(e),
             });
+        }
+        Effect::Search { query } => {
+            // Misma pipeline híbrida del CLI (Backend::search), top-k default
+            // 5 (brief). El error se muestra, nunca se traga (P6/P9).
+            st.search.outcome = None;
+            match be.search(&query, 5) {
+                Ok(hits) => {
+                    st.search.hits = hits;
+                    st.search.selected = None;
+                    st.search.error = None;
+                }
+                Err(e) => {
+                    st.search.hits = Vec::new();
+                    st.search.selected = None;
+                    st.search.error = Some(e);
+                }
+            }
+        }
+        Effect::MarkUseful { memory_id } => {
+            // Feedback explícito positivo (escritor formato-oráculo, B7).
+            // Idempotencia por hit: AlreadyMarked informa sin duplicar.
+            match be.mark_useful(&memory_id) {
+                Ok(feedback::AppendOutcome::Appended) => {
+                    if !st.search.marked.contains(&memory_id) {
+                        st.search.marked.push(memory_id.clone());
+                    }
+                    st.search.outcome = Some((format!("marcado útil: {memory_id}"), false));
+                }
+                Ok(feedback::AppendOutcome::AlreadyMarked) => {
+                    if !st.search.marked.contains(&memory_id) {
+                        st.search.marked.push(memory_id.clone());
+                    }
+                    st.search.outcome = Some((format!("ya marcada útil: {memory_id}"), false));
+                }
+                Err(e) => st.search.outcome = Some((e, true)),
+            }
         }
         Effect::ResolveApproval => resolve(be, log, st),
     }

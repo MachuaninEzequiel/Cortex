@@ -5,12 +5,14 @@
 pub mod actions_screen;
 pub mod home;
 pub mod menu_screen;
+pub mod search_screen;
 pub mod sessions_screen;
 
 pub use actions_screen::{actions_areas, render_actions, ActionsAreas, ActionsRenderInfo};
 pub use home::{render_home, AppRenderInfo as HomeRenderInfo, BrandAssets, HomeAreas, HomeData};
 pub use menu_screen::{menu_areas, render_menu, AppRenderInfo as MenuRenderInfo, MenuAreas};
 pub use modal::render_modal;
+pub use search_screen::{render_search, search_areas, SearchAreas, SearchData, SearchRenderInfo};
 pub use sessions_screen::{render_sessions, sessions_areas, SessionsAreas, SessionsRenderInfo};
 
 /// Modal de aprobación como SUPERFICIE de la máquina de estados (B6): se

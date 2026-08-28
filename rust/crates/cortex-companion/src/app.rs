@@ -61,6 +61,22 @@ pub const ACTIONS_APPROVE_W: u16 = 14;
 pub const ACTIONS_BATCH_BTN: Rect = Rect::new(2, 2, 26, 2);
 pub const ACTIONS_OUTCOME: Rect = Rect::new(2, 18, 76, 6);
 
+/// Pantalla Search (B7): input con cursor, lista de hits con columna [Útil]
+/// (solo filas episódicas — sin `memory_id` no hay qué puntuar, core.py:274)
+/// y detalle del seleccionado. Geometría COMPARTIDA con `hit_test`.
+pub const SEARCH_STATUS: Rect = Rect::new(2, 1, 76, 1);
+/// Alto 2: fila de texto + fila del borde inferior (Borders::BOTTOM consume
+/// una fila del rect — con alto 1 el `Paragraph` inner quedaba en 0 y la
+/// query no se renderizaba; B7 fix).
+pub const SEARCH_INPUT: Rect = Rect::new(2, 2, 76, 2);
+pub const SEARCH_LIST_LEFT: u16 = 2;
+pub const SEARCH_LIST_TOP: u16 = 4;
+pub const SEARCH_LIST_WIDTH: u16 = 76;
+pub const SEARCH_LIST_HEIGHT: u16 = 12;
+pub const SEARCH_USEFUL_X: u16 = 58;
+pub const SEARCH_USEFUL_W: u16 = 14;
+pub const SEARCH_DETAIL: Rect = Rect::new(2, 17, 76, 6);
+
 /// Acciones semánticas de la app: el input ya viene "traducido".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppAction {
@@ -106,6 +122,16 @@ pub enum AppAction {
     },
     /// [Aprobar lote auto-ok]: solo propuestas reversibles de costo instant.
     ApproveBatch,
+    /// Seleccionar una fila de resultados de búsqueda (click ⇒ detalle).
+    SelectHit {
+        index: usize,
+    },
+    /// [Útil] de un hit episódico: feedback explícito directo (sin modal —
+    /// es la marca de aprendizaje del usuario sobre su propio índice, misma
+    /// semántica que la `y` de la TUI; spec 14 §3).
+    MarkUseful {
+        memory_id: String,
+    },
     /// Ejecutar un comando del Menu (B5: lecturas directas; mutantes ⇒ modal).
     RunCommand {
         family: &'static str,
@@ -127,6 +153,12 @@ pub enum Effect {
         family: &'static str,
         args: Vec<String>,
     },
+    /// Buscar con la query (B7): el runtime llama `Backend::search` (misma
+    /// pipeline híbrida del CLI, top-k 5) y refresca los hits.
+    Search { query: String },
+    /// Persistir el feedback explícito positivo de un hit (B7): escritor
+    /// formato-oráculo (`feedback.rs`), idempotente por hit.
+    MarkUseful { memory_id: String },
     /// Resolver la aprobación pendiente: el runtime (`effects::apply`)
     /// ejecuta `run_guarded` con la decisión guardada en `pending`.
     ResolveApproval,
@@ -183,6 +215,8 @@ pub struct ActionsData {
     pub error: Option<String>,
 }
 
+pub use crate::screens::search_screen::SearchData;
+
 /// IDs de propuestas aptas para el lote auto-ok: reversibles Y costo
 /// instantáneo (spec 14: las que tardan o mutan irreversible piden
 /// confirmación individual, siempre).
@@ -228,6 +262,9 @@ pub struct AppState {
     /// Datos de Sessions/Actions (refrescados por el runtime antes de draw).
     pub sessions: SessionsData,
     pub actions: ActionsData,
+    /// Datos de Search (B7): query/hits/marcas — estado del usuario, no se
+    /// refresca solo; Enter dispara la búsqueda.
+    pub search: SearchData,
 }
 
 impl AppState {
@@ -249,6 +286,7 @@ impl AppState {
             pending: None,
             sessions: SessionsData::default(),
             actions: ActionsData::default(),
+            search: SearchData::default(),
         }
     }
 }
@@ -307,6 +345,37 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         // Click ya fue resuelto por `hit_test` en una acción concreta; si llega
         // aquí suelto es porque no había área (no-op).
         AppAction::Click { .. } => None,
+        // ---- B7: input de búsqueda (teclado) ----
+        // `/` desde cualquier otra pantalla salta al panel (convención del
+        // keymap TUI del repo); en Search, `/` es texto de la consulta.
+        AppAction::Typed('/') if state.screen != Screen::Search => {
+            state.stack.push(state.screen);
+            state.screen = Screen::Search;
+            None
+        }
+        AppAction::Typed(c) => {
+            if state.screen == Screen::Search {
+                state.search.query.push(c);
+            }
+            None
+        }
+        AppAction::Key(KeyCode::Backspace) => {
+            if state.screen == Screen::Search {
+                state.search.query.pop();
+            }
+            None
+        }
+        AppAction::Key(KeyCode::Enter) => {
+            if state.screen != Screen::Search {
+                return None;
+            }
+            let q = state.search.query.trim().to_string();
+            if q.is_empty() {
+                // Query vacía ⇒ NUNCA se llama al backend (brief Step 1).
+                return None;
+            }
+            Some(Effect::Search { query: q })
+        }
         // Scroll saturante en ambas direcciones (B3 review: up debe decrementar).
         AppAction::Scroll { down } => {
             state.scroll_offset = if down {
@@ -320,8 +389,9 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             state.mouse = Some((x, y));
             None
         }
-        AppAction::Typed(_) => None,
-        // Enter y teclas especiales activan foco en B4+ (data-driven); v1 no-op.
+        // (Typed y Key(Backspace/Enter) se resolvieron en las ramas B7 de
+        // arriba.) Otras teclas especiales (Tab, F-keys) quedan no-op hasta
+        // que el foco las necesite.
         AppAction::Key(_) => None,
         // Sin modal abierto, Aprobar/Denegar sueltos no significan nada.
         AppAction::Approve { .. } | AppAction::Deny { .. } => None,
@@ -380,6 +450,14 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             });
             None
         }
+        // ---- B7: Search ----
+        AppAction::SelectHit { index } => {
+            if index < state.search.hits.len() {
+                state.search.selected = Some(index);
+            }
+            None
+        }
+        AppAction::MarkUseful { memory_id } => Some(Effect::MarkUseful { memory_id }),
         AppAction::RunCommand { family, args } => {
             // B6: las mutantes del menú pasan por el modal de la máquina de
             // estados (ya no hay loop bloqueante en el runtime).
@@ -502,6 +580,26 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
                 }
             }
             None
+        }
+        Screen::Search => {
+            let p = Position::new(x, y);
+            // Fila visible dentro de la ventana de scroll.
+            if !(SEARCH_LIST_LEFT..SEARCH_LIST_LEFT + SEARCH_LIST_WIDTH).contains(&x)
+                || !(SEARCH_LIST_TOP..SEARCH_LIST_TOP + SEARCH_LIST_HEIGHT).contains(&y)
+            {
+                return None;
+            }
+            let idx = usize::from(y - SEARCH_LIST_TOP) + usize::from(state.scroll_offset);
+            let h = state.search.hits.get(idx)?.clone();
+            // Columna [Útil]: solo filas episódicas con memory_id (semánticos
+            // no tienen nada que puntuar — core.py:274).
+            if (SEARCH_USEFUL_X..SEARCH_USEFUL_X + SEARCH_USEFUL_W).contains(&x) {
+                let id = h.id?;
+                return Some(AppAction::MarkUseful { memory_id: id });
+            }
+            // Cuerpo de la fila: seleccionar (abre el snippet en el detalle).
+            let _ = p;
+            Some(AppAction::SelectHit { index: idx })
         }
         // B4+ registra áreas por pantalla aquí.
         _ => None,

@@ -21,6 +21,10 @@ cortex-brain = { path = "../cortex-brain" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+# B7: ts del feedback en el formato exacto del oráculo
+# (`datetime.now(UTC).isoformat(timespec="milliseconds")`). chrono YA está
+# en Cargo.lock (workspace dep de cortex-app) — cero paquetes nuevos.
+chrono = { workspace = true }
 # G-B2a: app mouse-first. ratatui 0.30 + crossterm 0.29 ya están en Cargo.lock
 # (usados por cortex-tui) — cero paquetes nuevos.
 ratatui = "0.30"

@@ -4,7 +4,8 @@
 //! Estado por task: B1 engine (Backend + paridad), B2 aprobaciones
 //! (run_guarded), B3 app ELM-lite mouse-first, B4 widgets + Home,
 //! B5 Menu anti-olvido, B6 Sessions+Actions con modal integrado a la
-//! máquina de estados (`app::pending` + `effects::apply`).
+//! máquina de estados (`app::pending` + `effects::apply`), B7 Search con
+//! feedback explícito formato-oráculo (`feedback.rs`).
 
 #![forbid(unsafe_code)]
 
@@ -14,6 +15,7 @@ pub mod app;
 pub mod approval;
 pub mod effects;
 pub mod engine;
+pub mod feedback;
 pub mod menu;
 pub mod screens;
 pub mod widgets;

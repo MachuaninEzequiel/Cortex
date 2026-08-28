@@ -500,6 +500,7 @@ dependencies = [
 name = "cortex-companion"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "cortex-actions",
  "cortex-app",
  "cortex-brain",
