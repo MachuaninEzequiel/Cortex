@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 
+pub mod approval;
 pub mod engine;
 
 /// Pantallas del Companion (lo consume la app en B3+).
