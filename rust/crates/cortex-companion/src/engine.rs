@@ -101,16 +101,29 @@ struct Proposed {
     score: f64,
 }
 
+/// Memoria nativa lazy con **un slot por modo** (G-B1 fix round 1).
+///
+/// `NativeMemory::open_without_embeddings` carga el embedder pero NO adjunta
+/// vectores a las docs semánticas, y `retrieve(use_embeddings=true)` usa el
+/// path vectorial mientras `embedder.is_some()`. Un singleton único quedaría
+/// mode-locked por el primer accesor (stats→search rompía la paridad en
+/// silencio). Slots separados: cada modo abre su propia instancia; el
+/// lazy-load y el RSS bajo se conservan (modelo ONNX solo en search).
+#[derive(Default)]
+struct MemorySlots {
+    without_embeddings: Option<NativeMemory>,
+    with_embeddings: Option<NativeMemory>,
+}
+
 /// Implementación nativa sobre los servicios del CLI.
 pub struct InProcessBackend {
     pub root: PathBuf,
     pub layout: WorkspaceLayout,
     pub session: SessionService,
-    /// Memoria nativa (NativeMemory). Se abre SIN embeddings en idle
-    /// (patrón lazy de CliSearchAdapter); búsqueda la abre con embeddings.
-    /// `Mutex` porque `NativeMemory::retrieve` es `&mut` y el trait pide
-    /// `&self` (Send + Sync para el runtime TUI en B3+).
-    memory: Mutex<Option<NativeMemory>>,
+    /// Memoria nativa lazy por modo (`MemorySlots`). `Mutex` porque
+    /// `NativeMemory::retrieve` es `&mut` y el trait pide `&self`
+    /// (Send + Sync para el runtime TUI en B3+).
+    memory: Mutex<MemorySlots>,
 }
 
 fn summary_of(r: &SessionRecord) -> SessionSummary {
@@ -134,28 +147,33 @@ impl InProcessBackend {
             root,
             layout,
             session,
-            memory: Mutex::new(None),
+            memory: Mutex::new(MemorySlots::default()),
         })
     }
 
-    /// Memoria nativa lazy: con embeddings para búsqueda, sin embeddings
-    /// para conteos (stats).
+    /// Memoria nativa lazy, slot por modo: con embeddings para búsqueda,
+    /// sin embeddings para conteos (stats). Un modo jamás contamina al otro.
     fn memory(
         &self,
         want_embeddings: bool,
-    ) -> Result<std::sync::MutexGuard<'_, Option<NativeMemory>>, String> {
+    ) -> Result<std::sync::MutexGuard<'_, MemorySlots>, String> {
         let mut guard = self
             .memory
             .lock()
             .map_err(|_| "memory lock poisoned".to_string())?;
-        if guard.is_none() {
+        let slot = if want_embeddings {
+            &mut guard.with_embeddings
+        } else {
+            &mut guard.without_embeddings
+        };
+        if slot.is_none() {
             let mem = if want_embeddings {
                 NativeMemory::open(Some(&self.root))
             } else {
                 NativeMemory::open_without_embeddings(Some(&self.root))
             }
             .map_err(|e| e.message())?;
-            *guard = Some(mem);
+            *slot = Some(mem);
         }
         Ok(guard)
     }
@@ -203,7 +221,10 @@ impl InProcessBackend {
     /// `cortex search Q --json` byte-idéntico (mismo retrieval + pyjson).
     pub fn search_json(&self, query: &str, top_k: usize) -> Result<String, String> {
         let mut guard = self.memory(true)?;
-        let mem = guard.as_mut().expect("memory just opened");
+        let mem = guard
+            .with_embeddings
+            .as_mut()
+            .expect("with_embeddings just opened");
         let result = mem.retrieve(query, top_k, true);
         Ok(retrieval_json(&result))
     }
@@ -266,7 +287,10 @@ impl Backend for InProcessBackend {
 
     fn search(&self, query: &str, top_k: usize) -> Result<Vec<SearchHit>, String> {
         let mut guard = self.memory(true)?;
-        let mem = guard.as_mut().expect("memory just opened");
+        let mem = guard
+            .with_embeddings
+            .as_mut()
+            .expect("with_embeddings just opened");
         let result = mem.retrieve(query, top_k, true);
         Ok(result
             .unified_hits
@@ -321,7 +345,10 @@ impl Backend for InProcessBackend {
 
     fn stats(&self) -> Result<StatsSummary, String> {
         let guard = self.memory(false)?;
-        let mem = guard.as_ref().expect("memory just opened");
+        let mem = guard
+            .without_embeddings
+            .as_ref()
+            .expect("without_embeddings just opened");
         Ok(StatsSummary {
             episodic: mem.episodic_count(),
             semantic: mem.semantic.docs.len(),
@@ -344,5 +371,47 @@ impl Backend for InProcessBackend {
 
     fn approve_action(&self, _action_id: &str) -> Result<(), String> {
         Err("pendiente: approve_action se implementa en B2/B3 detrás de la aprobación".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn committed_fixture() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../bench/parity/archive/.p12b-doctor/.work/ap_e2e/acme-api")
+    }
+
+    /// Invariante del fix round 1: cada modo de memoria tiene SU slot, y los
+    /// dos slots son instancias distintas (stats jamás contamina search).
+    #[test]
+    fn memory_slots_are_isolated_by_mode() {
+        let be = InProcessBackend::open(&committed_fixture()).expect("abrir backend");
+
+        // stats() abre SOLO el slot sin embeddings.
+        {
+            let g = be.memory(false).unwrap();
+            assert!(g.without_embeddings.is_some(), "stats abre sin embeddings");
+            assert!(
+                g.with_embeddings.is_none(),
+                "stats no debe abrir el slot con embeddings"
+            );
+        }
+
+        // search() abre SU slot con embeddings, sin reusar el de stats.
+        {
+            let g = be.memory(true).unwrap();
+            assert!(
+                g.with_embeddings.is_some(),
+                "search debe abrir con embeddings"
+            );
+        }
+
+        // Instancias DISTINTAS: el modo sin embeddings no es el de search.
+        let g = be.memory(true).unwrap();
+        let without: *const NativeMemory = g.without_embeddings.as_ref().unwrap();
+        let with: *const NativeMemory = g.with_embeddings.as_ref().unwrap();
+        assert_ne!(without, with, "los slots deben ser instancias distintas");
     }
 }

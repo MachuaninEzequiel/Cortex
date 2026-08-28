@@ -125,6 +125,50 @@ fn session_list_json_equals_cli() {
 }
 
 #[test]
+fn stats_then_search_same_instance_matches_cli() {
+    // Regresión G-B1 fix round 1: el singleton de memoria quedaba
+    // mode-locked por el primer accesor. stats() abre el slot SIN
+    // embeddings (flujo Home); search() posterior sobre la MISMA instancia
+    // debe abrir su propio slot CON embeddings y ser byte-idéntico al CLI
+    // (que siempre busca con embeddings).
+    let fixture = fixture_project();
+    let be = InProcessBackend::open(&fixture).expect("abrir backend");
+
+    // stats() primero — camino de Home; abre el slot sin embeddings.
+    let stats = be.stats().expect("stats");
+    assert!(
+        stats.semantic > 0,
+        "el vault del fixture debe tener docs semánticas"
+    );
+
+    // search() después, sobre la MISMA instancia — camino de Search.
+    let engine = be.search_json("auth", 5).expect("search json engine");
+    let cli = Command::new(cli_bin())
+        .current_dir(&fixture)
+        .args(["search", "auth", "--json", "--top-k", "5"])
+        .output()
+        .expect("correr CLI");
+    assert!(
+        cli.status.success(),
+        "CLI rc={:?}: {}",
+        cli.status.code(),
+        String::from_utf8_lossy(&cli.stderr)
+    );
+    let cli_out = String::from_utf8(cli.stdout).unwrap().trim().to_string();
+
+    assert_eq!(
+        engine, cli_out,
+        "search tras stats (misma instancia) debe ser byte-idéntico al CLI — \
+         el slot sin embeddings no debe contaminar la búsqueda"
+    );
+    assert!(
+        engine.contains("semantic") || engine.contains("unified_hits"),
+        "shape esperado de RetrievalResult"
+    );
+    let _ = std::fs::remove_dir_all(fixture);
+}
+
+#[test]
 fn search_json_equals_cli() {
     let fixture = fixture_project();
     let be = InProcessBackend::open(&fixture).expect("abrir backend");

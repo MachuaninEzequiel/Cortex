@@ -10,12 +10,21 @@ fn main() {
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
-            "--project-root" => project_root = args.next(),
+            "--project-root" => match args.next() {
+                Some(v) => project_root = Some(v),
+                None => {
+                    eprintln!("--project-root requiere un valor");
+                    std::process::exit(2);
+                }
+            },
             "-h" | "--help" => {
                 println!("Uso: cortex-companion [--project-root <ruta>]");
                 return;
             }
-            _ => {}
+            _ => {
+                eprintln!("argumento desconocido: '{a}'");
+                std::process::exit(2);
+            }
         }
     }
 
