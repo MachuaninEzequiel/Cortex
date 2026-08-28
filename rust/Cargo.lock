@@ -507,6 +507,8 @@ dependencies = [
  "cortex-cli",
  "cortex-config",
  "cortex-workspace",
+ "crossterm",
+ "ratatui",
  "serde",
  "serde_json",
  "serde_yaml",

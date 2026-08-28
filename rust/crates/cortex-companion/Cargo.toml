@@ -21,6 +21,10 @@ cortex-brain = { path = "../cortex-brain" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+# G-B2a: app mouse-first. ratatui 0.30 + crossterm 0.29 ya están en Cargo.lock
+# (usados por cortex-tui) — cero paquetes nuevos.
+ratatui = "0.30"
+crossterm = "0.29"
 
 [lib]
 name = "cortex_companion"

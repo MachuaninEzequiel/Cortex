@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 
+pub mod app;
 pub mod approval;
 pub mod engine;
 
