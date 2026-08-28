@@ -178,3 +178,38 @@ muestra `mode` (list/show sí).
 4. Commits atómicos un-gate-por-commit · suite verde antes de commitear.
 5. Dual-stream CERRADO: las reglas §4b de coordinación quedan históricas;
    el refresco documental vuelve a ser parte del flujo normal.
+
+## Obra 08 stream B — Herdr Companion (2026-08-28)
+
+**COMPLETO · G-B1…G-B6 PASS.** Superficie única mouse-first para el dev:
+crate nuevo `cortex-companion` (bin + lib) + plugin declarativo para herdr.
+
+| Gate | Contenido | Resultado |
+|---|---|---|
+| G-B1 | Backend in-process + paridad JSON con CLI | session list/search/next byte-idénticos ({{ELAPSED}} normalizado); RSS idle ~9.8 MB |
+| G-B2 | App machine mouse-first + Home + Menu + Search | click/scroll/hover como input primario; Home render <50 ms; catálogo de 27 familias anti-olvido; query visible |
+| G-B3 | Aprobación de mutaciones (run_guarded) | denegado NUNCA ejecuta; aprobado audita en action_log (formato del runner); modal muestra efecto/comando exacto |
+| G-B4 | Brain híbrido in-process | reads directas sin aprobación; propuesta mutante → [Ejecutar] → modal → run_guarded; tools no mapeadas Err explícito (P6/P9); router determinista cero tokens; --model GGUF opcional (feature llama, igual que el brain standalone) |
+| G-B5 | Plugin herdr (manifest spec 14 §4) | **verificado en vivo en herdr 0.7.3 del dueño**: `plugin link`→plugin_linked, `plugin list`→enabled, `action list`→doctor/next/open/status idénticas al manifest; pane-open manual pendiente del dueño |
+| G-B6 | Standalone + cold start + docs | snapshot no-TTY rc 0; primer frame TTY 3412 B con contenido; **cold start release N=20: mediana 8.9 ms** (min 7.1 / max 11.6); RSS TTY 18.6 MB |
+
+Uso: `cortex-companion` standalone, o en herdr `herdr plugin link
+<integrations/herdr>` + action "Open Cortex Companion" (pane overlay sticky;
+teclado: Esc vuelve · q/Ctrl+C salen (q tipea en Search/Brain) · / abre
+Search). INSTALL en `integrations/herdr/INSTALL.md`.
+
+Divergencias declaradas del stream B:
+1. **min_herdr_version = 0.7.0** (R16): la API usada (panes overlay + actions
+   declarativas) está documentada desde 0.7.0; verificado en 0.7.3 real.
+2. **Widgets duplicados vs cortex-tui** (deuda de reuso): el Companion no
+   depende de cortex-tui (WIP ajeno + snapshots gateados); reuso post-
+   estabilización en fase 2.
+3. **`cortex finish` no wireado** (R13, compartido con stream A): el modal de
+   cierre muestra el comando documentado/aspiracional del oráculo; ejecutable
+   hoy: `cortex session abandon` / `cortex autopilot finish`.
+4. **llama feature resuelta no-compilada** (G-B4): misma arquitectura que el
+   brain standalone; presupuesto cmake evitado en CI.
+5. **close_session del Companion = P6/P9 explícito** hasta integrarse el
+   documenter finalize (sin backend de documenter, igual que `autopilot
+   finish --auto` sin `DocumenterFinalize`): el pane
+   muestra el comando exacto, nunca silencio.

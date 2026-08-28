@@ -1,0 +1,46 @@
+[package]
+name = "cortex-companion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# G-B1 / documento de diseño: cortex-companion inyecta los MISMOS servicios
+# que usa el CLI ⇒ paridad byte-a-byte POR CONSTRUCCIÓN.
+# Desviación consciente vs la lista del plan (G-B1 del plan): se agrega
+# cortex-cli como librería porque es el ÚNICO glue nativo de retrieval
+# existente (NativeMemory + pyjson + paths). La alternativa era duplicar
+# ~250 LOC de lógica de apertura/retrieval con riesgo de drift — rechazada.
+cortex-cli = { path = "../cortex-cli" }
+cortex-actions = { path = "../cortex-actions" }
+cortex-app = { path = "../cortex-app" }
+cortex-config = { path = "../cortex-config" }
+cortex-workspace = { path = "../cortex-workspace" }
+cortex-branding = { path = "../cortex-branding" }
+cortex-brain = { path = "../cortex-brain" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+# B7: ts del feedback en el formato exacto del oráculo
+# (`datetime.now(UTC).isoformat(timespec="milliseconds")`). chrono YA está
+# en Cargo.lock (workspace dep de cortex-app) — cero paquetes nuevos.
+chrono = { workspace = true }
+# G-B2a: app mouse-first. ratatui 0.30 + crossterm 0.29 ya están en Cargo.lock
+# (usados por cortex-tui) — cero paquetes nuevos.
+ratatui = "0.30"
+crossterm = "0.29"
+
+[features]
+# B8: backend LLM real del brain (llama.cpp/GGUF) — passthrough OPCIONAL,
+# igual que el brain standalone (default sin modelo: cero tokens, cero RAM).
+# llama-cpp-2 ya está resuelto en Cargo.lock (es opcional de cortex-brain):
+# este feature no añade paquetes nuevos al lock, solo activa la arista.
+llama = ["cortex-brain/llama"]
+
+[lib]
+name = "cortex_companion"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cortex-companion"
+path = "src/bin/companion.rs"

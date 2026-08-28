@@ -163,8 +163,11 @@ impl NativeMemory {
         Self::open_with_embeddings(project_root, true)
     }
 
-    /// Variante sin embeddings para comandos que no retrieval (`stats`,
-    /// `reindex --dry-run`): evita cargar el modelo ONNX (~150 ms).
+    /// Variante sin embeddings para comandos que no hacen retrieve (`stats`,
+    /// `forget`): NO abre el modelo ONNX ni adjunta vectores (B7 — evita
+    /// ~90 MB de RSS y ~150 ms de carga del ort Session). SIEMPRE deja
+    /// `embedder` en `None`; usar únicamente en comandos que no llaman a
+    /// `retrieve` (si alguno lo hiciera, caería al path keyword-only).
     pub fn open_without_embeddings(project_root: Option<&Path>) -> Result<Self, MemoryOpenError> {
         Self::open_with_embeddings(project_root, false)
     }
@@ -189,8 +192,16 @@ impl NativeMemory {
         let semantic = SemanticIndex::build(&vault)
             .map_err(|e| MemoryOpenError::Io(format!("semantic index: {e}")))?;
         let episodic = EpisodicLoad::load(&layout, &cfg);
-        let mut embedder =
-            crate::memory_cmds::default_model_dir().and_then(|dir| OnnxEmbedder::open(&dir).ok());
+        // B7 (desacople): el modelo ONNX se abre SOLO cuando el modo lo pide.
+        // `open_without_embeddings` era eager a pesar del nombre: cargaba el
+        // ort Session (~90 MB RSS) y solo gateaba el attach. Ningún caller de
+        // la variante sin embeddings llama a `retrieve` (verificado: stats y
+        // forget), así que la salida no cambia — solo el timing/RSS.
+        let mut embedder = if want_embeddings {
+            crate::memory_cmds::default_model_dir().and_then(|dir| OnnxEmbedder::open(&dir).ok())
+        } else {
+            None
+        };
         // Chunks+embeddings del vault con el MISMO modelo que el oráculo
         // (imprescindible para que los scores semánticos bit-matcheen).
         let mut semantic = semantic;
