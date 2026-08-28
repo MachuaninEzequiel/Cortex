@@ -224,7 +224,7 @@ fn parse_source(s: &str) -> Option<CheckpointSource> {
     })
 }
 
-pub(crate) fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
+pub fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
     use cortex_app::session::SessionMode as M;
     match m {
         M::Unknown => "unknown",
@@ -446,7 +446,7 @@ pub struct ListArgs {
     pub json: bool,
 }
 
-fn record_summary_pv(r: &SessionRecord) -> crate::pyjson::PyVal {
+pub fn record_summary_pv(r: &SessionRecord) -> crate::pyjson::PyVal {
     use crate::pyjson::{Num, PyVal};
     PyVal::obj(vec![
         ("session_id", PyVal::s(r.session_id.clone())),

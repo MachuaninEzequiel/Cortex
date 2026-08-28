@@ -133,7 +133,7 @@ pub fn run_search(argv: &[String]) -> bool {
     true
 }
 
-fn display_title_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
+pub fn display_title_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
     let first = e
         .content
         .lines()
@@ -145,7 +145,7 @@ fn display_title_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
     format!("[{}] {}", e.memory_type.to_uppercase(), cut)
 }
 
-fn display_path_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
+pub fn display_path_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
     format!(
         "id={}, files={}",
         e.id,
@@ -289,7 +289,7 @@ fn unified_hit_pv(hit: &UnifiedHit<'_>) -> PyVal {
     ])
 }
 
-pub(crate) fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
+pub fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
     let v = PyVal::obj(vec![
         ("query", PyVal::s(r.query.clone())),
         (

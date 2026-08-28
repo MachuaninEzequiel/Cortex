@@ -497,6 +497,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-companion"
+version = "0.1.0"
+dependencies = [
+ "cortex-actions",
+ "cortex-app",
+ "cortex-brain",
+ "cortex-branding",
+ "cortex-cli",
+ "cortex-config",
+ "cortex-workspace",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "cortex-config"
 version = "0.1.0"
 dependencies = [

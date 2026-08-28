@@ -34,6 +34,8 @@ members = [
     "crates/cortex-pipeline",
     # Obra 07 P12B-7 (tutor, stream B): doc 09 §3.8/§7 — porte fiel aprobado
     "crates/cortex-tutor",
+    # Obra 08 (stream B): docs/transformacion/14-HERDR-COMPANION.md
+    "crates/cortex-companion",
 ]
 
 [workspace.package]

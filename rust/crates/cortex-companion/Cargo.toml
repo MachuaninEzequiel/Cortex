@@ -1,0 +1,31 @@
+[package]
+name = "cortex-companion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# G-B1 / documento de diseño: cortex-companion inyecta los MISMOS servicios
+# que usa el CLI ⇒ paridad byte-a-byte POR CONSTRUCCIÓN.
+# Desviación consciente vs la lista del plan (G-B1 del plan): se agrega
+# cortex-cli como librería porque es el ÚNICO glue nativo de retrieval
+# existente (NativeMemory + pyjson + paths). La alternativa era duplicar
+# ~250 LOC de lógica de apertura/retrieval con riesgo de drift — rechazada.
+cortex-cli = { path = "../cortex-cli" }
+cortex-actions = { path = "../cortex-actions" }
+cortex-app = { path = "../cortex-app" }
+cortex-config = { path = "../cortex-config" }
+cortex-workspace = { path = "../cortex-workspace" }
+cortex-branding = { path = "../cortex-branding" }
+cortex-brain = { path = "../cortex-brain" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+[lib]
+name = "cortex_companion"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cortex-companion"
+path = "src/bin/companion.rs"
