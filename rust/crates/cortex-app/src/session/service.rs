@@ -15,8 +15,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::{
-    Checkpoint, CheckpointSource, SessionRecord, SessionStatus, SessionStorage, Task, TaskStatus,
-    GITLESS_COMMIT_PLACEHOLDER,
+    Checkpoint, CheckpointPhase, CheckpointSource, SessionRecord, SessionStatus, SessionStorage,
+    Task, TaskStatus, GITLESS_COMMIT_PLACEHOLDER,
 };
 use crate::git;
 
@@ -227,7 +227,22 @@ impl SessionService {
         unverified_claims: Vec<String>,
         artifacts_touched: Vec<String>,
         note: &str,
+        phase: Option<&str>,
     ) -> Result<SessionRecord, String> {
+        // Validación dura del modo COMPOSED (obra 08 stream A, G-A1c): una
+        // fase que no pertenezca al enum se rechaza ANTES de construir y
+        // appendear el checkpoint — jamás se persiste un phase inválido.
+        let phase = match phase {
+            None => None,
+            Some(raw) => match CheckpointPhase::parse(raw) {
+                Some(p) => Some(p),
+                None => {
+                    return Err(format!(
+                        "invalid phase '{raw}'. Valid: grill, spec, plan, implement, review, close"
+                    ))
+                }
+            },
+        };
         let mut record = self.storage.load(session_id)?;
         if record.status != SessionStatus::Open {
             return Err(format!(
@@ -242,7 +257,7 @@ impl SessionService {
             unverified_claims,
             artifacts_touched,
             note: note.to_string(),
-            phase: None,
+            phase,
         });
         self.storage.save(&record)?;
         Ok(record)
@@ -377,6 +392,123 @@ impl SessionService {
         let updated = record.tasks[idx].clone();
         self.storage.save(&record)?;
         Ok(updated)
+    }
+}
+
+#[cfg(test)]
+mod checkpoint_tests {
+    use super::*;
+
+    fn tmp_svc(tag: &str) -> (SessionService, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!(
+            "cortex_session_service_{tag}_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let storage = SessionStorage::new(dir.join("sessions"));
+        let svc = SessionService::new(storage, &dir);
+        (svc, dir)
+    }
+
+    fn seed_session(svc: &SessionService) -> SessionRecord {
+        let record = SessionRecord {
+            session_id: "2026-08-25_demo".to_string(),
+            spec_path: "vault/specs/demo.md".to_string(),
+            spec_summary: "demo".to_string(),
+            start_commit: GITLESS_COMMIT_PLACEHOLDER.to_string(),
+            start_branch: String::new(),
+            opened_at: now_iso(),
+            status: SessionStatus::Open,
+            ..Default::default()
+        };
+        svc.save_new_record(&record).unwrap();
+        record
+    }
+
+    #[test]
+    fn checkpoint_rejects_invalid_phase_with_canonical_message() {
+        let (svc, _dir) = tmp_svc("cp-inv");
+        let record = seed_session(&svc);
+        let err = svc
+            .checkpoint(
+                &record.session_id,
+                CheckpointSource::UserSkill,
+                vec![],
+                vec![],
+                vec![],
+                "nota",
+                Some("asdf"),
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            "invalid phase 'asdf'. Valid: grill, spec, plan, implement, review, close"
+        );
+    }
+
+    #[test]
+    fn checkpoint_invalid_phase_does_not_append() {
+        let (svc, _dir) = tmp_svc("cp-noappend");
+        let record = seed_session(&svc);
+        assert!(svc
+            .checkpoint(
+                &record.session_id,
+                CheckpointSource::UserSkill,
+                vec![],
+                vec![],
+                vec![],
+                "nota",
+                Some("Spec"),
+            )
+            .is_err());
+        let reloaded = svc.storage.load(&record.session_id).unwrap();
+        assert!(
+            reloaded.checkpoints.is_empty(),
+            "checkpoint inválido no debe persistirse"
+        );
+    }
+
+    #[test]
+    fn checkpoint_valid_phase_is_parsed_and_persisted() {
+        let (svc, _dir) = tmp_svc("cp-ok");
+        let record = seed_session(&svc);
+        let updated = svc
+            .checkpoint(
+                &record.session_id,
+                CheckpointSource::UserSkill,
+                vec!["revise la spec contra el codigo".into()],
+                vec![],
+                vec![],
+                "nota",
+                Some("review"),
+            )
+            .unwrap();
+        let cp = updated.checkpoints.last().unwrap();
+        assert_eq!(cp.phase, Some(CheckpointPhase::Review));
+        let reloaded = svc.storage.load(&record.session_id).unwrap();
+        assert_eq!(
+            reloaded.checkpoints.last().unwrap().phase,
+            Some(CheckpointPhase::Review)
+        );
+    }
+
+    #[test]
+    fn checkpoint_without_phase_stays_none() {
+        let (svc, _dir) = tmp_svc("cp-none");
+        let record = seed_session(&svc);
+        let updated = svc
+            .checkpoint(
+                &record.session_id,
+                CheckpointSource::UserSkill,
+                vec![],
+                vec![],
+                vec![],
+                "n",
+                None,
+            )
+            .unwrap();
+        assert_eq!(updated.checkpoints.last().unwrap().phase, None);
     }
 }
 

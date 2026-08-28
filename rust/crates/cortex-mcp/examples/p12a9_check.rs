@@ -73,6 +73,7 @@ impl SessionsBackend for StubBackend {
         unverified: Vec<String>,
         artifacts: Vec<String>,
         note: String,
+        _phase: Option<&str>,
     ) -> Result<SRecord, String> {
         let r = self.records.get_mut(sid).ok_or("no record")?;
         r.checkpoints.push(SCheckpoint {
@@ -242,6 +243,7 @@ fn main() {
             vec![],
             vec!["src/a.py".to_string()],
             "nota".to_string(),
+            None,
         )?;
         b.checkpoint_session(
             "2026-05-16_demo",
@@ -250,6 +252,7 @@ fn main() {
             vec!["y".to_string()],
             vec![],
             String::new(),
+            None,
         )?;
         let r = b.get_session("2026-05-16_demo")?;
         Ok(j(&json!({
@@ -460,6 +463,7 @@ fn main() {
                 vec![],
                 vec![],
                 "n".into(),
+                None,
             )?;
             let r = b.close_session(
                 "2026-05-16_demo",

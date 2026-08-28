@@ -254,6 +254,7 @@ impl AutopilotService {
                 unverified_claims,
                 artifacts_touched,
                 note,
+                None, // autopilot no emite fase COMPOSED
             )
             .map_err(ServiceError::Autopilot)?;
         let new_checkpoint = record
