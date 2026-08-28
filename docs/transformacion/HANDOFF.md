@@ -164,3 +164,44 @@ de esta Obra.
 ---
 
 
+
+## 8. OBRA 08 STREAM A — Modo COMPOSED y skills expertas (2026-08-28)
+
+> Si algo contradice §0–§7 (historia Obra 07), MANDA ESTA SECCIÓN para el
+> stream A. El stream B (Herdr Companion, `14-HERDR-COMPANION.md`) vive en
+> su propia rama `feature/obra08-streamB`.
+
+**Estado: COMPLETO** — spec `13-MODO-COMPOSED-Y-SKILLS-EXPERTAS.md`
+(RESUELTO), plan `PLAN-OBRA08-STREAM-A.md`, 13 tasks + fix R12. Rama
+`feature/obra08-streamA` (HEAD `fix(obra08 streamA markers R12)` + docs de
+cierre). Ver detalle y métricas en `ESTADO-ACTUAL.md` §"Obra 08 — Stream A".
+
+**Qué cambió para quien trabaje en el repo:**
+
+- `Checkpoint.phase: Option<CheckpointPhase>` (grill/spec/plan/implement/
+  review/close) en `cortex-app/src/session/`. Checkpoint CON fase ⇒
+  `infer_mode` ⇒ `SessionMode::Composed` ("composed" en --json).
+- Gates por fase en `quality_gates::check_phase_gate` (puro); validación
+  dura de fase inválida en `SessionService::checkpoint` + handler MCP
+  (mensaje canónico, patrón P6/P9).
+- Documenter: `phase_line` + `evidence_by_phase` → sección `## Fases`
+  condicional en la nota (template SSoT `cortex/documentation/templates/
+  session.md.j2`, R9: Python lee el mismo archivo, sin fase ⇒ idéntico).
+- Skills de la tríada thin + craft hermanos on-demand (R10 flat); SSoT en
+  `cortex/setup/workspace_files/`; `.cortex/skills/` del repo alineado.
+- `cortex setup composed`: familia de 8 skills + INSTALL-COMPOSED.md +
+  bloque `## Agent skills` con marcadores DEDICADOS (R12 — coexiste con
+  codex en AGENTS.md).
+- `session.suggest_next_phase` en el Action Engine (11 acciones).
+
+**Deuda restante del stream A (documentada, no bloqueante):**
+
+1. `cortex finish` sin wirear (R13 — documentado en ESTADO-ACTUAL; paquete
+   separado).
+2. `phase` NO en el inputSchema congelado de `cortex_session_checkpoint`
+   (el arg se acepta y valida; schema = contrato congelado; recaptura solo
+   con decisión de dueño).
+3. Migración de las skills a formato directorio `SKILL.md + references/` →
+   obra POST-baja del oráculo (R10).
+4. Menores del ledger SDD (headers "10 acciones", cache de fase, scoring
+   6.0, etc.) — ver `.superpowers/sdd/PLAN-OBRA08-STREAM-A/progress.md`.

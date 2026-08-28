@@ -87,6 +87,82 @@ repo):
 Hasta ahí llegó esta Obra. Los pasos 2-3 son un **paquete separado** (ver
 definición de hecho en `PROMPT-CIERRE-OBRA07.md` §"Definición de hecho").
 
+## Obra 08 — Stream A: Modo COMPOSED y skills expertas (2026-08-28) ✅
+
+Spec: `13-MODO-COMPOSED-Y-SKILLS-EXPERTAS.md` (RESUELTO). Plan:
+`PLAN-OBRA08-STREAM-A.md`. Ejecución SDD en rama `feature/obra08-streamA`
+(worktree hermano), 13 tasks + 1 fix round (R12).
+
+**Features entregadas (gates G-A1…G-A6 PASS):**
+
+- **Schema**: `CheckpointPhase` (grill/spec/plan/implement/review/close) +
+  campo `phase: Option` en Checkpoint — round-trip YAML, backward-compat
+  (sin fase ⇒ serialización idéntica, emisores actuales intactos).
+- **4º modo**: `SessionMode::Composed` (serializa `"composed"`) —
+  `infer_mode` con la prioridad exacta de la spec (∃fase ⇒ COMPOSED gana a
+  MANAGED).`phase` visible en `session show/list --json`.
+- **Barra de calidad por fase** (`check_phase_gate`, pure): spec/review
+  requieren claim con evidencia; plan/implement exigen artifacts (implement
+  sin evidencia ⇒ redelegate); grill sin gate; `phase: None` ⇒ comportamiento
+  actual exacto.
+- **Validación dura**: `phase` inválida rechazada en `SessionService` +
+  handler MCP con mensaje canónico; contrato MCP congelado (`list_tools.json`)
+  recapturado sin cambios.
+- **Documenter**: `phase_line` (`grill → spec → …`) + evidencia agrupada por
+  fase; sección `## Fases` en la nota solo cuando hay fases (template SSoT
+  condicional ⇒ oráculo intacto, R9 validado); soft close
+  (`require_close_phase: true` ⇒ HANDOFF + warning; default soft).
+- **Skills thin + craft on-demand** (R10 flat): sync 144→83,
+  SDDwork 249→99, documenter 305→77 líneas + 4 craft hermanos
+  (`cortex-sync-spec-craft.md`, `cortex-sync-proposal-craft.md`,
+  `cortex-SDDwork-implement-craft.md`, `cortex-documenter-close-craft.md`);
+  gobernanza/contrato MCP intactos; map Python y tests congelados sin tocar;
+  copias del repo (`.cortex/skills/`) alineadas byte-a-byte con SSoT.
+- **Familia COMPOSED** (8 skills de referencia en directorio: grill, to-spec,
+  to-tickets, implement+craft, tdd+craft, diagnose, review+craft,
+  glossary; SKILL.md + agents/openai.yaml doble harness) +
+  `INSTALL-COMPOSED.md` + **`cortex setup composed`** (fixture e2e + smoke
+  con binario release: familia byte-exacta + tríada + bloque AGENTS.md).
+- **Action Engine**: `session.suggest_next_phase` (cadena grill→spec→plan→
+  implement→review→close; precondición sesión activa con fase; costo instant,
+  reversible, auto-ok).
+- **R12 (fix del gate)**: bloque `## Agent skills` con marcadores DEDICADOS
+  (`COMPOSED_MARKER_*`) — coexiste con la sección codex en el mismo
+  AGENTS.md (antes se pisaban en silencio); test unit + e2e de coexistencia
+  y replay.
+
+**Verificación:** `cargo test --workspace` **569 passed / 0 failed** ·
+`cargo clippy --workspace --all-targets -- -D warnings` limpio ·
+`cargo fmt --check` OK. Cold start release N=20: `setup composed --help`
+mediana **4–6 ms** (objetivo <100 ms); `doctor` mediana 38–40 ms (rc 1
+esperado fuera de proyecto). Smoke real `setup composed` sobre fixture:
+rc 0, familia byte-igual al template, tríada thin+craft, AGENTS.md con
+marcadores dedicados.
+
+**Divergencias declaradas (registro oficial, no recapturar):**
+
+1. **Schema `phase` = extensión nativa Rust-only** (R1): oráculo congelado;
+   sus fixtures no usan fase; campos nuevos omiten serialización ⇒ dumps
+   idénticos.
+2. **`bench/parity/archive/golden_actions/*/next_why_not.json`**: los
+   goldens archivados ganan entrada `session.suggest_next_phase` en
+   explicaciones why-not. **CI-inerte** (gates archivados); no se recaptura;
+   se regeneraría solo si revive el gate.
+3. **`cortex finish` NO está wireado** (R13): el nombre documentado
+   (`docs/transformacion/05`) no existe en `dispatch_native` (catch-all
+   rc 2); los flujos reales de cierre son `cortex autopilot finish` /
+   `cortex session abandon` + documenter. Wiring = paquete separado.
+4. **`## Fases` en nota de sesión**: template SSoT condicional (R9) — Python
+   lee el mismo archivo; sin fase ⇒ salida idéntica (goldens `test_session_
+   template_conditional` pasan sin recaptura).
+
+**Deuda menor registrada (deferred, ver ledger SDD):** ~60-70 líneas
+objectivo no estricto en SDDwork (99); headers "10 acciones" (ahora 11) en
+docs; `cortex next` sin cache de fase (re-parse triple); scoring
+suggest_next_phase 6.0 (Mantenimiento) desplaza acciones 5.0 — una línea a
+Learning si el dueño quiere prioridad mínima; `session current --json` no
+muestra `mode` (list/show sí).
+
 ## Reglas operativas vigentes
 
 1. Suite Python completa = oráculo hasta la baja final; verificar Rust

@@ -1,6 +1,7 @@
 # 13 — MODO COMPOSED Y SKILLS EXPERTAS (Obra 08, stream A)
 
-> Estado: ESPECIFICACIÓN aprobada por el dueño (2026-08-27).
+> Estado: RESUELTO por obra 08 stream A (2026-08-28) — ver `ESTADO-ACTUAL.md` §"Obra 08 — Stream A" y `HANDOFF.md` §8.
+> (aprobada por el dueño 2026-08-27)
 > Reemplaza a `PROPUESTA-MODO-COMPOSED.md` (que queda como fuente de investigación).
 > Obra 08 = dos streams: A (este doc) + B (`14-HERDR-COMPANION.md`).
 > Regla rectora: **agregar, casi nunca cambiar**.
