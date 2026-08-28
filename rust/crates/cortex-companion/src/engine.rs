@@ -87,6 +87,22 @@ pub trait Backend: Send + Sync {
     fn close_session(&self, session_id: &str) -> Result<(), String>;
     fn checkpoint_session(&self, note: &str) -> Result<(), String>;
     fn approve_action(&self, action_id: &str) -> Result<(), String>;
+
+    // ---- ejecución del Menu (B5) ----
+    /// Ejecuta una familia+args del catálogo. Default honesto P6/P9: cada
+    /// backend integra las suyas y el resto falla explícito con el comando
+    /// exacto a correr en terminal (nunca paridad fingida, nunca subprocess).
+    fn menu_run(&self, family: &str, args: &[String]) -> Result<String, String> {
+        let mut cmd = String::from("cortex ");
+        cmd.push_str(family);
+        for a in args {
+            cmd.push(' ');
+            cmd.push_str(a);
+        }
+        Err(format!(
+            "«{family}» no integrada al Companion en esta versión — corré `{cmd}` en tu terminal"
+        ))
+    }
 }
 
 /// Propuesta enriquecida (interna): todo lo que expone `cortex next --json`.
@@ -170,6 +186,13 @@ impl InProcessBackend {
             Some(branch) => Ok(Some(branch.to_string())),
             None => Ok(None), // detached
         }
+    }
+
+    /// Directorio del `action_log.jsonl` (`.cortex/`), misma regla que el
+    /// runner de `cortex-actions` — para el `ActionLog` de aprobaciones (B2).
+    pub fn action_log_dir(&self) -> std::path::PathBuf {
+        use cortex_actions::context::ActionContext;
+        ActionContext::from_project_root(Some(&self.root)).dot_cortex()
     }
 
     /// Memoria nativa lazy, slot por modo: con embeddings para búsqueda,
@@ -392,6 +415,53 @@ impl Backend for InProcessBackend {
 
     fn approve_action(&self, _action_id: &str) -> Result<(), String> {
         Err("pendiente: approve_action se implementa en B2/B3 detrás de la aprobación".to_string())
+    }
+
+    fn menu_run(&self, family: &str, args: &[String]) -> Result<String, String> {
+        let args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        match (family, args.as_slice()) {
+            // Familias integradas in-process: paridad por construcción.
+            ("session", []) => self.session_list_json(),
+            ("session", ["current"]) => match self.session_current()? {
+                Some(s) => Ok(format!(
+                    "{}  {}  mode: {}  opened: {}",
+                    s.id, s.status, s.mode, s.opened_at
+                )),
+                None => Ok("No hay sesión activa".to_string()),
+            },
+            ("next", []) => self.next_actions_json(),
+            ("search", [q]) => self.search_json(q, 5),
+            ("search", []) => Err(
+                "la búsqueda necesita una consulta — usá el panel Search o `cortex search <query>`"
+                    .to_string(),
+            ),
+            ("stats", []) => {
+                let s = self.stats()?;
+                Ok(format!(
+                    "episódica {} · semántica {} · {}",
+                    s.episodic, s.semantic, s.vault_path
+                ))
+            }
+            ("doctor", []) => Ok(self
+                .doctor()?
+                .checks
+                .into_iter()
+                .map(|(n, v)| format!("{n}: [{}]", v.to_uppercase()))
+                .collect::<Vec<String>>()
+                .join("\n")),
+            // Resto: fallo explícito honesto (P6/P9), con el comando exacto.
+            (family, args) => {
+                let mut cmd = String::from("cortex ");
+                cmd.push_str(family);
+                for a in args {
+                    cmd.push(' ');
+                    cmd.push_str(a);
+                }
+                Err(format!(
+                    "«{family}» no integrada al Companion en esta versión — corré `{cmd}` en tu terminal"
+                ))
+            }
+        }
     }
 }
 

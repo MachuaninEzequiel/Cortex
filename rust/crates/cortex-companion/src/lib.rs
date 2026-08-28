@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub mod app;
 pub mod approval;
 pub mod engine;
+pub mod menu;
 pub mod screens;
 pub mod widgets;
 

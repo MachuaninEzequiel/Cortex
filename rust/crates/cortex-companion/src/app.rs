@@ -8,6 +8,7 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
+use crate::menu::MenuOutput;
 use crate::{Screen, UiRequest};
 
 /// Rects canónicas del Home (header). B3 definió la de Sesiones y los tests
@@ -16,6 +17,19 @@ use crate::{Screen, UiRequest};
 pub const HOME_SESSIONS_BTN: Rect = Rect::new(2, 4, 18, 3);
 pub const HOME_ACTIONS_BTN: Rect = Rect::new(24, 4, 18, 3);
 pub const HOME_OPEN_SESSION_BTN: Rect = Rect::new(46, 4, 18, 3);
+/// Botón de navegación al Menu (B5): el anti-olvido tiene entrada desde Home.
+pub const HOME_MENU_BTN: Rect = Rect::new(66, 4, 12, 3);
+
+/// Rects canónicas del Menu (B5). Compartidas por `hit_test`, `menu_areas` y
+/// `render_menu` — la lista arranca abajo del header y el panel de salida en
+/// el caja inferior (80x24 es la referencia del repo).
+pub const MENU_LIST_LEFT: u16 = 2;
+pub const MENU_LIST_TOP: u16 = 4;
+pub const MENU_LIST_WIDTH: u16 = 56;
+pub const MENU_LIST_HEIGHT: u16 = 16;
+pub const MENU_OUTPUT_TOP: u16 = 20;
+pub const MENU_OUTPUT_HEIGHT: u16 = 3;
+pub const MENU_BACK_BTN: Rect = Rect::new(58, 1, 20, 3);
 
 /// Acciones semánticas de la app: el input ya viene "traducido".
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,6 +90,8 @@ pub struct Areas {
     pub home_sessions_btn: Option<Rect>,
     pub home_actions_btn: Option<Rect>,
     pub home_open_session_btn: Option<Rect>,
+    pub home_menu_btn: Option<Rect>,
+    pub menu_back_btn: Option<Rect>,
 }
 
 /// Estado global de la app (máquina ELM-lite).
@@ -91,6 +107,8 @@ pub struct AppState {
     pub scroll_offset: u16,
     /// Última posición del mouse (para hover). `None` = aún no se movió.
     pub mouse: Option<(u16, u16)>,
+    /// Salida del último comando del Menu (para el panel de salida).
+    pub menu_output: Option<MenuOutput>,
 }
 
 impl AppState {
@@ -102,10 +120,13 @@ impl AppState {
                 home_sessions_btn: Some(HOME_SESSIONS_BTN),
                 home_actions_btn: Some(HOME_ACTIONS_BTN),
                 home_open_session_btn: Some(HOME_OPEN_SESSION_BTN),
+                home_menu_btn: Some(HOME_MENU_BTN),
+                menu_back_btn: Some(MENU_BACK_BTN),
             },
             quit: false,
             scroll_offset: 0,
             mouse: None,
+            menu_output: None,
         }
     }
 }
@@ -172,6 +193,28 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
                 .is_some_and(|r| r.contains(p))
             {
                 return Some(AppAction::Navigate(Screen::Sessions));
+            }
+            if state.areas.home_menu_btn.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::Navigate(Screen::Menu));
+            }
+            None
+        }
+        Screen::Menu => {
+            let p = Position::new(x, y);
+            if state.areas.menu_back_btn.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::Back);
+            }
+            // Filas de la lista: geometría const (misma que render_menu).
+            if (MENU_LIST_LEFT..MENU_LIST_LEFT + MENU_LIST_WIDTH).contains(&x) && y >= MENU_LIST_TOP
+            {
+                let flat = usize::from(y - MENU_LIST_TOP) + usize::from(state.scroll_offset);
+                if let Some(crate::menu::FlatRow::Entry(e)) = crate::menu::row_at(flat) {
+                    let args = e.args.iter().map(|s| s.to_string()).collect();
+                    return Some(AppAction::RunCommand {
+                        family: e.family,
+                        args,
+                    });
+                }
             }
             None
         }

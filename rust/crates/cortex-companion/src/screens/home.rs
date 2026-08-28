@@ -16,7 +16,7 @@ use cortex_branding::gradient::color_for;
 use cortex_branding::pixels::PixelKind;
 use cortex_branding::wordmark;
 
-use crate::app::{HOME_ACTIONS_BTN, HOME_OPEN_SESSION_BTN, HOME_SESSIONS_BTN};
+use crate::app::{HOME_ACTIONS_BTN, HOME_MENU_BTN, HOME_OPEN_SESSION_BTN, HOME_SESSIONS_BTN};
 use crate::engine::{ActionProposal, DoctorSummary, SessionSummary, StatsSummary};
 use crate::widgets::{accent, button, panel, to_color, Button, Panel};
 
@@ -42,6 +42,7 @@ pub struct HomeAreas {
     pub sessions_btn: Rect,
     pub actions_btn: Rect,
     pub open_session_btn: Option<Rect>,
+    pub menu_btn: Rect,
     pub header: Rect,
     pub body: Rect,
     pub footer: Rect,
@@ -60,6 +61,7 @@ pub fn home_areas(area: Rect) -> HomeAreas {
         sessions_btn: HOME_SESSIONS_BTN,
         actions_btn: HOME_ACTIONS_BTN,
         open_session_btn: Some(HOME_OPEN_SESSION_BTN),
+        menu_btn: HOME_MENU_BTN,
         header,
         body,
         footer,
@@ -243,6 +245,12 @@ fn home_buttons(data: &HomeData, areas: &HomeAreas) -> Vec<Button> {
             id: "view-actions",
             rect: areas.actions_btn,
             label: "Ver acciones".into(),
+            enabled: true,
+        },
+        Button {
+            id: "menu-nav",
+            rect: areas.menu_btn,
+            label: "Menú".into(),
             enabled: true,
         },
     ];
