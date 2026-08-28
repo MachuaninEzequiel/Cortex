@@ -5,8 +5,11 @@ dentro de [herdr](https://github.com/herdrdev/herdr), el terminal workspace
 mouse-first donde vivís mientras codeás. Sin herdr, el binario corre igual
 de solo en cualquier terminal (ver **Standalone**).
 
-**Requisitos**: herdr ≥ 0.8.0 (`herdr -V`) y el binario `cortex-companion`
-(en PATH). Las acciones del manifest invocan también el CLI `cortex`
+**Requisitos**: herdr ≥ 0.7.0 (`herdr -V`) y el binario `cortex-companion`
+(en PATH). La API de plugins que usa el manifest (`[[panes]]` con
+`placement = "overlay"`, `[[actions]]`) está documentada desde 0.7.0; se
+recomienda 0.8.x por fixes del runtime, pero 0.7.x funciona (verificado en
+0.7.3). Las acciones del manifest invocan también el CLI `cortex`
 (`cargo install --path rust/crates/cortex-cli`).
 
 ## Instalar
@@ -22,6 +25,14 @@ herdr plugin link <ruta-al-repo>/integrations/herdr
 `herdr plugin install <owner>/<repo>` funcionará cuando exista la release
 pública del plugin (misma convención GitHub del marketplace de herdr); por
 hoy, `link` es el camino soportado.
+
+> **Verificado en vivo (2026-08-28, herdr 0.7.3)**: `herdr plugin link
+> <repo>/integrations/herdr` → `plugin_linked` con `min_herdr_version:
+> "0.7.0"`, pane overlay y 4 acciones; `herdr plugin list` →
+> `cortex.companion enabled [local:...]`; `herdr plugin action list
+> --plugin cortex.companion` → doctor, next, open, status. Requiere el
+> server herdr corriendo (`herdr status`); si está detenido, `link` da
+> `NotFound` hasta que abras tu sesión o lances `herdr server`.
 
 ## Verificar
 
@@ -68,7 +79,7 @@ command = "herdr plugin pane open --plugin cortex.companion --entrypoint compani
 | `plugin not found` tras link | el manifest vive en `integrations/herdr/` — link **esa carpeta**, no la raíz del repo |
 | Pane abre y cierra al toque | `cortex-companion` no está en PATH del server de herdr (el server hereda el PATH del shell que lo lanzó): `which cortex-companion`; reabrí el server o instalá con `cargo install` |
 | El overlay no recibe clics | terminal sin reporte de mouse o bug de versión: abrí el pane en split — `herdr plugin pane open --plugin cortex.companion --entrypoint companion --placement split` (o cambiá `placement` en una copia local del manifest) |
-| `min_herdr_version` rechaza | actualizá herdr (`herdr update`) a ≥ 0.8.0 |
+| `min_herdr_version` rechaza | herdr < 0.7.0: actualizá (`herdr update`) a ≥ 0.7.0 (recomendado 0.8.x) |
 | `No such command` en una acción | el CLI `cortex` no está instalado (ver Install) o el proyecto no es workspace Cortex — el Home lo dice explícito (P6/P9, nunca silencio) |
 
 ## Seguridad (modelo de confianza)

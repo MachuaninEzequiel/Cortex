@@ -98,7 +98,9 @@ fn src() -> &'static str {
 #[test]
 fn manifest_has_required_top_level_fields_verbatim() {
     let m = parse_manifest(src());
-    // id/name/version/min_herdr_version son obligatorios según docs 0.8.2;
+    // id/name/version/min_herdr_version son obligatorios según docs 0.7.0
+    // (API de plugins estable desde 0.7.0; R16 — la máquina del dueño es
+    // 0.7.3 y [[panes]] placement=overlay está documentada desde 0.7.0);
     // description y platforms completan el contrato de la spec 14 §4.
     assert_eq!(
         m.root.get("id").map(String::as_str),
@@ -111,7 +113,7 @@ fn manifest_has_required_top_level_fields_verbatim() {
     assert_eq!(m.root.get("version").map(String::as_str), Some("0.1.0"));
     assert_eq!(
         m.root.get("min_herdr_version").map(String::as_str),
-        Some("0.8.0")
+        Some("0.7.0")
     );
     assert_eq!(
         m.root.get("description").map(String::as_str),
@@ -206,7 +208,7 @@ fn manifest_declares_four_actions_with_canonical_commands() {
         "no debe existir acción search en el manifest (spec 14 §4)"
     );
 
-    // Toda acción lleva title + contexts workspace (contrato 0.8.2).
+    // Toda acción lleva title + contexts workspace (contrato 0.7.0).
     for (n, (name, k)) in actions.iter().enumerate() {
         assert_eq!(name, "actions", "sección {n} debe ser [[actions]]");
         assert!(k.contains_key("title"), "acción {n} sin title");
@@ -219,7 +221,7 @@ fn manifest_declares_four_actions_with_canonical_commands() {
 
 #[test]
 fn manifest_ids_are_legal_for_herdr() {
-    // Ids: letras ASCII, dígitos, . : _ - (docs 0.8.2). Pane/action ids no
+    // Ids: letras ASCII, dígitos, . : _ - (docs 0.7.0). Pane/action ids no
     // llevan punto (son locales al plugin).
     let m = parse_manifest(src());
     let id = m.root.get("id").expect("id");
