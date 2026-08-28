@@ -231,6 +231,7 @@ pub(crate) fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
         M::Managed => "managed",
         M::Observed => "observed",
         M::Byo => "byo",
+        M::Composed => "composed",
         M::CiReview => "ci-review",
     }
 }

@@ -524,6 +524,7 @@ fn mode_value(mode: cortex_app::session::SessionMode) -> &'static str {
         cortex_app::session::SessionMode::Managed => "managed",
         cortex_app::session::SessionMode::Observed => "observed",
         cortex_app::session::SessionMode::Byo => "byo",
+        cortex_app::session::SessionMode::Composed => "composed",
         cortex_app::session::SessionMode::CiReview => "ci-review",
     }
 }

@@ -10,7 +10,7 @@
 //!   patrón de Task `T\d+(\.\d+)*`, truncamiento de output 10_000 bytes.
 //! - Storage: YAML `sort_keys=False, allow_unicode` ⇒ orden de declaración;
 //!   escritura atómica tmp+rename; active pointer `.cortex/sessions/active`.
-//! - `infer_mode`: BYO / CI_REVIEW / MANAGED / OBSERVED idéntico.
+//! - `infer_mode`: BYO / CI_REVIEW / COMPOSED / MANAGED / OBSERVED idéntico.
 //!
 //! Submódulos: `verification` (runner de hooks), `quality_gates` (review
 //! en dos etapas) y `service` (capa SessionService para ci/CLI, P11-ci) —
@@ -55,6 +55,10 @@ pub enum SessionMode {
     Managed,
     Observed,
     Byo,
+    /// Modo COMPOSED (Obra 08 stream A): el middle es una cadena de skills
+    /// externas que emiten checkpoints con `phase`; Cortex reconoce, registra
+    /// y documenta sin orquestar.
+    Composed,
     #[serde(rename = "ci-review")]
     CiReview,
 }
@@ -414,6 +418,13 @@ pub fn infer_mode(checkpoints: &[Checkpoint]) -> SessionMode {
     if all_ci {
         return SessionMode::CiReview;
     }
+    // Regla 3 (spec 13 §4): si CUALQUIER checkpoint lleva fase, la sesión es
+    // COMPOSED — el usuario compuso un flujo con fases visibles aunque haya
+    // mezclado agentes Cortex e ide-hooks en el camino. Gana sobre MANAGED
+    // y OBSERVED; CI_REVIEW (todo ci-bot) y BYO (vacío) ya retornaron antes.
+    if checkpoints.iter().any(|c| c.phase.is_some()) {
+        return SessionMode::Composed;
+    }
     const CORTEX_SOURCES: [CheckpointSource; 5] = [
         CheckpointSource::CortexSync,
         CheckpointSource::CortexSddwork,
@@ -563,14 +574,31 @@ pub fn canonical_json_normalized(record: &SessionRecord, workspace_root: &str) -
         .checkpoints
         .iter()
         .map(|c| {
-            serde_json::json!({
-                "timestamp": ts,
-                "source": c.source,
-                "verified_claims": c.verified_claims,
-                "unverified_claims": c.unverified_claims,
-                "artifacts_touched": c.artifacts_touched,
-                "note": c.note,
-            })
+            let mut obj = serde_json::Map::new();
+            obj.insert("timestamp".into(), ts.clone().into());
+            obj.insert(
+                "source".into(),
+                serde_json::to_value(c.source).unwrap_or_default(),
+            );
+            obj.insert(
+                "verified_claims".into(),
+                serde_json::to_value(&c.verified_claims).unwrap_or_default(),
+            );
+            obj.insert(
+                "unverified_claims".into(),
+                serde_json::to_value(&c.unverified_claims).unwrap_or_default(),
+            );
+            obj.insert(
+                "artifacts_touched".into(),
+                serde_json::to_value(&c.artifacts_touched).unwrap_or_default(),
+            );
+            obj.insert("note".into(), c.note.clone().into());
+            // Ruling R6 (spec 13 §2.1): phase sobrevive el dump --json, solo
+            // cuando Some ⇒ dumps sin fase byte-idénticos a los actuales.
+            if let Some(p) = c.phase {
+                obj.insert("phase".into(), serde_json::to_value(p).unwrap_or_default());
+            }
+            serde_json::Value::Object(obj)
         })
         .collect();
     obj.insert("checkpoints".into(), cps.into());
@@ -706,5 +734,92 @@ timestamp: '2026-08-28T00:00:00.000000Z'\nsource: user-skill\nverified_claims: [
             !yaml.contains("phase"),
             "phase no debe serializarse en None"
         );
+    }
+
+    // ── infer_mode COMPOSED (G-A1b) ───────────────────────────────────────
+
+    fn cp(source: CheckpointSource, phase: Option<CheckpointPhase>) -> Checkpoint {
+        let mut c = base_checkpoint();
+        c.source = source;
+        c.phase = phase;
+        c
+    }
+
+    #[test]
+    fn infer_mode_composed_when_any_phase() {
+        // mezcla: cortex-SDDwork sin phase + user-skill con phase + ide-hook
+        let cps = vec![
+            cp(CheckpointSource::CortexSddwork, None),
+            cp(
+                CheckpointSource::UserSkill,
+                Some(CheckpointPhase::Implement),
+            ),
+            cp(CheckpointSource::IdeHook, None),
+        ];
+        assert_eq!(infer_mode(&cps), SessionMode::Composed);
+    }
+
+    #[test]
+    fn infer_mode_composed_wins_over_all_cortex() {
+        // todos cortex-* pero uno con phase → COMPOSED (no MANAGED)
+        let cps = vec![
+            cp(CheckpointSource::CortexSync, Some(CheckpointPhase::Spec)),
+            cp(CheckpointSource::CortexSddwork, None),
+        ];
+        assert_eq!(infer_mode(&cps), SessionMode::Composed);
+    }
+
+    #[test]
+    fn infer_mode_backward_compat_sin_phase() {
+        // sin phase: las combinaciones actuales dan los modos actuales
+        let all_cortex = vec![
+            cp(CheckpointSource::CortexSync, None),
+            cp(CheckpointSource::CortexSddwork, None),
+        ];
+        assert_eq!(infer_mode(&all_cortex), SessionMode::Managed);
+        let mixed = vec![
+            cp(CheckpointSource::CortexSddwork, None),
+            cp(CheckpointSource::IdeHook, None),
+        ];
+        assert_eq!(infer_mode(&mixed), SessionMode::Observed);
+        assert_eq!(infer_mode(&[]), SessionMode::Byo);
+        let ci = vec![
+            cp(CheckpointSource::CiBot, None),
+            cp(CheckpointSource::CiBot, None),
+        ];
+        assert_eq!(infer_mode(&ci), SessionMode::CiReview);
+    }
+
+    // ── Ruling R6: dump canónico --json con phase (spec 13 §2.1) ──────────
+
+    #[test]
+    fn canonical_dump_omits_phase_when_none() {
+        let rec = SessionRecord {
+            checkpoints: vec![cp(CheckpointSource::UserSkill, None)],
+            ..SessionRecord::default()
+        };
+        let s = canonical_json_normalized(&rec, "/ws");
+        assert!(
+            !s.contains("phase"),
+            "dump sin fase no debe emitir la clave: {s}"
+        );
+    }
+
+    #[test]
+    fn canonical_dump_includes_phase_when_some() {
+        let rec = SessionRecord {
+            checkpoints: vec![cp(
+                CheckpointSource::UserSkill,
+                Some(CheckpointPhase::Review),
+            )],
+            ..SessionRecord::default()
+        };
+        let s = canonical_json_normalized(&rec, "/ws");
+        assert_eq!(
+            s.matches("\"phase\"").count(),
+            1,
+            "una sola clave phase: {s}"
+        );
+        assert!(s.contains("\"phase\": \"review\""), "{s}");
     }
 }
