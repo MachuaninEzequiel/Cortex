@@ -439,6 +439,44 @@ fn guarded_menu_row_opens_modal_not_direct_effect() {
 }
 
 #[test]
+fn guarded_effect_runcommand_never_executes_opens_modal_instead() {
+    // M-1 (fix wave final review): defensa en profundidad. El reducer ya
+    // enruta guarded al modal; si un Effect::RunCommand GUARDADO llegara
+    // igual al runtime, effects::apply NO debe ejecutarlo: abre el modal
+    // (mismo flujo que el camino normal) y no deja auditoría de ejecución.
+    let dir = unique_dir("m1");
+    let fb = FakeBackend::default();
+    let mut st = setup(Screen::Menu, &fb);
+    let log = ActionLog::new(&dir);
+
+    effects::apply(
+        &fb,
+        &log,
+        &mut st,
+        Effect::RunCommand {
+            family: "remember",
+            args: vec![],
+        },
+    );
+    assert!(
+        st.pending.is_some(),
+        "el guarded filtrado abre el modal, no se ejecuta"
+    );
+    assert!(st.menu_output.is_none(), "nada se ejecutó: sin output");
+    assert!(log.last_line().is_none(), "sin aprobación no hay auditoría");
+    let pend = st.pending.clone().unwrap();
+    assert!(pend.req.effect.contains("cortex remember"), "efecto exacto");
+    assert!(
+        matches!(
+            pend.target,
+            cortex_companion::app::ApprovalTarget::RunMenu { .. }
+        ),
+        "target RunMenu (flujo normal)"
+    );
+    cleanup(&dir);
+}
+
+#[test]
 fn batch_button_disabled_when_no_batchable() {
     let fb = FakeBackend {
         proposals: vec![proposal("p-no", false, "minutes")],

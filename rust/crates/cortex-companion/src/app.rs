@@ -370,11 +370,15 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         AppAction::Navigate(s) => {
             state.stack.push(state.screen);
             state.screen = s;
+            // I-1 (fix wave final review): llegar a una pantalla nueva sin el
+            // scroll arrastrado de la anterior.
+            state.scroll_offset = 0;
             None
         }
         AppAction::Back => {
             if let Some(prev) = state.stack.pop() {
                 state.screen = prev;
+                state.scroll_offset = 0;
             }
             None
         }

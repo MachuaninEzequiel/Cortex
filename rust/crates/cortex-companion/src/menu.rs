@@ -56,7 +56,14 @@ pub enum CommandEffect {
 }
 
 /// Familias cuya simple invocación MUTA estado (sin excepción).
-const UNCONDITIONAL_MUTATION: &[&str] = &["remember", "forget", "install-skills", "init", "setup"];
+const UNCONDITIONAL_MUTATION: &[&str] = &[
+    "remember",
+    "forget",
+    "install-skills",
+    "init",
+    "setup",
+    "reindex",
+];
 
 /// Subcomandos mutantes por familia (primera palabra de args).
 const MUTATING_ARGS: &[(&str, &[&str])] = &[
@@ -78,7 +85,6 @@ const MUTATING_ARGS: &[(&str, &[&str])] = &[
     ),
     ("pr-context", &["store", "generate"]),
     ("hu", &["import"]),
-    ("reindex", &[]), // cualquier reindex real muta; `--dry-run` ya fue Direct
     ("webgraph", &["export"]),
     ("promote-knowledge", &["--apply"]),
 ];
@@ -93,11 +99,7 @@ fn family_args_guarded(family: &str, args: &[&str]) -> bool {
         return true;
     }
     if let Some((_, muts)) = MUTATING_ARGS.iter().find(|(f, _)| *f == family) {
-        let hit = args.iter().any(|a| muts.contains(a));
-        // Familias con lista vacía (reindex): CUALQUIER invocación real muta;
-        // `--dry-run` ya fue capturado como Direct antes.
-        let unconditional = muts.is_empty() && family == "reindex";
-        if hit || unconditional {
+        if args.iter().any(|a| muts.contains(a)) {
             return true;
         }
     }

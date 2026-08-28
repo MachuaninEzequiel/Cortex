@@ -16,7 +16,7 @@ use crate::approval::{run_guarded, ActionLog, ApprovalRequest, ApprovalUi};
 use crate::brain_panel::{self, BrainMsg};
 use crate::engine::Backend;
 use crate::feedback;
-use crate::menu::MenuOutput;
+use crate::menu::{self, MenuOutput};
 
 /// `ApprovalUi` que reporta una decisión YA tomada en la máquina de estados
 /// (el modal clickeado o Esc). No bloquea: la decisión es input, no I/O.
@@ -53,8 +53,27 @@ pub fn apply_opt<B: Backend>(
 ) {
     match fx {
         Effect::RunCommand { family, args } => {
-            // Defensivo: las guarded se enrutan al modal en el reducer; si una
-            // llegara acá igual, se ejecuta como lectura (nunca muta sin decisión).
+            // M-1 (fix wave final review): defensivo. El reducer ya enruta
+            // guarded al modal; si una llegara acá igual, NO se ejecuta: se
+            // abre el modal con el mismo flujo del camino normal (nunca muta
+            // sin decisión del usuario).
+            if menu::command_is_guarded(family, &args) {
+                let title = menu::entry_for(family, &args)
+                    .map(|e| e.title.to_string())
+                    .unwrap_or_else(|| family.to_string());
+                st.pending = Some(PendingApproval {
+                    req: ApprovalRequest {
+                        title: format!("Ejecutar «{title}»"),
+                        effect: format!("cortex {family} {}", args.join(" "))
+                            .trim_end()
+                            .to_string(),
+                        audit_key: format!("menu.{family}"),
+                    },
+                    target: ApprovalTarget::RunMenu { family, args },
+                    decision: None,
+                });
+                return;
+            }
             st.menu_output = Some(match be.menu_run(family, &args) {
                 Ok(s) => MenuOutput::ok(s),
                 Err(e) => MenuOutput::err(e),
