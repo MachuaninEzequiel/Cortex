@@ -130,6 +130,54 @@ fn implement_craft_file_exists_with_content() {
 }
 
 #[test]
+fn documenter_skill_is_thin_and_references_craft_on_demand() {
+    let text = read(&workspace_files().join("cortex-documenter.md"));
+    // thin: el original tenía 305 líneas; el contrato thin (Ruling R10) apunta a ~60-100
+    // conservando TODO el contrato de gobernanza (pre-flight, doc_types canónicos,
+    // criterios ADR, verification gate, pipeline, mensaje final, restricciones).
+    assert!(
+        text.lines().count() <= 100,
+        "cortex-documenter.md no quedó thin ({} líneas)",
+        text.lines().count()
+    );
+    // contrato: frontmatter + gobernanza + referencia on-demand al craft.
+    assert!(
+        text.starts_with("---\nname: cortex-documenter\n"),
+        "frontmatter exacto"
+    );
+    assert!(
+        text.contains("cortex_documenter_briefing"),
+        "pre-flight briefing"
+    );
+    assert!(
+        text.contains("cortex_write_doc") && text.contains("cortex_close_session"),
+        "pipeline MCP conservado"
+    );
+    assert!(
+        text.contains("handoff") && text.contains("Reference > Duplicate"),
+        "gobernanza de cierre conservada"
+    );
+    assert!(
+        text.contains("cortex-documenter-close-craft.md"),
+        "referencia craft close"
+    );
+}
+
+#[test]
+fn close_craft_file_exists_with_content() {
+    let text = read(&workspace_files().join("cortex-documenter-close-craft.md"));
+    assert!(
+        text.starts_with("---\n"),
+        "frontmatter (e2e _has_frontmatter)"
+    );
+    assert!(text.len() > 500, "contenido craft real");
+    let lower = text.to_lowercase();
+    assert!(lower.contains("verificable"), "claims verificables");
+    assert!(lower.contains("adr"), "señales de ADR");
+    assert!(lower.contains("auditor"), "auditoría final");
+}
+
+#[test]
 fn deployed_copy_matches_ssot_byte_identique() {
     for name in [
         "cortex-sync.md",
@@ -137,6 +185,8 @@ fn deployed_copy_matches_ssot_byte_identique() {
         "cortex-sync-proposal-craft.md",
         "cortex-SDDwork.md",
         "cortex-SDDwork-implement-craft.md",
+        "cortex-documenter.md",
+        "cortex-documenter-close-craft.md",
     ] {
         let ssot = read(&workspace_files().join(name));
         let deployed = read(&deployed_skills().join(name));
