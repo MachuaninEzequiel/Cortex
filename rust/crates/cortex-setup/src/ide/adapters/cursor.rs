@@ -275,7 +275,7 @@ impl IdeAdapter for CursorAdapter {
         }
 
         let cortex_config = json!({
-            "command": "cortex",
+            "command": "cortex-cli",
             "args": [
                 "mcp-server",
                 "--stdio",

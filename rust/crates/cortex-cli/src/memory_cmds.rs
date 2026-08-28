@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use crate::pyjson::{Num, PyVal};
 use clap::Parser;
 use cortex_app::context::hybrid::UnifiedHit;
+use cortex_config::NamespaceMode;
 
 use crate::memory::NativeMemory;
 use crate::paths::resolve_project_root;
@@ -155,6 +156,104 @@ fn display_path_episodic(e: &cortex_app::episodic::MemoryEntry) -> String {
             e.files.join(", ")
         }
     )
+}
+
+// ── Adapter de búsqueda para la TUI ────────────────────────────────────────
+
+/// Motor de búsqueda inyectado a la TUI: orquesta `NativeMemory` con el
+/// MISMO pipeline que `cortex search`. Lazy por diseño: los embeddings
+/// cargan en la PRIMERA búsqueda (nunca al arrancar el Home).
+pub struct CliSearchAdapter {
+    root: PathBuf,
+    mem: std::sync::Mutex<Option<Result<NativeMemory, String>>>,
+}
+
+impl CliSearchAdapter {
+    pub fn new(root: PathBuf) -> Self {
+        Self {
+            root,
+            mem: std::sync::Mutex::new(None),
+        }
+    }
+}
+
+impl cortex_tui::app::SearchProvider for CliSearchAdapter {
+    fn search(&self, query: &str, top_k: usize) -> Result<Vec<cortex_tui::app::SearchHit>, String> {
+        let mut guard = self
+            .mem
+            .lock()
+            .map_err(|_| "búsqueda: lock del motor".to_string())?;
+        if guard.is_none() {
+            *guard = Some(NativeMemory::open(Some(&self.root)).map_err(|e| e.message()));
+        }
+        let mem = guard.as_mut().unwrap().as_mut().map_err(|e| e.clone())?;
+        let result = mem.retrieve(query, top_k, true);
+        Ok(result
+            .unified_hits
+            .iter()
+            .filter(|h| !h.dropped)
+            .map(|h| {
+                let (title, path, score, memory_id) = if h.source == "episodic" {
+                    let e = h.entry.as_ref().expect("hit episódico");
+                    (
+                        display_title_episodic(e),
+                        display_path_episodic(e),
+                        h.score,
+                        Some(e.id.clone()),
+                    )
+                } else {
+                    let d = h.doc.expect("hit semántico");
+                    // Quirk del oráculo: el score de presentación del lado
+                    // semántico es el score crudo del documento. Sin id:
+                    // el oráculo tampoco marcaba semánticos como útiles.
+                    (d.title.clone(), d.path.clone(), h.doc_score_raw, None)
+                };
+                cortex_tui::app::SearchHit {
+                    source: h.source.to_string(),
+                    score,
+                    title,
+                    path,
+                    memory_id,
+                }
+            })
+            .collect())
+    }
+
+    /// Marca útil un hit episódico: persiste en `.cortex/feedback.jsonl`
+    /// con el MISMO formato del oráculo (feedback_store.py) — el archivo
+    /// que consume `cortex-actions::signals` (ventana 14d).
+    fn mark_useful(&self, memory_id: &str) -> Result<(), String> {
+        write_feedback_useful(&self.root.join(".cortex"), memory_id)
+    }
+}
+
+/// Append-only JSONL + rotación de una generación (espejo de
+/// `FeedbackStore.append` del oráculo): una línea JSON por evento,
+/// fsync por escrito, crash-safe.
+pub fn write_feedback_useful(dot_cortex: &std::path::Path, memory_id: &str) -> Result<(), String> {
+    use std::io::Write as _;
+    let path = dot_cortex.join("feedback.jsonl");
+    let event = serde_json::json!({
+        "ts": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        "type": "explicit",
+        "memory_id": memory_id,
+        "feedback_type": "useful",
+        "source": "tui",
+    });
+    std::fs::create_dir_all(dot_cortex).map_err(|e| format!("feedback: {e}"))?;
+    const MAX_BYTES: u64 = 5 * 1024 * 1024;
+    if path.metadata().map(|m| m.len()).unwrap_or(0) > MAX_BYTES {
+        let _ = std::fs::rename(&path, dot_cortex.join("feedback.1.jsonl"));
+    }
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("feedback: {e}"))?;
+    writeln!(f, "{event}").map_err(|e| format!("feedback: {e}"))?;
+    f.flush().map_err(|e| format!("feedback: {e}"))?;
+    f.sync_all().map_err(|e| format!("feedback: {e}"))?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -755,12 +854,16 @@ pub fn run_reindex(argv: &[String]) -> bool {
     let vault_resolved = layout.resolve_workspace_relative(Path::new(&config.semantic.vault_path));
     let vectors_dir = layout.workspace_root.join(".cortex").join("vectors");
 
-    // Sólo --dry-run está wireado; el rebuild real no tiene escritor de
-    // vector-cache persistente nativo (verificado: sin NativeVectorCache) ⇒
-    // fallo explícito documentado (P6/P9), nunca passthrough a Python.
     if !args.dry_run {
-        eprintln!("reindex real no nativo en build Rust — requiere escritor de vectors persistente; usá --dry-run o el CLI Python legacy");
-        std::process::exit(1);
+        return run_reindex_real(
+            &args,
+            &layout,
+            &config,
+            &model,
+            &backend,
+            &vault_resolved,
+            &vectors_dir,
+        );
     }
 
     echo("[dry-run] reindex plan:");
@@ -780,4 +883,244 @@ pub fn run_reindex(argv: &[String]) -> bool {
         echo("  would prune   : previous .vectors.backup-* dirs");
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cortex_tui::app::SearchProvider as _;
+
+    /// El adapter orquesta `NativeMemory` con el mismo pipeline que
+    /// `cortex search`: sobre un fixture chico devuelve hits semánticos
+    /// (BM25) sin chroma ni modelo.
+    #[test]
+    fn adapter_busca_keyword_sobre_fixture() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let dot = tmp.path().join(".cortex");
+        std::fs::create_dir_all(dot.join("vault")).unwrap();
+        std::fs::write(dot.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        std::fs::write(
+            dot.join("vault").join("nota.md"),
+            "# Autenticación con JWT\n\nel flujo de login usa tokens rotativos\n",
+        )
+        .unwrap();
+        let adapter = CliSearchAdapter::new(tmp.path().to_path_buf());
+        let hits = adapter.search("jwt", 5).unwrap_or_default();
+        assert!(
+            hits.iter()
+                .any(|h| h.title.contains("Autenticación") || h.path.contains("nota.md")),
+            "sin hits esperados: {hits:?}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod feedback_tests {
+    use super::*;
+
+    /// Formato idéntico al que lee `cortex-actions::signals` y al que
+    /// escribía el oráculo (feedback_store.py).
+    #[test]
+    fn write_feedback_formato_oraculo() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let dot = tmp.path().join(".cortex");
+        write_feedback_useful(&dot, "mem-123").unwrap();
+        let line = std::fs::read_to_string(dot.join("feedback.jsonl")).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+        assert_eq!(v["type"], "explicit");
+        assert_eq!(v["memory_id"], "mem-123");
+        assert_eq!(v["feedback_type"], "useful");
+        assert_eq!(v["source"], "tui");
+        assert!(v["ts"].is_string());
+    }
+
+    #[test]
+    fn write_feedback_appendea() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let dot = tmp.path().join(".cortex");
+        write_feedback_useful(&dot, "a").unwrap();
+        write_feedback_useful(&dot, "b").unwrap();
+        let text = std::fs::read_to_string(dot.join("feedback.jsonl")).unwrap();
+        assert_eq!(text.lines().count(), 2);
+    }
+}
+
+// ── reindex REAL (escritor de vector-cache persistente nativo) ─────────────
+
+/// Fingerprint del oráculo (vector_cache.py:49, CACHE_SCHEMA_VERSION=2):
+/// sha256(model \x00 schema \x00 embedding_text) — el mismo texto con otro
+/// modelo jamás colisiona (Fix A3).
+fn cache_fingerprint(model_name: &str, embedding_text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let payload = format!(
+        "{model_name}\x00{}\x00{embedding_text}",
+        CACHE_SCHEMA_VERSION
+    );
+    let mut h = Sha256::new();
+    h.update(payload.as_bytes());
+    format!("{:x}", h.finalize())
+}
+
+const CACHE_SCHEMA_VERSION: &str = "2";
+
+/// Rebuild real del vector cache: backup de `.cortex/vectors/`, re-parse +
+/// re-embed de todos los chunks del vault (OnnxEmbedder local) y persistencia
+/// en el store binario nativo (`cortex-core::store::VectorStore`). Ante
+/// cualquier error del store se restaura el backup (rollback del oráculo).
+fn run_reindex_real(
+    args: &ReindexArgs,
+    layout: &cortex_workspace::WorkspaceLayout,
+    config: &cortex_config::CortexConfig,
+    model: &str,
+    backend: &str,
+    vault_resolved: &std::path::Path,
+    vectors_dir: &std::path::Path,
+) -> bool {
+    // El embedder nativo es miniLM-vía-ort: con el modelo local produce los
+    // mismos vectores que fastembed/onnx del oráculo (misma identidad de
+    // modelo en el fingerprint). Otros modelos (e5…) quedan en el CLI
+    // Python legacy — el archivo onnx de ese modelo no existe acá.
+    let _ = backend;
+    if model != "all-MiniLM-L6-v2" {
+        eprintln!(
+            "reindex: el escritor nativo solo embebe all-MiniLM-L6-v2 (modelo configurado: {model}) — usá el CLI Python legacy"
+        );
+        return true;
+    }
+    let Some(model_dir) = default_model_dir() else {
+        let cache_hint = std::env::var_os("HOME").map(|h| {
+            format!(
+                "{}/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx/model.onnx",
+                h.to_string_lossy()
+            )
+        });
+        eprintln!(
+            "reindex: modelo ONNX no encontrado en {}: instalalo y reintentá (o usá el CLI Python legacy)",
+            cache_hint.unwrap_or_default()
+        );
+        return true;
+    };
+
+    // 1. Parse + BM25 + chunks (mismo índice que la búsqueda semántica).
+    let mut semantic = match cortex_app::semantic::SemanticIndex::build(vault_resolved) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("reindex: semantic index: {e}");
+            return true;
+        }
+    };
+    // 2. Embeddings de TODOS los chunks (lote único).
+    let mut embedder = match cortex_embed::onnx::OnnxEmbedder::open(&model_dir) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("reindex: embedder: {e}");
+            return true;
+        }
+    };
+    let n_chunks = match semantic.attach_embeddings_with(&mut embedder) {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("reindex: embeddings: {e}");
+            return true;
+        }
+    };
+    if n_chunks == 0 {
+        echo("reindex: vault vacío — no hay nada que indexar.");
+        return true;
+    }
+    let dim = semantic.chunks[0].embedding.len();
+    if dim == 0 {
+        eprintln!("reindex: embeddings vacíos (modelo?)");
+        return true;
+    }
+
+    // 3. Backup del cache existente (mismo flujo que el oráculo).
+    let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let backup_dir = vectors_dir.with_file_name(format!("vectors.backup-{ts}"));
+    if vectors_dir.exists() {
+        if let Err(e) = std::fs::rename(vectors_dir, &backup_dir) {
+            eprintln!("reindex: backup de {vectors_dir:?} falló: {e}");
+            return true;
+        }
+    }
+
+    // 4. Persistencia en el store binario nativo (uno por búsqueda).
+    let mut store = match cortex_core::store::VectorStore::open(vectors_dir, model) {
+        Ok(st) => st,
+        Err(e) => {
+            // rollback: devolver el backup a su lugar.
+            let _ = std::fs::rename(&backup_dir, vectors_dir);
+            eprintln!("reindex: vector store: {e}");
+            return true;
+        }
+    };
+    let fps: Vec<String> = semantic
+        .chunks
+        .iter()
+        .map(|c| cache_fingerprint(model, &c.info.embedding_text()))
+        .collect();
+    let ids: Vec<String> = semantic
+        .chunks
+        .iter()
+        .map(|c| c.info.chunk_id.clone())
+        .collect();
+    let mut flat: Vec<f32> = Vec::with_capacity(n_chunks * dim);
+    for c in &semantic.chunks {
+        flat.extend(c.embedding.iter().map(|v| *v as f32));
+    }
+    if let Err(e) = store.put_many(&fps, &ids, &flat, dim) {
+        let _ = std::fs::rename(&backup_dir, vectors_dir); // rollback
+        eprintln!("reindex: put_many: {e}");
+        return true;
+    }
+    let _ = store.compact();
+
+    // 5. Contenedor del store episódico (el check `episodic_store` del
+    // doctor verifica el dir persistente del runtime — el store JSONL se
+    // escribe ahí cuando hay memoria). Mismo cálculo que cortex-doctor.
+    let ns = cortex_workspace::EpisodicNamespaceCfg::new(
+        &config.episodic.persist_dir,
+        namespace_mode_str(&config.episodic.namespace_mode),
+        &config.episodic.namespace_value,
+    );
+    let persist_dir = cortex_workspace::resolve_episodic_persist_dir(&layout.workspace_root, &ns);
+    let _ = std::fs::create_dir_all(&persist_dir);
+
+    // 6. Limpieza opcional de backups viejos.
+    if args.prune_old_caches {
+        if let Ok(rd) = std::fs::read_dir(vectors_dir.parent().unwrap_or(std::path::Path::new(".")))
+        {
+            for e in rd.flatten() {
+                let name = e.file_name().to_string_lossy().to_string();
+                if name.starts_with("vectors.backup-") && !name.ends_with(&ts.to_string()) {
+                    let _ = std::fs::remove_dir_all(e.path());
+                }
+            }
+        }
+    }
+    let _ = args.limit;
+
+    echo(&format!(
+        "reindex: {n_chunks} chunks de {} docs indexados ({dim}d).",
+        semantic.docs.len()
+    ));
+    echo(&format!(
+        "  vector store : {}/vectors.v3.bin",
+        vectors_dir.display()
+    ));
+    if backup_dir.exists() {
+        echo(&format!(
+            "  backup       : {} (rollback disponible; --prune-old-caches para limpiar)",
+            backup_dir.display()
+        ));
+    }
+    true
+}
+
+fn namespace_mode_str(m: &NamespaceMode) -> &'static str {
+    match m {
+        NamespaceMode::Project => "project",
+        NamespaceMode::Branch => "branch",
+        NamespaceMode::Custom => "custom",
+    }
 }

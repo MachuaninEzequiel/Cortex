@@ -940,135 +940,39 @@ pub fn run_watch(argv: &[String]) -> bool {
         None => None,
     };
     let cli = build_service(args.project_root.as_deref());
+    let req = cortex_tui::app::UiRequest {
+        screen: cortex_tui::app::Screen::Sessions,
+        project_root: args.project_root.as_deref().map(std::path::Path::new),
+        status_filter,
+        service: Some(&cli.service),
+        search: Some(std::sync::Arc::new(
+            crate::memory_cmds::CliSearchAdapter::new(cli.repo_root.clone()),
+        )),
+    };
     if !std::io::stdout().is_terminal() {
-        return snapshot_once(&cli, status_filter);
-    }
-    interactive_loop(&cli, status_filter)
-}
-
-/// Consola no-interactiva (pipes, CI): render único vía `TestBackend` de
-/// dimensiones fijas y salida por stdout, rc 0. Los asserts del gate son
-/// sobre ids/marca presentes, no sobre bytes exactos de la tabla.
-fn snapshot_once(cli: &SessionCli, status_filter: Option<SessionStatus>) -> bool {
-    use ratatui::backend::TestBackend;
-    use ratatui::{Terminal, TerminalOptions, Viewport};
-
-    let data =
-        match cortex_tui::sessions::SessionsScreenData::from_service(&cli.service, status_filter) {
-            Ok(d) => d,
+        // Consola no-interactiva (CI): snapshot único del mismo render,
+        // rc 0 (contrato T6-b). El texto lo produce la pantalla nativa.
+        return match cortex_tui::app::snapshot(req, 100, 40) {
+            Ok(text) => {
+                echo(&text);
+                eecho("watch: terminal no interactivo — snapshot emitido; usá un terminal real para el modo en vivo.");
+                true
+            }
             Err(e) => {
                 eecho(&e);
-                return true;
+                true
             }
         };
-    let (w, h) = (100u16, 40u16);
-    let mut terminal = match Terminal::with_options(
-        TestBackend::new(w, h),
-        TerminalOptions {
-            viewport: Viewport::Fixed(ratatui::prelude::Rect::new(0, 0, w, h)),
-        },
-    ) {
-        Ok(t) => t,
+    }
+    // Loop interactivo (tick ~250ms, navegación j/k, salida q/Ctrl+C,
+    // restauración RAII) — runtime unificado del crate TUI.
+    match cortex_tui::app::run(req) {
+        Ok(()) => true,
         Err(e) => {
             eecho(&format!("watch: {e}"));
-            return true;
-        }
-    };
-    if let Err(e) = terminal.draw(|f| cortex_tui::sessions::render(f, &data)) {
-        eecho(&format!("watch: {e}"));
-        return true;
-    }
-    let buf = terminal.backend().buffer();
-    let mut lines: Vec<String> = (0..buf.area.height)
-        .map(|y| {
-            (0..buf.area.width)
-                .map(|x| buf[(x, y)].symbol().to_string())
-                .collect::<String>()
-                .trim_end()
-                .to_string()
-        })
-        .collect();
-    while lines.last().is_some_and(|l| l.is_empty()) {
-        lines.pop();
-    }
-    echo(&lines.join("\n"));
-    eecho("watch: terminal no interactivo — snapshot emitido; usá un terminal real para el modo en vivo.");
-    true
-}
-
-/// Loop ratatui read-only mínimo (contrato v1): tick ~250 ms, reconstruye el
-/// snapshot en cada tick (las sesiones cambian en disco) y sale con `q` o
-/// `Ctrl+C`. La restauración del terminal es RAII (drop/panic incluidos).
-fn interactive_loop(cli: &SessionCli, status_filter: Option<SessionStatus>) -> bool {
-    use ratatui::crossterm::cursor::Show;
-    use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-    use ratatui::crossterm::execute;
-    use ratatui::crossterm::terminal::{
-        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-    };
-
-    /// Restaura pantalla alterna, cursor y modo raw pase lo que pase.
-    struct Restore;
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
-            let _ = disable_raw_mode();
+            true
         }
     }
-
-    let mut stdout = std::io::stdout();
-    if enable_raw_mode().is_err() {
-        eecho("watch: no se pudo habilitar el modo raw.");
-        return true;
-    }
-    // El guard vive desde que el raw mode queda activo: restaura sí o sí.
-    let _guard = Restore;
-    if execute!(stdout, EnterAlternateScreen, Show).is_err() {
-        eecho("watch: no se pudo entrar a la pantalla alterna.");
-        return true;
-    }
-
-    let backend = ratatui::backend::CrosstermBackend::new(stdout);
-    let mut terminal = match ratatui::Terminal::new(backend) {
-        Ok(t) => t,
-        Err(e) => {
-            eecho(&format!("watch: {e}"));
-            return true;
-        }
-    };
-    let tick = std::time::Duration::from_millis(250);
-    loop {
-        let drawn =
-            terminal.draw(|f| {
-                match cortex_tui::sessions::SessionsScreenData::from_service(
-                    &cli.service,
-                    status_filter,
-                ) {
-                    Ok(data) => cortex_tui::sessions::render(f, &data),
-                    Err(e) => {
-                        f.render_widget(
-                            ratatui::widgets::Paragraph::new(format!(
-                                "cortex · sesiones · error: {e}"
-                            )),
-                            f.area(),
-                        );
-                    }
-                }
-            });
-        let _ = drawn;
-        if event::poll(tick).unwrap_or(false) {
-            if let Ok(Event::Key(key)) = event::read() {
-                let quit = key.kind == KeyEventKind::Press
-                    && (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
-                        || (key.code == KeyCode::Char('c')
-                            && key.modifiers.contains(KeyModifiers::CONTROL)));
-                if quit {
-                    break;
-                }
-            }
-        }
-    }
-    true
 }
 
 // ---------------------------------------------------------------------------

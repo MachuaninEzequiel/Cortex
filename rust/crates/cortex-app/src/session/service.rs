@@ -45,6 +45,7 @@ pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Micros, false)
 }
 
+#[derive(Clone)]
 pub struct SessionService {
     pub storage: SessionStorage,
     repo_root: PathBuf,
@@ -56,6 +57,36 @@ impl SessionService {
             storage,
             repo_root: repo_root.to_path_buf(),
         }
+    }
+
+    /// `git diff <start_commit>..<end_ref>` — port de
+    /// `SessionService.compute_diff` del oráculo (session/service.py:476):
+    /// `end_commit` si la sesión está cerrada, `HEAD` si no; vacío en modo
+    /// gitless (el documenter inspecciona checkpoints en ese caso).
+    /// Inseguro nunca: start/end ya validados (SHA 40-hex o HEAD).
+    pub fn compute_diff(&self, session_id: &str) -> Result<String, String> {
+        let record = self.get(session_id)?;
+        if record.is_gitless() {
+            return Ok(String::new());
+        }
+        let end_ref = record
+            .end_commit
+            .clone()
+            .unwrap_or_else(|| "HEAD".to_string());
+        let start = record.start_commit.clone();
+        let output = std::process::Command::new("git")
+            .arg("diff")
+            .arg(format!("{start}..{end_ref}"))
+            .current_dir(&self.repo_root)
+            .output()
+            .map_err(|e| format!("git diff: {e}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "git diff {start}..{end_ref}: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 
     pub fn repo_root(&self) -> &Path {

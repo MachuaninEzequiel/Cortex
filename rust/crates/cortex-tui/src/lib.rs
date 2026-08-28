@@ -15,14 +15,30 @@
 //! }
 //! ```
 
+pub mod actions;
+pub mod app;
+pub mod components;
 pub mod home;
+pub mod keymap;
+pub mod layout;
 pub mod renderer;
+pub mod search;
+pub mod session_detail;
 pub mod sessions;
 pub mod splash;
+pub mod terminal;
+pub mod theme;
 
+pub use actions::{ActionView, ActionsData};
+
+pub use app::{Action, AppState, Effect, LoadState, Overlay, Screen};
 pub use cortex_branding::ansi::ColorMode;
 pub use cortex_branding::logo::LogoVariant;
+pub use keymap::key_to_action;
+pub use layout::LayoutMode;
 pub use renderer::CortexLogo;
+pub use terminal::Tui;
+pub use theme::Theme;
 
 /// Modo de branding según el tamaño de la pantalla (prompt-logo.md §18).
 /// Decisión centralizada: jamás hardcodear breakpoints por pantalla.

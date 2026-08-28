@@ -278,6 +278,18 @@ fn run_one(ide: &str, scenario: &str) {
 
     let mut files = snapshot(&project, "project", &project, &home);
     files.extend(snapshot(&home, "home", &project, &home));
+
+    // Normalización N-mcp-command (delta INTENCIONAL del port nativo,
+    // ver plan §15): el binario nativo se instala como `cortex-cli` (no
+    // existe `cortex`); los ARGS inyectados ya son compatibles con el
+    // nativo (mcp-server --stdio --project-root). Byte-parity para todo
+    // lo demás se mantiene contra el golden del oráculo. No aplica a pi:
+    // su mcp.json viene del bundle (paridad copia == bundle).
+    if ide != "pi" {
+        for v in files.values_mut() {
+            *v = normalize_bin_command(v);
+        }
+    }
     let mut reports_sorted: Vec<String> = reports
         .into_iter()
         .map(|r| normalize(&r, &project, &home))
@@ -301,9 +313,29 @@ fn run_one(ide: &str, scenario: &str) {
         "{ide}__{scenario}: listas de reports difieren"
     );
 
-    let golden_files = golden["files"].as_object().expect("files map");
+    let mut golden_files = golden["files"].as_object().cloned().expect("files map");
+
+    // Normalización N-pi-bundle: el adaptador pi copia `cortex-pi/`
+    // VERBATIM al proyecto (adapters/pi.rs: "el bundle es la única fuente
+    // de verdad de Pi"). El golden del oráculo congelaba una versión vieja
+    // del bundle (resolver pipx); la paridad REAL es copia == bundle actual.
+    if ide == "pi" {
+        let bundle = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../cortex-pi"));
+        for (key, expected) in golden_files.iter_mut() {
+            // Todo archivo que el bundle aporta (raíz o .pi/) se compara
+            // contra la fuente REAL del bundle, no contra el golden.
+            if let Some(rel) = key.strip_prefix("project:") {
+                let src = bundle.join(rel);
+                if src.is_file() {
+                    let content = std::fs::read_to_string(&src)
+                        .unwrap_or_else(|e| panic!("bundle faltante {src:?}: {e}"));
+                    *expected = Value::String(content);
+                }
+            }
+        }
+    }
     let mut problems: Vec<String> = Vec::new();
-    for (key, expected) in golden_files {
+    for (key, expected) in &golden_files {
         let expected_str = expected.as_str().expect("file content str");
         match files.get(key) {
             Some(actual) if actual == expected_str => {}
@@ -346,4 +378,29 @@ fn truncate(s: &str) -> String {
     } else {
         format!("{}…[+{} bytes]", &s[..MAX], s.len() - MAX)
     }
+}
+
+/// Normalización N-mcp-command: el binario NATIVO se llama `cortex-cli`
+/// (nombre pelado o ruta absoluta que resuelve el PATH); el golden del
+/// oráculo esperaba el nombre del producto Python (`cortex`). Reemplaza
+/// el valor del `command` del server MCP en TOML y JSON inyectados.
+fn normalize_bin_command(v: &str) -> String {
+    let mut out = v.to_string();
+    // Iterar TODOS los servers MCP del archivo (el preseed puede tener
+    // otros commands antes del de cortex).
+    for marker in ["\"command\": \"", "command = \""] {
+        let mut pos = 0usize;
+        while let Some(rel) = out[pos..].find(marker) {
+            let start = pos + rel + marker.len();
+            let Some(end_rel) = out[start..].find('"') else {
+                break;
+            };
+            let cmd = &out[start..start + end_rel];
+            if cmd.contains("cortex-cli") {
+                out.replace_range(start..start + end_rel, "cortex");
+            }
+            pos = start + end_rel + 1;
+        }
+    }
+    out
 }

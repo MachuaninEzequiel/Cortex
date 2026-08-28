@@ -5,11 +5,11 @@
 //! separado del logo (§14).
 
 use crate::renderer::{render_pixel_map, CortexLogo};
+use crate::theme::Theme;
 use crate::{branding_mode, lang, BrandingMode};
 use cortex_branding::ansi::ColorMode;
-use cortex_branding::palette;
 use cortex_branding::wordmark::wordmark;
-use ratatui::prelude::{Constraint, Layout, Rect, Style};
+use ratatui::prelude::{Constraint, Layout, Rect};
 use ratatui::widgets::{Paragraph, Widget};
 use ratatui::Frame;
 
@@ -73,25 +73,17 @@ fn render_minimal(f: &mut Frame<'_>, area: Rect, mode: ColorMode) {
 }
 
 fn render_wordmark_text(f: &mut Frame<'_>, area: Rect) {
-    let style = Style::default()
-        .fg(crate::renderer::to_ratatui(
-            palette::LIGHT,
-            crate::env_color_mode(),
-        ))
-        .add_modifier(ratatui::prelude::Modifier::BOLD);
+    let theme = Theme::new(crate::env_color_mode());
     Paragraph::new("C O R T E X")
-        .style(style)
+        .style(theme.title())
         .centered()
         .render(area, f.buffer_mut());
 }
 
 fn render_tagline(f: &mut Frame<'_>, area: Rect) {
-    let style = Style::default().fg(crate::renderer::to_ratatui(
-        palette::MUTED,
-        crate::env_color_mode(),
-    ));
+    let theme = Theme::new(crate::env_color_mode());
     Paragraph::new(tagline(lang()))
-        .style(style)
+        .style(theme.muted())
         .centered()
         .render(area, f.buffer_mut());
 }

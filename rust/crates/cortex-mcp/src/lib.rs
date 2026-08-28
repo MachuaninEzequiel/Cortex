@@ -22,6 +22,7 @@
 //! conductual; el gate de P9 es el contrato list_tools byte-a-byte +
 //! dispatch de ping.
 
+pub mod backends;
 pub mod handlers_autopilot;
 pub mod handlers_docs;
 pub mod handlers_finish;

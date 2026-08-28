@@ -434,6 +434,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "unicode-normalization",
  "uuid",
 ]
@@ -479,6 +480,7 @@ dependencies = [
  "cortex-app",
  "cortex-autopilot",
  "cortex-config",
+ "cortex-core",
  "cortex-doctor",
  "cortex-embed",
  "cortex-enterprise",
@@ -492,6 +494,7 @@ dependencies = [
  "ratatui",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "tempfile",
  "unicode-width",
 ]
@@ -557,8 +560,13 @@ dependencies = [
 name = "cortex-mcp"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "cortex-app",
+ "cortex-autopilot",
+ "cortex-embed",
+ "cortex-services",
  "cortex-setup",
+ "cortex-workspace",
  "regex",
  "rmcp",
  "serde",
@@ -621,11 +629,15 @@ dependencies = [
 name = "cortex-tui"
 version = "0.1.0"
 dependencies = [
+ "base64 0.13.1",
+ "chrono",
+ "cortex-actions",
  "cortex-app",
  "cortex-branding",
  "ratatui",
  "serde_json",
  "tempfile",
+ "unicode-width",
 ]
 
 [[package]]

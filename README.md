@@ -82,7 +82,7 @@ native core:
 | Surface | Format |
 |---|---|
 | **CLI** | 25+ command families (`session`, `docs`, `ci`, `setup`, `search`, `context`, `next`, `hu`, `pr-context`, `reindex`, `ide`…). Text and `--json`. |
-| **TUI** | A ratatui terminal interface: splash, home and the sessions screen. |
+| **TUI** | A ratatui terminal interface: splash, home, sessions, search and the action-approval screen (`cortex`, `cortex session watch`, `cortex next --tui`). |
 | **MCP server** | `cortex mcp-serve` exposes 30+ canonical tools to any MCP client. |
 | **IDE integration** | 11 validated adapters install hooks, prompts and skills into your editor/agent. |
 | **Brain** | The local AI assistant (read-only by design). |
@@ -94,6 +94,22 @@ native core:
 ![Home](assets/shots/home-es.png)
 
 ![Sessions](assets/shots/sessions-real.png)
+
+**TUI keymap** (`?` opens the full help, derived from the same map):
+
+| Key | Action |
+|---|---|
+| `j`/`k`, `↑`/`↓` | navigate / scroll |
+| `g`/`G` | top / bottom |
+| `Enter` | open: session detail, action review, search hit |
+| `a` | actions screen (from home) · approve the auto-ok batch (in actions) |
+| `s` | sessions screen |
+| `/` | search |
+| `y` | mark the selected hit as useful (persisted feedback) |
+| `c` | copy the selection (OSC 52: session id or hit path) |
+| `b`, `Esc` | back (overlays first, then screen stack) |
+| `?` | help |
+| `q`, `Ctrl+C` | quit |
 
 ### The CLI
 
@@ -122,13 +138,173 @@ Tools are grouped by family: **search** (`cortex_search`, `cortex_search_vector`
 (`cortex_import_hu`, `cortex_get_hu`) and **autopilot**
 (`cortex_autopilot_start/preflight/checkpoint/finish/status`).
 
+## Full tour — 12 prompts para probar Cortex entero
+
+Acabás de incorporar Cortex a tu proyecto. Esta tanda recorre **todas** las
+superficies — CLI, TUI, ActionEngine, sesiones, autopilot, docs, MCP — sin
+alterar tu proyecto: lo único que escribe son artefactos de prueba **marcados**
+y los borra al final (el estado de sesión queda en `.cortex/`, que es el
+estado propio de Cortex, no de tu código).
+
+**Requisitos**: `cortex-cli init` ya corrido, el binario en el `PATH` y (si tu
+agente vive en pi/Claude Code/Codex con el server `cortex mcp-serve`
+configurado) las tools MCP disponibles. Cada prompt da la equivalencia
+CLI/MCP: el agente elige la que tenga.
+
+Copia y pegá los prompts **en orden**, uno por turno.
+
+### 1. Diagnóstico — ¿qué está sano?
+
+> Corré `cortex-cli doctor` y `cortex-cli ide status`. Resumime en 5 líneas
+> qué está configurado y qué marca como pendiente. No modifiques nada.
+
+**Prueba**: `doctor` (salud del runtime) + `ide status` (11 adaptadores).
+**Esperás ver**: `[OK]` en config/vault/layout y la tabla de IDEs con `✗`
+hasta inyectar. `episodic_store` en FAIL es normal antes del primer reindex.
+
+### 2. Búsqueda híbrida — la memoria
+
+> Buscá en la memoria de Cortex la palabra "<una palabra de tu dominio>"
+> (usá `cortex_search` si tenés MCP, si no `cortex-cli search "<palabra>"
+> --top-k 5`). Mostrame los hits con fuente (episodic/semantic), score y
+> ruta. No escribas nada.
+
+**Prueba**: retrieval híbrido (BM25 + episódico, o embeddings si el modelo
+está). **Esperás ver**: tu vault indexado con `[SEMANTIC]`/`[EPISODIC]` hits.
+
+### 3. Contexto enriquecido
+
+> Armá el contexto enriquecido para la tarea "entender este proyecto"
+> (`cortex_context` / `cortex-cli context`). Contame qué fuentes usó y
+> mostrame el bundle. No escribas nada.
+
+**Prueba**: `context` (pre-flight de contexto del flujo de trabajo).
+
+### 4. Gobernanza — el ticket
+
+> Hacé el pre-flight de gobernanza con `cortex_sync_ticket` para la tarea
+> "tour de prueba de Cortex": user_request "recorrer todas las capacidades
+> de Cortex sin modificar el proyecto". Mostrame el contexto del ticket.
+
+**Prueba**: la puerta de gobernanza que desbloquea todo el flujo.
+
+### 5. Spec + apertura de sesión (única escritura real)
+
+> Creá una spec de PRUEBA con `cortex_create_spec` (proposal_mode "skip",
+> título "tour-cortex") que documente: qué partes de Cortex vamos a probar
+> (CLI, TUI, ActionEngine, sesiones, autopilot, docs, MCP). Si abre una
+> sesión automáticamente, usala.
+
+**Prueba**: `SpecService` + `SessionOpener` (spec en `vault/specs/` + sesión
+en `.cortex/sessions/`). **Esperás ver**: el path del spec y el
+`session_id`.
+
+### 6. Checkpoint — registrar avance
+
+> Registrá un checkpoint manual con `cortex_session_checkpoint` (source
+> "manual", note "inicio del tour") resumiendo lo probado hasta acá.
+> Verificá el estado con `cortex_session_status`. (CLI equivalente:
+> `cortex-cli session checkpoint --source manual --note "inicio del tour"`
+> con el `--session-id` que abrió el paso 5.)
+
+**Prueba**: el flujo de checkpoints (claims verificados, artefactos).
+
+### 7. ActionEngine — el motor que propone
+
+> Mostrame qué propone el ActionEngine con `cortex-cli next` (o la tool MCP
+> equivalente). **NO ejecutes ninguna acción**: listalas con su score,
+> costo, reversibilidad y effect.
+
+**Prueba**: el scheduler (impacto×frescura−costo, máx 5, precondiciones).
+
+### 8. Autopilot — preflight de decisión
+
+> Con `cortex_autopilot_preflight` evaluá la tarea "relevar este proyecto":
+> tipo de tarea, confianza y complejidad sugerida. Read-only, no abras
+> ninguna sesión nueva.
+
+**Prueba**: los detectores de la capa de decisión autopilot.
+
+### 9. Memoria episódica + feedback
+
+> Guardá un aprendizaje de esta sesión en la memoria episódica con
+> `cortex-cli remember "Cortex: <un dato aprendido sobre este proyecto>"
+> --type general`. Mostrá la confirmación. El feedback "marcar útil" vive
+> en la TUI (paso manual: `/` para buscar y `y` sobre un hit) — si ya lo
+> hiciste, confirmalo; desde el chat no existe un comando CLI dedicado
+> (persiste `.cortex/feedback.jsonl`).
+
+**Prueba**: escritura de memoria episódica (+ feedback opcional que alimenta
+el aprendizaje del motor, ventana 14d).
+
+### 10. Docs — writer real + limpieza
+
+> Escribí una nota de PRUEBA con `cortex_write_doc` (doc_type "adr", title
+> "TOUR-PRUEBA", summary "nota del tour de Cortex") mostrando el path
+> creado. Después BORRALA (y borrá también `vault/session-notes/` del tour
+> si existe). Confirmame que no quedó ningún archivo de prueba.
+
+**Prueba**: el writer de docs en vault (write + overwrite/duplicate) y la
+regla de no-dejar basura.
+
+### 11. Cierre de sesión
+
+> Cerrá la sesión del tour con `cortex_finish_session` (si tenés MCP; el
+> CLI nativo aún no expone close — si no tenés MCP, avisámelo y la dejamos
+> abierta). Verificá con `cortex_session_list` que quedó `closed` y mostrame
+> el path de la nota de sesión.
+
+**Prueba**: el cierre (estado final + nota de sesión en `vault/session-notes/`).
+
+### 12. Evidencia final
+
+> Resumí el recorrido: qué partes probamos (doctor, search, context,
+> gobernanza, spec/sesión, checkpoints, ActionEngine, autopilot, memoria,
+> docs, finish), qué archivos se crearon y cuáles se limpiaron. Corré
+> `cortex-cli doctor` una última vez y decime si algo cambió respecto del
+> paso 1.
+
+**Prueba**: la trazabilidad del tour + el proyecto intacto.
+
+### Parada manual (opcional) — la TUI
+
+La TUI es interactiva; probala vos en una terminal:
+
+```bash
+cortex-cli            # Home TUI (isotipo + panel + atajos a/s//q)
+cortex-cli session watch    # sesiones en vivo (Enter abre el detalle)
+cortex-cli next --tui       # acciones con revisión previa modular
+```
+
+### Resumen de la ruta
+
+| # | Superficie | Lee/escribe | Destruye algo? |
+|---|---|---|---|
+| 1 | doctor + IDE status | lee | no |
+| 2 | search (híbrido) | lee | no |
+| 3 | context | lee | no |
+| 4 | sync_ticket (gobernanza) | lee | no |
+| 5 | spec + sesión | escribe `vault/specs/tour-cortex.md` + session | sí, se borra en 11 |
+| 6 | checkpoint | escribe `.cortex/sessions/` (estado de Cortex) | no (estado propio) |
+| 7 | ActionEngine (next) | lee | no |
+| 8 | autopilot preflight | lee | no |
+| 9 | memoria + feedback | escribe `.cortex/feedback.jsonl` / memoria | no (estado de Cortex) |
+| 10 | write_doc | escribe nota y LA BORRA | sí, se auto-limpia |
+| 11 | finish session | escribe nota de sesión | se borra en 10 si aplica |
+| 12 | doctor + resumen | lee | no |
+
+Al terminar, tu proyecto queda con un único artefacto nuevo sí-mismo: la
+sesión cerrada en `.cortex/sessions/` (y la nota de cierre, borrable), el
+spec de prueba borrado y el vault sin residuos — el estado que Cortex
+administra por diseño.
+
 ## Parts
 
 | Part | Role |
 |---|---|
 | `rust/crates/cortex-app` | Core services: sessions, documenter, retrieval, quality gates. |
 | `rust/crates/cortex-cli` | The native CLI — text and `--json` output for every command. |
-| `rust/crates/cortex-tui` | ratatui screens (splash, home, sessions). |
+| `rust/crates/cortex-tui` | ratatui screens (splash, home, sessions, actions approval). |
 | `rust/crates/cortex-mcp` | The MCP server with canonical tool payloads. |
 | `rust/crates/cortex-actions` | The Action Engine (scheduler, registry, learning, signals). |
 | `rust/crates/cortex-setup` | Bootstrap, templates, IDE adapters and hooks. |

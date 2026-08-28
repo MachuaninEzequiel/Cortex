@@ -13,6 +13,7 @@
 // wireados = self-golden (Typer y clap formatean distinto por diseño).
 
 use cortex_cli::commands;
+use std::io::IsTerminal as _;
 
 /// Versión de este binario nativo.
 const CLI_VERSION: &str = "0.1.0";
@@ -73,8 +74,10 @@ fn main() {
         eprintln!("cortex-cli: CORTEX_PY=1 es rollback histórico de la migración — el CLI es 100% nativo; eliminá la variable");
     }
 
-    // 2. Flag propio de la fachada nativa.
-    if argv.first().map(String::as_str) == Some("--cli-version") {
+    // 2. Versión: `--cli-version` (flag histórico) y `--version`/`-V`
+    // (estándar que las integraciones esperan, p. ej. el panel cortex-tools
+    // de pi corre `cortex-cli --version` para detectar el binario).
+    if matches!(argv.as_slice(), [a] if a == "--cli-version" || a == "--version" || a == "-V") {
         println!("cortex-cli {CLI_VERSION}");
         std::process::exit(0);
     }
@@ -85,10 +88,30 @@ fn main() {
         std::process::exit(0);
     }
 
-    // 2c. Invocación sin argumentos: el Home TUI del oráculo no está wireado
-    //    ⇒ mostramos la ayuda raíz (sin passthrough).
+    // 2c. Invocación sin argumentos: el Home TUI nativo (el oráculo abría
+    //     el Home rich; doc 05 §4.2). En consola no-interactiva emite el
+    //     snapshot del mismo render, rc 0.
     if argv.is_empty() {
-        print!("{}", root_command().render_help());
+        use cortex_tui::app::{Screen, UiRequest};
+        let req = UiRequest {
+            screen: Screen::Home,
+            project_root: None,
+            status_filter: None,
+            service: None,
+            search: Some(std::sync::Arc::new(
+                cortex_cli::memory_cmds::CliSearchAdapter::new(
+                    cortex_cli::paths::resolve_project_root(None),
+                ),
+            )),
+        };
+        if !std::io::stdout().is_terminal() {
+            match cortex_tui::app::snapshot(req, 100, 40) {
+                Ok(t) => println!("{t}"),
+                Err(e) => eprintln!("{e}"),
+            }
+        } else if let Err(e) = cortex_tui::app::run(req) {
+            eprintln!("cortex: {e}");
+        }
         std::process::exit(0);
     }
 

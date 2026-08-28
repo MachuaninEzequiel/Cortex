@@ -2,7 +2,7 @@
 //! motor nativo cortex-actions (P6). Salida texto/--json byte-parity;
 //! `elapsed_ms` es medición propia ⇒ normalizable {{ELAPSED}} en gates.
 
-use std::io::Write as _;
+use std::io::{IsTerminal as _, Write as _};
 use std::path::Path;
 use std::time::Instant;
 
@@ -33,6 +33,9 @@ pub struct NextArgs {
     pub explain_why_not: bool,
     #[arg(long)]
     pub stats: bool,
+    /// Abre la pantalla de aprobación de acciones (TUI ratatui).
+    #[arg(long)]
+    pub tui: bool,
     #[arg(long)]
     pub project_root: Option<String>,
 }
@@ -49,6 +52,43 @@ pub fn run(argv: &[String]) -> bool {
     };
 
     let t0 = Instant::now();
+
+    // --tui: pantalla de aprobación ratatui (el motor se evalúa adentro,
+    // con el MISMO pipeline que este comando — la TUI orquesta, no duplica).
+    if args.tui {
+        let root = args.project_root.as_deref().map(Path::new);
+        let req = cortex_tui::app::UiRequest {
+            screen: cortex_tui::app::Screen::Actions,
+            project_root: root,
+            status_filter: None,
+            service: None,
+            search: Some(std::sync::Arc::new(
+                crate::memory_cmds::CliSearchAdapter::new(crate::paths::resolve_project_root(
+                    args.project_root.as_deref(),
+                )),
+            )),
+        };
+        if !std::io::stdout().is_terminal() {
+            return match cortex_tui::app::snapshot(req, 100, 40) {
+                Ok(t) => {
+                    println!("{t}");
+                    eprintln!("next: terminal no interactivo — snapshot emitido; usá un terminal real para el modo en vivo.");
+                    true
+                }
+                Err(e) => {
+                    eprintln!("next: {e}");
+                    true
+                }
+            };
+        }
+        return match cortex_tui::app::run(req) {
+            Ok(()) => true,
+            Err(e) => {
+                eprintln!("next: {e}");
+                true
+            }
+        };
+    }
 
     let ctx = ActionContext::from_project_root(args.project_root.as_deref().map(Path::new));
     if !ctx.config_existe() {

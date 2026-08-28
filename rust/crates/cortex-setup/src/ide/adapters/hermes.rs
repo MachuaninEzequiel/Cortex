@@ -110,7 +110,7 @@ impl IdeAdapter for HermesAdapter {
         }
 
         // _get_mcp_command sin WSL (needs_wsl_shielding == False):
-        // {"command": "cortex", "args": ["mcp-server","--stdio"],
+        // {"command": "cortex-cli", "args": ["mcp-server","--stdio"],
         //  "env": {"PYTHONPATH": <root>, "PYTHONWARNINGS": "ignore"}}.
         let mcp_cmd = mcp_command(ctx);
         // Orden de claves del dict literal de Python: command, args, env.

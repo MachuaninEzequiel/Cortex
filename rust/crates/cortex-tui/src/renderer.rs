@@ -112,6 +112,9 @@ pub fn to_ratatui(c: Rgb, mode: ColorMode) -> Color {
             Ansi16::Cyan => Color::Cyan,
             Ansi16::Blue => Color::Blue,
             Ansi16::White => Color::White,
+            Ansi16::Green => Color::Green,
+            Ansi16::Yellow => Color::Yellow,
+            Ansi16::Red => Color::Red,
         },
         ColorMode::Plain => Color::Reset,
     }

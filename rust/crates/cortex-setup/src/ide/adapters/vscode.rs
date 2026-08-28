@@ -200,7 +200,7 @@ impl IdeAdapter for VSCodeAdapter {
         // workspace resuelva relativo al proyecto abierto.
         let cortex_config = json!({
             "type": "stdio",
-            "command": "cortex",
+            "command": "cortex-cli",
             "args": ["mcp-server", "--stdio", "--project-root", "${workspaceFolder}"],
             "env": {"PYTHONWARNINGS": "ignore"},
         });

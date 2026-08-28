@@ -312,6 +312,26 @@ impl Action {
         }
         Ok(())
     }
+
+    /// Clonación `Arc` para EJECUCIÓN en otro thread (TUI de acciones):
+    /// igual contrato de contrato (`validate`), precondiciones descartadas
+    /// (ya las evaluó el scheduler — el runner no las vuelve a correr).
+    /// No cambia el comportamiento del motor: es una vista de transporte.
+    pub fn arc_for_run(&self) -> Arc<Action> {
+        debug_assert!(self.validate().is_ok(), "acción inválida: {}", self.id);
+        Arc::new(Action {
+            id: self.id.clone(),
+            title: self.title.clone(),
+            category: self.category,
+            effect: self.effect.clone(),
+            preconditions: Vec::new(),
+            reversible: self.reversible,
+            undo: self.undo.clone(),
+            cost: self.cost,
+            auto_ok: self.auto_ok,
+            run: self.run.clone(),
+        })
+    }
 }
 
 /// Una acción que el scheduler ofrece tras evaluar precondiciones.

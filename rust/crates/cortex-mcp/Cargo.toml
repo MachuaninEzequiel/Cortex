@@ -22,7 +22,12 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true }
 cortex-setup = { path = "../cortex-setup" }
 cortex-app = { path = "../cortex-app" }
+cortex-workspace = { path = "../cortex-workspace" }
+cortex-services = { path = "../cortex-services" }
+cortex-autopilot = { path = "../cortex-autopilot" }
+cortex-embed = { path = "../cortex-embed" }
 serde_yaml = { workspace = true }
+chrono = { workspace = true }
 # ADR chico (Cierre T1): regex para _extract_query_keywords y
 # _extract_candidate_files (patrones del mixín search.py). `regex 1.x` ya
 # está en Cargo.lock vía cortex-app/cortex-services — cero paquetes nuevos.

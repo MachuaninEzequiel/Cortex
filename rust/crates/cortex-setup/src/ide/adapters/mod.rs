@@ -38,8 +38,10 @@ pub fn all_adapters() -> Vec<Box<dyn IdeAdapter>> {
 
 /// Helper común `_get_mcp_command` de base.py (sin WSL en fixtures).
 pub fn mcp_command(ctx: &IdeCtx) -> serde_json::Value {
+    // Binario NATIVO: el port Rust 100% nativo se instala como `cortex-cli`
+    // (los flags `mcp-server --stdio` los acepta el nativo, compat legacy).
     serde_json::json!({
-        "command": "cortex",
+        "command": "cortex-cli",
         "args": ["mcp-server", "--stdio"],
         "env": {
             "PYTHONPATH": ctx.project_root.to_string_lossy(),

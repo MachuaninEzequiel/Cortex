@@ -66,16 +66,18 @@ fn unknown_command_reports_no_such_command_rc2() {
 #[test]
 fn missing_python_bin_is_irrelevant_no_delegation() {
     // CORTEX_BIN inexistente ya no produce 127: no hay passthrough que
-    // ejecute Python. Un token no wireado (--version) es comando
-    // desconocido ⇒ rc 2 con el mensaje Typer-like.
+    // ejecute Python. `--version` es un flag NATIVO (rc 0, estándar que
+    // las integraciones esperan); un token no wireado (frobnicate) sigue
+    // siendo comando desconocido ⇒ rc 2.
     let out = bin()
         .env("CORTEX_BIN", "/no/existe/cortex-bin-xyz")
         .arg("--version")
         .output()
         .unwrap();
-    assert_eq!(out.status.code(), Some(2));
-    assert_eq!(
-        String::from_utf8_lossy(&out.stderr),
-        "No such command '--version'.\n"
+    assert_eq!(out.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("cortex-cli 0.1.0") || stdout.starts_with("cortex-cli"),
+        "salida de --version: {stdout}"
     );
 }

@@ -18,3 +18,4 @@ serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 
 [dev-dependencies]
+tempfile = "3"

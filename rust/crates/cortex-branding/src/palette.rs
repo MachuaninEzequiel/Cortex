@@ -35,13 +35,32 @@ pub const SHADOW: Rgb = Rgb(0x0B, 0x31, 0x58);
 
 // ── Texto y fondo de referencia ──
 
-/// Texto principal.
+/// Texto principal del chrome TUI (identidad de marca, prompt §3).
 pub const TEXT: Rgb = Rgb(0xD9, 0xF4, 0xFF);
-/// Texto secundario.
+/// Texto secundario del chrome TUI (identidad de marca).
 pub const MUTED: Rgb = Rgb(0x6E, 0x89, 0x9B);
 /// Fondo de referencia (SOLO para screens que decidan fondo propio; jamás
 /// pintar la terminal del usuario — ver prompt §26).
 pub const BG: Rgb = Rgb(0x05, 0x0A, 0x10);
+
+// ── Semántica del chrome TUI (spec rediseño: tokens desaturados, pocos, ──
+// ── centralizados; el azul identifica selección/actividad, no decora) ────
+
+/// Texto normal de pantallas de datos.
+pub const TEXT_PRIMARY: Rgb = Rgb(0xD8, 0xDE, 0xE9);
+/// Metadatos, ayudas y etiquetas pasivas.
+pub const TEXT_MUTED: Rgb = Rgb(0x7F, 0x8C, 0x9D);
+/// Borde de panel sin foco.
+pub const BORDER_IDLE: Rgb = Rgb(0x35, 0x40, 0x52);
+/// Fondo de selección sutil (solo con color real; respeta fondo del usuario).
+pub const SURFACE_SUBTLE: Rgb = Rgb(0x18, 0x20, 0x2B);
+/// Éxito (semántico; nunca para categorías arbitrarias).
+pub const SUCCESS: Rgb = Rgb(0x7B, 0xC9, 0x9B);
+/// Advertencia (semántico; reemplaza el ámbar ad-hoc del Home).
+pub const WARNING: Rgb = Rgb(0xE4, 0xB8, 0x6A);
+/// Error (semántico).
+pub const ERROR: Rgb = Rgb(0xE0, 0x6C, 0x75);
+// Info == CYAN: la marca no duplica consts — un solo token por color.
 
 /// Stops del gradiente vertical del isotipo, de arriba hacia abajo.
 pub const GRADIENT_STOPS: [Rgb; 5] = [ICE, LIGHT, CYAN, BLUE, DEEP];
@@ -66,18 +85,36 @@ pub enum Ansi16 {
     Cyan,
     Blue,
     White,
+    Green,
+    Yellow,
+    Red,
 }
 
 /// Mapeo de fallback acordado (prompt §25): Ice→Cyan, Light→LightCyan,
-/// Cyan→Cyan, Blue→Blue, Deep→DarkGray.
+/// Cyan→Cyan, Blue→Blue, Deep→DarkGray. La semántica (spec rediseño)
+/// conserva su significado en 16 colores: Success→Green, Warning→Yellow,
+/// Error→Red. Todo lo demás cae en la escala neutra.
 pub fn fallback(rgb: Rgb) -> Ansi16 {
     if rgb == ICE || rgb == CYAN {
         Ansi16::Cyan
-    } else if rgb == LIGHT || rgb == TEXT {
+    } else if rgb == LIGHT || rgb == TEXT || rgb == TEXT_PRIMARY {
         Ansi16::LightCyan
     } else if rgb == BLUE {
         Ansi16::Blue
-    } else if rgb == MUTED || rgb == SHADOW || rgb == DEEP || rgb == BG {
+    } else if rgb == SUCCESS {
+        Ansi16::Green
+    } else if rgb == WARNING {
+        Ansi16::Yellow
+    } else if rgb == ERROR {
+        Ansi16::Red
+    } else if rgb == MUTED
+        || rgb == TEXT_MUTED
+        || rgb == SHADOW
+        || rgb == DEEP
+        || rgb == BG
+        || rgb == BORDER_IDLE
+        || rgb == SURFACE_SUBTLE
+    {
         Ansi16::DarkGray
     } else {
         Ansi16::White
@@ -93,6 +130,9 @@ impl Ansi16 {
             Ansi16::Cyan => 36,
             Ansi16::Blue => 34,
             Ansi16::White => 97,
+            Ansi16::Green => 92,
+            Ansi16::Yellow => 93,
+            Ansi16::Red => 91,
         }
     }
 }
@@ -120,8 +160,35 @@ mod tests {
 
     #[test]
     fn fallback_cubierto() {
-        for rgb in [ICE, LIGHT, CYAN, BLUE, DEEP, SHADOW, TEXT, MUTED, BG] {
+        for rgb in [
+            ICE,
+            LIGHT,
+            CYAN,
+            BLUE,
+            DEEP,
+            SHADOW,
+            TEXT,
+            MUTED,
+            BG,
+            TEXT_PRIMARY,
+            TEXT_MUTED,
+            BORDER_IDLE,
+            SURFACE_SUBTLE,
+            SUCCESS,
+            WARNING,
+            ERROR,
+        ] {
             let _ = fallback(rgb);
         }
+    }
+
+    #[test]
+    fn semantica_preserva_significado_en_16() {
+        assert_eq!(fallback(SUCCESS), Ansi16::Green);
+        assert_eq!(fallback(WARNING), Ansi16::Yellow);
+        assert_eq!(fallback(ERROR), Ansi16::Red);
+        assert_eq!(fallback(TEXT_PRIMARY), Ansi16::LightCyan);
+        assert_eq!(fallback(TEXT_MUTED), Ansi16::DarkGray);
+        assert_eq!(fallback(BORDER_IDLE), Ansi16::DarkGray);
     }
 }

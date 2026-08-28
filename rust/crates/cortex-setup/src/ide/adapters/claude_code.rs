@@ -346,7 +346,7 @@ impl IdeAdapter for ClaudeCodeAdapter {
         // workspace sin importar desde qué directorio abre el IDE.
         let cortex_config = json!({
             "type": "stdio",
-            "command": "cortex",
+            "command": "cortex-cli",
             "args": ["mcp-server", "--stdio", "--project-root",
                      ctx.project_root.to_string_lossy()],
             "env": {"PYTHONWARNINGS": "ignore"},

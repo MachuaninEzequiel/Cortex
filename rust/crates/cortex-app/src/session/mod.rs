@@ -381,6 +381,7 @@ pub mod quality_gates;
 pub mod service;
 pub mod verification;
 
+#[derive(Clone)]
 pub struct SessionStorage {
     root: PathBuf,
 }
@@ -388,6 +389,10 @@ pub struct SessionStorage {
 impl SessionStorage {
     pub fn new(sessions_dir: PathBuf) -> Self {
         Self { root: sessions_dir }
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 
     pub fn from_workspace(workspace_root: &Path) -> Self {

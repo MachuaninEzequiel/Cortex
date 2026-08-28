@@ -293,12 +293,13 @@ fn replace_or_append_cortex_toml_block(existing: &str, cortex_toml: &str) -> Str
 // Comando cortex y bloque TOML del MCP
 // ---------------------------------------------------------------------------
 
-/// Réplica de `shutil.which("cortex")`: busca `cmd` en cada dir de `PATH`
-/// como archivo ejecutable. Devuelve la ruta absoluta o el nombre pelado.
+/// Réplica de `shutil.which("cortex")`: busca el binario NATIVO
+/// (`cortex-cli`) en cada dir de `PATH` como archivo ejecutable. Devuelve
+/// la ruta absoluta o el nombre pelado.
 fn resolve_cortex_command() -> String {
     if let Some(path_env) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path_env) {
-            let candidate = dir.join("cortex");
+            let candidate = dir.join("cortex-cli");
             if candidate.is_file() {
                 #[cfg(unix)]
                 {
@@ -316,7 +317,7 @@ fn resolve_cortex_command() -> String {
             }
         }
     }
-    "cortex".to_string()
+    "cortex-cli".to_string()
 }
 
 /// `_build_cortex_toml_block`: bloque TOML del MCP server Cortex.

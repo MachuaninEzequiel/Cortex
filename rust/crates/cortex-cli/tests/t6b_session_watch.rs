@@ -85,7 +85,7 @@ fn watch_snapshot_no_tty_paridad_con_list_json() {
         assert!(stdout.contains(id), "falta id {id} en el snapshot");
     }
     // Marca de activa presente (la última abierta es la activa del servicio).
-    assert!(stdout.contains('*'), "falta la marca de sesión activa");
+    assert!(stdout.contains('●'), "falta la marca de sesión activa");
 }
 
 #[test]

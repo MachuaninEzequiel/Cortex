@@ -9,11 +9,14 @@
 
 use cortex_app::session::service::SessionService;
 use cortex_app::session::{CheckpointSource, SessionStorage};
+use cortex_tui::app::{update as reducer, Action, AppState};
 use cortex_tui::sessions::{SessionRow, SessionsScreenData, RENDER_BUDGET_MS};
 use ratatui::backend::TestBackend;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 fn draw(w: u16, h: u16, data: &SessionsScreenData) -> String {
+    let mut state = AppState::new("es", (w, h));
+    reducer(&mut state, Action::SessionsLoaded(data.clone()));
     let backend = TestBackend::new(w, h);
     let mut terminal = Terminal::with_options(
         backend,
@@ -23,7 +26,7 @@ fn draw(w: u16, h: u16, data: &SessionsScreenData) -> String {
     )
     .unwrap();
     terminal
-        .draw(|f| cortex_tui::sessions::render(f, data))
+        .draw(|f| cortex_tui::sessions::render(f, &state))
         .unwrap();
     let buf = terminal.backend().buffer();
     let mut s = String::new();
@@ -128,7 +131,7 @@ fn datos_mostrados_iguales_a_session_list_json() {
         );
     }
     // Marca de activa sobre la sesión activa (la última abierta).
-    assert!(s.contains('*'), "falta marca activa");
+    assert!(s.contains('●'), "falta marca activa");
 }
 
 fn truncate_summary(s: &str) -> String {
@@ -177,7 +180,9 @@ fn filtro_por_status_y_activo_nulo() {
 fn pantalla_vacia_mensaje_contratual() {
     let (_tmp, svc) = fixture_root("empty");
     let data = SessionsScreenData::from_service(&svc, None).unwrap();
-    let s = draw(60, 10, &data);
+    // 80×24: pantalla operativa (en TooSmall manda la pantalla de tamaño
+    // mínimo, cubierta por los snapshots de tamaño).
+    let s = draw(80, 24, &data);
     assert!(s.contains("(no sessions on disk)"), "mensaje vacío ausente");
 }
 

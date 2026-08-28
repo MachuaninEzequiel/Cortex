@@ -5,10 +5,14 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+base64 = "0.13"
+chrono = { workspace = true }
+cortex-actions = { path = "../cortex-actions" }
 cortex-app = { path = "../cortex-app" }
 cortex-branding = { path = "../cortex-branding" }
 ratatui = "0.30"
 serde_json = { workspace = true }
+unicode-width = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
