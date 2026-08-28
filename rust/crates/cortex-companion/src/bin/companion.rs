@@ -1,19 +1,23 @@
-//! Binario `cortex-companion` (B3): arranca la app, muestra el estado y
-//! procesa input mouse-first/teclado. El render ratatui real llega en B4;
-//! acá está el ciclo mínimo estado/acciones con snapshot no-TTY (B1/B9).
+//! Binario `cortex-companion` (B4): render real del Home con ratatui +
+//! crossterm, mouse-first (raw mode + mouse capture). El snapshot no-TTY de
+//! B1/B9 se conserva.
 
-use std::io::{IsTerminal, Write};
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture};
 use crossterm::{execute, terminal};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 
-use cortex_companion::app::{self, AppState, Effect};
+use cortex_companion::app::{self, AppState};
+use cortex_companion::engine::{Backend, InProcessBackend};
+use cortex_companion::screens::home::{home_areas, render_home, BrandAssets, HomeData};
 use cortex_companion::{Screen, UiRequest};
 
 fn main() {
     let root = parse_args();
-    let be = match cortex_companion::engine::InProcessBackend::open(&root) {
+    let be = match InProcessBackend::open(&root) {
         Ok(be) => be,
         Err(e) => {
             eprintln!("{e}");
@@ -36,41 +40,79 @@ fn main() {
         return;
     }
 
-    // TTY: loop mínimo hasta que el usuario pida salir (q / Ctrl+C). El render
-    // ratatui real llega en B4; aquí solo el ciclo estado → acciones.
     if terminal::enable_raw_mode().is_err() {
         eprintln!("no se pudo entrar en raw mode");
         return;
     }
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
-    let mut done = false;
-    while !done {
-        print!(
-            "Pantalla: {} — project: {} (q para salir)\r",
-            app::screen_label(st.screen),
-            be.root.display()
-        );
-        let _ = std::io::stdout().flush();
 
+    let mut terminal = match Terminal::new(CrosstermBackend::new(std::io::stdout())) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("no se pudo inicializar el terminal: {e}");
+            let _ = execute!(std::io::stdout(), DisableMouseCapture);
+            let _ = terminal::disable_raw_mode();
+            return;
+        }
+    };
+    let _ = terminal.hide_cursor();
+
+    loop {
+        let data = home_data(&be);
+        let res = terminal.draw(|f| {
+            let mut areas = home_areas(f.area());
+            areas.hovered_mouse = st.mouse;
+            let _info = render_home(f, f.area(), &data, &BrandAssets::load(), &mut areas);
+        });
+        if res.is_err() {
+            break;
+        }
         match event::read() {
             Ok(ev) => {
                 if let Some(action) = app::translate_event(&ev) {
-                    match app::update(&mut st, action) {
-                        Some(Effect::RunCommand { .. }) => {
-                            // B5: enrutar a lectura o guarded.
-                        }
-                        None => {}
-                    }
+                    let _fx = app::update(&mut st, action);
                 }
             }
             Err(_) => break,
         }
         if st.quit {
-            done = true;
+            break;
         }
     }
+
+    let _ = terminal.show_cursor();
     let _ = execute!(std::io::stdout(), DisableMouseCapture);
     let _ = terminal::disable_raw_mode();
+}
+
+/// Carga los datos del Home desde el backend (orquestación del binario; los
+/// errores de carga se muestran en la UI, nunca en silencio — P6/P9).
+fn home_data(be: &InProcessBackend) -> HomeData {
+    let project = be.root.display().to_string();
+    let branch = be.current_branch().ok().flatten();
+    let session = be.session_current().ok().flatten();
+    let next = be.next_actions();
+    let (top_action, error) = match next {
+        Ok(mut actions) => {
+            if actions.is_empty() {
+                (None, None)
+            } else {
+                (Some(actions.remove(0)), None)
+            }
+        }
+        Err(e) => (None, Some(e)),
+    };
+    let doctor = be.doctor().ok();
+    let stats = be.stats().ok();
+    HomeData {
+        project,
+        branch,
+        session,
+        top_action,
+        doctor,
+        stats,
+        error,
+    }
 }
 
 fn parse_args() -> PathBuf {
@@ -100,3 +142,5 @@ fn parse_args() -> PathBuf {
         None => std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
     }
 }
+
+// (mantener el trait IsTerminal en uso vía el snapshot no-TTY de main).

@@ -5,14 +5,17 @@
 //! produce un `Effect` opcional que el runtime (binario) aplica. El hit-test
 //! es puro: `rects` registradas + coordenadas del click ⇒ `AppAction`.
 
-use crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
 use crate::{Screen, UiRequest};
 
-/// Rect canónica del botón "Sesiones" en el Home. Los tests de B3 la usan y
-/// B4 (layout real del Home) la ajusta SI hace falta — actualizando ambos.
-pub const HOME_SESSIONS_BTN: Rect = Rect::new(2, 4, 18, 1);
+/// Rects canónicas del Home (header). B3 definió la de Sesiones y los tests
+/// la usan; B4 agrega las de acciones y abrir-sesión. El hit-test (`hit_test`)
+/// y el render (`home_areas`) usan las MISMAS consts ⇒ coinciden SIEMPRE.
+pub const HOME_SESSIONS_BTN: Rect = Rect::new(2, 4, 18, 3);
+pub const HOME_ACTIONS_BTN: Rect = Rect::new(24, 4, 18, 3);
+pub const HOME_OPEN_SESSION_BTN: Rect = Rect::new(46, 4, 18, 3);
 
 /// Acciones semánticas de la app: el input ya viene "traducido".
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +30,11 @@ pub enum AppAction {
     /// Scroll (rueda hacia abajo/arriba).
     Scroll {
         down: bool,
+    },
+    /// Mouse en movimiento (para hover en widgets; el render lo lee del estado).
+    MouseMoved {
+        x: u16,
+        y: u16,
     },
     /// Carácter tecleado (input).
     Typed(char),
@@ -66,6 +74,8 @@ pub enum Effect {
 #[derive(Debug, Clone, Default)]
 pub struct Areas {
     pub home_sessions_btn: Option<Rect>,
+    pub home_actions_btn: Option<Rect>,
+    pub home_open_session_btn: Option<Rect>,
 }
 
 /// Estado global de la app (máquina ELM-lite).
@@ -77,8 +87,10 @@ pub struct AppState {
     pub areas: Areas,
     /// Flag de salida (lo setea `Quit`/`q`).
     pub quit: bool,
-    /// Offset de scroll actual (v1: preservado, consumido por pantallas en B4+).
+    /// Offset de scroll actual (v1: preservado, consumido por pantallas B4+).
     pub scroll_offset: u16,
+    /// Última posición del mouse (para hover). `None` = aún no se movió.
+    pub mouse: Option<(u16, u16)>,
 }
 
 impl AppState {
@@ -88,9 +100,12 @@ impl AppState {
             stack: Vec::new(),
             areas: Areas {
                 home_sessions_btn: Some(HOME_SESSIONS_BTN),
+                home_actions_btn: Some(HOME_ACTIONS_BTN),
+                home_open_session_btn: Some(HOME_OPEN_SESSION_BTN),
             },
             quit: false,
             scroll_offset: 0,
+            mouse: None,
         }
     }
 }
@@ -117,9 +132,17 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         // Click ya fue resuelto por `hit_test` en una acción concreta; si llega
         // aquí suelto es porque no había área (no-op).
         AppAction::Click { .. } => None,
-        // v1 no hay scroll por pantalla aún; preservar offset cuando B4+ lo use.
+        // Scroll saturante en ambas direcciones (B3 review: up debe decrementar).
         AppAction::Scroll { down } => {
-            state.scroll_offset = state.scroll_offset.saturating_add(if down { 1 } else { 0 });
+            state.scroll_offset = if down {
+                state.scroll_offset.saturating_add(1)
+            } else {
+                state.scroll_offset.saturating_sub(1)
+            };
+            None
+        }
+        AppAction::MouseMoved { x, y } => {
+            state.mouse = Some((x, y));
             None
         }
         AppAction::Typed(_) => None,
@@ -135,11 +158,23 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
 /// pantalla actual. Devuelve `None` si el punto no toca ninguna área.
 pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
     match state.screen {
-        Screen::Home => state
-            .areas
-            .home_sessions_btn
-            .filter(|r| r.contains(Position::new(x, y)))
-            .map(|_| AppAction::Navigate(Screen::Sessions)),
+        Screen::Home => {
+            let p = Position::new(x, y);
+            if state.areas.home_sessions_btn.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::Navigate(Screen::Sessions));
+            }
+            if state.areas.home_actions_btn.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::Navigate(Screen::Actions));
+            }
+            if state
+                .areas
+                .home_open_session_btn
+                .is_some_and(|r| r.contains(p))
+            {
+                return Some(AppAction::Navigate(Screen::Sessions));
+            }
+            None
+        }
         // B4+ registra áreas por pantalla aquí.
         _ => None,
     }
@@ -156,10 +191,22 @@ pub fn translate_event(ev: &Event) -> Option<AppAction> {
             }),
             MouseEventKind::ScrollDown => Some(AppAction::Scroll { down: true }),
             MouseEventKind::ScrollUp => Some(AppAction::Scroll { down: false }),
+            // El hover es mouse-first como el resto: el estado lleva la posición.
+            // En crossterm 0.29 `Moved` es unit; las coords están en el MouseEvent.
+            MouseEventKind::Moved => Some(AppAction::MouseMoved {
+                x: m.column,
+                y: m.row,
+            }),
             _ => None,
         },
-        Event::Key(KeyEvent { code, .. }) => match code {
+        Event::Key(KeyEvent {
+            code, modifiers, ..
+        }) => match code {
             KeyCode::Esc => Some(AppAction::Back),
+            // Ctrl+C en raw mode NO genera signal (ISIG off): mapeo explícito (B3 review).
+            KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
+                Some(AppAction::Quit)
+            }
             KeyCode::Char('q') => Some(AppAction::Quit),
             // Carácter tipográfico: entra al input.
             KeyCode::Char(c) => Some(AppAction::Typed(*c)),

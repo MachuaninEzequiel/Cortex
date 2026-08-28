@@ -151,6 +151,27 @@ impl InProcessBackend {
         })
     }
 
+    /// Rama actual del repo (lectura pura de fs, SIN subprocess — la
+    /// filosofía in-process del Companion). Soporta `.git` directorio y
+    /// `.git` archivo (worktree). Detached ⇒ `None`.
+    pub fn current_branch(&self) -> Result<Option<String>, String> {
+        let git_dir = self.layout.repo_root.join(".git");
+        let head_path = if git_dir.is_dir() {
+            git_dir.join("HEAD")
+        } else if git_dir.is_file() {
+            let content = std::fs::read_to_string(&git_dir).map_err(|e| e.to_string())?;
+            let target = content.trim().trim_start_matches("gitdir:").trim();
+            PathBuf::from(target).join("HEAD")
+        } else {
+            return Ok(None);
+        };
+        let head = std::fs::read_to_string(head_path).map_err(|e| e.to_string())?;
+        match head.trim().strip_prefix("ref: refs/heads/") {
+            Some(branch) => Ok(Some(branch.to_string())),
+            None => Ok(None), // detached
+        }
+    }
+
     /// Memoria nativa lazy, slot por modo: con embeddings para búsqueda,
     /// sin embeddings para conteos (stats). Un modo jamás contamina al otro.
     fn memory(

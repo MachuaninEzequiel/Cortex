@@ -1,9 +1,8 @@
 //! cortex-companion — superficie única mouse-first (Obra 08 stream B).
 //!
 //! Especificación: `docs/transformacion/14-HERDR-COMPANION.md`.
-//! G-B1 (esta etapa): scaffolding del crate + `Backend` trait +
-//! `InProcessBackend` (servicios nativos in-proceso). Las pantallas,
-//! aprobaciones y el panel Brain llegan en tasks posteriores del plan.
+//! Estado por task: B1 engine (Backend + paridad), B2 aprobaciones
+//! (run_guarded), B3 app ELM-lite mouse-first, B4 widgets + Home.
 
 #![forbid(unsafe_code)]
 
@@ -12,6 +11,8 @@ use std::path::PathBuf;
 pub mod app;
 pub mod approval;
 pub mod engine;
+pub mod screens;
+pub mod widgets;
 
 /// Pantallas del Companion (lo consume la app en B3+).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
