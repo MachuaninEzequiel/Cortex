@@ -86,8 +86,55 @@ fn keyboard_esc_equivalent_to_back() {
 
 #[test]
 fn keyboard_q_equivalent_to_quit() {
+    // Fix B7 (finding review): 'q' ya NO es Quit a nivel traducción — pasa por
+    // Typed y el reducer decide según pantalla (en Search es texto de consulta).
     let ev = Event::Key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE));
-    assert_eq!(translate_event(&ev), Some(AppAction::Quit));
+    assert_eq!(translate_event(&ev), Some(AppAction::Typed('q')));
+}
+
+#[test]
+fn q_in_search_types_into_query_and_never_quits() {
+    // Regresión Critical (review B7): tipear una consulta con 'q' ("query",
+    // "equipo", "qa") mataba el proceso a mitad de edición. Ahora 'q' entra a
+    // la query y NO setea quit. Full-path: translate_event + update.
+    let ev = Event::Key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE));
+    let act = translate_event(&ev).expect("'q' debe traducirse a acción");
+    let mut st = AppState::new(UiRequest {
+        screen: Screen::Search,
+        project_root: PathBuf::from("/tmp/fixture"),
+    });
+    st.search.query.push_str("uery-before");
+    assert!(update(&mut st, act).is_none());
+    assert!(!st.quit, "'q' dentro de Search NO debe setear quit");
+    assert!(
+        st.search.query.starts_with("uery-beforeq"),
+        "la query debe recibir el carácter 'q': {:?}",
+        st.search.query
+    );
+}
+
+#[test]
+fn q_outside_search_still_quits() {
+    // El contrato global se conserva: fuera de Search, 'q' sigue cerrando.
+    let ev = Event::Key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE));
+    let act = translate_event(&ev).expect("'q' debe traducirse a acción");
+    let mut st = AppState::new(req()); // Home
+    update(&mut st, act);
+    assert!(st.quit, "'q' fuera de Search debe seguir cerrando");
+}
+
+#[test]
+fn ctrl_c_quits_even_from_search() {
+    // El fix no desactiva la salida de emergencia: Ctrl+C (mapeo explícito a
+    // Quit, B3) cierra también desde Search, donde 'q' es texto.
+    let ev = Event::Key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
+    let act = translate_event(&ev).expect("Ctrl+C debe traducirse a Quit");
+    let mut st = AppState::new(UiRequest {
+        screen: Screen::Search,
+        project_root: PathBuf::from("/tmp/fixture"),
+    });
+    update(&mut st, act);
+    assert!(st.quit, "Ctrl+C debe cerrar incluso desde Search");
 }
 
 #[test]

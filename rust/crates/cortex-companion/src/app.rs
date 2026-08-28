@@ -248,7 +248,7 @@ pub struct AppState {
     /// Pila de navegación (para `Back`).
     pub stack: Vec<Screen>,
     pub areas: Areas,
-    /// Flag de salida (lo setea `Quit`/`q`).
+    /// Flag de salida (lo setea `Quit`: 'q' fuera de Search, o Ctrl+C).
     pub quit: bool,
     /// Offset de scroll actual (v1: preservado, consumido por pantallas B4+).
     pub scroll_offset: u16,
@@ -351,6 +351,14 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         AppAction::Typed('/') if state.screen != Screen::Search => {
             state.stack.push(state.screen);
             state.screen = Screen::Search;
+            None
+        }
+        // 'q' global: salida fuera de Search (en Search es texto de la
+        // consulta — finding review B7: tipear "query" mataba el proceso).
+        // Ctrl+C sigue cerrando en todas las pantallas (mapeo explícito a
+        // Quit, B3).
+        AppAction::Typed('q') if state.screen != Screen::Search => {
+            state.quit = true;
             None
         }
         AppAction::Typed(c) => {
@@ -582,7 +590,6 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
             None
         }
         Screen::Search => {
-            let p = Position::new(x, y);
             // Fila visible dentro de la ventana de scroll.
             if !(SEARCH_LIST_LEFT..SEARCH_LIST_LEFT + SEARCH_LIST_WIDTH).contains(&x)
                 || !(SEARCH_LIST_TOP..SEARCH_LIST_TOP + SEARCH_LIST_HEIGHT).contains(&y)
@@ -598,7 +605,6 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
                 return Some(AppAction::MarkUseful { memory_id: id });
             }
             // Cuerpo de la fila: seleccionar (abre el snippet en el detalle).
-            let _ = p;
             Some(AppAction::SelectHit { index: idx })
         }
         // B4+ registra áreas por pantalla aquí.
@@ -633,7 +639,8 @@ pub fn translate_event(ev: &Event) -> Option<AppAction> {
             KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
                 Some(AppAction::Quit)
             }
-            KeyCode::Char('q') => Some(AppAction::Quit),
+            // 'q' pasa por Typed: el reducer lo trata como Quit fuera de Search
+            // y como texto de consulta dentro (finding review B7).
             // Carácter tipográfico: entra al input.
             KeyCode::Char(c) => Some(AppAction::Typed(*c)),
             // Teclas no tipográficas: quedan como Key para el foco (B4+).
