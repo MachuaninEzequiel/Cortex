@@ -205,7 +205,8 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
                 return Some(AppAction::Back);
             }
             // Filas de la lista: geometría const (misma que render_menu).
-            if (MENU_LIST_LEFT..MENU_LIST_LEFT + MENU_LIST_WIDTH).contains(&x) && y >= MENU_LIST_TOP
+            if (MENU_LIST_LEFT..MENU_LIST_LEFT + MENU_LIST_WIDTH).contains(&x)
+                && (MENU_LIST_TOP..MENU_LIST_TOP + MENU_LIST_HEIGHT).contains(&y)
             {
                 let flat = usize::from(y - MENU_LIST_TOP) + usize::from(state.scroll_offset);
                 if let Some(crate::menu::FlatRow::Entry(e)) = crate::menu::row_at(flat) {

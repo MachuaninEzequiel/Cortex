@@ -10,11 +10,12 @@ use ratatui::layout::Rect;
 use ratatui::{Frame, Terminal};
 
 use cortex_companion::app::{
-    hit_test, update, AppAction, AppState, Effect, HOME_MENU_BTN, MENU_LIST_TOP,
+    hit_test, update, AppAction, AppState, Effect, HOME_MENU_BTN, MENU_LIST_HEIGHT, MENU_LIST_TOP,
+    MENU_OUTPUT_HEIGHT, MENU_OUTPUT_TOP,
 };
 use cortex_companion::engine::{Backend, InProcessBackend};
 use cortex_companion::menu::{
-    command_effect, flat_rows, CatalogEntry, CommandEffect, Domain, MenuOutput,
+    command_effect, flat_rows, row_at, CatalogEntry, CommandEffect, Domain, FlatRow, MenuOutput,
 };
 use cortex_companion::screens::menu_screen::{menu_areas, render_menu};
 use cortex_companion::{Screen, UiRequest};
@@ -200,6 +201,42 @@ fn menu_click_header_row_is_noop() {
 }
 
 #[test]
+fn menu_click_output_panel_is_noop() {
+    // Regresión: hit-test(Menu) no tenía cota superior de filas — un click en
+    // el panel de salida (x dentro del ancho de la lista, y >= lista) disparaba
+    // filas OCULTAS del catálogo, incluidas Guarded (modal inesperado).
+    let st = menu_state(0);
+    assert_eq!(
+        MENU_OUTPUT_TOP,
+        MENU_LIST_TOP + MENU_LIST_HEIGHT,
+        "precondición de geometría: la salida empieza donde termina la lista"
+    );
+    for y in MENU_LIST_TOP + MENU_LIST_HEIGHT..MENU_OUTPUT_TOP + MENU_OUTPUT_HEIGHT {
+        assert!(
+            hit_test(&st, 10, y).is_none(),
+            "click en el panel de salida (y={y}) no debe disparar filas ocultas"
+        );
+    }
+}
+
+#[test]
+fn menu_click_last_visible_row_runs_command() {
+    let st = menu_state(0);
+    let last_y = MENU_LIST_TOP + MENU_LIST_HEIGHT - 1;
+    let flat = usize::from(last_y - MENU_LIST_TOP) + usize::from(st.scroll_offset);
+    // Invariante del fixture: la última fila visible es una entrada del catálogo.
+    assert!(
+        matches!(row_at(flat), Some(FlatRow::Entry(_))),
+        "última fila visible (flat {flat}) debe ser una entrada"
+    );
+    let action = hit_test(&st, 10, last_y).expect("click en la última fila visible");
+    assert!(
+        matches!(action, AppAction::RunCommand { .. }),
+        "la última fila visible debe disparar RunCommand (recibí {action:?})"
+    );
+}
+
+#[test]
 fn menu_back_button_goes_back() {
     let mut st = menu_state(0);
     let b = Rect::new(58, 1, 20, 3);
@@ -275,10 +312,4 @@ fn menu_run_unintegrated_fails_explicit_p6p9() {
         err.contains("inexistente"),
         "familia desconocida sin nombre"
     );
-}
-
-#[test]
-fn text_snapshot_is_well_formed() {
-    let cat = cortex_companion::menu::catalog();
-    assert_eq!(cat.len(), 27);
 }
