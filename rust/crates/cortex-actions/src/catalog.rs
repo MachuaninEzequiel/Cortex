@@ -168,7 +168,7 @@ pub fn session_close_stale(ctx: &ActionContext) -> Action {
             }
             let guia: Vec<String> = ids
                 .iter()
-                .map(|i| format!("{i} → `cortex finish-session --session-id {i}` o abandon"))
+                .map(|i| format!("{i} → `cortex autopilot finish --session-id {i}` o abandon"))
                 .collect();
             ActionResult::new(
                 true,

@@ -3,7 +3,7 @@
 Ocho skills de referencia que componen el **cuarto modo de sesion** de Cortex: el middle no lo orquesta Cortex, lo compones vos — una cadena de skills chicas que emiten checkpoints con `phase`. Cortex reconoce, registra y documenta.
 
 ```
-grill → to-spec → to-tickets → implement (tdd | diagnose) → review → (cierre: /cortex-documenter o cortex finish-session)
+grill → to-spec → to-tickets → implement (tdd | diagnose) → review → (cierre: /cortex-documenter o cortex autopilot finish)
  glossary acompana cuando el lenguaje lo pide
 ```
 
@@ -62,7 +62,7 @@ Notas del contrato:
 
 ## Cierre de la cadena
 
-El cierre sigue siendo el de Cortex: `cortex finish-session` (o `/cortex-documenter`) corre los verification hooks de la spec y el documenter escribe la nota con la **linea de fases** (`grill → spec → plan → implement → review`). `require_close_phase: true` en la spec hace obligatorio el checkpoint `phase: close`.
+El cierre sigue siendo el de Cortex: `cortex autopilot finish` (o `/cortex-documenter`) corre los verification hooks de la spec y el documenter escribe la nota con la **linea de fases** (`grill → spec → plan → implement → review`). `require_close_phase: true` en la spec hace obligatorio el checkpoint `phase: close`.
 
 ## Verificacion rapida
 
