@@ -1,0 +1,41 @@
+# integrations/herdr/herdr-plugin.toml
+id = "cortex.companion"
+name = "Cortex Companion"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Companion de Cortex: sesiones, acciones, búsqueda y brain en un pane"
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "companion"
+title = "Cortex"
+placement = "overlay"          # sticky sobre los panes del dev
+command = ["cortex-companion"]
+
+[[actions]]
+id = "open"
+title = "Open Cortex Companion"
+contexts = ["workspace"]
+command = ["herdr", "plugin", "pane", "open", "--plugin", "cortex.companion", "--entrypoint", "companion", "--placement", "overlay"]
+
+[[actions]]
+id = "next"
+title = "Cortex: next actions"
+contexts = ["workspace"]
+command = ["cortex", "next", "--json"]
+
+[[actions]]
+id = "status"
+title = "Cortex: session status"
+contexts = ["workspace"]
+command = ["cortex", "session", "current", "--json"]
+
+[[actions]]
+id = "doctor"
+title = "Cortex: doctor"
+contexts = ["workspace"]
+command = ["cortex", "doctor"]
+
+# NOTA: sin acción "search" en el manifest — herdr invoca acciones sin
+# argumentos y `cortex search` exige query; la búsqueda vive en el panel
+# Search del Companion (con input propio) y en el Menu.
