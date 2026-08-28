@@ -122,6 +122,73 @@ fn stage_2_quality(checkpoint: &super::Checkpoint) -> (bool, String) {
     (true, "quality OK".into())
 }
 
+/// Resultado del gate de fase COMPOSED (Obra 08 stream A).
+/// `Pass` = la fase aporta la evidencia que exige; `Warn`/`Redelegate` =
+/// la barra de calidad de esa fase no se cumplió.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PhaseGateOutcome {
+    Pass,
+    Warn(String),
+    Redelegate(String),
+}
+
+/// Puerto de la barra de calidad por fase (spec 13 §3). Función pura, sin
+/// I/O. Devuelve `None` si el checkpoint no lleva `phase` (emisores legados)
+/// o si la fase no tiene gate por-checkpoint (`close` lo valida la sesión, A5).
+pub fn check_phase_gate(checkpoint: &super::Checkpoint) -> Option<PhaseGateOutcome> {
+    let phase = checkpoint.phase?;
+    let has_evidence = || {
+        checkpoint
+            .verified_claims
+            .iter()
+            .any(|c| c.chars().count() > MIN_NON_TRIVIAL_CLAIM_LEN)
+    };
+    match phase {
+        super::CheckpointPhase::Grill => Some(PhaseGateOutcome::Pass),
+        // `close` se valida a nivel de sesión (depende de otras fases) → A5.
+        super::CheckpointPhase::Close => None,
+        super::CheckpointPhase::Spec => {
+            if has_evidence() {
+                Some(PhaseGateOutcome::Pass)
+            } else {
+                Some(PhaseGateOutcome::Warn(
+                    "spec phase requires a verified_claim with evidence (>10 chars)".into(),
+                ))
+            }
+        }
+        super::CheckpointPhase::Plan => {
+            if checkpoint.artifacts_touched.is_empty() {
+                Some(PhaseGateOutcome::Warn(
+                    "plan phase requires at least one artifact_touched".into(),
+                ))
+            } else {
+                Some(PhaseGateOutcome::Pass)
+            }
+        }
+        super::CheckpointPhase::Implement => {
+            let has_artifact = !checkpoint.artifacts_touched.is_empty();
+            if has_artifact && has_evidence() {
+                Some(PhaseGateOutcome::Pass)
+            } else {
+                Some(PhaseGateOutcome::Redelegate(
+                    "implement phase requires artifacts_touched and a verified_claim with evidence (>10 chars)"
+                        .into(),
+                ))
+            }
+        }
+        super::CheckpointPhase::Review => {
+            if has_evidence() {
+                Some(PhaseGateOutcome::Pass)
+            } else {
+                Some(PhaseGateOutcome::Warn(
+                    "review phase requires a verified_claim with evidence (>10 chars)".into(),
+                ))
+            }
+        }
+    }
+}
+
 /// Puerto de `review_checkpoint` — `files_in_scope` es lo único que usa
 /// del LoadedSpec Python.
 pub fn review_checkpoint(
@@ -148,6 +215,33 @@ pub fn review_checkpoint(
             reason: stage_2_reason,
             action: ReviewAction::Warn,
         };
+    }
+
+    // Etapa 3 (aditiva): barra de calidad por fase COMPOSED. Se aplica solo
+    // cuando el checkpoint es COMPOSED (phase.is_some()) y por encima de las
+    // dos etapas: si la fase no aporta su evidencia, baja el veredicto.
+    if let Some(outcome) = check_phase_gate(checkpoint) {
+        match outcome {
+            PhaseGateOutcome::Pass => {}
+            PhaseGateOutcome::Warn(reason) => {
+                return ReviewVerdict {
+                    accepted: false,
+                    stage_1_passed: true,
+                    stage_2_passed: true,
+                    reason,
+                    action: ReviewAction::Warn,
+                };
+            }
+            PhaseGateOutcome::Redelegate(reason) => {
+                return ReviewVerdict {
+                    accepted: false,
+                    stage_1_passed: true,
+                    stage_2_passed: true,
+                    reason,
+                    action: ReviewAction::Redelegate,
+                };
+            }
+        }
     }
 
     ReviewVerdict {

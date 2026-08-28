@@ -822,4 +822,125 @@ timestamp: '2026-08-28T00:00:00.000000Z'\nsource: user-skill\nverified_claims: [
         );
         assert!(s.contains("\"phase\": \"review\""), "{s}");
     }
+
+    // ── Barra de calidad por fase (G-A2) ─────────────────────────────────
+
+    #[test]
+    fn phase_gate_spec_needs_evidence() {
+        let mut cp_short = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Spec));
+        cp_short.verified_claims = vec!["ok".to_string()]; // <=10 chars
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_short),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+
+        let mut cp_good = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Spec));
+        cp_good.verified_claims = vec!["validé la spec contra el código real".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_good),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_implement_redelegates_without_evidence() {
+        let mut cp_none = cp(
+            CheckpointSource::UserSkill,
+            Some(CheckpointPhase::Implement),
+        );
+        cp_none.artifacts_touched = vec!["x.rs".to_string()];
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_none),
+            Some(quality_gates::PhaseGateOutcome::Redelegate(_))
+        ));
+
+        let mut cp_good = cp(
+            CheckpointSource::UserSkill,
+            Some(CheckpointPhase::Implement),
+        );
+        cp_good.artifacts_touched = vec!["x.rs".to_string()];
+        cp_good.verified_claims = vec!["test rojo-verde en x.rs".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_good),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_none_returns_none() {
+        // Emisores legados sin fase: el gate no interviene.
+        let nc = cp(CheckpointSource::UserSkill, None);
+        assert_eq!(quality_gates::check_phase_gate(&nc), None);
+    }
+
+    #[test]
+    fn phase_gate_plan_requires_artifact() {
+        let cp_empty = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Plan));
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_empty),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+
+        let mut cp_ok = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Plan));
+        cp_ok.artifacts_touched = vec![".scratch/x/issues/1.md".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_ok),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_review_requires_evidence() {
+        let cp_empty = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_empty),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+    }
+
+    #[test]
+    fn phase_gate_grill_is_pass_and_close_is_none() {
+        let grill = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Grill));
+        assert_eq!(
+            quality_gates::check_phase_gate(&grill),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+        // `close` no tiene gate por-checkpoint: depende de la sesión (A5).
+        let close = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Close));
+        assert_eq!(quality_gates::check_phase_gate(&close), None);
+    }
+
+    // Integración: el gate de fase se aplica POR ENCIMA de las 2 etapas,
+    // solo cuando el checkpoint es COMPOSED (phase.is_some()).
+    #[test]
+    fn review_checkpoint_applies_phase_gate_on_top() {
+        // Pasa etapas 1 y 2, pero la fase review exige evidencia >10 chars.
+        let mut c = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        c.verified_claims = vec!["ok".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert!(!v.accepted);
+        assert_eq!(v.action, quality_gates::ReviewAction::Warn);
+        assert!(v.stage_1_passed && v.stage_2_passed);
+    }
+
+    #[test]
+    fn review_checkpoint_phase_gate_pass_still_accepts() {
+        let mut c = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        c.verified_claims = vec!["revisión estándar y spec en paralelo".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert!(v.accepted);
+        assert_eq!(v.action, quality_gates::ReviewAction::Accept);
+    }
+
+    #[test]
+    fn review_checkpoint_no_phase_unchanged() {
+        // Emisor legado sin fase: comportamiento actual sin intervención del gate.
+        let mut c = cp(CheckpointSource::UserSkill, None);
+        c.verified_claims = vec!["validé la spec contra el código real".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert_eq!(v.action, quality_gates::ReviewAction::Accept);
+    }
 }
