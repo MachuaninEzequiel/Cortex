@@ -78,11 +78,65 @@ fn proposal_craft_file_exists_with_content() {
 }
 
 #[test]
+fn sddwork_skill_is_thin_and_references_craft_on_demand() {
+    let text = read(&workspace_files().join("cortex-SDDwork.md"));
+    // thin: el original tenía 249 líneas; el thin (Ruling R10) apunta a ~70-100
+    // conservando TODO el contrato de gobernanza (pre-flight, fast/deep,
+    // rechazos, delegación por IDE, tasks, 6 reglas críticas, contrato de salida).
+    assert!(
+        text.lines().count() <= 100,
+        "cortex-SDDwork.md no quedó thin ({} líneas)",
+        text.lines().count()
+    );
+    // contrato: frontmatter + gobernanza + referencia on-demand al craft.
+    assert!(
+        text.starts_with("---\nname: cortex-SDDwork\n"),
+        "frontmatter exacto"
+    );
+    assert!(
+        text.contains("cortex_session_checkpoint"),
+        "contrato checkpoint"
+    );
+    assert!(
+        text.contains("No active session"),
+        "pre-flight mensaje exacto"
+    );
+    assert!(
+        text.to_lowercase().contains("fast track") && text.to_lowercase().contains("deep track"),
+        "vías de ejecución conservadas"
+    );
+    assert!(
+        text.contains("cortex-SDDwork-implement-craft.md"),
+        "referencia craft implement"
+    );
+}
+
+#[test]
+fn implement_craft_file_exists_with_content() {
+    let text = read(&workspace_files().join("cortex-SDDwork-implement-craft.md"));
+    assert!(
+        text.starts_with("---\n"),
+        "frontmatter (e2e _has_frontmatter)"
+    );
+    assert!(text.len() > 500, "contenido craft real");
+    assert!(
+        text.to_lowercase().contains("red") && text.to_lowercase().contains("green"),
+        "Iron Law TDD (ciclo red/green)"
+    );
+    assert!(
+        text.to_lowercase().contains("evidencia"),
+        "verificación con evidencia"
+    );
+}
+
+#[test]
 fn deployed_copy_matches_ssot_byte_identique() {
     for name in [
         "cortex-sync.md",
         "cortex-sync-spec-craft.md",
         "cortex-sync-proposal-craft.md",
+        "cortex-SDDwork.md",
+        "cortex-SDDwork-implement-craft.md",
     ] {
         let ssot = read(&workspace_files().join(name));
         let deployed = read(&deployed_skills().join(name));
