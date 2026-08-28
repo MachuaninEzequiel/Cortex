@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "To Tickets"
+  short_description: "Descomponer la spec en vertical slices con verificacion y edges."
+policy:
+  allow_implicit_invocation: false
+instructions: |
+  Partir la spec persistida en tickets como vertical slices (tracer bullets): What observable,
+  Blocked by con edges numerados, Verification (comando o criterio) y Done when binario.
+  Presupuesto: un slice cierra en una ventana de contexto fresca. Persistir en
+  .scratch/<feature>/issues/NN-<slug>.md. Cerrar con UN checkpoint cortex_session_checkpoint:
+  source "user-skill", phase "plan", artifacts_touched con los tickets (el gate exige >=1) y
+  note <=1 linea (por que ticket empezar).

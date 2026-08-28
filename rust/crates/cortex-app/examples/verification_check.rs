@@ -75,6 +75,7 @@ fn main() {
             unverified_claims: vec![],
             artifacts_touched: artifacts.iter().map(|s| s.to_string()).collect(),
             note: note.into(),
+            phase: None,
         };
         r
     };

@@ -333,11 +333,94 @@ pub fn run_init(argv: &[String]) -> bool {
     common(argv, "agent")
 }
 
+/// `cortex setup composed` (Obra 08 A11): instala la familia COMPOSED en
+/// `.cortex/skills/composed/` + la tríada thin+craft en `.cortex/skills/`
+/// (bundle embebido, byte-exacta por construcción — patrón install-skills)
+/// y escribe el bloque `## Agent skills` en CLAUDE.md/AGENTS.md (upsert con
+/// marcadores, precedente codex).
+#[derive(Parser)]
+struct Composed {
+    #[arg(long)]
+    dry_run: bool,
+    #[arg(long)]
+    non_interactive: bool,
+    #[arg(long)]
+    project_root: Option<String>,
+}
+
+fn composed(argv: &[String]) -> bool {
+    let a = match Composed::try_parse_from(
+        std::iter::once("composed".to_string()).chain(argv.iter().cloned()),
+    ) {
+        Ok(a) => a,
+        Err(e) => err(&e.to_string()),
+    };
+    if !a.non_interactive && !a.dry_run {
+        err("Interactive setup is not available in the native CLI; pass --non-interactive.");
+    }
+    let root = match &a.project_root {
+        Some(p) => PathBuf::from(p),
+        None => std::env::current_dir().unwrap_or_default(),
+    };
+    if a.dry_run {
+        dry(
+            "composed",
+            &[
+                ".cortex/skills/composed/ (8 skills + INSTALL-COMPOSED.md)".into(),
+                ".cortex/skills/ (triada thin + craft on-demand)".into(),
+                "bloque ## Agent skills en CLAUDE.md/AGENTS.md".into(),
+            ],
+        );
+        return true;
+    }
+    let result = (|| -> Result<Vec<String>, String> {
+        let mut made: Vec<String> = Vec::new();
+        let fam = cortex_setup::skills_bundle::install_composed_family(
+            &root.join(".cortex/skills/composed"),
+        );
+        made.extend(fam.into_iter().map(|n| format!("composed/{n}")));
+        let tri = cortex_setup::skills_bundle::install_triad_skills(&root.join(".cortex/skills"));
+        made.extend(tri);
+        let block = cortex_setup::skills_bundle::agent_skills_block();
+        let mut docs: Vec<String> = Vec::new();
+        for name in ["CLAUDE.md", "AGENTS.md"] {
+            let p = root.join(name);
+            if !p.exists() {
+                continue;
+            }
+            let content = std::fs::read_to_string(&p).map_err(|e| format!("read {name}: {e}"))?;
+            let updated = cortex_setup::ide::base::upsert_marker_block_with(
+                &content,
+                &block,
+                cortex_setup::skills_bundle::COMPOSED_MARKER_OPEN,
+                cortex_setup::skills_bundle::COMPOSED_MARKER_CLOSE,
+            );
+            std::fs::write(&p, updated).map_err(|e| format!("write {name}: {e}"))?;
+            docs.push(name.to_string());
+        }
+        if docs.is_empty() {
+            write(&root, "AGENTS.md", format!("{block}\n"))?;
+            docs.push("AGENTS.md (created)".into());
+        }
+        made.push(format!("Agent skills block en {}", docs.join(", ")));
+        Ok(made)
+    })();
+    match result {
+        Ok(m) => {
+            let items: Vec<&str> = m.iter().map(String::as_str).collect();
+            summary("composed", &items);
+        }
+        Err(e) => err(&e),
+    };
+    true
+}
+
 pub fn run(argv: &[String]) -> bool {
     match argv.first().map(String::as_str) {
         Some("agent") => common(&argv[1..], "agent"),
         Some("pipeline") => common(&argv[1..], "pipeline"),
         Some("full") => common(&argv[1..], "full"),
+        Some("composed") => composed(&argv[1..]),
         Some("webgraph") => web(&argv[1..]),
         Some("enterprise") => enterprise(&argv[1..]),
         Some(first) => {
@@ -346,7 +429,7 @@ pub fn run(argv: &[String]) -> bool {
         }
         None => {
             eprintln!(
-                "cortex setup: se requiere un perfil (agent|pipeline|full|webgraph|enterprise)"
+                "cortex setup: se requiere un perfil (agent|pipeline|full|composed|webgraph|enterprise)"
             );
             std::process::exit(2);
         }

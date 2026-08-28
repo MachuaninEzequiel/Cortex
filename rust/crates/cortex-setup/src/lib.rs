@@ -24,6 +24,7 @@ pub mod routing;
 pub mod session_hooks;
 pub mod setup_templates;
 pub mod setup_templates_gen;
+pub mod skills_bundle;
 pub mod slug;
 pub mod writers;
 pub mod yaml;

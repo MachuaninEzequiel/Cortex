@@ -91,6 +91,7 @@ fn datos_mostrados_iguales_a_session_list_json() {
         vec![],
         vec![],
         "nota",
+        None,
     )
     .unwrap();
 

@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "Review"
+  short_description: "Revision en dos ejes paralelos: Standards y Spec."
+policy:
+  allow_implicit_invocation: false
+instructions: |
+  Revisar el diff en dos ejes separados. Standards: diseno, tests sobre comportamiento,
+  duplicacion, errores tragados, nombres. Spec: cada acceptance criterion verificado contra el
+  artefacto (comando corrido), drift de files_in_scope, unverified_claims abiertos. Hallazgos
+  con file:line y severidad (Critical/Important/Minor). Gate opcional: cortex_review_checkpoint.
+  Veredicto approve/request-changes/block. Cerrar con cortex_session_checkpoint:
+  source "user-skill", phase "review", verified_claims con evidencia >10 chars por eje.

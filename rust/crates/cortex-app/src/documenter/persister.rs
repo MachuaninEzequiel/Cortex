@@ -51,6 +51,10 @@ pub struct CreateArgs {
     pub tasks_done: usize,
     pub tasks_skipped: usize,
     pub gitless: bool,
+    /// Línea de fases COMPOSED (None ⇒ sesión sin fases).
+    pub phase_line: Option<String>,
+    /// Evidencia por fase (vacío ⇒ sin fases).
+    pub evidence_by_phase: Vec<(crate::session::CheckpointPhase, Vec<String>)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -203,12 +207,15 @@ pub fn build_create_args(reconstruction: &ReconstructionOutput) -> (CreateArgs, 
         ));
     }
 
-    let blockers: Vec<String> = reconstruction
+    let mut blockers: Vec<String> = reconstruction
         .verification_results
         .iter()
         .filter(|r| !r.passed)
         .map(|r| format!("{} failed (exit {})", r.name, r.exit_code))
         .collect();
+    if let Some(w) = &reconstruction.close_phase_warning {
+        blockers.push(w.clone());
+    }
 
     let mut tags: Vec<String> = vec!["session".into()];
     tags.push(
@@ -264,7 +271,112 @@ pub fn build_create_args(reconstruction: &ReconstructionOutput) -> (CreateArgs, 
             tasks_done: 0,
             tasks_skipped: 0,
             gitless: reconstruction.gitless,
+            phase_line: reconstruction.phase_line.clone(),
+            evidence_by_phase: reconstruction.evidence_by_phase.clone(),
         },
         warnings,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::documenter::handoff::AgentHandoff;
+    use crate::session::CheckpointPhase;
+
+    fn reconstruction() -> ReconstructionOutput {
+        ReconstructionOutput {
+            session_id: "2026-08-27_demo".into(),
+            handoff: AgentHandoff {
+                agent: "cortex-documenter".into(),
+                status: "complete".into(),
+                verified_claims: vec![],
+                unverified_claims: vec![],
+                artifacts_produced: vec![],
+                context_for_next: vec![],
+                suggested_adr: false,
+                suggested_adr_reason: String::new(),
+                suggested_context_terms: vec![],
+            },
+            spec_path_normalized: "vault/specs/2026-08-27_demo.md".into(),
+            spec_title: "Demo".into(),
+            spec_goal: "goal".into(),
+            files_in_scope_spec: vec![],
+            acceptance_criteria: vec![],
+            status_session: "closed".into(),
+            diff_text: String::new(),
+            diff_entries: vec![],
+            files_touched: vec![],
+            in_scope_files: vec![],
+            out_of_scope_files: vec![],
+            unimplemented_files: vec![],
+            verification_results: vec![],
+            suggested_status: "closed".into(),
+            suggested_adrs: vec![],
+            end_commit: "b".repeat(40),
+            gitless: true,
+            files_verified_by_git: vec![],
+            files_declared_only: vec![],
+            checkpoint_notes: vec![],
+            phase_line: Some("spec → implement → review".into()),
+            close_phase_warning: None,
+            evidence_by_phase: vec![
+                (CheckpointPhase::Spec, vec!["validé la spec".into()]),
+                (
+                    CheckpointPhase::Review,
+                    vec!["test rojo-verde".into(), "diff revisado".into()],
+                ),
+            ],
+        }
+    }
+
+    #[test]
+    fn create_args_carry_phase_plumbing() {
+        let (args, _warnings) = build_create_args(&reconstruction());
+        assert_eq!(
+            args.phase_line.as_deref(),
+            Some("spec → implement → review")
+        );
+        assert_eq!(args.evidence_by_phase.len(), 2);
+        assert_eq!(
+            args.evidence_by_phase[0],
+            (CheckpointPhase::Spec, vec!["validé la spec".into()])
+        );
+    }
+
+    #[test]
+    fn create_args_legacy_without_phases() {
+        let mut r = reconstruction();
+        r.phase_line = None;
+        r.evidence_by_phase = vec![];
+        let (args, _warnings) = build_create_args(&r);
+        assert_eq!(args.phase_line, None);
+        assert!(args.evidence_by_phase.is_empty());
+    }
+
+    #[test]
+    fn close_phase_warning_becomes_blocker_in_note() {
+        let mut r = reconstruction();
+        r.phase_line = Some("spec → review".into());
+        r.close_phase_warning = Some(
+            "Session closed without a phase=close checkpoint (require_close_phase: true)".into(),
+        );
+        let (args, _warnings) = build_create_args(&r);
+        assert!(
+            args.blockers
+                .iter()
+                .any(|b| b.contains("phase=close checkpoint")),
+            "blockers: {:?}",
+            args.blockers
+        );
+    }
+
+    #[test]
+    fn no_close_phase_warning_when_close_present() {
+        let mut r = reconstruction();
+        r.phase_line = Some("spec → close".into());
+        r.close_phase_warning = None;
+        let (args, _warnings) = build_create_args(&r);
+        assert!(!args.blockers.iter().any(|b| b.contains("phase=close")));
+    }
 }

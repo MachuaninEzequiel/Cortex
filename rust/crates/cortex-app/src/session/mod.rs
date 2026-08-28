@@ -10,7 +10,7 @@
 //!   patrón de Task `T\d+(\.\d+)*`, truncamiento de output 10_000 bytes.
 //! - Storage: YAML `sort_keys=False, allow_unicode` ⇒ orden de declaración;
 //!   escritura atómica tmp+rename; active pointer `.cortex/sessions/active`.
-//! - `infer_mode`: BYO / CI_REVIEW / MANAGED / OBSERVED idéntico.
+//! - `infer_mode`: BYO / CI_REVIEW / COMPOSED / MANAGED / OBSERVED idéntico.
 //!
 //! Submódulos: `verification` (runner de hooks), `quality_gates` (review
 //! en dos etapas) y `service` (capa SessionService para ci/CLI, P11-ci) —
@@ -55,8 +55,65 @@ pub enum SessionMode {
     Managed,
     Observed,
     Byo,
+    /// Modo COMPOSED (Obra 08 stream A): el middle es una cadena de skills
+    /// externas que emiten checkpoints con `phase`; Cortex reconoce, registra
+    /// y documenta sin orquestar.
+    Composed,
     #[serde(rename = "ci-review")]
     CiReview,
+}
+
+/// Fase de un checkpoint COMPOSED (Obra 08 stream A).
+///
+/// Las skills user/model-invoked emiten checkpoints con `phase` para que
+/// Cortex reconozca la cadena de fases sin orquestar (modo COMPOSED).
+/// Campo opcional: los emisores legados no lo llevan y nada cambia para
+/// ellos.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckpointPhase {
+    Grill,
+    Spec,
+    Plan,
+    Implement,
+    Review,
+    Close,
+}
+
+impl CheckpointPhase {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Grill => "grill",
+            Self::Spec => "spec",
+            Self::Plan => "plan",
+            Self::Implement => "implement",
+            Self::Review => "review",
+            Self::Close => "close",
+        }
+    }
+
+    /// Case-sensitive en minúsculas (igual que los demás parsers del repo);
+    /// `None` para cualquier entrada inválida (patrón P6/P9: el servicio
+    /// rechaza con mensaje claro, nunca silencio).
+    pub fn parse(s: &str) -> Option<CheckpointPhase> {
+        match s {
+            "grill" => Some(Self::Grill),
+            "spec" => Some(Self::Spec),
+            "plan" => Some(Self::Plan),
+            "implement" => Some(Self::Implement),
+            "review" => Some(Self::Review),
+            "close" => Some(Self::Close),
+            _ => None,
+        }
+    }
+}
+
+impl std::str::FromStr for CheckpointPhase {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s).ok_or(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -179,6 +236,9 @@ pub struct Checkpoint {
     pub artifacts_touched: Vec<String>,
     #[serde(default)]
     pub note: String,
+    /// Fase COMPOSED opcional (Obra 08 stream A). Ausente ⇒ emisor legado.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<CheckpointPhase>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -358,6 +418,13 @@ pub fn infer_mode(checkpoints: &[Checkpoint]) -> SessionMode {
     if all_ci {
         return SessionMode::CiReview;
     }
+    // Regla 3 (spec 13 §4): si CUALQUIER checkpoint lleva fase, la sesión es
+    // COMPOSED — el usuario compuso un flujo con fases visibles aunque haya
+    // mezclado agentes Cortex e ide-hooks en el camino. Gana sobre MANAGED
+    // y OBSERVED; CI_REVIEW (todo ci-bot) y BYO (vacío) ya retornaron antes.
+    if checkpoints.iter().any(|c| c.phase.is_some()) {
+        return SessionMode::Composed;
+    }
     const CORTEX_SOURCES: [CheckpointSource; 5] = [
         CheckpointSource::CortexSync,
         CheckpointSource::CortexSddwork,
@@ -512,14 +579,31 @@ pub fn canonical_json_normalized(record: &SessionRecord, workspace_root: &str) -
         .checkpoints
         .iter()
         .map(|c| {
-            serde_json::json!({
-                "timestamp": ts,
-                "source": c.source,
-                "verified_claims": c.verified_claims,
-                "unverified_claims": c.unverified_claims,
-                "artifacts_touched": c.artifacts_touched,
-                "note": c.note,
-            })
+            let mut obj = serde_json::Map::new();
+            obj.insert("timestamp".into(), ts.clone().into());
+            obj.insert(
+                "source".into(),
+                serde_json::to_value(c.source).unwrap_or_default(),
+            );
+            obj.insert(
+                "verified_claims".into(),
+                serde_json::to_value(&c.verified_claims).unwrap_or_default(),
+            );
+            obj.insert(
+                "unverified_claims".into(),
+                serde_json::to_value(&c.unverified_claims).unwrap_or_default(),
+            );
+            obj.insert(
+                "artifacts_touched".into(),
+                serde_json::to_value(&c.artifacts_touched).unwrap_or_default(),
+            );
+            obj.insert("note".into(), c.note.clone().into());
+            // Ruling R6 (spec 13 §2.1): phase sobrevive el dump --json, solo
+            // cuando Some ⇒ dumps sin fase byte-idénticos a los actuales.
+            if let Some(p) = c.phase {
+                obj.insert("phase".into(), serde_json::to_value(p).unwrap_or_default());
+            }
+            serde_json::Value::Object(obj)
         })
         .collect();
     obj.insert("checkpoints".into(), cps.into());
@@ -581,4 +665,287 @@ pub fn canonical_json_normalized(record: &SessionRecord, workspace_root: &str) -
     let mut s = serde_json::to_string_pretty(&obj).expect("dump");
     s.push('\n');
     s
+}
+
+// ── Tests: contrato de fases (Obra 08 stream A, G-A1a) ───────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_checkpoint() -> Checkpoint {
+        Checkpoint {
+            timestamp: "2026-08-28T00:00:00.000000Z".to_string(),
+            source: CheckpointSource::UserSkill,
+            verified_claims: Vec::new(),
+            unverified_claims: Vec::new(),
+            artifacts_touched: Vec::new(),
+            note: String::new(),
+            phase: None,
+        }
+    }
+
+    const ALL_PHASES: [CheckpointPhase; 6] = [
+        CheckpointPhase::Grill,
+        CheckpointPhase::Spec,
+        CheckpointPhase::Plan,
+        CheckpointPhase::Implement,
+        CheckpointPhase::Review,
+        CheckpointPhase::Close,
+    ];
+
+    #[test]
+    fn phase_roundtrip_yaml() {
+        for p in ALL_PHASES {
+            let mut cp = base_checkpoint();
+            cp.phase = Some(p);
+            let yaml = serde_yaml::to_string(&cp).unwrap();
+            let back: Checkpoint = serde_yaml::from_str(&yaml).unwrap();
+            assert_eq!(back.phase, Some(p), "roundtrip perdió fase {p:?}");
+        }
+    }
+
+    #[test]
+    fn phase_as_str_parse_roundtrip() {
+        for p in ALL_PHASES {
+            assert_eq!(p.as_str().parse::<CheckpointPhase>(), Ok(p));
+            assert_eq!(CheckpointPhase::parse(p.as_str()), Some(p));
+        }
+    }
+
+    #[test]
+    fn no_phase_backward_compat() {
+        // Checkpoint legado (formato real del storage YAML) SIN campo phase.
+        let yaml = "\
+timestamp: '2026-08-28T00:00:00.000000Z'\nsource: user-skill\nverified_claims: []\nunverified_claims: []\nartifacts_touched: []\nnote: ''\n";
+        let cp: Checkpoint = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(cp.phase, None);
+        assert_eq!(cp.source, CheckpointSource::UserSkill);
+    }
+
+    #[test]
+    fn invalid_phase_string_rejected() {
+        assert_eq!(CheckpointPhase::parse("asdf"), None);
+        assert_eq!(CheckpointPhase::parse(""), None);
+        assert_eq!(CheckpointPhase::parse("Spec"), None); // case-sensitive
+        assert_eq!(CheckpointPhase::parse("implement "), None); // sin trim
+    }
+
+    #[test]
+    fn phase_omitted_in_yaml_when_none() {
+        let cp = base_checkpoint();
+        let yaml = serde_yaml::to_string(&cp).unwrap();
+        assert!(
+            !yaml.contains("phase"),
+            "phase no debe serializarse en None"
+        );
+    }
+
+    // ── infer_mode COMPOSED (G-A1b) ───────────────────────────────────────
+
+    fn cp(source: CheckpointSource, phase: Option<CheckpointPhase>) -> Checkpoint {
+        let mut c = base_checkpoint();
+        c.source = source;
+        c.phase = phase;
+        c
+    }
+
+    #[test]
+    fn infer_mode_composed_when_any_phase() {
+        // mezcla: cortex-SDDwork sin phase + user-skill con phase + ide-hook
+        let cps = vec![
+            cp(CheckpointSource::CortexSddwork, None),
+            cp(
+                CheckpointSource::UserSkill,
+                Some(CheckpointPhase::Implement),
+            ),
+            cp(CheckpointSource::IdeHook, None),
+        ];
+        assert_eq!(infer_mode(&cps), SessionMode::Composed);
+    }
+
+    #[test]
+    fn infer_mode_composed_wins_over_all_cortex() {
+        // todos cortex-* pero uno con phase → COMPOSED (no MANAGED)
+        let cps = vec![
+            cp(CheckpointSource::CortexSync, Some(CheckpointPhase::Spec)),
+            cp(CheckpointSource::CortexSddwork, None),
+        ];
+        assert_eq!(infer_mode(&cps), SessionMode::Composed);
+    }
+
+    #[test]
+    fn infer_mode_backward_compat_sin_phase() {
+        // sin phase: las combinaciones actuales dan los modos actuales
+        let all_cortex = vec![
+            cp(CheckpointSource::CortexSync, None),
+            cp(CheckpointSource::CortexSddwork, None),
+        ];
+        assert_eq!(infer_mode(&all_cortex), SessionMode::Managed);
+        let mixed = vec![
+            cp(CheckpointSource::CortexSddwork, None),
+            cp(CheckpointSource::IdeHook, None),
+        ];
+        assert_eq!(infer_mode(&mixed), SessionMode::Observed);
+        assert_eq!(infer_mode(&[]), SessionMode::Byo);
+        let ci = vec![
+            cp(CheckpointSource::CiBot, None),
+            cp(CheckpointSource::CiBot, None),
+        ];
+        assert_eq!(infer_mode(&ci), SessionMode::CiReview);
+    }
+
+    // ── Ruling R6: dump canónico --json con phase (spec 13 §2.1) ──────────
+
+    #[test]
+    fn canonical_dump_omits_phase_when_none() {
+        let rec = SessionRecord {
+            checkpoints: vec![cp(CheckpointSource::UserSkill, None)],
+            ..SessionRecord::default()
+        };
+        let s = canonical_json_normalized(&rec, "/ws");
+        assert!(
+            !s.contains("phase"),
+            "dump sin fase no debe emitir la clave: {s}"
+        );
+    }
+
+    #[test]
+    fn canonical_dump_includes_phase_when_some() {
+        let rec = SessionRecord {
+            checkpoints: vec![cp(
+                CheckpointSource::UserSkill,
+                Some(CheckpointPhase::Review),
+            )],
+            ..SessionRecord::default()
+        };
+        let s = canonical_json_normalized(&rec, "/ws");
+        assert_eq!(
+            s.matches("\"phase\"").count(),
+            1,
+            "una sola clave phase: {s}"
+        );
+        assert!(s.contains("\"phase\": \"review\""), "{s}");
+    }
+
+    // ── Barra de calidad por fase (G-A2) ─────────────────────────────────
+
+    #[test]
+    fn phase_gate_spec_needs_evidence() {
+        let mut cp_short = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Spec));
+        cp_short.verified_claims = vec!["ok".to_string()]; // <=10 chars
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_short),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+
+        let mut cp_good = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Spec));
+        cp_good.verified_claims = vec!["validé la spec contra el código real".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_good),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_implement_redelegates_without_evidence() {
+        let mut cp_none = cp(
+            CheckpointSource::UserSkill,
+            Some(CheckpointPhase::Implement),
+        );
+        cp_none.artifacts_touched = vec!["x.rs".to_string()];
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_none),
+            Some(quality_gates::PhaseGateOutcome::Redelegate(_))
+        ));
+
+        let mut cp_good = cp(
+            CheckpointSource::UserSkill,
+            Some(CheckpointPhase::Implement),
+        );
+        cp_good.artifacts_touched = vec!["x.rs".to_string()];
+        cp_good.verified_claims = vec!["test rojo-verde en x.rs".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_good),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_none_returns_none() {
+        // Emisores legados sin fase: el gate no interviene.
+        let nc = cp(CheckpointSource::UserSkill, None);
+        assert_eq!(quality_gates::check_phase_gate(&nc), None);
+    }
+
+    #[test]
+    fn phase_gate_plan_requires_artifact() {
+        let cp_empty = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Plan));
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_empty),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+
+        let mut cp_ok = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Plan));
+        cp_ok.artifacts_touched = vec![".scratch/x/issues/1.md".to_string()];
+        assert_eq!(
+            quality_gates::check_phase_gate(&cp_ok),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+    }
+
+    #[test]
+    fn phase_gate_review_requires_evidence() {
+        let cp_empty = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        assert!(matches!(
+            quality_gates::check_phase_gate(&cp_empty),
+            Some(quality_gates::PhaseGateOutcome::Warn(_))
+        ));
+    }
+
+    #[test]
+    fn phase_gate_grill_is_pass_and_close_is_none() {
+        let grill = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Grill));
+        assert_eq!(
+            quality_gates::check_phase_gate(&grill),
+            Some(quality_gates::PhaseGateOutcome::Pass)
+        );
+        // `close` no tiene gate por-checkpoint: depende de la sesión (A5).
+        let close = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Close));
+        assert_eq!(quality_gates::check_phase_gate(&close), None);
+    }
+
+    // Integración: el gate de fase se aplica POR ENCIMA de las 2 etapas,
+    // solo cuando el checkpoint es COMPOSED (phase.is_some()).
+    #[test]
+    fn review_checkpoint_applies_phase_gate_on_top() {
+        // Pasa etapas 1 y 2, pero la fase review exige evidencia >10 chars.
+        let mut c = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        c.verified_claims = vec!["ok".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert!(!v.accepted);
+        assert_eq!(v.action, quality_gates::ReviewAction::Warn);
+        assert!(v.stage_1_passed && v.stage_2_passed);
+    }
+
+    #[test]
+    fn review_checkpoint_phase_gate_pass_still_accepts() {
+        let mut c = cp(CheckpointSource::UserSkill, Some(CheckpointPhase::Review));
+        c.verified_claims = vec!["revisión estándar y spec en paralelo".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert!(v.accepted);
+        assert_eq!(v.action, quality_gates::ReviewAction::Accept);
+    }
+
+    #[test]
+    fn review_checkpoint_no_phase_unchanged() {
+        // Emisor legado sin fase: comportamiento actual sin intervención del gate.
+        let mut c = cp(CheckpointSource::UserSkill, None);
+        c.verified_claims = vec!["validé la spec contra el código real".to_string()];
+        c.artifacts_touched = vec!["x.rs".to_string()];
+        let v = quality_gates::review_checkpoint(&c, &[]);
+        assert_eq!(v.action, quality_gates::ReviewAction::Accept);
+    }
 }

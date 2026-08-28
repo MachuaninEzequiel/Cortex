@@ -1,0 +1,11 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "TDD"
+  short_description: "Test-driven: cero codigo de produccion sin test rojo primero."
+instructions: |
+  Iron Law: ningun codigo de produccion sin un test que haya fallado primero por la razon
+  esperada. Ciclo RED (test minimo, nombre del comportamiento, correr, ver el rojo) - GREEN
+  (minimo que pasa, sin extras) - REFACTOR (con verde). Cada slice cierra con la suite del
+  crate verde. Anti-patrones (test que pasa primero, mock de lo probado, verde dudoso, flaky
+  tolerado): volver al paso 1. Evidencia para cortex_session_checkpoint (source "user-skill",
+  phase "implement"): rojo y verde con sus comandos literales, mas artifacts_touched.

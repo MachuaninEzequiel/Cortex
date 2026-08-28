@@ -182,6 +182,7 @@ pub fn run_checkpoint(argv: &[String]) -> bool {
         args.unverified_claim.clone(),
         args.artifact.clone(),
         &args.note,
+        None, // fase COMPOSED llega por MCP/skills en obra 08; sin flag CLI
     ) {
         Ok(updated) => {
             if args.json {
@@ -231,6 +232,7 @@ pub(crate) fn mode_str(m: cortex_app::session::SessionMode) -> &'static str {
         M::Managed => "managed",
         M::Observed => "observed",
         M::Byo => "byo",
+        M::Composed => "composed",
         M::CiReview => "ci-review",
     }
 }
@@ -403,6 +405,7 @@ pub fn run_abandon(argv: &[String]) -> bool {
                 vec![],
                 vec![],
                 &format!("Abandoned: {}", args.reason),
+                None,
             ) {
                 eecho(&e);
                 return true;

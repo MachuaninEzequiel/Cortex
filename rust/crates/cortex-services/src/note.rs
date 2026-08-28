@@ -36,6 +36,10 @@ pub struct NoteCreate {
     pub tasks_done: i64,
     pub tasks_skipped: i64,
     pub gitless: bool,
+    /// Línea de fases COMPOSED (None ⇒ sin fases; no se inserta en fields).
+    pub phase_line: Option<String>,
+    /// Evidencia por fase `(fase, claims)`, con claims ya unidas por ", ".
+    pub evidence_by_phase: Vec<(String, String)>,
 }
 
 impl NoteCreate {
@@ -120,6 +124,22 @@ impl<'a> NoteService<'a> {
         fields.insert("tasks_done".into(), Value::from(args.tasks_done));
         fields.insert("tasks_skipped".into(), Value::from(args.tasks_skipped));
         fields.insert("gitless".into(), Value::Bool(args.gitless));
+        if let Some(line) = &args.phase_line {
+            fields.insert("phase_line".into(), Value::String(line.clone()));
+        }
+        if !args.evidence_by_phase.is_empty() {
+            let arr = args
+                .evidence_by_phase
+                .iter()
+                .map(|(p, c)| {
+                    let mut m = Map::new();
+                    m.insert("phase".into(), Value::String(p.clone()));
+                    m.insert("claims".into(), Value::String(c.clone()));
+                    Value::Object(m)
+                })
+                .collect();
+            fields.insert("evidence_by_phase".into(), Value::Array(arr));
+        }
 
         let mut req = cortex_setup::writers::NoteRequest::from_json("session", fields)?;
         let path = persist_note(&mut req, &self.vault_path, now)?;
@@ -279,6 +299,55 @@ mod tests {
         assert!(std::fs::read_dir(md)
             .map(|mut r| r.next().is_none())
             .unwrap_or(true));
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn nota_con_fases_incluye_linea_y_evidencia() {
+        let root = std::env::temp_dir().join(format!("svc_note_fases_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let mut sem = Sem {
+            fail: false,
+            indexed: vec![],
+        };
+        let mut ep = Ep::default();
+
+        let mut args = NoteCreate::basic("Happy", "spec");
+        args.phase_line = Some("spec → implement → review".into());
+        args.evidence_by_phase = vec![
+            ("spec".into(), "validé la spec".into()),
+            ("review".into(), "test rojo-verde, diff revisado".into()),
+        ];
+
+        let mut svc = NoteService::new(&root, &mut sem, &mut ep);
+        let p = svc.create_with_id(args, "abcdef123456", now()).unwrap();
+        drop(svc);
+        let md = std::fs::read_to_string(&p).unwrap();
+        assert!(md.contains("## Fases"), "nota sin sección Fases:\n{md}");
+        assert!(md.contains("spec → implement → review"));
+        assert!(md.contains("- **spec**: validé la spec"));
+        assert!(md.contains("- **review**: test rojo-verde, diff revisado"));
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn nota_sin_fases_no_incluye_seccion() {
+        let root = std::env::temp_dir().join(format!("svc_note_nofases_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let mut sem = Sem {
+            fail: false,
+            indexed: vec![],
+        };
+        let mut ep = Ep::default();
+        let mut svc = NoteService::new(&root, &mut sem, &mut ep);
+        let p = svc
+            .create_with_id(NoteCreate::basic("Plain", "spec"), "abcdef123456", now())
+            .unwrap();
+        drop(svc);
+        let md = std::fs::read_to_string(&p).unwrap();
+        assert!(!md.contains("## Fases"), "nota legacy con Fases:\n{md}");
+        assert!(md.contains("## Key Decisions"));
+        assert!(md.contains("## Next Steps"));
         std::fs::remove_dir_all(root).ok();
     }
 }

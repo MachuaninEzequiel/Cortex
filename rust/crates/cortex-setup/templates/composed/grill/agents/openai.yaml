@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "Grill"
+  short_description: "Aclarar requisitos con preguntas de experto antes de especificar."
+policy:
+  allow_implicit_invocation: false
+instructions: |
+  Preguntar una cosa por vez hasta que el "terminado" sea observable y el alcance tenga bordes:
+  problema que dispara, terminado medible, anti-objetivos, restricciones, 5 whys sobre el objetivo.
+  Confirmar el parafraseo con el humano antes de registrar. Cerrar emitiendo
+  cortex_session_checkpoint con source "user-skill", phase "grill", el objetivo confirmado en
+  verified_claims y note de una linea (handoff a to-spec). Sin sesion activa: avisar y seguir
+  sin checkpoint; la aclaracion le sirve a to-spec.

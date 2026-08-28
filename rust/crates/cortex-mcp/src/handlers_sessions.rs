@@ -173,6 +173,10 @@ pub trait SessionsBackend {
         spec_path: &str,
         spec_summary: &str,
     ) -> Result<SRecord, String>;
+    /// `phase` raw del tool COMPOSED (obra 08, G-A1c): se propaga sin
+    /// validar aquí — la validación dura vive en `SessionService::checkpoint`
+    /// y su error sube como tool error vía `?` (nunca panic, nunca silencio).
+    #[allow(clippy::too_many_arguments)] // espejo del allow en SessionService::checkpoint
     fn checkpoint_session(
         &mut self,
         session_id: &str,
@@ -181,6 +185,7 @@ pub trait SessionsBackend {
         unverified_claims: Vec<String>,
         artifacts_touched: Vec<String>,
         note: String,
+        phase: Option<&str>,
     ) -> Result<SRecord, String>;
     fn close_session(
         &mut self,
@@ -257,6 +262,7 @@ pub fn session_checkpoint_text(
             sources_list()
         ));
     }
+    let phase = args.get("phase").and_then(Value::as_str);
     let record = b.checkpoint_session(
         &session_id,
         &source,
@@ -264,6 +270,7 @@ pub fn session_checkpoint_text(
         strings_arg(args, "unverified_claims"),
         strings_arg(args, "artifacts_touched"),
         str_arg(args, "note").to_string(),
+        phase,
     )?;
     let last = record.checkpoints.last().map(|c| c.timestamp.clone());
     let payload = json!({
@@ -838,6 +845,7 @@ fn to_native_checkpoint(c: &SCheckpoint) -> cortex_app::session::Checkpoint {
         unverified_claims: c.unverified_claims.clone(),
         artifacts_touched: c.artifacts_touched.clone(),
         note: c.note.clone(),
+        phase: None, // SCheckpoint es el response schema (sin phase); el input fluye por SessionService
     }
 }
 
@@ -887,6 +895,7 @@ mod tests {
             _: Vec<String>,
             _: Vec<String>,
             _: String,
+            _: Option<&str>,
         ) -> Result<SRecord, String> {
             unimplemented!()
         }
@@ -949,6 +958,110 @@ mod tests {
         let out = session_checkpoint_text(&mut b, &json!({"session_id":"s","source":"x"})).unwrap();
         assert!(out.starts_with("❌ Invalid source 'x'."));
         assert!(out.ends_with("ci-bot"));
+    }
+
+    /// Backend de grabación mínimo para verificar que el handler propaga
+    /// `phase` tal cual viene del tool (la validación dura vive en
+    /// SessionService::checkpoint, no aquí — el MCP solo reenvía).
+    struct PhaseRecorder {
+        got: Option<String>,
+    }
+    impl SessionsBackend for PhaseRecorder {
+        fn checkpoint_session(
+            &mut self,
+            _: &str,
+            _: &str,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: String,
+            phase: Option<&str>,
+        ) -> Result<SRecord, String> {
+            self.got = phase.map(|s| s.to_string());
+            Ok(SRecord {
+                session_id: "2026-05-16_demo".into(),
+                checkpoints: vec![SCheckpoint {
+                    timestamp: "2026-05-16T11:00:00+00:00".into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })
+        }
+        fn open_session(&mut self, _: &str, _: &str, _: &str) -> Result<SRecord, String> {
+            unimplemented!()
+        }
+        fn close_session(
+            &mut self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<String>,
+            _: Vec<String>,
+        ) -> Result<SRecord, String> {
+            unimplemented!()
+        }
+        fn get_active_session(&mut self) -> Result<Option<SRecord>, String> {
+            unimplemented!()
+        }
+        fn get_session(&mut self, _: &str) -> Result<SRecord, String> {
+            unimplemented!()
+        }
+        fn list_sessions(&mut self, _: Option<String>) -> Result<Vec<SRecord>, String> {
+            unimplemented!()
+        }
+        fn list_tasks(&mut self, _: &str, _: Option<String>) -> Result<Vec<STask>, String> {
+            unimplemented!()
+        }
+        fn add_task(&mut self, _: &str, _: STask) -> Result<(), String> {
+            unimplemented!()
+        }
+        fn update_task(
+            &mut self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: String,
+            _: Option<i64>,
+        ) -> Result<(), String> {
+            unimplemented!()
+        }
+        fn save_session_note(&mut self, _: &Value) -> Result<String, String> {
+            unimplemented!()
+        }
+        fn spec_files_in_scope(&mut self, _: &str) -> Result<Vec<String>, String> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn checkpoint_phase_flows_to_backend() {
+        let mut b = PhaseRecorder { got: None };
+        session_checkpoint_text(
+            &mut b,
+            &json!({"session_id": "2026-05-16_demo", "source": "user-skill", "phase": "review", "note": "x"}),
+        )
+        .unwrap();
+        assert_eq!(b.got.as_deref(), Some("review"));
+
+        let mut b2 = PhaseRecorder { got: None };
+        session_checkpoint_text(
+            &mut b2,
+            &json!({"session_id": "2026-05-16_demo", "source": "user-skill", "phase": "asdf"}),
+        )
+        .unwrap();
+        // La fase inválida se propaga SIN validar en el handler: la rechaza
+        // SessionService::checkpoint con el mensaje canónico (G-A1c).
+        assert_eq!(b2.got.as_deref(), Some("asdf"));
+
+        let mut b3 = PhaseRecorder {
+            got: Some("x".into()),
+        };
+        session_checkpoint_text(
+            &mut b3,
+            &json!({"session_id": "2026-05-16_demo", "source": "user-skill"}),
+        )
+        .unwrap();
+        assert_eq!(b3.got, None, "sin arg phase ⇒ None al backend");
     }
 
     #[test]

@@ -1,0 +1,12 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "Diagnose"
+  short_description: "Bugs: feedback loop en rojo estable antes de teorizar el fix."
+instructions: |
+  Prohibido teorizar fixes sin reproduccion. Paso 1 es construir el feedback loop (test o
+  comando que muestra el fallo, repetible). Reproducir con salida capturada; si es
+  intermitente, minimizar una variable a la vez. Aislar la causa (input minimo, instrumentacion,
+  git bisect). Fixear con la skill tdd (la reproduccion es el test rojo). Verificar loop verde
+  + contexto real; borrar instrumentacion temporaria; el test de repro queda en el repo.
+  Checkpoint: source "user-skill", phase "implement", evidencia roja/verde con comandos,
+  artifacts_touched con el fix y el test.

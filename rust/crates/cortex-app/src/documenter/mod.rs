@@ -14,7 +14,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::git;
-use crate::session::{Checkpoint, SessionRecord, SessionStatus, VerificationHookResult};
+use crate::session::{
+    Checkpoint, CheckpointPhase, SessionRecord, SessionStatus, VerificationHookResult,
+};
 use diff_parser::{DiffAction, DiffEntry};
 use handoff::AgentHandoff;
 use spec_loader::{AdrSuggestion, LoadedSpec};
@@ -48,6 +50,15 @@ pub struct ReconstructionOutput {
     /// Notas no-vacías de los checkpoints (para key_decisions del persister).
     #[serde(skip)]
     pub checkpoint_notes: Vec<String>,
+    /// Línea de fases COMPOSED (None ⇒ sesión sin fases; no serializado).
+    #[serde(skip)]
+    pub phase_line: Option<String>,
+    /// Evidencia por fase (vacío ⇒ sin fases; no serializado).
+    #[serde(skip)]
+    pub evidence_by_phase: Vec<(CheckpointPhase, Vec<String>)>,
+    /// Warning de fase close faltante (None ⇒ sin warning; no serializado).
+    #[serde(skip)]
+    pub close_phase_warning: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -60,6 +71,60 @@ pub struct DiffEntrySer {
 fn is_cortex_internal_path(p: &Path) -> bool {
     let posix = p.to_string_lossy().replace('\\', "/");
     CORTEX_INTERNAL_PATHS.contains(&posix.as_str())
+}
+
+/// Línea de fases COMPOSED: `"grill → spec → plan → implement → review"`;
+/// `None` si ningún checkpoint tiene `phase`.
+///
+/// Orden = orden de aparición en los checkpoints; duplicados colapsados
+/// preservando la primera aparición (la línea refleja el flujo que el dev
+/// compuso, no el conteo de checkpoints por fase).
+pub fn phase_line(checkpoints: &[Checkpoint]) -> Option<String> {
+    let mut seen: Vec<CheckpointPhase> = Vec::new();
+    for cp in checkpoints {
+        if let Some(p) = cp.phase {
+            if !seen.contains(&p) {
+                seen.push(p);
+            }
+        }
+    }
+    if seen.is_empty() {
+        return None;
+    }
+    Some(
+        seen.iter()
+            .map(|p| p.as_str())
+            .collect::<Vec<_>>()
+            .join(" → "),
+    )
+}
+
+/// Claims verificadas agrupadas por fase, en orden de aparición de las
+/// fases; SOLO fases con al menos una claim (evidencia = claims, no fases).
+/// Checkpoints sin `phase` se ignoran (emisores legados).
+pub fn evidence_by_phase(checkpoints: &[Checkpoint]) -> Vec<(CheckpointPhase, Vec<String>)> {
+    let mut order: Vec<CheckpointPhase> = Vec::new();
+    let mut claims: Vec<Vec<String>> = Vec::new();
+    for cp in checkpoints {
+        let p = match cp.phase {
+            Some(p) => p,
+            None => continue,
+        };
+        let idx = match order.iter().position(|&x| x == p) {
+            Some(i) => i,
+            None => {
+                order.push(p);
+                claims.push(Vec::new());
+                order.len() - 1
+            }
+        };
+        claims[idx].extend(cp.verified_claims.iter().cloned());
+    }
+    order
+        .into_iter()
+        .zip(claims)
+        .filter(|(_, c)| !c.is_empty())
+        .collect()
 }
 
 fn files_touched_from_checkpoints(checkpoints: &[Checkpoint]) -> Vec<PathBuf> {
@@ -107,17 +172,40 @@ pub fn scope_cross_check(
     (in_scope, out_of_scope, unimplemented)
 }
 
-/// CLOSED si todos los hooks pasan Y no hay unimplemented; si no HANDOFF.
+/// CLOSED si todos los hooks pasan Y no hay unimplemented Y el cierre de fase
+/// close está OK (no exigida o presente); si no HANDOFF.
 pub fn decide_status(
     verification_results: &[VerificationHookResult],
     unimplemented: &[PathBuf],
+    require_close_phase: bool,
+    has_close_phase: bool,
 ) -> SessionStatus {
     let required_passed = verification_results.iter().all(|r| r.passed);
-    if required_passed && unimplemented.is_empty() {
+    let close_ok = !require_close_phase || has_close_phase;
+    if required_passed && unimplemented.is_empty() && close_ok {
         SessionStatus::Closed
     } else {
         SessionStatus::Handoff
     }
+}
+
+/// Warning soft de fase close faltante (spec 13 §1.3): se registra cuando la
+/// sesión es COMPOSED sin phase=close, o cuando la spec la exige y falta.
+/// Bloquear (HANDOFF) es decisión de `decide_status`; acá solo el aviso.
+pub fn close_phase_warning(
+    has_close_phase: bool,
+    phase_present: bool,
+    require_close_phase: bool,
+) -> Option<String> {
+    if has_close_phase {
+        return None;
+    }
+    if !phase_present && !require_close_phase {
+        return None;
+    }
+    Some(format!(
+        "Session closed without a phase=close checkpoint (require_close_phase: {require_close_phase})"
+    ))
 }
 
 fn diff_action_to_handoff(action: &DiffAction) -> &'static str {
@@ -250,11 +338,27 @@ fn finish_output(
     let files_declared_only = filter_internal(files_declared_only);
     let files_touched = filter_internal(files_touched);
 
+    let phase_line = phase_line(&checkpoints);
+    let evidence_by_phase = evidence_by_phase(&checkpoints);
+    let has_close_phase = checkpoints
+        .iter()
+        .any(|c| c.phase == Some(CheckpointPhase::Close));
+    let close_phase_warning = close_phase_warning(
+        has_close_phase,
+        phase_line.is_some(),
+        spec.require_close_phase,
+    );
+
     let (in_scope, out_of_scope, unimplemented) =
         scope_cross_check(&files_touched, &spec.files_in_scope);
 
     let suggested_adrs = spec_loader::suggest_adrs(&checkpoints);
-    let suggested_status = decide_status(&verification_results, &unimplemented);
+    let suggested_status = decide_status(
+        &verification_results,
+        &unimplemented,
+        spec.require_close_phase,
+        has_close_phase,
+    );
     let handoff = build_handoff(
         spec,
         &diff_entries,
@@ -317,6 +421,9 @@ fn finish_output(
             .filter(|c| !c.note.is_empty())
             .map(|c| c.note.clone())
             .collect(),
+        phase_line,
+        evidence_by_phase,
+        close_phase_warning,
     }
 }
 
@@ -405,4 +512,147 @@ pub fn reconstruct_git(
         files_touched,
         checkpoints,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::session::CheckpointSource;
+
+    fn cp(phase: Option<CheckpointPhase>, claims: &[&str]) -> Checkpoint {
+        Checkpoint {
+            timestamp: "2026-08-27T12:00:00Z".into(),
+            source: CheckpointSource::UserSkill,
+            verified_claims: claims.iter().map(|s| s.to_string()).collect(),
+            unverified_claims: vec![],
+            artifacts_touched: vec![],
+            note: String::new(),
+            phase,
+        }
+    }
+
+    #[test]
+    fn phase_line_joins_in_order() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Spec), &["a"]),
+            cp(Some(CheckpointPhase::Implement), &["b"]),
+            cp(Some(CheckpointPhase::Review), &["c"]),
+        ];
+        assert_eq!(
+            phase_line(&cps),
+            Some("spec → implement → review".to_string())
+        );
+        // Sin fases ⇒ None (emisores legados).
+        let legacy = vec![cp(None, &["x"]), cp(None, &["y"])];
+        assert_eq!(phase_line(&legacy), None);
+        // Vacío ⇒ None.
+        assert_eq!(phase_line(&[]), None);
+    }
+
+    #[test]
+    fn phase_line_collapses_duplicates_preserving_first_appearance() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Review), &["r1"]),
+            cp(Some(CheckpointPhase::Spec), &["s1"]),
+            cp(Some(CheckpointPhase::Review), &["r2"]),
+        ];
+        assert_eq!(phase_line(&cps), Some("review → spec".to_string()));
+    }
+
+    #[test]
+    fn evidence_grouped_by_phase_in_order() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Spec), &["a", "zz"]),
+            cp(None, &["ignored claim"]),
+            cp(Some(CheckpointPhase::Review), &["b", "c"]),
+            cp(Some(CheckpointPhase::Spec), &["w"]),
+        ];
+        assert_eq!(
+            evidence_by_phase(&cps),
+            vec![
+                (
+                    CheckpointPhase::Spec,
+                    vec!["a".to_string(), "zz".to_string(), "w".to_string()]
+                ),
+                (
+                    CheckpointPhase::Review,
+                    vec!["b".to_string(), "c".to_string()]
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn evidence_empty_without_phases() {
+        assert!(evidence_by_phase(&[cp(None, &["x"])]).is_empty());
+        assert!(evidence_by_phase(&[]).is_empty());
+    }
+
+    #[test]
+    fn evidence_omits_phases_without_claims() {
+        // Fase presente en la línea pero sin claims ⇒ no aparece como evidencia.
+        let cps = vec![
+            cp(Some(CheckpointPhase::Plan), &[]),
+            cp(Some(CheckpointPhase::Implement), &["impl done"]),
+        ];
+        assert_eq!(
+            evidence_by_phase(&cps),
+            vec![(CheckpointPhase::Implement, vec!["impl done".to_string()])]
+        );
+        assert_eq!(phase_line(&cps), Some("plan → implement".to_string()));
+    }
+
+    #[test]
+    fn decide_status_honors_require_close_phase() {
+        let no_hooks: Vec<VerificationHookResult> = vec![];
+        let not_implemented: Vec<PathBuf> = vec![];
+        // flag=true sin fase close ⇒ HANDOFF (bloquea Closed; spec 13 §1.3).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, true, false),
+            SessionStatus::Handoff
+        );
+        // flag=true con fase close ⇒ CLOSED (resto en verde).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, true, true),
+            SessionStatus::Closed
+        );
+        // flag=false sin fase close ⇒ CLOSED (soft; comportamiento actual).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, false, false),
+            SessionStatus::Closed
+        );
+        // flag=false con fase close ⇒ CLOSED.
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, false, true),
+            SessionStatus::Closed
+        );
+        // Hooks fallidos mandan aunque haya close + flag.
+        let failed = vec![VerificationHookResult {
+            name: "verif".into(),
+            command: "exit 1".into(),
+            passed: false,
+            exit_code: 1,
+            output: String::new(),
+            duration_ms: 10,
+            run_at: "2026-08-27T12:00:00Z".into(),
+        }];
+        assert_eq!(
+            decide_status(&failed, &not_implemented, true, true),
+            SessionStatus::Handoff
+        );
+    }
+
+    #[test]
+    fn close_phase_warning_soft_and_flag_driven() {
+        // Sesión legada sin fases y sin flag: sin warning (no es COMPOSED).
+        assert_eq!(close_phase_warning(false, false, false), None);
+        // COMPOSED sin fase close: warning soft (con o sin flag).
+        assert!(close_phase_warning(false, true, false).is_some());
+        assert!(close_phase_warning(false, true, true).is_some());
+        // Flag exigido sin close aunque no haya otras fases: warning (HANDOFF explicado).
+        assert!(close_phase_warning(false, false, true).is_some());
+        // Con fase close: nunca warning.
+        assert_eq!(close_phase_warning(true, false, true), None);
+        assert_eq!(close_phase_warning(true, true, false), None);
+    }
 }

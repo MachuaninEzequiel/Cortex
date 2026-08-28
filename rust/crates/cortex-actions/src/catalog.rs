@@ -18,7 +18,7 @@ use crate::context::ActionContext;
 use crate::models::{Action, ActionResult, Categoria, Check, Costo};
 use crate::registry::Registry;
 use chrono::Datelike;
-use cortex_app::session::SessionRecord;
+use cortex_app::session::{CheckpointPhase, SessionRecord};
 
 fn no_op_undo() -> ActionResult {
     ActionResult::new(true, "acción report-only — nada que deshacer")
@@ -168,7 +168,7 @@ pub fn session_close_stale(ctx: &ActionContext) -> Action {
             }
             let guia: Vec<String> = ids
                 .iter()
-                .map(|i| format!("{i} → `cortex finish-session --session-id {i}` o abandon"))
+                .map(|i| format!("{i} → `cortex autopilot finish --session-id {i}` o abandon"))
                 .collect();
             ActionResult::new(
                 true,
@@ -447,7 +447,10 @@ pub fn ide_resync(ctx: &ActionContext) -> Action {
     .checked()
 }
 
-/// `build_default_registry(ctx)` — registra las 10 acciones v1 EN ORDEN.
+/// `build_default_registry(ctx)` — registra las 10 acciones v1 EN ORDEN +
+/// la acción nativa `session.suggest_next_phase` (Obra 08 stream A, spec 13
+/// §7.2) apenda al final para preservar el orden de inserción observable
+/// (desempate estable del scheduler) de las 10 originales.
 pub fn build_default_registry(ctx: &ActionContext) -> Registry {
     let mut registry = Registry::new();
     for res in [
@@ -461,13 +464,71 @@ pub fn build_default_registry(ctx: &ActionContext) -> Registry {
         knowledge_promote(ctx),
         memory_prune(ctx),
         ide_resync(ctx),
+        session_suggest_next_phase(ctx),
     ] {
-        registry.register(res).expect("catálogo v1 sin duplicados");
+        registry.register(res).expect("catálogo sin duplicados");
     }
     registry
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
+
+/// Siguiente fase en la cadena COMPOSED; `None` en `close` (nada que
+/// sugerir). grill→spec→plan→implement→review→close→None (spec 13 §7.2).
+pub fn next_phase(p: CheckpointPhase) -> Option<CheckpointPhase> {
+    match p {
+        CheckpointPhase::Grill => Some(CheckpointPhase::Spec),
+        CheckpointPhase::Spec => Some(CheckpointPhase::Plan),
+        CheckpointPhase::Plan => Some(CheckpointPhase::Implement),
+        CheckpointPhase::Implement => Some(CheckpointPhase::Review),
+        CheckpointPhase::Review => Some(CheckpointPhase::Close),
+        CheckpointPhase::Close => None,
+    }
+}
+
+/// (fase actual, fase sugerida) sobre la PRIMERA sesión OPEN — convención
+/// igual a `session.checkpoint_now` (`abiertas[0]`). «Última fase» = el
+/// último checkpoint con `phase` en orden de apenda (la sesión puede mezclar
+/// checkpoints sin fase, p. ej. ide-hook). `None` si no hay sesión, no hay
+/// fase, o la última fase es `close` (⇒ nada que sugerir ⇒ no se ofrece).
+fn fase_sugerida(ctx: &ActionContext) -> Option<(CheckpointPhase, CheckpointPhase)> {
+    let r = ctx.sesiones_abiertas().into_iter().next()?;
+    let ultima = r.checkpoints.iter().rev().find_map(|c| c.phase)?;
+    Some((ultima, next_phase(ultima)?))
+}
+
+/// `session.suggest_next_phase` (Obra 08 stream A, G-A6a): sugiere la
+/// siguiente fase del modo COMPOSED leyendo el último checkpoint con fase.
+/// Report-only (auto_ok, instant, reversible con undo no-op — patrón de
+/// `session.close_stale`/`learn.topic`). NO bloqueante: solo un mensaje.
+pub fn session_suggest_next_phase(ctx: &ActionContext) -> Action {
+    let pre_ctx = ctx.clone();
+    let run_ctx = ctx.clone();
+    report_action(
+        "session.suggest_next_phase",
+        "Sugerir la siguiente fase COMPOSED de la sesión activa",
+        Categoria::Maintenance,
+        "muestra la fase siguiente sugerida según el último checkpoint con fase de la sesión OPEN",
+        vec![Check::new("sesión activa con última fase", move || {
+            fase_sugerida(&pre_ctx).is_some()
+        })],
+        move |_dry_run| {
+            // Report-only: ignora dry_run como close_stale/learn.topic
+            // (no escribe nada en ninguno de los dos modos).
+            match fase_sugerida(&run_ctx) {
+                Some((actual, siguiente)) => ActionResult::new(
+                    true,
+                    format!(
+                        "Sesión en {} → siguiente fase sugerida: {}",
+                        actual.as_str(),
+                        siguiente.as_str()
+                    ),
+                ),
+                None => ActionResult::new(true, "sin fase COMPOSED sugerible"),
+            }
+        },
+    )
+}
 
 fn opened_age_days(record: &SessionRecord, ahora: &chrono::DateTime<chrono::Utc>) -> i64 {
     // Python: (ahora - r.opened_at).days if r.opened_at else 999.
@@ -498,4 +559,151 @@ fn rglob_count_ext(dir: &Path, ext: &str) -> usize {
         }
     }
     n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scheduler::Scheduler;
+    use crate::store::PreferencesStore;
+    use cortex_app::session::{Checkpoint, CheckpointSource, SessionStatus, SessionStorage};
+    use std::path::PathBuf;
+
+    struct Tmp(PathBuf);
+    impl Drop for Tmp {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).ok();
+        }
+    }
+
+    fn tmpdir(tag: &str) -> Tmp {
+        let d = std::env::temp_dir().join(format!(
+            "cortex-actions-cat-{tag}-{}-{}",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        Tmp(d)
+    }
+
+    fn cp(phase: Option<CheckpointPhase>) -> Checkpoint {
+        Checkpoint {
+            timestamp: "2026-08-28T01:00:00+00:00".to_string(),
+            source: CheckpointSource::UserSkill,
+            verified_claims: vec![],
+            unverified_claims: vec![],
+            artifacts_touched: vec![],
+            note: String::new(),
+            phase,
+        }
+    }
+
+    /// Fixture legacy (config.yaml en raíz — patrón de context.rs) con una
+    /// sesión OPEN con los checkpoints dados.
+    fn ctx_con_sesion(base: &Path, checkpoints: Vec<Checkpoint>) -> ActionContext {
+        std::fs::write(base.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let ctx = ActionContext::from_project_root(Some(base));
+        let storage = SessionStorage::new(ctx.dot_cortex().join("sessions"));
+        let r = SessionRecord {
+            session_id: "2026-08-28_fixture".to_string(),
+            opened_at: "2026-08-28T00:00:00+00:00".to_string(),
+            status: SessionStatus::Open,
+            checkpoints,
+            ..SessionRecord::default()
+        };
+        storage.save(&r).unwrap();
+        ctx
+    }
+
+    #[test]
+    fn next_phase_cadena_completa() {
+        assert_eq!(
+            next_phase(CheckpointPhase::Grill),
+            Some(CheckpointPhase::Spec)
+        );
+        assert_eq!(
+            next_phase(CheckpointPhase::Spec),
+            Some(CheckpointPhase::Plan)
+        );
+        assert_eq!(
+            next_phase(CheckpointPhase::Plan),
+            Some(CheckpointPhase::Implement)
+        );
+        assert_eq!(
+            next_phase(CheckpointPhase::Implement),
+            Some(CheckpointPhase::Review)
+        );
+        assert_eq!(
+            next_phase(CheckpointPhase::Review),
+            Some(CheckpointPhase::Close)
+        );
+        assert_eq!(next_phase(CheckpointPhase::Close), None);
+    }
+
+    #[test]
+    fn registry_contiene_suggest_next_phase_con_contrato() {
+        let g = tmpdir("reg");
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let reg = build_default_registry(&ctx);
+        let a = reg
+            .get("session.suggest_next_phase")
+            .expect("la acción debe existir en el registry");
+        assert_eq!(a.cost, Costo::Instant);
+        assert!(a.reversible);
+        assert!(a.auto_ok);
+        assert_eq!(a.category, Categoria::Maintenance);
+        // apenda al final: preserva el orden de inserción observable de las
+        // 10 originales (desempate estable del scheduler).
+        assert_eq!(reg.len(), 11);
+        assert_eq!(reg.all().last().unwrap().id, "session.suggest_next_phase");
+    }
+
+    #[test]
+    fn scheduler_propone_con_sesion_en_implement_y_mensaje_exacto() {
+        let g = tmpdir("impl");
+        let ctx = ctx_con_sesion(&g.0, vec![cp(None), cp(Some(CheckpointPhase::Implement))]);
+        let prefs = PreferencesStore::new(&g.0);
+        let reg = build_default_registry(&ctx);
+        let props = Scheduler::new(&prefs).propose(&reg, false);
+        assert!(props
+            .iter()
+            .any(|p| p.action_id == "session.suggest_next_phase"));
+        // Effect con el mensaje exacto del brief (spec 13 §7.2).
+        let res = (reg.get("session.suggest_next_phase").unwrap().run)(false);
+        assert_eq!(
+            res.message,
+            "Sesión en implement → siguiente fase sugerida: review"
+        );
+        assert!(res.ok);
+    }
+
+    #[test]
+    fn no_propone_sin_fase_o_con_ultima_fase_close() {
+        // checkpoints legados (sin phase) ⇒ no se ofrece: la garantía de que
+        // el fixture del oráculo P6 sigue sin proponer la acción nativa.
+        let g = tmpdir("nofase");
+        let ctx = ctx_con_sesion(&g.0, vec![cp(None), cp(None)]);
+        let prefs = PreferencesStore::new(&g.0);
+        let reg = build_default_registry(&ctx);
+        let props = Scheduler::new(&prefs).propose(&reg, false);
+        assert!(!props
+            .iter()
+            .any(|p| p.action_id == "session.suggest_next_phase"));
+
+        // última fase close ⇒ nada que sugerir ⇒ no se ofrece.
+        let g2 = tmpdir("close");
+        let ctx2 = ctx_con_sesion(
+            &g2.0,
+            vec![
+                cp(Some(CheckpointPhase::Implement)),
+                cp(Some(CheckpointPhase::Close)),
+            ],
+        );
+        let prefs2 = PreferencesStore::new(&g2.0);
+        let reg2 = build_default_registry(&ctx2);
+        let props2 = Scheduler::new(&prefs2).propose(&reg2, false);
+        assert!(!props2
+            .iter()
+            .any(|p| p.action_id == "session.suggest_next_phase"));
+    }
 }

@@ -73,6 +73,9 @@ impl SessionFixture {
             files_verified_by_git: vec![],
             files_declared_only: vec![],
             checkpoint_notes: vec!["hardcoded the TTL for now".into()],
+            phase_line: None,
+            evidence_by_phase: vec![],
+            close_phase_warning: None,
         }
     }
 }

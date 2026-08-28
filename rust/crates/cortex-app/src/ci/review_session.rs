@@ -145,6 +145,7 @@ pub fn report_ci_checkpoint(
         unverified,
         artifacts,
         &payload_note,
+        None, // ci-bot no emite fase (modo COMPOSED); ruling R7
     )
 }
 
@@ -172,6 +173,7 @@ pub fn close_review_session(
             vec![],
             vec![],
             &format!("close reason: {reason}"),
+            None,
         )?;
     }
     service.close(session_id, status, status, None, vec![])
