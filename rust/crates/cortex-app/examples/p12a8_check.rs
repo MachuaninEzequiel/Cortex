@@ -75,6 +75,7 @@ impl SessionFixture {
             checkpoint_notes: vec!["hardcoded the TTL for now".into()],
             phase_line: None,
             evidence_by_phase: vec![],
+            close_phase_warning: None,
         }
     }
 }

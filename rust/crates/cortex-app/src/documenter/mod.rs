@@ -56,6 +56,9 @@ pub struct ReconstructionOutput {
     /// Evidencia por fase (vacío ⇒ sin fases; no serializado).
     #[serde(skip)]
     pub evidence_by_phase: Vec<(CheckpointPhase, Vec<String>)>,
+    /// Warning de fase close faltante (None ⇒ sin warning; no serializado).
+    #[serde(skip)]
+    pub close_phase_warning: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -169,17 +172,40 @@ pub fn scope_cross_check(
     (in_scope, out_of_scope, unimplemented)
 }
 
-/// CLOSED si todos los hooks pasan Y no hay unimplemented; si no HANDOFF.
+/// CLOSED si todos los hooks pasan Y no hay unimplemented Y el cierre de fase
+/// close está OK (no exigida o presente); si no HANDOFF.
 pub fn decide_status(
     verification_results: &[VerificationHookResult],
     unimplemented: &[PathBuf],
+    require_close_phase: bool,
+    has_close_phase: bool,
 ) -> SessionStatus {
     let required_passed = verification_results.iter().all(|r| r.passed);
-    if required_passed && unimplemented.is_empty() {
+    let close_ok = !require_close_phase || has_close_phase;
+    if required_passed && unimplemented.is_empty() && close_ok {
         SessionStatus::Closed
     } else {
         SessionStatus::Handoff
     }
+}
+
+/// Warning soft de fase close faltante (spec 13 §1.3): se registra cuando la
+/// sesión es COMPOSED sin phase=close, o cuando la spec la exige y falta.
+/// Bloquear (HANDOFF) es decisión de `decide_status`; acá solo el aviso.
+pub fn close_phase_warning(
+    has_close_phase: bool,
+    phase_present: bool,
+    require_close_phase: bool,
+) -> Option<String> {
+    if has_close_phase {
+        return None;
+    }
+    if !phase_present && !require_close_phase {
+        return None;
+    }
+    Some(format!(
+        "Session closed without a phase=close checkpoint (require_close_phase: {require_close_phase})"
+    ))
 }
 
 fn diff_action_to_handoff(action: &DiffAction) -> &'static str {
@@ -314,12 +340,25 @@ fn finish_output(
 
     let phase_line = phase_line(&checkpoints);
     let evidence_by_phase = evidence_by_phase(&checkpoints);
+    let has_close_phase = checkpoints
+        .iter()
+        .any(|c| c.phase == Some(CheckpointPhase::Close));
+    let close_phase_warning = close_phase_warning(
+        has_close_phase,
+        phase_line.is_some(),
+        spec.require_close_phase,
+    );
 
     let (in_scope, out_of_scope, unimplemented) =
         scope_cross_check(&files_touched, &spec.files_in_scope);
 
     let suggested_adrs = spec_loader::suggest_adrs(&checkpoints);
-    let suggested_status = decide_status(&verification_results, &unimplemented);
+    let suggested_status = decide_status(
+        &verification_results,
+        &unimplemented,
+        spec.require_close_phase,
+        has_close_phase,
+    );
     let handoff = build_handoff(
         spec,
         &diff_entries,
@@ -384,6 +423,7 @@ fn finish_output(
             .collect(),
         phase_line,
         evidence_by_phase,
+        close_phase_warning,
     }
 }
 
@@ -560,5 +600,59 @@ mod tests {
             vec![(CheckpointPhase::Implement, vec!["impl done".to_string()])]
         );
         assert_eq!(phase_line(&cps), Some("plan → implement".to_string()));
+    }
+
+    #[test]
+    fn decide_status_honors_require_close_phase() {
+        let no_hooks: Vec<VerificationHookResult> = vec![];
+        let not_implemented: Vec<PathBuf> = vec![];
+        // flag=true sin fase close ⇒ HANDOFF (bloquea Closed; spec 13 §1.3).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, true, false),
+            SessionStatus::Handoff
+        );
+        // flag=true con fase close ⇒ CLOSED (resto en verde).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, true, true),
+            SessionStatus::Closed
+        );
+        // flag=false sin fase close ⇒ CLOSED (soft; comportamiento actual).
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, false, false),
+            SessionStatus::Closed
+        );
+        // flag=false con fase close ⇒ CLOSED.
+        assert_eq!(
+            decide_status(&no_hooks, &not_implemented, false, true),
+            SessionStatus::Closed
+        );
+        // Hooks fallidos mandan aunque haya close + flag.
+        let failed = vec![VerificationHookResult {
+            name: "verif".into(),
+            command: "exit 1".into(),
+            passed: false,
+            exit_code: 1,
+            output: String::new(),
+            duration_ms: 10,
+            run_at: "2026-08-27T12:00:00Z".into(),
+        }];
+        assert_eq!(
+            decide_status(&failed, &not_implemented, true, true),
+            SessionStatus::Handoff
+        );
+    }
+
+    #[test]
+    fn close_phase_warning_soft_and_flag_driven() {
+        // Sesión legada sin fases y sin flag: sin warning (no es COMPOSED).
+        assert_eq!(close_phase_warning(false, false, false), None);
+        // COMPOSED sin fase close: warning soft (con o sin flag).
+        assert!(close_phase_warning(false, true, false).is_some());
+        assert!(close_phase_warning(false, true, true).is_some());
+        // Flag exigido sin close aunque no haya otras fases: warning (HANDOFF explicado).
+        assert!(close_phase_warning(false, false, true).is_some());
+        // Con fase close: nunca warning.
+        assert_eq!(close_phase_warning(true, false, true), None);
+        assert_eq!(close_phase_warning(true, true, false), None);
     }
 }

@@ -207,12 +207,15 @@ pub fn build_create_args(reconstruction: &ReconstructionOutput) -> (CreateArgs, 
         ));
     }
 
-    let blockers: Vec<String> = reconstruction
+    let mut blockers: Vec<String> = reconstruction
         .verification_results
         .iter()
         .filter(|r| !r.passed)
         .map(|r| format!("{} failed (exit {})", r.name, r.exit_code))
         .collect();
+    if let Some(w) = &reconstruction.close_phase_warning {
+        blockers.push(w.clone());
+    }
 
     let mut tags: Vec<String> = vec!["session".into()];
     tags.push(
@@ -316,6 +319,7 @@ mod tests {
             files_declared_only: vec![],
             checkpoint_notes: vec![],
             phase_line: Some("spec → implement → review".into()),
+            close_phase_warning: None,
             evidence_by_phase: vec![
                 (CheckpointPhase::Spec, vec!["validé la spec".into()]),
                 (
@@ -348,5 +352,31 @@ mod tests {
         let (args, _warnings) = build_create_args(&r);
         assert_eq!(args.phase_line, None);
         assert!(args.evidence_by_phase.is_empty());
+    }
+
+    #[test]
+    fn close_phase_warning_becomes_blocker_in_note() {
+        let mut r = reconstruction();
+        r.phase_line = Some("spec → review".into());
+        r.close_phase_warning = Some(
+            "Session closed without a phase=close checkpoint (require_close_phase: true)".into(),
+        );
+        let (args, _warnings) = build_create_args(&r);
+        assert!(
+            args.blockers
+                .iter()
+                .any(|b| b.contains("phase=close checkpoint")),
+            "blockers: {:?}",
+            args.blockers
+        );
+    }
+
+    #[test]
+    fn no_close_phase_warning_when_close_present() {
+        let mut r = reconstruction();
+        r.phase_line = Some("spec → close".into());
+        r.close_phase_warning = None;
+        let (args, _warnings) = build_create_args(&r);
+        assert!(!args.blockers.iter().any(|b| b.contains("phase=close")));
     }
 }

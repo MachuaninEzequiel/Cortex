@@ -14,6 +14,9 @@ pub struct LoadedSpec {
     pub constraints: Vec<String>,
     pub acceptance_criteria: Vec<String>,
     pub verification_hooks: Vec<VerificationHook>,
+    /// COMPOSED (spec 13 §1.3): exige checkpoint phase=close para Closed.
+    /// Leniente: ausente/roto ⇒ false, nunca falla.
+    pub require_close_phase: bool,
 }
 
 /// Frontmatter leniente: sin bloque o YAML roto ⇒ vacío (nunca falla).
@@ -138,6 +141,13 @@ fn str_list(v: Option<&serde_yaml::Value>) -> Vec<String> {
     }
 }
 
+/// `require_close_phase` del frontmatter (bool; ausente/roto ⇒ false).
+fn require_close_phase(fm: &serde_yaml::Mapping) -> bool {
+    fm.get(serde_yaml::Value::String("require_close_phase".into()))
+        .and_then(serde_yaml::Value::as_bool)
+        .unwrap_or(false)
+}
+
 /// Puerto de `load_spec` — missing/malformed ⇒ spec vacía usable.
 pub fn load_spec(path: &Path) -> LoadedSpec {
     let empty_path = path.to_path_buf();
@@ -150,6 +160,7 @@ pub fn load_spec(path: &Path) -> LoadedSpec {
             constraints: vec![],
             acceptance_criteria: vec![],
             verification_hooks: vec![],
+            require_close_phase: false,
         };
     };
     let fm = frontmatter_lenient(&text);
@@ -190,6 +201,7 @@ pub fn load_spec(path: &Path) -> LoadedSpec {
                 .unwrap_or_default()
                 .as_slice(),
         ),
+        require_close_phase: require_close_phase(&fm),
     }
 }
 
@@ -262,4 +274,47 @@ pub fn suggest_adrs(checkpoints: &[super::super::session::Checkpoint]) -> Vec<Ad
         });
     }
     suggestions
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn require_close_phase_parses_bool_from_frontmatter() {
+        let m = frontmatter_lenient("---\nrequire_close_phase: true\n---\nbody\n");
+        assert!(require_close_phase(&m));
+        let m = frontmatter_lenient("---\nrequire_close_phase: false\n---\nbody\n");
+        assert!(!require_close_phase(&m));
+    }
+
+    #[test]
+    fn require_close_phase_missing_or_broken_defaults_false() {
+        let m = frontmatter_lenient("---\ngoal: x\n---\nbody\n");
+        assert!(!require_close_phase(&m));
+        let broken = frontmatter_lenient("---\n: : not yaml\n---\nbody\n");
+        assert!(!require_close_phase(&broken));
+        assert!(frontmatter_lenient("no frontmatter at all\n").is_empty());
+    }
+
+    #[test]
+    fn load_spec_carries_require_close_phase() {
+        let dir = std::env::temp_dir().join(format!("cortex-a6-{}-t", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let with_flag = dir.join("spec-flag.md");
+        std::fs::write(
+            &with_flag,
+            "---\ntitle: T\nrequire_close_phase: true\n---\n## Goal\nG\n",
+        )
+        .unwrap();
+        assert!(load_spec(&with_flag).require_close_phase);
+
+        let legacy = dir.join("spec-legacy.md");
+        std::fs::write(&legacy, "---\ntitle: T\n---\n## Goal\nG\n").unwrap();
+        assert!(!load_spec(&legacy).require_close_phase);
+
+        let _ = std::fs::remove_file(&with_flag);
+        let _ = std::fs::remove_file(&legacy);
+        let _ = std::fs::remove_dir(&dir);
+    }
 }
