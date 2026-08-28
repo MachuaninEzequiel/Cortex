@@ -12,11 +12,13 @@
 //! fingida).
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use cortex_actions::catalog::build_default_registry;
 use cortex_actions::context::ActionContext;
+use cortex_actions::models::Action;
+use cortex_actions::runner::Runner;
 use cortex_actions::scheduler::Scheduler;
 use cortex_actions::store::PreferencesStore;
 use cortex_app::session::service::SessionService;
@@ -82,6 +84,9 @@ pub trait Backend: Send + Sync {
     fn search(&self, query: &str, top_k: usize) -> Result<Vec<SearchHit>, String>;
     fn doctor(&self) -> Result<DoctorSummary, String>;
     fn stats(&self) -> Result<StatsSummary, String>;
+    /// Líneas del detalle de una sesión (checkpoints y tasks) para el panel
+    /// Sessions (B6).
+    fn session_detail(&self, session_id: &str) -> Result<Vec<String>, String>;
 
     // ---- mutaciones (siempre detrás de approval) ----
     fn close_session(&self, session_id: &str) -> Result<(), String>;
@@ -149,6 +154,46 @@ fn summary_of(r: &SessionRecord) -> SessionSummary {
         mode: mode_str(r.mode).to_string(),
         opened_at: r.opened_at.clone(),
     }
+}
+
+/// Vista de transporte `Arc<Action>` para ejecutar una acción del registry
+/// con el `Runner` (mismo patrón que el WIP de cortex-tui con `arc_for_run`:
+/// closures compartidos por `Arc`, precondiciones omitidas porque el
+/// scheduler ya las evaluó al proponer). Local al Companion para no tocar
+/// cortex-actions.
+fn action_for_run(a: &Action) -> Arc<Action> {
+    Arc::new(Action {
+        id: a.id.clone(),
+        title: a.title.clone(),
+        category: a.category,
+        effect: a.effect.clone(),
+        preconditions: Vec::new(),
+        reversible: a.reversible,
+        undo: a.undo.clone(),
+        cost: a.cost,
+        auto_ok: a.auto_ok,
+        run: a.run.clone(),
+    })
+}
+
+/// Recorta a `max` chars con elipsis (líneas del detalle).
+fn trunc(s: &str, max: usize) -> String {
+    let n = s.chars().count();
+    if n <= max {
+        s.to_string()
+    } else {
+        let cut: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{cut}…")
+    }
+}
+
+/// `source`/`status` serializados con el MISMO serde que el storage de
+/// sesiones (serde renames canónicos: "cortex-sync", "in-progress"…).
+fn serde_label<T: serde::Serialize>(v: &T) -> String {
+    serde_json::to_value(v)
+        .ok()
+        .and_then(|j| j.as_str().map(str::to_string))
+        .unwrap_or_else(|| "?".to_string())
 }
 
 impl InProcessBackend {
@@ -400,21 +445,78 @@ impl Backend for InProcessBackend {
         })
     }
 
-    // ---- mutaciones: llegan en B2 (run_guarded + aprobación) ----
+    /// Detalle de una sesión: estado/modo + checkpoints (fuente, nota, claims)
+    /// y tasks (id, estado, descripción) — líneas listas para el panel.
+    fn session_detail(&self, session_id: &str) -> Result<Vec<String>, String> {
+        let r = self.session.get(session_id)?;
+        let mut lines = vec![format!(
+            "status: {} · modo: {} · abierta: {}",
+            r.status.as_str(),
+            mode_str(r.mode),
+            r.opened_at
+        )];
+        lines.push(format!("checkpoints ({}):", r.checkpoints.len()));
+        for c in &r.checkpoints {
+            lines.push(format!(
+                "  · [{}] {}",
+                serde_label(&c.source),
+                if c.note.is_empty() {
+                    format!("{} claims verificadas", c.verified_claims.len())
+                } else {
+                    trunc(&c.note, 60)
+                }
+            ));
+        }
+        lines.push(format!("tasks ({}):", r.tasks.len()));
+        for t in &r.tasks {
+            lines.push(format!(
+                "  · {} [{}] {}",
+                t.id,
+                serde_label(&t.status),
+                trunc(&t.description, 40)
+            ));
+        }
+        Ok(lines)
+    }
 
-    fn close_session(&self, _session_id: &str) -> Result<(), String> {
-        Err("pendiente: close_session se implementa en B2/B3 detrás de la aprobación".to_string())
+    // ---- mutaciones: siempre detrás de la aprobación (B2/B6) ----
+
+    fn close_session(&self, session_id: &str) -> Result<(), String> {
+        // El cierre CANÓNICO es verificado (hooks + documenter: "done means
+        // proven"). El Companion no puede fabricar ese camino sin el
+        // documenter integrado ⇒ fallo explícito con el comando exacto
+        // (patrón P6/P9, nunca un cierre sin gobernanza).
+        Err(format!(
+            "el cierre verificado requiere al documenter — corré `cortex finish` (o `cortex session abandon`) para cerrar {session_id}"
+        ))
     }
 
     fn checkpoint_session(&self, _note: &str) -> Result<(), String> {
-        Err(
-            "pendiente: checkpoint_session se implementa en B2/B3 detrás de la aprobación"
-                .to_string(),
-        )
+        Err("checkpoint interactivo no integrado al Companion — usá `cortex session checkpoint --note '…'`".to_string())
     }
 
-    fn approve_action(&self, _action_id: &str) -> Result<(), String> {
-        Err("pendiente: approve_action se implementa en B2/B3 detrás de la aprobación".to_string())
+    /// Aprueba y ejecuta una acción del catálogo: MISMO runner nativo que
+    /// usa el repo (`dry_run=false`, `approved=true`, vía "companion") — el
+    /// runner además registra la ejecución en action_log.
+    fn approve_action(&self, action_id: &str) -> Result<(), String> {
+        let ctx = ActionContext::from_project_root(Some(&self.root));
+        if !ctx.config_existe() {
+            return Err(format!(
+                "Cortex no está configurado en {} — corré `cortex setup agent` primero.",
+                ctx.workspace_root.display()
+            ));
+        }
+        let registry = build_default_registry(&ctx);
+        let action = registry
+            .get(action_id)
+            .ok_or_else(|| format!("acción desconocida: {action_id}"))?;
+        let mut runner = Runner::new(&ctx.dot_cortex());
+        let res = runner.execute(&action_for_run(action), false, true, "companion");
+        if res.ok {
+            Ok(())
+        } else {
+            Err(res.message)
+        }
     }
 
     fn menu_run(&self, family: &str, args: &[String]) -> Result<String, String> {

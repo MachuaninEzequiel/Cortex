@@ -2,7 +2,9 @@
 //!
 //! Especificación: `docs/transformacion/14-HERDR-COMPANION.md`.
 //! Estado por task: B1 engine (Backend + paridad), B2 aprobaciones
-//! (run_guarded), B3 app ELM-lite mouse-first, B4 widgets + Home.
+//! (run_guarded), B3 app ELM-lite mouse-first, B4 widgets + Home,
+//! B5 Menu anti-olvido, B6 Sessions+Actions con modal integrado a la
+//! máquina de estados (`app::pending` + `effects::apply`).
 
 #![forbid(unsafe_code)]
 
@@ -10,6 +12,7 @@ use std::path::PathBuf;
 
 pub mod app;
 pub mod approval;
+pub mod effects;
 pub mod engine;
 pub mod menu;
 pub mod screens;

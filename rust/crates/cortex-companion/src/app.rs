@@ -8,7 +8,9 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
-use crate::menu::MenuOutput;
+use crate::approval::ApprovalRequest;
+use crate::engine::{ActionProposal, SessionSummary};
+use crate::menu::{self, MenuOutput};
 use crate::{Screen, UiRequest};
 
 /// Rects canónicas del Home (header). B3 definió la de Sesiones y los tests
@@ -30,6 +32,34 @@ pub const MENU_LIST_HEIGHT: u16 = 16;
 pub const MENU_OUTPUT_TOP: u16 = 20;
 pub const MENU_OUTPUT_HEIGHT: u16 = 3;
 pub const MENU_BACK_BTN: Rect = Rect::new(58, 1, 20, 3);
+
+/// Modal de aprobación (B6): geométrica COMPARTIDA por `hit_test` (trampa de
+/// foco) y `screens::render_modal` — el modal vive en la máquina de estados,
+/// NO en un loop bloqueante (integración pedida en el review de B5).
+pub const MODAL_RECT: Rect = Rect::new(10, 8, 60, 7);
+pub const MODAL_APROBAR_RECT: Rect = Rect::new(22, 12, 14, 2);
+pub const MODAL_DENEGAR_RECT: Rect = Rect::new(44, 12, 14, 2);
+
+/// Pantalla Sessions: lista de filas (click ⇒ selección), botón [Cerrar
+/// sesión] (guarded) y paneles de detalle/salida.
+pub const SESSIONS_LIST_LEFT: u16 = 2;
+pub const SESSIONS_LIST_TOP: u16 = 4;
+pub const SESSIONS_LIST_WIDTH: u16 = 76;
+pub const SESSIONS_LIST_HEIGHT: u16 = 10;
+pub const SESSIONS_CLOSE_BTN: Rect = Rect::new(58, 1, 20, 2);
+pub const SESSIONS_DETAIL: Rect = Rect::new(2, 15, 76, 7);
+pub const SESSIONS_OUTCOME: Rect = Rect::new(2, 22, 76, 2);
+
+/// Pantalla Actions: filas de propuestas con columna [Aprobar] por fila y
+/// botón de lote auto-ok arriba. La columna es hit-test por fila visible.
+pub const ACTIONS_LIST_LEFT: u16 = 2;
+pub const ACTIONS_LIST_TOP: u16 = 5;
+pub const ACTIONS_LIST_WIDTH: u16 = 56;
+pub const ACTIONS_LIST_HEIGHT: u16 = 12;
+pub const ACTIONS_APPROVE_X: u16 = 58;
+pub const ACTIONS_APPROVE_W: u16 = 14;
+pub const ACTIONS_BATCH_BTN: Rect = Rect::new(2, 2, 26, 2);
+pub const ACTIONS_OUTCOME: Rect = Rect::new(2, 18, 76, 6);
 
 /// Acciones semánticas de la app: el input ya viene "traducido".
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,14 +84,29 @@ pub enum AppAction {
     Typed(char),
     /// Tecla especial no tipográfica (Enter, Tab, F-keys…; el foco las usa en B4+).
     Key(KeyCode),
-    /// Aprobar/Denegar una mutación propuesta (B2/B6: efectos guarded).
+    /// Aprobar/Denegar la mutación pendiente (B6: el modal de la máquina de
+    /// estados; `audit_key` debe coincidir con el `pending.req.audit_key`).
     Approve {
         audit_key: String,
     },
     Deny {
         audit_key: String,
     },
-    /// Ejecutar un comando del Menu (B5: lecturas directas o guarded).
+    /// Seleccionar una fila de la lista de sesiones (click ⇒ detalle).
+    SelectSession {
+        index: usize,
+    },
+    /// [Cerrar sesión] en la sesión seleccionada ⇒ modal guarded.
+    CloseSession {
+        session_id: String,
+    },
+    /// [Aprobar] de una propuesta de acción ⇒ modal guarded.
+    ApproveProposal {
+        id: String,
+    },
+    /// [Aprobar lote auto-ok]: solo propuestas reversibles de costo instant.
+    ApproveBatch,
+    /// Ejecutar un comando del Menu (B5: lecturas directas; mutantes ⇒ modal).
     RunCommand {
         family: &'static str,
         args: Vec<String>,
@@ -76,11 +121,79 @@ pub enum AppAction {
 /// es puro: no toca terminal, procesos ni dominio.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effect {
-    /// Ejecutar un comando del catálogo (B5 lo enruta a lectura o guarded).
+    /// Ejecutar un comando de lectura del catálogo (B5; guarded ya NO llega
+    /// acá: abre el modal como estado, spec §5).
     RunCommand {
         family: &'static str,
         args: Vec<String>,
     },
+    /// Resolver la aprobación pendiente: el runtime (`effects::apply`)
+    /// ejecuta `run_guarded` con la decisión guardada en `pending`.
+    ResolveApproval,
+}
+
+/// Qué se va a ejecutar si el usuario aprueba el modal (datos puros; la
+/// ejecución la hace el runtime en `effects::apply`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApprovalTarget {
+    CloseSession {
+        session_id: String,
+    },
+    ApproveAction {
+        id: String,
+    },
+    ApproveBatch {
+        ids: Vec<String>,
+    },
+    RunMenu {
+        family: &'static str,
+        args: Vec<String>,
+    },
+}
+
+/// Aprobación pendiente (superficie de la máquina de estados): pedido, qué
+/// ejecuta si se aprueba, y la decisión del usuario una vez que clickea.
+#[derive(Debug, Clone)]
+pub struct PendingApproval {
+    pub req: ApprovalRequest,
+    pub target: ApprovalTarget,
+    pub decision: Option<bool>,
+}
+
+/// (mensaje, es_error) — línea de resultado de una mutación resuelta.
+pub type OutcomeLine = (String, bool);
+
+/// Datos de la pantalla Sessions (los refresca el runtime antes de cada
+/// draw; los tests los setean directo).
+#[derive(Debug, Clone, Default)]
+pub struct SessionsData {
+    pub sessions: Vec<SessionSummary>,
+    pub selected: Option<usize>,
+    /// (id de la sesión, líneas del detalle con checkpoints/tasks).
+    pub detail: Option<(String, Vec<String>)>,
+    pub outcome: Option<OutcomeLine>,
+    pub error: Option<String>,
+}
+
+/// Datos de la pantalla Actions.
+#[derive(Debug, Clone, Default)]
+pub struct ActionsData {
+    pub proposals: Vec<ActionProposal>,
+    pub outcome: Option<OutcomeLine>,
+    pub error: Option<String>,
+}
+
+/// IDs de propuestas aptas para el lote auto-ok: reversibles Y costo
+/// instantáneo (spec 14: las que tardan o mutan irreversible piden
+/// confirmación individual, siempre).
+pub fn batchable_ids(state: &AppState) -> Vec<String> {
+    state
+        .actions
+        .proposals
+        .iter()
+        .filter(|p| p.reversible && p.cost == "instant")
+        .map(|p| p.id.clone())
+        .collect()
 }
 
 /// Áreas hit-testables por pantalla. B3 sólo define la del Home; B4+ suma el
@@ -109,6 +222,12 @@ pub struct AppState {
     pub mouse: Option<(u16, u16)>,
     /// Salida del último comando del Menu (para el panel de salida).
     pub menu_output: Option<MenuOutput>,
+    /// Aprobación pendiente (modal de la máquina de estados, B6). Mientras
+    /// está `Some`, la trampa de foco captura todo el input.
+    pub pending: Option<PendingApproval>,
+    /// Datos de Sessions/Actions (refrescados por el runtime antes de draw).
+    pub sessions: SessionsData,
+    pub actions: ActionsData,
 }
 
 impl AppState {
@@ -127,12 +246,47 @@ impl AppState {
             scroll_offset: 0,
             mouse: None,
             menu_output: None,
+            pending: None,
+            sessions: SessionsData::default(),
+            actions: ActionsData::default(),
         }
     }
 }
 
 /// Reducer puro: transforma estado + acción ⇒ (posible efecto). No hace I/O.
 pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
+    // B6 — trampa de foco del modal (spec 14 §5): mientras hay aprobación
+    // pendiente, SOLO Aprobar/Denegar deciden; Esc/Back/Quit equivalen a
+    // denegar (semántica del modal de B5); el resto del input se ignora.
+    if state.pending.is_some() {
+        let answer = match &action {
+            AppAction::Approve { audit_key }
+                if state
+                    .pending
+                    .as_ref()
+                    .is_some_and(|p| &p.req.audit_key == audit_key) =>
+            {
+                Some(true)
+            }
+            AppAction::Deny { audit_key }
+                if state
+                    .pending
+                    .as_ref()
+                    .is_some_and(|p| &p.req.audit_key == audit_key) =>
+            {
+                Some(false)
+            }
+            AppAction::Back | AppAction::Quit => Some(false),
+            _ => None,
+        };
+        if let Some(ans) = answer {
+            if let Some(p) = state.pending.as_mut() {
+                p.decision = Some(ans);
+            }
+            return Some(Effect::ResolveApproval);
+        }
+        return None;
+    }
     match action {
         AppAction::Navigate(s) => {
             state.stack.push(state.screen);
@@ -169,15 +323,104 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         AppAction::Typed(_) => None,
         // Enter y teclas especiales activan foco en B4+ (data-driven); v1 no-op.
         AppAction::Key(_) => None,
-        // Aprobaciones: el efecto guarded llega con B6 (B2 tiene run_guarded).
+        // Sin modal abierto, Aprobar/Denegar sueltos no significan nada.
         AppAction::Approve { .. } | AppAction::Deny { .. } => None,
-        AppAction::RunCommand { family, args } => Some(Effect::RunCommand { family, args }),
+        // ---- B6: Sessions ----
+        AppAction::SelectSession { index } => {
+            if index < state.sessions.sessions.len() {
+                state.sessions.selected = Some(index);
+            }
+            None
+        }
+        AppAction::CloseSession { session_id } => {
+            state.pending = Some(PendingApproval {
+                req: ApprovalRequest {
+                    title: format!("Cerrar sesión {session_id}"),
+                    // El modal muestra SIEMPRE el efecto exacto (spec §5).
+                    effect: format!("cortex session finish {session_id}"),
+                    audit_key: format!("session.close.{session_id}"),
+                },
+                target: ApprovalTarget::CloseSession { session_id },
+                decision: None,
+            });
+            None
+        }
+        // ---- B6: Actions ----
+        AppAction::ApproveProposal { id } => {
+            // Sin propuesta (fila fantasma): no-op.
+            let p = state.actions.proposals.iter().find(|p| p.id == id)?;
+            let (title, effect) = (p.title.clone(), p.effect.clone());
+            state.pending = Some(PendingApproval {
+                req: ApprovalRequest {
+                    title: format!("Aprobar «{title}»"),
+                    effect,
+                    audit_key: id.clone(),
+                },
+                target: ApprovalTarget::ApproveAction { id },
+                decision: None,
+            });
+            None
+        }
+        AppAction::ApproveBatch => {
+            let ids = batchable_ids(state);
+            if ids.is_empty() {
+                return None;
+            }
+            state.pending = Some(PendingApproval {
+                req: ApprovalRequest {
+                    title: format!("Aprobar lote auto-ok ({})", ids.len()),
+                    effect: format!("acciones reversibles de costo instant: {}", ids.join(", ")),
+                    audit_key: "lote.auto-ok".to_string(),
+                },
+                target: ApprovalTarget::ApproveBatch { ids },
+                decision: None,
+            });
+            None
+        }
+        AppAction::RunCommand { family, args } => {
+            // B6: las mutantes del menú pasan por el modal de la máquina de
+            // estados (ya no hay loop bloqueante en el runtime).
+            if menu::command_is_guarded(family, &args) {
+                let title = menu::entry_for(family, &args)
+                    .map(|e| e.title.to_string())
+                    .unwrap_or_else(|| family.to_string());
+                state.pending = Some(PendingApproval {
+                    req: ApprovalRequest {
+                        title: format!("Ejecutar «{title}»"),
+                        effect: format!("cortex {family} {}", args.join(" "))
+                            .trim_end()
+                            .to_string(),
+                        audit_key: format!("menu.{family}"),
+                    },
+                    target: ApprovalTarget::RunMenu { family, args },
+                    decision: None,
+                });
+                None
+            } else {
+                Some(Effect::RunCommand { family, args })
+            }
+        }
     }
 }
 
 /// Hit-test puro: encuentra la acción que produce un click en (x, y) sobre la
 /// pantalla actual. Devuelve `None` si el punto no toca ninguna área.
 pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
+    // B6 — con modal abierto, SOLO sus botones responden (trampa de foco).
+    if let Some(p) = state.pending.as_ref() {
+        let pos = Position::new(x, y);
+        if MODAL_APROBAR_RECT.contains(pos) {
+            return Some(AppAction::Approve {
+                audit_key: p.req.audit_key.clone(),
+            });
+        }
+        if MODAL_DENEGAR_RECT.contains(pos) {
+            return Some(AppAction::Deny {
+                audit_key: p.req.audit_key.clone(),
+            });
+        }
+        return None;
+    }
     match state.screen {
         Screen::Home => {
             let p = Position::new(x, y);
@@ -215,6 +458,44 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
                         family: e.family,
                         args,
                     });
+                }
+            }
+            None
+        }
+        Screen::Sessions => {
+            let pos = Position::new(x, y);
+            if SESSIONS_CLOSE_BTN.contains(pos) {
+                // Deshabilitado sin selección (misma regla que el render).
+                let i = state.sessions.selected?;
+                let s = state.sessions.sessions.get(i)?;
+                return Some(AppAction::CloseSession {
+                    session_id: s.id.clone(),
+                });
+            }
+            if (SESSIONS_LIST_LEFT..SESSIONS_LIST_LEFT + SESSIONS_LIST_WIDTH).contains(&x)
+                && (SESSIONS_LIST_TOP..SESSIONS_LIST_TOP + SESSIONS_LIST_HEIGHT).contains(&y)
+            {
+                let idx = usize::from(y - SESSIONS_LIST_TOP) + usize::from(state.scroll_offset);
+                if idx < state.sessions.sessions.len() {
+                    return Some(AppAction::SelectSession { index: idx });
+                }
+            }
+            None
+        }
+        Screen::Actions => {
+            let pos = Position::new(x, y);
+            if ACTIONS_BATCH_BTN.contains(pos) {
+                if batchable_ids(state).is_empty() {
+                    return None; // botón deshabilitado
+                }
+                return Some(AppAction::ApproveBatch);
+            }
+            if (ACTIONS_APPROVE_X..ACTIONS_APPROVE_X + ACTIONS_APPROVE_W).contains(&x)
+                && (ACTIONS_LIST_TOP..ACTIONS_LIST_TOP + ACTIONS_LIST_HEIGHT).contains(&y)
+            {
+                let idx = usize::from(y - ACTIONS_LIST_TOP) + usize::from(state.scroll_offset);
+                if let Some(p) = state.actions.proposals.get(idx) {
+                    return Some(AppAction::ApproveProposal { id: p.id.clone() });
                 }
             }
             None
