@@ -18,7 +18,7 @@ El ticket es la unidad de contexto descartable: lo que cierra con una ventana fr
    - `Verification` — el paso que lo prueba (comando o criterio de la spec). Sin verificacion, no es ticket.
    - `Done when` — condicion binaria mirando el artefacto.
 3. Presupuesto de contexto: si para cerrar el slice hace falta recordar cosas que ya no estan en pantalla, el slice es muy grande — partirlo.
-4. Persistir los tickets en `.scratch/<feature>/issues/NN-<slug>.md`, numerados, con sus edges.
+4. Persistir los tickets en `.scratch/<feature>/issues/NN-<slug>.md`, numerados, con sus edges. Si la spec declara `files_in_scope`, inclui esa ruta en el scope — si no, el gate de scope marcara los tickets como drift (out_of_scope).
 5. Ordenar: el primer ticket debe ser un tracer bullet que atraviese todas las capas — enderezar el camino antes de ensancharlo.
 6. Chequeo final antes de checkpoint: cada ticket se puede cerrar sin abrir el contexto de los demas? Si no, el corte esta mal hecho.
 

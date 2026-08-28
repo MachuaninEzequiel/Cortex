@@ -67,6 +67,6 @@ El cierre sigue siendo el de Cortex: `cortex finish-session` (o `/cortex-documen
 ## Verificacion rapida
 
 ```bash
-cortex session current --json     # mode: "composed" si hay checkpoints con phase
-cortex session list --json        # tabla con el modo de cada sesion
+cortex session list --json        # mode: "composed" si hay checkpoints con phase
+cortex session show <id> --json   # detalle: modo + checkpoints con fase
 ```
