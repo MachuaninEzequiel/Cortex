@@ -14,7 +14,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::git;
-use crate::session::{Checkpoint, SessionRecord, SessionStatus, VerificationHookResult};
+use crate::session::{
+    Checkpoint, CheckpointPhase, SessionRecord, SessionStatus, VerificationHookResult,
+};
 use diff_parser::{DiffAction, DiffEntry};
 use handoff::AgentHandoff;
 use spec_loader::{AdrSuggestion, LoadedSpec};
@@ -48,6 +50,12 @@ pub struct ReconstructionOutput {
     /// Notas no-vacías de los checkpoints (para key_decisions del persister).
     #[serde(skip)]
     pub checkpoint_notes: Vec<String>,
+    /// Línea de fases COMPOSED (None ⇒ sesión sin fases; no serializado).
+    #[serde(skip)]
+    pub phase_line: Option<String>,
+    /// Evidencia por fase (vacío ⇒ sin fases; no serializado).
+    #[serde(skip)]
+    pub evidence_by_phase: Vec<(CheckpointPhase, Vec<String>)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -60,6 +68,60 @@ pub struct DiffEntrySer {
 fn is_cortex_internal_path(p: &Path) -> bool {
     let posix = p.to_string_lossy().replace('\\', "/");
     CORTEX_INTERNAL_PATHS.contains(&posix.as_str())
+}
+
+/// Línea de fases COMPOSED: `"grill → spec → plan → implement → review"`;
+/// `None` si ningún checkpoint tiene `phase`.
+///
+/// Orden = orden de aparición en los checkpoints; duplicados colapsados
+/// preservando la primera aparición (la línea refleja el flujo que el dev
+/// compuso, no el conteo de checkpoints por fase).
+pub fn phase_line(checkpoints: &[Checkpoint]) -> Option<String> {
+    let mut seen: Vec<CheckpointPhase> = Vec::new();
+    for cp in checkpoints {
+        if let Some(p) = cp.phase {
+            if !seen.contains(&p) {
+                seen.push(p);
+            }
+        }
+    }
+    if seen.is_empty() {
+        return None;
+    }
+    Some(
+        seen.iter()
+            .map(|p| p.as_str())
+            .collect::<Vec<_>>()
+            .join(" → "),
+    )
+}
+
+/// Claims verificadas agrupadas por fase, en orden de aparición de las
+/// fases; SOLO fases con al menos una claim (evidencia = claims, no fases).
+/// Checkpoints sin `phase` se ignoran (emisores legados).
+pub fn evidence_by_phase(checkpoints: &[Checkpoint]) -> Vec<(CheckpointPhase, Vec<String>)> {
+    let mut order: Vec<CheckpointPhase> = Vec::new();
+    let mut claims: Vec<Vec<String>> = Vec::new();
+    for cp in checkpoints {
+        let p = match cp.phase {
+            Some(p) => p,
+            None => continue,
+        };
+        let idx = match order.iter().position(|&x| x == p) {
+            Some(i) => i,
+            None => {
+                order.push(p);
+                claims.push(Vec::new());
+                order.len() - 1
+            }
+        };
+        claims[idx].extend(cp.verified_claims.iter().cloned());
+    }
+    order
+        .into_iter()
+        .zip(claims)
+        .filter(|(_, c)| !c.is_empty())
+        .collect()
 }
 
 fn files_touched_from_checkpoints(checkpoints: &[Checkpoint]) -> Vec<PathBuf> {
@@ -250,6 +312,9 @@ fn finish_output(
     let files_declared_only = filter_internal(files_declared_only);
     let files_touched = filter_internal(files_touched);
 
+    let phase_line = phase_line(&checkpoints);
+    let evidence_by_phase = evidence_by_phase(&checkpoints);
+
     let (in_scope, out_of_scope, unimplemented) =
         scope_cross_check(&files_touched, &spec.files_in_scope);
 
@@ -317,6 +382,8 @@ fn finish_output(
             .filter(|c| !c.note.is_empty())
             .map(|c| c.note.clone())
             .collect(),
+        phase_line,
+        evidence_by_phase,
     }
 }
 
@@ -405,4 +472,93 @@ pub fn reconstruct_git(
         files_touched,
         checkpoints,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::session::CheckpointSource;
+
+    fn cp(phase: Option<CheckpointPhase>, claims: &[&str]) -> Checkpoint {
+        Checkpoint {
+            timestamp: "2026-08-27T12:00:00Z".into(),
+            source: CheckpointSource::UserSkill,
+            verified_claims: claims.iter().map(|s| s.to_string()).collect(),
+            unverified_claims: vec![],
+            artifacts_touched: vec![],
+            note: String::new(),
+            phase,
+        }
+    }
+
+    #[test]
+    fn phase_line_joins_in_order() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Spec), &["a"]),
+            cp(Some(CheckpointPhase::Implement), &["b"]),
+            cp(Some(CheckpointPhase::Review), &["c"]),
+        ];
+        assert_eq!(
+            phase_line(&cps),
+            Some("spec → implement → review".to_string())
+        );
+        // Sin fases ⇒ None (emisores legados).
+        let legacy = vec![cp(None, &["x"]), cp(None, &["y"])];
+        assert_eq!(phase_line(&legacy), None);
+        // Vacío ⇒ None.
+        assert_eq!(phase_line(&[]), None);
+    }
+
+    #[test]
+    fn phase_line_collapses_duplicates_preserving_first_appearance() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Review), &["r1"]),
+            cp(Some(CheckpointPhase::Spec), &["s1"]),
+            cp(Some(CheckpointPhase::Review), &["r2"]),
+        ];
+        assert_eq!(phase_line(&cps), Some("review → spec".to_string()));
+    }
+
+    #[test]
+    fn evidence_grouped_by_phase_in_order() {
+        let cps = vec![
+            cp(Some(CheckpointPhase::Spec), &["a", "zz"]),
+            cp(None, &["ignored claim"]),
+            cp(Some(CheckpointPhase::Review), &["b", "c"]),
+            cp(Some(CheckpointPhase::Spec), &["w"]),
+        ];
+        assert_eq!(
+            evidence_by_phase(&cps),
+            vec![
+                (
+                    CheckpointPhase::Spec,
+                    vec!["a".to_string(), "zz".to_string(), "w".to_string()]
+                ),
+                (
+                    CheckpointPhase::Review,
+                    vec!["b".to_string(), "c".to_string()]
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn evidence_empty_without_phases() {
+        assert!(evidence_by_phase(&[cp(None, &["x"])]).is_empty());
+        assert!(evidence_by_phase(&[]).is_empty());
+    }
+
+    #[test]
+    fn evidence_omits_phases_without_claims() {
+        // Fase presente en la línea pero sin claims ⇒ no aparece como evidencia.
+        let cps = vec![
+            cp(Some(CheckpointPhase::Plan), &[]),
+            cp(Some(CheckpointPhase::Implement), &["impl done"]),
+        ];
+        assert_eq!(
+            evidence_by_phase(&cps),
+            vec![(CheckpointPhase::Implement, vec!["impl done".to_string()])]
+        );
+        assert_eq!(phase_line(&cps), Some("plan → implement".to_string()));
+    }
 }

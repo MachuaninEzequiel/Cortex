@@ -169,6 +169,14 @@ impl NoteRequest {
                         .unwrap_or(Value::Null),
                 );
                 put!("task_type", Value::String(self.s("task_type")));
+                put!("phase_line", Value::String(self.s("phase_line")));
+                put!(
+                    "evidence_by_phase",
+                    self.fields
+                        .get("evidence_by_phase")
+                        .cloned()
+                        .unwrap_or(Value::Array(vec![]))
+                );
                 put!(
                     "tasks",
                     self.fields

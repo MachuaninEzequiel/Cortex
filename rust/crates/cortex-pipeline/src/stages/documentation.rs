@@ -461,5 +461,11 @@ fn note_create_from_args(args: CreateArgs) -> Result<NoteCreate, String> {
         tasks_done: args.tasks_done as i64,
         tasks_skipped: args.tasks_skipped as i64,
         gitless: args.gitless,
+        phase_line: args.phase_line,
+        evidence_by_phase: args
+            .evidence_by_phase
+            .into_iter()
+            .map(|(p, v)| (p.as_str().to_string(), v.join(", ")))
+            .collect(),
     })
 }
