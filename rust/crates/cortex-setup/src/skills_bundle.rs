@@ -174,7 +174,7 @@ evidencia.
 - Model-invoked (el modelo las alcanza por descripcion): `implement`, `tdd`, \
 `diagnose`.
 - Cadena de fases: grill -> spec -> plan -> implement -> review -> close \
-(cierre: `cortex finish-session`).
+(cierre: `cortex autopilot finish`).
 - La pericia de cada skill vive on-demand en sus `references/` y en los \
 craft hermanos de `.cortex/skills/` (`cortex-sync-spec-craft.md`, \
 `cortex-sync-proposal-craft.md`, `cortex-SDDwork-implement-craft.md`, \

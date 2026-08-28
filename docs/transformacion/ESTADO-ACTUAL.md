@@ -153,11 +153,17 @@ marcadores dedicados.
    rc 2); los flujos reales de cierre son `cortex autopilot finish` /
    `cortex session abandon` + documenter. Wiring = paquete separado.
 4. **`## Fases` en nota de sesión**: template SSoT condicional (R9) — Python
-   lee el mismo archivo; sin fase ⇒ salida idéntica (goldens `test_session_
-   template_conditional` pasan sin recaptura).
+   lee el mismo archivo; sin fase ⇒ salida idéntica (tests
+   `nota_sin_fases_no_incluye_seccion` y
+   `nota_con_fases_incluye_linea_y_evidencia` en cortex-services/src/note.rs;
+   condicional `{% if phase_line %}` en `session.md.j2`).
+5. **Step 4b del brief A13 no ejecutado**: `cortex setup composed` sobre el
+   propio repo (artefactos `.cortex/skills/composed/` + bloque `## Agent
+   skills` en AGENTS.md) quedó sin correr — los artefactos untracked en el
+   repo son decisión del dueño post-merge.
 
-**Deuda menor registrada (deferred, ver ledger SDD):** ~60-70 líneas
-objectivo no estricto en SDDwork (99); headers "10 acciones" (ahora 11) en
+**Deuda menor registrada (deferred, ver ledger SDD):** objetivo ~60-70 líneas
+no estricto en SDDwork (99); headers "10 acciones" (ahora 11) en
 docs; `cortex next` sin cache de fase (re-parse triple); scoring
 suggest_next_phase 6.0 (Mantenimiento) desplaza acciones 5.0 — una línea a
 Learning si el dueño quiere prioridad mínima; `session current --json` no

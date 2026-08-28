@@ -96,6 +96,16 @@ fn agent_skills_block_carries_the_contract() {
     let block = cortex_setup::skills_bundle::agent_skills_block();
     assert!(block.contains("## Agent skills"), "titulo del bloque");
     assert!(block.contains("phase"), "contrato: checkpoint con phase");
+    // cierre: comando REAL wireado en dispatch_native (R13: `finish-session`
+    // no existe ⇒ rc 2; el flujo verificado es `cortex autopilot finish`)
+    assert!(
+        block.contains("cortex autopilot finish"),
+        "cierre: debe instruir un comando wireado"
+    );
+    assert!(
+        !block.contains("finish-session"),
+        "cierre: no debe instruir comandos muertos"
+    );
     assert!(
         block.contains("cortex_session_checkpoint"),
         "contrato: tool de checkpoint"
