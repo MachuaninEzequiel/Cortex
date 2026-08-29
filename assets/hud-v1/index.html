@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Cortex HUD v1 — mock</title>
+<style>
+  :root {
+    --ice: #EAFDF5;
+    --light: #A7F3D0;
+    --cyan: #34D399;
+    --emerald: #10B981;
+    --deep: #064E3B;
+    --shadow: #043328;
+    --text: #EAFDF5;
+    --muted: #6E968B;
+    --bg: #071310;
+    --border: #204138;
+    --surface: #0E241E;
+    --herdr-bar: #1a1d24;
+    --herdr-side: #151820;
+    --herdr-main: #1e2230;
+    --pi-fg: #c8cdd8;
+    --pi-dim: #7b8294;
+    --pi-gold: #e6b450;
+    --pi-pink: #d48ad6;
+    --cell: 8.2px;
+    --row: 22px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #0b0d12;
+    color: var(--text);
+    font: 13px/1.4 "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+  }
+  .stage {
+    max-width: 1280px;
+    margin: 24px auto 40px;
+    padding: 0 20px;
+  }
+  .tools {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 14px; color: var(--muted);
+    font-size: 12px;
+  }
+  .tools button {
+    background: var(--surface);
+    color: var(--ice);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    font: inherit;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .tools button.on {
+    background: var(--deep);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .hint { margin-left: auto; color: var(--muted); font-size: 11px; }
+  /* ── herdr chrome ── */
+  .herdr {
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    grid-template-rows: 28px 1fr;
+    height: 720px;
+    background: var(--herdr-main);
+    border: 1px solid #2a3140;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+  }
+  .titlebar {
+    grid-column: 1 / -1;
+    background: #12141a;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    color: #8b93a7;
+    font-size: 12px;
+    border-bottom: 1px solid #2a3140;
+  }
+  .titlebar .dots { display: flex; gap: 6px; margin-right: 12px; }
+  .titlebar .dots i { width: 10px; height: 10px; border-radius: 50%; display: block; background: #3a4050; }
+  .sidebar {
+    background: var(--herdr-side);
+    border-right: 1px solid #2a3140;
+    padding: 10px 0;
+    color: #9aa3b5;
+    font-size: 12px;
+  }
+  .sidebar .lbl {
+    padding: 4px 14px;
+    color: #6b7386;
+    text-transform: lowercase;
+  }
+  .sidebar .item {
+    padding: 5px 14px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .sidebar .item.active {
+    background: #2a1f14;
+    color: #f0d5b0;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #c9a227; }
+  .agents { margin-top: 28px; }
+  .agent {
+    padding: 8px 14px 10px;
+    line-height: 1.35;
+  }
+  .agent .name { color: #d0d6e2; }
+  .agent .st { color: #8b93a7; font-size: 11px; }
+  .agent .st.work { color: var(--cyan); }
+  .workspace {
+    display: grid;
+    grid-template-rows: 28px minmax(0, 1fr) 230px;
+    min-width: 0;
+  }
+  .tabs {
+    display: flex; align-items: stretch;
+    background: #16181f;
+    border-bottom: 1px solid #2a3140;
+    font-size: 12px;
+  }
+  .tab {
+    padding: 0 14px; display: flex; align-items: center;
+    color: #7b8294; border-right: 1px solid #2a3140;
+  }
+  .tab.on { background: var(--herdr-main); color: #e8edf7; }
+  .pi {
+    padding: 16px 18px 8px;
+    color: var(--pi-fg);
+    overflow: hidden;
+    background:
+      radial-gradient(1200px 400px at 80% -10%, rgba(80,60,140,.18), transparent 50%),
+      var(--herdr-main);
+  }
+  .pi .gold { color: var(--pi-gold); }
+  .pi .pink { color: var(--pi-pink); }
+  .pi .dim { color: var(--pi-dim); }
+  .pi .line { white-space: pre; margin: 0 0 6px; }
+  .pi .rule { border: none; border-top: 1px solid #3a3344; margin: 10px 0; }
+  .pi .prompt { margin-top: 18px; color: #d8dee9; }
+  .pi .cursor {
+    display: inline-block; width: 8px; height: 14px;
+    background: #d8dee9; transform: translateY(2px);
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── HUD ── */
+  .hud-wrap {
+    background: var(--bg);
+    border-top: 1px solid var(--deep);
+    display: flex;
+    flex-direction: column;
+  }
+  .hud {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 14ch 1fr;
+    grid-template-rows: var(--row) var(--row) var(--row) 10px 1fr 10px auto 10px var(--row);
+    padding: 10px 14px 8px;
+    min-height: 0;
+  }
+  .mark {
+    grid-row: 1 / 4;
+    grid-column: 1;
+    display: grid;
+    grid-template-columns: repeat(13, var(--cell));
+    grid-template-rows: repeat(10, calc(var(--cell) * .85));
+    align-content: center;
+    width: calc(13 * var(--cell));
+    filter: saturate(.85);
+    transform-origin: left center;
+  }
+  body.idle .mark { animation: breath 3.2s ease-in-out infinite; }
+  body.awake .mark {
+    animation: none;
+    filter: saturate(1.15) brightness(1.12);
+    filter: drop-shadow(0 0 8px rgba(52,211,153,.45));
+  }
+  @keyframes breath {
+    0%, 100% { filter: brightness(.72) saturate(.7); }
+    50%      { filter: brightness(1.02) saturate(.95); }
+  }
+  .px { width: var(--cell); height: calc(var(--cell) * .85); }
+  .px.H { background: var(--ice); }
+  .px.M { background: var(--cyan); }
+  .px.X { background: var(--light); }
+  .px.L { background: var(--emerald); }
+  .px.S { background: var(--shadow); }
+  body.idle .px.H { background: var(--muted); }
+  body.idle .px.X { background: var(--deep); }
+  body.idle .px.M { background: var(--emerald); }
+
+  .top {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand {
+    color: var(--cyan);
+    letter-spacing: .28em;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .agent-badge { color: var(--muted); font-size: 12px; }
+  body.awake .agent-badge span { color: var(--cyan); }
+  body.idle .agent-badge span { color: var(--muted); }
+  .meta {
+    grid-column: 2;
+    grid-row: 2;
+    color: var(--muted);
+    font-size: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .meta b { color: var(--ice); font-weight: 500; }
+  .pill {
+    color: var(--cyan);
+    border: 1px solid var(--deep);
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  .rule {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--border);
+    align-self: center;
+  }
+  .r1 { grid-row: 4; }
+  .r2 { grid-row: 6; }
+  .r3 { grid-row: 8; }
+
+  .prompt-row {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    display: grid;
+    grid-template-columns: 1fr 9.5rem;
+    gap: 12px;
+    align-items: center;
+    min-height: 44px;
+  }
+  .prompt-k { color: var(--muted); font-size: 11px; letter-spacing: .12em; margin-bottom: 2px; }
+  .prompt-t { color: var(--ice); }
+  .btn {
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    background: transparent;
+    font: inherit;
+    padding: 7px 10px;
+    cursor: pointer;
+    text-align: center;
+    min-width: 9rem;
+  }
+  .btn:hover { background: var(--surface); color: var(--ice); border-color: var(--ice); }
+  .btn.ghost {
+    border-color: var(--border);
+    color: var(--muted);
+    min-width: 0;
+    padding: 4px 10px;
+  }
+  .btn.ghost:hover { color: var(--ice); border-color: var(--muted); }
+  .btn.ok { border-color: var(--cyan); color: var(--cyan); padding: 4px 10px; min-width: 0; }
+
+  .hygiene {
+    grid-column: 1 / -1;
+    grid-row: 7;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hygiene .k { color: var(--muted); font-size: 11px; letter-spacing: .12em; }
+  .hygiene .t { color: var(--light); flex: 1; }
+  .hygiene .score { color: var(--muted); font-size: 11px; }
+
+  .ask {
+    grid-column: 1 / -1;
+    grid-row: 9;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--cyan);
+  }
+  .ask input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: var(--ice);
+    font: inherit;
+    caret-color: var(--cyan);
+  }
+  .ask input::placeholder { color: var(--muted); }
+  .ram {
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  body.awake .ram { color: var(--cyan); }
+
+  .consult {
+    grid-column: 1 / -1;
+    grid-row: 5 / 8;
+    display: none;
+    gap: 6px;
+  }
+  body.awake .prompt-row,
+  body.awake .hygiene,
+  body.awake .r2 { display: none; }
+  body.awake .consult { display: grid; grid-template-columns: 1fr 9.5rem; }
+  .answer { color: var(--light); }
+  .answer .src { color: var(--cyan); }
+  .answer .dim { color: var(--muted); font-size: 12px; }
+
+  .toast {
+    position: fixed; bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--deep);
+    color: var(--ice);
+    border: 1px solid var(--cyan);
+    padding: 8px 14px;
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body class="idle">
+<div class="stage">
+  <div class="tools">
+    mock HUD v1 — contrato <code>GRID.md</code>
+    <button id="btn-idle" class="on" type="button">Idle (logo dormido)</button>
+    <button id="btn-awake" type="button">Consulta (Liquid en RAM)</button>
+    <span class="hint">esto no es Cortex todavía: es la foto a clonar en ratatui</span>
+  </div>
+
+  <div class="herdr">
+    <div class="titlebar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      herdr — cortex-demo
+    </div>
+    <aside class="sidebar">
+      <div class="lbl">spaces</div>
+      <div class="item active"><span class="dot"></span> cortex-demo</div>
+      <div class="agents">
+        <div class="lbl">agents</div>
+        <div class="agent">
+          <div class="name">cortex-demo · 1</div>
+          <div class="st">idle · pi</div>
+        </div>
+        <div class="agent">
+          <div class="name">cortex-demo · HUD</div>
+          <div class="st work" id="side-hud">idle · cortex</div>
+        </div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <div class="tabs">
+        <div class="tab on">1  pi</div>
+        <div class="tab">2</div>
+        <div class="tab">+</div>
+      </div>
+      <div class="pi">
+        <div class="line gold">Update Available</div>
+        <div class="line">New version 0.84.4 is available. Run <span class="pink">pi update</span></div>
+        <hr class="rule" />
+        <div class="line dim">spec/auth.md · plan listo · esperando tu próximo prompt</div>
+        <div class="line dim">no toqué src/ fuera de lo acordado.</div>
+        <div class="prompt">$ <span class="cursor"></span></div>
+      </div>
+
+      <div class="hud-wrap">
+        <div class="hud" id="hud">
+          <div class="mark" id="mark" aria-hidden="true"></div>
+          <div class="top">
+            <span class="brand">CORTEX</span>
+            <span class="agent-badge">pi <span id="pi-st">idle</span></span>
+          </div>
+          <div class="meta">
+            <b>cortex-demo</b>
+            <span>·</span> feature/obra17
+            <span>·</span> sesión 2026-08-29_auth
+            <span class="pill">plan</span>
+          </div>
+          <div class="rule r1"></div>
+
+          <div class="prompt-row">
+            <div>
+              <div class="prompt-k">prompt para pi</div>
+              <div class="prompt-t" id="prompt-text">descomponé el plan en tickets según la spec de auth;<br>no toques fuera de src/auth.</div>
+            </div>
+            <button class="btn" id="copy" type="button">[ Copiar ]</button>
+          </div>
+
+          <div class="rule r2"></div>
+
+          <div class="hygiene">
+            <span class="k">higiene</span>
+            <span class="t">Validar documentos del vault</span>
+            <span class="score">score 8.0</span>
+            <button class="btn ok" id="approve" type="button">[ Aprobar ]</button>
+            <button class="btn ghost" id="skip" type="button">[ Saltar ]</button>
+          </div>
+
+          <div class="consult">
+            <div class="answer">
+              <div class="dim">consulta</div>
+              <div>sí — <span class="src">vault/decisions/2026-04-jwt-hs256.md</span></div>
+              <div>HS256 local, no RS256. el spec de auth lo cita.</div>
+              <div class="dim" style="margin-top:8px">prompt reescrito, listo para copiar</div>
+              <div class="prompt-t">implementá auth según vault/decisions/2026-04-jwt-hs256.md (HS256). no cambies el algoritmo. no toques fuera de src/auth.</div>
+            </div>
+            <button class="btn" id="copy2" type="button">[ Copiar ]</button>
+          </div>
+
+          <div class="rule r3"></div>
+          <div class="ask">
+            <span>›</span>
+            <input id="ask" placeholder="preguntale a Cortex" />
+            <span class="ram" id="ram">RAM libre</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const MARK = [
+  "   HHHHH     ",
+  "    MMMMM    ",
+  "     MMMM    ",
+  "      MMMM   ",
+  " LLL  XXXX   ",
+  " LLL  XXXXM  ",
+  "LLLLLL  MMM  ",
+  " LLLLL  MM   ",
+  "  LLL   MM   ",
+  "   L    MM   ",
+];
+const mount = document.getElementById("mark");
+for (const row of MARK) {
+  for (const ch of row) {
+    const d = document.createElement("i");
+    d.className = "px" + (ch === " " ? "" : " " + ch);
+    mount.appendChild(d);
+  }
+}
+
+const idleBtn = document.getElementById("btn-idle");
+const awakeBtn = document.getElementById("btn-awake");
+const ram = document.getElementById("ram");
+const side = document.getElementById("side-hud");
+function setIdle() {
+  document.body.className = "idle";
+  idleBtn.classList.add("on"); awakeBtn.classList.remove("on");
+  ram.textContent = "RAM libre";
+  side.textContent = "idle · cortex";
+  side.classList.add("work");
+}
+function setAwake() {
+  document.body.className = "awake";
+  awakeBtn.classList.add("on"); idleBtn.classList.remove("on");
+  ram.textContent = "LFM en RAM";
+  side.textContent = "working · cortex";
+}
+idleBtn.onclick = setIdle;
+awakeBtn.onclick = setAwake;
+if (/awake/.test(location.search)) setAwake();
+else setIdle();
+
+const toast = document.getElementById("toast");
+let t;
+function say(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(t);
+  t = setTimeout(() => toast.classList.remove("show"), 1600);
+}
+const PROMPT_IDLE = "descomponé el plan en tickets según la spec de auth;\nno toques fuera de src/auth.";
+const PROMPT_AWAKE = "implementá auth según vault/decisions/2026-04-jwt-hs256.md (HS256). no cambies el algoritmo. no toques fuera de src/auth.";
+async function copyPrompt() {
+  const text = document.body.classList.contains("awake") ? PROMPT_AWAKE : PROMPT_IDLE;
+  try { await navigator.clipboard.writeText(text); say("copiado al clipboard"); }
+  catch { say("clipboard bloqueado en este preview"); }
+}
+document.getElementById("copy").onclick = copyPrompt;
+document.getElementById("copy2").onclick = copyPrompt;
+document.getElementById("approve").onclick = () => say("validó 12 docs · no tocó la sesión");
+document.getElementById("skip").onclick = () => say("saltada · el engine no insiste");
+document.getElementById("ask").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    setAwake();
+    say("Liquid cargando · logo despierto");
+  }
+});
+</script>
+</body>
+</html>

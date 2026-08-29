@@ -259,6 +259,18 @@ no lo necesita.
 
 ---
 
+## 9b. Mock visual (contrato para clonar)
+
+No es Cortex todavía. Es la foto de v1:
+
+- Interactivo (logo que respira, Idle / Consulta, Copiar):
+  `assets/hud-v1/index.html`
+- Grilla exacta a replicar en ratatui:
+  `assets/hud-v1/GRID.md` (100×10, rects, paleta, copy)
+- Stills: `assets/hud-v1/idle.png` y `awake.png`
+
+Si el HTML y el GRID divergen, gana el GRID. La TUI se implementa contra el GRID, no “parecido”.
+
 ## 10. Estética: que dé gusto dejarlo abierto
 
 Contrato visual (el branding voxel menta **ya elegido**, ahora bien
