@@ -237,9 +237,9 @@ pub fn spawn_split_sidecar(project_root: &Path) -> Result<(), String> {
     let parsed: Option<PluginPaneOpenedWrapper> = serde_json::from_slice(&output.stdout).ok();
     if let Some(opened) = parsed.and_then(|p| p.result?.plugin_pane?.pane) {
         let new_id = opened.pane_id;
-        if let Some(tgt) = target {
+        let swap_ok = if let Some(tgt) = target {
             // Pone a Cortex a la izquierda y al agente a la derecha
-            let _ = Command::new("herdr")
+            let swap_res = Command::new("herdr")
                 .args([
                     "pane",
                     "swap",
@@ -252,9 +252,12 @@ pub fn spawn_split_sidecar(project_root: &Path) -> Result<(), String> {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .output();
-        }
+            Some(swap_res.map(|o| o.status.success()).unwrap_or(false))
+        } else {
+            None
+        };
         // Ajusta el ratio al 30% para el dock lateral
-        let _ = Command::new("herdr")
+        let resize_res = Command::new("herdr")
             .args([
                 "pane",
                 "resize",
@@ -269,9 +272,11 @@ pub fn spawn_split_sidecar(project_root: &Path) -> Result<(), String> {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .output();
+        let resize_ok = resize_res.map(|o| o.status.success()).unwrap_or(false);
 
-        report_agent_status(Some(&new_id), "cortex", "working", "Sidecar 30%");
-        let _ = report_metadata(Some(&new_id), "30% Dock");
+        let label = conclude_spawn(SpawnKind::Sidecar, &output.stdout, swap_ok, resize_ok)?;
+        report_agent_status(Some(&new_id), "cortex", "working", label);
+        let _ = report_metadata(Some(&new_id), label);
     }
 
     Ok(())
@@ -312,7 +317,7 @@ pub fn spawn_float_hud(project_root: &Path) -> Result<(), String> {
     if let Some(opened) = parsed.and_then(|p| p.result?.plugin_pane?.pane) {
         let new_id = opened.pane_id;
         // Ajusta la altura a 25% para que el agente quede al 75% arriba
-        let _ = Command::new("herdr")
+        let resize_res = Command::new("herdr")
             .args([
                 "pane",
                 "resize",
@@ -327,9 +332,11 @@ pub fn spawn_float_hud(project_root: &Path) -> Result<(), String> {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .output();
+        let resize_ok = resize_res.map(|o| o.status.success()).unwrap_or(false);
 
-        report_agent_status(Some(&new_id), "cortex", "working", "Bottom HUD");
-        let _ = report_metadata(Some(&new_id), "Bottom HUD");
+        let label = conclude_spawn(SpawnKind::Float, &output.stdout, None, resize_ok)?;
+        report_agent_status(Some(&new_id), "cortex", "working", label);
+        let _ = report_metadata(Some(&new_id), label);
     }
 
     Ok(())
@@ -369,7 +376,7 @@ pub fn spawn_copilot_split(project_root: &Path) -> Result<(), String> {
     let parsed: Option<PluginPaneOpenedWrapper> = serde_json::from_slice(&output.stdout).ok();
     if let Some(opened) = parsed.and_then(|p| p.result?.plugin_pane?.pane) {
         let new_id = opened.pane_id;
-        let _ = Command::new("herdr")
+        let resize_res = Command::new("herdr")
             .args([
                 "pane",
                 "resize",
@@ -384,12 +391,46 @@ pub fn spawn_copilot_split(project_root: &Path) -> Result<(), String> {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .output();
+        let resize_ok = resize_res.map(|o| o.status.success()).unwrap_or(false);
 
-        report_agent_status(Some(&new_id), "cortex", "working", "Co-Pilot Activo");
-        let _ = report_metadata(Some(&new_id), "Co-Pilot");
+        let label = conclude_spawn(SpawnKind::Copilot, &output.stdout, None, resize_ok)?;
+        report_agent_status(Some(&new_id), "cortex", "working", label);
+        let _ = report_metadata(Some(&new_id), label);
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpawnKind {
+    Sidecar,
+    Float,
+    Copilot,
+}
+
+pub fn conclude_spawn(
+    kind: SpawnKind,
+    stdout: &[u8],
+    swap_ok: Option<bool>,
+    resize_ok: bool,
+) -> Result<&'static str, String> {
+    let parsed: Option<PluginPaneOpenedWrapper> = serde_json::from_slice(stdout).ok();
+    let _pane = parsed
+        .and_then(|p| p.result?.plugin_pane?.pane)
+        .ok_or_else(|| "herdr plugin pane open no devolvió pane_id".to_string())?;
+
+    if swap_ok == Some(false) {
+        return Err("herdr pane swap falló".to_string());
+    }
+    if !resize_ok {
+        return Err("herdr pane resize falló".to_string());
+    }
+
+    match kind {
+        SpawnKind::Sidecar => Ok("Sidecar 30%"),
+        SpawnKind::Float => Ok("Bottom HUD"),
+        SpawnKind::Copilot => Ok("Co-Pilot Activo"),
+    }
 }
 
 pub const DEFAULT_SIDECAR_RATIO: f32 = 0.30;
@@ -466,5 +507,32 @@ mod tests {
         assert_eq!(args[3], "right");
         assert_eq!(args[5], "-0.20");
         assert_eq!(args[7], "pane-123");
+    }
+
+    #[test]
+    fn conclude_open_ok_float() {
+        let json = br#"{"result":{"plugin_pane":{"pane":{"pane_id":"p-hud","focused":false}}}}"#;
+        let s = conclude_spawn(SpawnKind::Float, json, None, true).unwrap();
+        assert_eq!(s, "Bottom HUD");
+        assert!(!s.contains("30"));
+    }
+
+    #[test]
+    fn conclude_sin_pane_id_es_err() {
+        assert!(conclude_spawn(SpawnKind::Float, b"{}", None, true).is_err());
+    }
+
+    #[test]
+    fn conclude_resize_fail_no_dice_30() {
+        let json = br#"{"result":{"plugin_pane":{"pane":{"pane_id":"p","focused":false}}}}"#;
+        let e = conclude_spawn(SpawnKind::Sidecar, json, Some(true), false).unwrap_err();
+        assert!(!e.contains("30%"), "{e}");
+    }
+
+    #[test]
+    fn conclude_sidecar_ok_puede_decir_30() {
+        let json = br#"{"result":{"plugin_pane":{"pane":{"pane_id":"p","focused":false}}}}"#;
+        let s = conclude_spawn(SpawnKind::Sidecar, json, Some(true), true).unwrap();
+        assert!(s.contains("30"));
     }
 }

@@ -41,23 +41,7 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
     }
 
     let mut llm: Option<Box<dyn cortex_brain::chat::LlmBackend>> = None;
-    if let Some(path) = &model {
-        #[cfg(feature = "llama")]
-        {
-            match cortex_brain::llama::LlamaChatBackend::open(std::path::Path::new(path), None) {
-                Ok(b) => llm = Some(Box::new(b)),
-                Err(e) => eprintln!("⚠ {e} — sigo en modo determinista"),
-            }
-        }
-        #[cfg(not(feature = "llama"))]
-        {
-            let _ = path;
-            eprintln!(
-                "{}",
-                cortex_brain::i18n::warn_sin_llama(cortex_brain::i18n::Lang::Es)
-            );
-        }
-    }
+    let model_path = model;
 
     let agent_info = if mode == CompanionMode::Copilot || mode == CompanionMode::Float {
         herdr::detect_target_agent(&be.root)
@@ -221,6 +205,23 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
                     };
                     if let Some(fx) = app::update(&mut st, action) {
                         st.liquid.mark_active();
+                        if llm.is_none() {
+                            if let Some(path) = &model_path {
+                                #[cfg(feature = "llama")]
+                                {
+                                    if let Ok(b) = cortex_brain::llama::LlamaChatBackend::open(
+                                        std::path::Path::new(path),
+                                        None,
+                                    ) {
+                                        llm = Some(Box::new(b));
+                                    }
+                                }
+                                #[cfg(not(feature = "llama"))]
+                                {
+                                    let _ = path;
+                                }
+                            }
+                        }
                         let llm_ref = llm
                             .as_mut()
                             .map(|b| b.as_mut() as &mut dyn cortex_brain::chat::LlmBackend);
@@ -231,10 +232,15 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
             }
             Err(_) => break,
         }
+        if llm.is_some() && st.liquid.ram() == crate::hud_brand::MarkRam::Idle {
+            llm = None;
+        }
         if st.quit {
             break;
         }
     }
+
+    drop(llm);
 
     let _ = terminal.clear();
     let _ = terminal.show_cursor();
