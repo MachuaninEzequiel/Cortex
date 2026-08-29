@@ -97,9 +97,16 @@ pub struct HudAreas {
 }
 
 pub fn hud_areas(area: Rect) -> HudAreas {
-    let brand_w = if area.width < 90 { 22 } else { 28 }.min(area.width);
-    let [brand, dialogs] =
-        Layout::horizontal([Constraint::Length(brand_w), Constraint::Min(20)]).areas(area);
+    let vertical = area.width < 55 && area.height >= 18;
+    let (brand, dialogs) = if vertical {
+        let [b, d] = Layout::vertical([Constraint::Length(10), Constraint::Min(8)]).areas(area);
+        (b, d)
+    } else {
+        let brand_w = if area.width < 90 { 22 } else { 28 }.min(area.width);
+        let [b, d] =
+            Layout::horizontal([Constraint::Length(brand_w), Constraint::Min(20)]).areas(area);
+        (b, d)
+    };
 
     // GRID: MARK (1,0,26,9) / WORD (1,9,26,3) — inset 1 col, sin placa.
     let inset = 1u16.min(brand.width.saturating_sub(1));
@@ -123,7 +130,7 @@ pub fn hud_areas(area: Rect) -> HudAreas {
         3.min(brand.height.saturating_sub(mark_h)),
     );
 
-    let copy_w = 16u16.min(dialogs.width.saturating_sub(2));
+    let copy_w = if dialogs.width < 50 { 10 } else { 12 }.min(dialogs.width.saturating_sub(2));
     let copy_btn = Rect::new(
         dialogs.x + dialogs.width.saturating_sub(copy_w + 1),
         dialogs.y + 3,
@@ -246,7 +253,16 @@ pub fn render_hud(
     if areas.word.width >= 10 && areas.word.height >= 2 {
         hud_brand::blit_word(f.buffer_mut(), areas.word);
     }
-    if areas.brand.width >= 24 {
+    if areas.brand.width == area.width {
+        let y = areas.brand.y + areas.brand.height.saturating_sub(1);
+        for x in areas.brand.x..areas.brand.x.saturating_add(areas.brand.width) {
+            if let Some(cell) = f.buffer_mut().cell_mut((x, y)) {
+                cell.set_symbol("─");
+                cell.set_fg(to_color(BORDER));
+                cell.set_bg(to_color(BG));
+            }
+        }
+    } else if areas.brand.width >= 24 {
         let x = areas.brand.x + areas.brand.width.saturating_sub(1);
         for y in areas.brand.y..areas.brand.y.saturating_add(areas.brand.height) {
             if let Some(cell) = f.buffer_mut().cell_mut((x, y)) {
@@ -322,7 +338,8 @@ pub fn render_hud(
                 prompt.clone(),
                 Style::default().fg(to_color(TEXT)),
             )),
-        ]),
+        ])
+        .wrap(ratatui::widgets::Wrap { trim: true }),
         Rect::new(
             dx.x + 1,
             dx.y.saturating_add(3),

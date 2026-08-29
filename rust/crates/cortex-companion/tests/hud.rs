@@ -224,3 +224,29 @@ fn liquid_ram_transition_idle_weak_awake() {
     lr.last_activity = std::time::Instant::now() - std::time::Duration::from_secs(91);
     assert_eq!(lr.ram(), MarkRam::Idle);
 }
+
+#[test]
+fn hud_sidecar_40x24_renders_vertical_layout() {
+    let data = HomeData {
+        project: "/home/chucho/cortex".into(),
+        branch: Some("main".into()),
+        prompt: "implementá el ticket 1".into(),
+        ..Default::default()
+    };
+    let mut term = Terminal::new(TestBackend::new(40, 24)).expect("term");
+    term.draw(|f: &mut Frame<'_>| {
+        let mut areas = hud_areas(f.area());
+        assert_eq!(areas.brand.width, 40);
+        assert_eq!(areas.dialogs.width, 40);
+        let _ = render_hud(f, f.area(), &data, &mut areas);
+    })
+    .expect("draw");
+    let buf = term.backend().buffer();
+    let mut text = String::new();
+    for cell in buf.content.iter() {
+        text.push_str(cell.symbol());
+    }
+    assert!(text.contains("COMPANION"));
+    assert!(text.contains("Copiar"));
+    assert!(text.contains("implementá el ticket 1"));
+}

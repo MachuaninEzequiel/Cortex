@@ -131,7 +131,7 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
                     let mut data =
                         home_data(&be, st.hud_skipped.as_deref(), &st.hud_ask, st.liquid.ram());
                     data.agent_label = agent_label.clone();
-                    if mode == CompanionMode::Float {
+                    if mode == CompanionMode::Float || mode == CompanionMode::Sidecar {
                         let mut areas = crate::screens::hud_screen::hud_areas(f.area());
                         areas.hovered_mouse = st.mouse;
                         st.areas.hud_copy = Some(areas.copy_btn);
