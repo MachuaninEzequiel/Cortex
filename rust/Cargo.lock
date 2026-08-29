@@ -427,6 +427,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cortex-config",
+ "cortex-core",
  "cortex-embed",
  "cortex-setup",
  "minijinja",
@@ -434,6 +435,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "tempfile",
  "unicode-normalization",
  "uuid",

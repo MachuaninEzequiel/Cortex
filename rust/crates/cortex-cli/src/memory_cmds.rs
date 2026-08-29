@@ -852,7 +852,12 @@ pub fn run_reindex(argv: &[String]) -> bool {
     };
     let (model, backend) = config.resolve_embedder(None);
     let vault_resolved = layout.resolve_workspace_relative(Path::new(&config.semantic.vault_path));
-    let vectors_dir = layout.workspace_root.join(".cortex").join("vectors");
+    let dot_cortex = if layout.is_legacy_layout {
+        layout.repo_root.join(".cortex")
+    } else {
+        layout.workspace_root.clone()
+    };
+    let vectors_dir = cortex_app::reindex::vectors_dir(&dot_cortex);
 
     if !args.dry_run {
         return run_reindex_real(
@@ -947,26 +952,10 @@ mod feedback_tests {
 
 // ── reindex REAL (escritor de vector-cache persistente nativo) ─────────────
 
-/// Fingerprint del oráculo (vector_cache.py:49, CACHE_SCHEMA_VERSION=2):
-/// sha256(model \x00 schema \x00 embedding_text) — el mismo texto con otro
-/// modelo jamás colisiona (Fix A3).
-fn cache_fingerprint(model_name: &str, embedding_text: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let payload = format!(
-        "{model_name}\x00{}\x00{embedding_text}",
-        CACHE_SCHEMA_VERSION
-    );
-    let mut h = Sha256::new();
-    h.update(payload.as_bytes());
-    format!("{:x}", h.finalize())
-}
+pub use cortex_app::reindex::{cache_fingerprint, CACHE_SCHEMA_VERSION};
 
-const CACHE_SCHEMA_VERSION: &str = "2";
-
-/// Rebuild real del vector cache: backup de `.cortex/vectors/`, re-parse +
-/// re-embed de todos los chunks del vault (OnnxEmbedder local) y persistencia
-/// en el store binario nativo (`cortex-core::store::VectorStore`). Ante
-/// cualquier error del store se restaura el backup (rollback del oráculo).
+/// Rebuild real del vector cache: delega en cortex_app::reindex::reindex_vault
+/// y emite los mensajes y limpiezas de cache para el CLI.
 fn run_reindex_real(
     args: &ReindexArgs,
     layout: &cortex_workspace::WorkspaceLayout,
@@ -976,104 +965,37 @@ fn run_reindex_real(
     vault_resolved: &std::path::Path,
     vectors_dir: &std::path::Path,
 ) -> bool {
-    // El embedder nativo es miniLM-vía-ort: con el modelo local produce los
-    // mismos vectores que fastembed/onnx del oráculo (misma identidad de
-    // modelo en el fingerprint). Otros modelos (e5…) quedan en el CLI
-    // Python legacy — el archivo onnx de ese modelo no existe acá.
     let _ = backend;
-    if model != "all-MiniLM-L6-v2" {
-        eprintln!(
-            "reindex: el escritor nativo solo embebe all-MiniLM-L6-v2 (modelo configurado: {model}) — usá el CLI Python legacy"
-        );
-        return true;
-    }
-    let Some(model_dir) = default_model_dir() else {
-        let cache_hint = std::env::var_os("HOME").map(|h| {
-            format!(
-                "{}/.cache/chroma/onnx_models/all-MiniLM-L6-v2/onnx/model.onnx",
-                h.to_string_lossy()
-            )
-        });
-        eprintln!(
-            "reindex: modelo ONNX no encontrado en {}: instalalo y reintentá (o usá el CLI Python legacy)",
-            cache_hint.unwrap_or_default()
-        );
-        return true;
+    let model_dir = cortex_app::context::domain_detector::default_model_dir();
+    let outcome = match cortex_app::reindex::reindex_vault(
+        vault_resolved,
+        vectors_dir,
+        model,
+        model_dir.as_deref(),
+    ) {
+        Ok(out) => out,
+        Err(cortex_app::reindex::ReindexError::UnsupportedModel { model }) => {
+            eprintln!(
+                "reindex: el escritor nativo solo embebe all-MiniLM-L6-v2 (modelo configurado: {model}) — usá el CLI Python legacy"
+            );
+            return true;
+        }
+        Err(cortex_app::reindex::ReindexError::ModelMissing { hint }) => {
+            eprintln!(
+                "reindex: modelo ONNX no encontrado en {hint}: instalalo y reintentá (o usá el CLI Python legacy)"
+            );
+            return true;
+        }
+        Err(e) => {
+            eprintln!("reindex: {e}");
+            return true;
+        }
     };
 
-    // 1. Parse + BM25 + chunks (mismo índice que la búsqueda semántica).
-    let mut semantic = match cortex_app::semantic::SemanticIndex::build(vault_resolved) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("reindex: semantic index: {e}");
-            return true;
-        }
-    };
-    // 2. Embeddings de TODOS los chunks (lote único).
-    let mut embedder = match cortex_embed::onnx::OnnxEmbedder::open(&model_dir) {
-        Ok(e) => e,
-        Err(e) => {
-            eprintln!("reindex: embedder: {e}");
-            return true;
-        }
-    };
-    let n_chunks = match semantic.attach_embeddings_with(&mut embedder) {
-        Ok(n) => n,
-        Err(e) => {
-            eprintln!("reindex: embeddings: {e}");
-            return true;
-        }
-    };
-    if n_chunks == 0 {
+    if outcome.n_chunks == 0 {
         echo("reindex: vault vacío — no hay nada que indexar.");
         return true;
     }
-    let dim = semantic.chunks[0].embedding.len();
-    if dim == 0 {
-        eprintln!("reindex: embeddings vacíos (modelo?)");
-        return true;
-    }
-
-    // 3. Backup del cache existente (mismo flujo que el oráculo).
-    let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
-    let backup_dir = vectors_dir.with_file_name(format!("vectors.backup-{ts}"));
-    if vectors_dir.exists() {
-        if let Err(e) = std::fs::rename(vectors_dir, &backup_dir) {
-            eprintln!("reindex: backup de {vectors_dir:?} falló: {e}");
-            return true;
-        }
-    }
-
-    // 4. Persistencia en el store binario nativo (uno por búsqueda).
-    let mut store = match cortex_core::store::VectorStore::open(vectors_dir, model) {
-        Ok(st) => st,
-        Err(e) => {
-            // rollback: devolver el backup a su lugar.
-            let _ = std::fs::rename(&backup_dir, vectors_dir);
-            eprintln!("reindex: vector store: {e}");
-            return true;
-        }
-    };
-    let fps: Vec<String> = semantic
-        .chunks
-        .iter()
-        .map(|c| cache_fingerprint(model, &c.info.embedding_text()))
-        .collect();
-    let ids: Vec<String> = semantic
-        .chunks
-        .iter()
-        .map(|c| c.info.chunk_id.clone())
-        .collect();
-    let mut flat: Vec<f32> = Vec::with_capacity(n_chunks * dim);
-    for c in &semantic.chunks {
-        flat.extend(c.embedding.iter().map(|v| *v as f32));
-    }
-    if let Err(e) = store.put_many(&fps, &ids, &flat, dim) {
-        let _ = std::fs::rename(&backup_dir, vectors_dir); // rollback
-        eprintln!("reindex: put_many: {e}");
-        return true;
-    }
-    let _ = store.compact();
 
     // 5. Contenedor del store episódico (el check `episodic_store` del
     // doctor verifica el dir persistente del runtime — el store JSONL se
@@ -1088,11 +1010,12 @@ fn run_reindex_real(
 
     // 6. Limpieza opcional de backups viejos.
     if args.prune_old_caches {
+        let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S").to_string();
         if let Ok(rd) = std::fs::read_dir(vectors_dir.parent().unwrap_or(std::path::Path::new(".")))
         {
             for e in rd.flatten() {
                 let name = e.file_name().to_string_lossy().to_string();
-                if name.starts_with("vectors.backup-") && !name.ends_with(&ts.to_string()) {
+                if name.starts_with("vectors.backup-") && !name.ends_with(&ts) {
                     let _ = std::fs::remove_dir_all(e.path());
                 }
             }
@@ -1101,14 +1024,14 @@ fn run_reindex_real(
     let _ = args.limit;
 
     echo(&format!(
-        "reindex: {n_chunks} chunks de {} docs indexados ({dim}d).",
-        semantic.docs.len()
+        "reindex: {} chunks de vault indexados ({}d).",
+        outcome.n_chunks, outcome.dim
     ));
     echo(&format!(
         "  vector store : {}/vectors.v3.bin",
-        vectors_dir.display()
+        outcome.vectors_dir.display()
     ));
-    if backup_dir.exists() {
+    if let Some(backup_dir) = outcome.backup_dir {
         echo(&format!(
             "  backup       : {} (rollback disponible; --prune-old-caches para limpiar)",
             backup_dir.display()

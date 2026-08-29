@@ -6,9 +6,9 @@
 //! servicios de Cortex. Report-only ⇒ reversible con undo no-op para
 //! satisfacer el contrato sin fingir cambios que no hay.
 //!
-//! NOTA DE ALCANCE P6: los run() que delegan en servicios todavía no
-//! nativos (AgentMemory.sync_vault, DocValidator, inject_all) devuelven
-//! fallo explícito; precondiciones y dry-runs son idénticos al oráculo.
+//! Servicios nativos: DocValidator, reindex_vault, etc. delegan
+//! en implementaciones reales de cortex_app; precondiciones y dry-runs
+//! son 100% nativos y deterministas.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -226,7 +226,8 @@ pub fn session_checkpoint_now(ctx: &ActionContext) -> Action {
     .checked()
 }
 
-pub fn vault_reindex(_ctx: &ActionContext) -> Action {
+pub fn vault_reindex(ctx: &ActionContext) -> Action {
+    let run_ctx = ctx.clone();
     Action::new(
         "vault.reindex",
         "Re-indexar el vault semántico",
@@ -240,24 +241,48 @@ pub fn vault_reindex(_ctx: &ActionContext) -> Action {
         ActionResult::new(true, "reindex es idempotente — nada que deshacer")
     }))
     .cost(Costo::Seconds) // tarda segundos: pide confirmación (auto_ok=False)
-    .run_fn(|dry_run| {
+    .run_fn(move |dry_run| {
         if dry_run {
             return ActionResult::dry("re-indexar el vault (sync_vault)");
         }
-        ActionResult::fail("sync_vault real requiere AgentMemory nativo (P12)")
+        let model = match cortex_app::reindex::resolve_reindex_model(&run_ctx.config_path()) {
+            Ok(m) => m,
+            Err(e) => return ActionResult::fail(format!("{e}")),
+        };
+        let model_dir = cortex_app::context::domain_detector::default_model_dir();
+        let vectors_dir = cortex_app::reindex::vectors_dir(&run_ctx.dot_cortex());
+        match cortex_app::reindex::reindex_vault(
+            &run_ctx.vault_path(),
+            &vectors_dir,
+            &model,
+            model_dir.as_deref(),
+        ) {
+            Ok(outcome) => ActionResult::new(
+                true,
+                format!(
+                    "reindex ok: {} chunks dim {}",
+                    outcome.n_chunks, outcome.dim
+                ),
+            ),
+            Err(cortex_app::reindex::ReindexError::UnsupportedModel { model }) => {
+                ActionResult::fail(format!(
+                    "reindex nativo solo embebe all-MiniLM-L6-v2 (configurado: {model})"
+                ))
+            }
+            Err(cortex_app::reindex::ReindexError::ModelMissing { hint }) => ActionResult::fail(
+                format!("modelo ONNX no encontrado en {hint}: instalalo y reintentá"),
+            ),
+            Err(e) => ActionResult::fail(format!("{e}")),
+        }
     })
     .checked()
 }
 
 pub fn vault_validate_docs(ctx: &ActionContext) -> Action {
-    fn contar_md(vault: &Path) -> usize {
-        rglob_count(vault)
-    }
-
     let hay_ctx = ctx.clone();
     let hay_docs = move || {
         let vault = hay_ctx.vault_path();
-        vault.exists() && contar_md(&vault) > 0
+        vault.exists() && !rglob_md_paths(&vault).is_empty()
     };
 
     let run_ctx = ctx.clone();
@@ -268,14 +293,47 @@ pub fn vault_validate_docs(ctx: &ActionContext) -> Action {
         "corre DocValidator sobre hasta 200 .md del vault e informa errores",
         vec![Check::new("hay .md en el vault", hay_docs)],
         move |dry_run| {
+            let mut paths = rglob_md_paths(&run_ctx.vault_path());
             if dry_run {
-                let total = contar_md(&run_ctx.vault_path());
                 return ActionResult::new(
                     true,
-                    format!("[dry-run] validaría ~{} docs", total.min(200)),
+                    format!("[dry-run] validaría ~{} docs", paths.len().min(200)),
                 );
             }
-            ActionResult::fail("DocValidator nativo aún no existe (cola larga P11)")
+            if paths.is_empty() {
+                return ActionResult::new(true, "sin .md para validar");
+            }
+            paths.truncate(200);
+            let validator = cortex_app::doc_validator::DocValidator::new(run_ctx.vault_path());
+            let results = validator.validate_batch(&paths);
+            let mut total_errors = 0;
+            let mut total_warnings = 0;
+            let mut err_details: Vec<serde_json::Value> = Vec::new();
+            for r in &results {
+                let errs = r.errors();
+                let warns = r.warnings();
+                total_errors += errs.len();
+                total_warnings += warns.len();
+                for e in errs {
+                    err_details.push(serde_json::json!({
+                        "file": e.file,
+                        "field": e.field,
+                        "message": e.message,
+                    }));
+                }
+            }
+            let mut details = BTreeMap::new();
+            details.insert("errores".to_string(), serde_json::Value::Array(err_details));
+            ActionResult::new(
+                true,
+                format!(
+                    "validó {} docs: {} errores, {} warnings",
+                    paths.len(),
+                    total_errors,
+                    total_warnings
+                ),
+            )
+            .with_details(details)
         },
     )
 }
@@ -541,8 +599,25 @@ fn opened_age_days(record: &SessionRecord, ahora: &chrono::DateTime<chrono::Utc>
     }
 }
 
-fn rglob_count(dir: &Path) -> usize {
-    rglob_count_ext(dir, "md")
+fn rglob_md_paths(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    collect_md_paths(dir, &mut out);
+    out.sort();
+    out
+}
+
+fn collect_md_paths(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in rd.flatten() {
+        let p = entry.path();
+        if p.is_dir() {
+            collect_md_paths(&p, out);
+        } else if p.extension().and_then(|e| e.to_str()) == Some("md") {
+            out.push(p);
+        }
+    }
 }
 
 fn rglob_count_ext(dir: &Path, ext: &str) -> usize {
@@ -705,5 +780,81 @@ mod tests {
         assert!(!props2
             .iter()
             .any(|p| p.action_id == "session.suggest_next_phase"));
+    }
+
+    #[test]
+    fn validate_docs_corre_nativo_y_no_dice_p11() {
+        let g = tmpdir("val_p11");
+        std::fs::create_dir_all(g.0.join("vault")).unwrap();
+        std::fs::write(
+            g.0.join("vault").join("nota.md"),
+            "---\ntitle: Nota\ndate: 2026-08-29\n---\nContenido\n",
+        )
+        .unwrap();
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (vault_validate_docs(&ctx).run)(false);
+        assert!(res.ok, "el validador nativo debe correr");
+        assert!(
+            !res.message.contains("P11"),
+            "stub P11 muerto: {}",
+            res.message
+        );
+        assert!(!res.message.contains("aún no existe"), "{}", res.message);
+    }
+
+    #[test]
+    fn validate_docs_reporta_error_real_en_md_roto() {
+        let g = tmpdir("val_roto");
+        std::fs::create_dir_all(g.0.join("vault")).unwrap();
+        std::fs::write(
+            g.0.join("vault").join("nota.md"),
+            "Contenido sin frontmatter\n",
+        )
+        .unwrap();
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (vault_validate_docs(&ctx).run)(false);
+        assert!(res.ok, "validar es informe, no fail de infraestructura");
+        assert!(
+            res.message.contains("warnings") || res.message.contains("errores"),
+            "{}",
+            res.message
+        );
+    }
+
+    #[test]
+    fn reindex_sin_minilm_falla_honesto_no_p12() {
+        let g = tmpdir("reindex_e5");
+        std::fs::create_dir_all(g.0.join("vault")).unwrap();
+        std::fs::write(
+            g.0.join("config.yaml"),
+            "embedding:\n  model: e5-algo\nsemantic:\n  vault_path: vault\n",
+        )
+        .unwrap();
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (vault_reindex(&ctx).run)(false);
+        assert!(!res.ok);
+        assert!(!res.message.contains("P12"), "{}", res.message);
+        assert!(!res.message.contains("AgentMemory"), "{}", res.message);
+        assert!(
+            res.message.contains("e5-algo"),
+            "si se ignora el YAML no muere: {}",
+            res.message
+        );
+        assert!(
+            res.message.contains("MiniLM") || res.message.contains("all-MiniLM"),
+            "{}",
+            res.message
+        );
+    }
+
+    #[test]
+    fn strings_teatro_p11_p12_no_viven_en_catalog() {
+        let (body, _) = include_str!("catalog.rs")
+            .split_once("mod tests")
+            .expect("tests");
+        assert!(!body.contains("cola larga P11"));
+        assert!(!body.contains("AgentMemory nativo (P12)"));
     }
 }
