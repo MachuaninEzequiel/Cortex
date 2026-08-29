@@ -11,11 +11,18 @@ El HUD es **dos columnas**. El logo no comparte filas con el texto.
 ```
 ┌──────────────────┬─────────────────────────────────────────────┐
 │ BRAND            │ DIALOGS                                     │
-│ (placa papel)    │ meta / prompt / higiene / ask               │
-│ isotipo completo │                                             │
-│ wordmark CORTEX  │                                             │
+│ mismo fondo HUD  │ meta / prompt / higiene / ask               │
+│ cubos en celdas  │                                             │
+│ wordmark en celdas│                                            │
 └──────────────────┴─────────────────────────────────────────────┘
 ```
+
+El HTML de preview todavía muestra un recorte PNG sobre placa clara
+para validar **tamaño y composición**. Eso **no** es la TUI. En ratatui
+no hay placa, no hay `<img>`: isotipo y wordmark se pintan con
+half-blocks (`▀`/`▄`/`█`) sobre el fondo del HUD (`BG` / `Color::Reset`),
+cubo a cubo, paleta bosque/menta del PNG. El damero del archivo
+original no existe en terminal.
 
 Pane de referencia: **~100 columnas × 12 filas** de terminal, de las
 cuales **28 columnas** son BRAND y el resto DIALOGS. Si el pane es más
@@ -43,10 +50,10 @@ Prohibido en v1: `#34D399`, `#10B981` y cualquier glow cian eléctrico.
 ## Rects relativos al HUD (cols × filas, origen arriba-izq)
 
 ```
-BRAND_WELL  ( 0, 0, 28, 12)   placa clara; no se pinta texto encima
-MARK_IMG    ( 1, 0, 26,  9)   isotipo PNG contain
-WORD_IMG    ( 1, 9, 26,  3)   wordmark PNG contain
-DIVIDER     (28, 0,  1, 12)   línea forest
+BRAND       ( 0, 0, 28, 12)   mismo BG que DIALOGS; sin placa
+MARK        ( 1, 0, 26,  9)   isotipo en half-blocks (PixelMap)
+WORD        ( 1, 9, 26,  3)   wordmark en half-blocks
+DIVIDER     (28, 0,  1, 12)   línea forest sutil o nada
 DIALOGS     (30, 0, 70, 12)   todo lo demás
 
 dentro de DIALOGS (x relativo a col 30):
