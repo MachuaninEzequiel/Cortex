@@ -5,14 +5,16 @@
 | **Título** | Plan de implementación del resto (obra 17, deuda 16 filtrada) |
 | **Autor** | plan de implementación para agente de código |
 | **Fecha** | 2026-08-29 |
-| **Estado** | Listo para ejecutar (PR1 primero) |
+| **Estado** | Listo para ejecutar (commit C1 primero) |
 | **Rama** | `feature/transformacion-2026-08` |
 | **Audiencia** | agente de código que implementa sin reinventar producto |
 | **Copia canónica** | este archivo |
 
 Este archivo es una **especificación de implementación**. Si hay conflicto entre este plan y una ocurrencia en el chat, gana este archivo. Si hay conflicto entre este archivo y el [17](17-PRODUCTO-EXPERTO-AL-LADO.md), gana el 17. Si hay conflicto entre el 16 y el 17, gana el 17.
 
-Leé la tabla D1–D10 del 17 (§3) una vez. No la reabras. El resto de este archivo basta para ejecutar PR1.
+Leé la tabla D1–D10 del 17 (§3) una vez. No la reabras. El resto de este archivo basta para ejecutar el commit C1.
+
+**No hay PRs.** En este archivo `C1`…`C11` son **un commit local cada uno**, en la rama actual `feature/transformacion-2026-08`. No son pull requests. No hay GitHub. No hay `origin`. No hay `main`. `git push` está prohibido. `gh pr create` está prohibido. No cambies de rama.
 
 ---
 
@@ -61,8 +63,9 @@ D1–D10 del 17 permanecen cerradas. No hay “mejor idea” de layout, inject, 
 Copiá y cumplí esto en **cada** commit. Si no podés, paramos; no se finge PASS.
 
 ```
-Rama:            feature/transformacion-2026-08
-Commits:         Conventional en español, UN gate por commit, locales, SIN PUSH
+Rama:            feature/transformacion-2026-08  (la que YA está checked out)
+                 PROHIBIDO: checkout main, nueva rama, git push, gh pr, origin
+Commits:         Conventional en español, UN gate por commit, SOLO LOCAL, SIN PUSH
 Identidad git:   si .gitconfig EPERM:
                  GIT_CONFIG_GLOBAL=/dev/null
                  GIT_AUTHOR_NAME=MachuaninEzequiel
@@ -72,14 +75,14 @@ Identidad git:   si .gitconfig EPERM:
 Gate:            cargo test -p <crate> && cargo clippy -p <crate> -- -D warnings && cargo fmt -p <crate> -- --check
                  (fmt --check; si falla, cargo fmt -p <crate> y re-check)
 unsafe:          #![forbid(unsafe_code)] en lógica nueva
-Deps:            CERO crates.io nuevas. Path deps del workspace sí, si el PR lo pide.
+Deps:            CERO crates.io nuevas. Path deps del workspace sí, si el lote lo pide.
 Goldens:         NO recapturar bench/parity, MCP list_tools.json, ni tocar cortex/ ni tests/ Python
 DoD:             un test que ROMPE si el usuario no puede hacer la cosa, no un len() de acciones
 Cargo registry:  si EPERM/DNS, NO fingir PASS. Fallback normativo = cargo --offline
                  (ver § Rollout). Si target/ está vacío: parar. No rustc inventado.
 ```
 
-Orden de PRs de este archivo = **ley**. Higiene `run()` antes que animación del logo. Copiar ya existe: no empieces por cosmética.
+Orden de commits C1…C11 de este archivo = **ley**. Higiene `run()` antes que animación del logo. Copiar ya existe: no empieces por cosmética. Un lote = `git commit` en esta rama. Cero PRs al remoto.
 
 ---
 
@@ -96,14 +99,14 @@ HEAD de `feature/transformacion-2026-08` incluye `e55129b` `feat(obra17): HUD en
 | Copiar + OSC 52 | `clipboard.rs`, `Effect::CopyPrompt`, Enter vacío copia | No inyectar |
 | Filtro higiene | `hud_screen::is_hygiene` | No ensanchar a session/setup |
 | Aprobar abre modal existente | `AppAction::ApproveProposal` → `pending`; no ejecuta en el reducer | No saltarse el modal |
-| Skip recuerda id | `hud_skipped` | OK extender a Learner en PR10, no antes |
+| Skip recuerda id | `hud_skipped` | OK extender a Learner en C10, no antes |
 | Esc stack vacía en Float/Copilot sale | `AppAction::Back` setea `quit` | No cambiar Sidecar a quit (el dock persiste) |
 | Herdr action `open` = float split | `integrations/herdr/herdr-plugin.toml` `id = "open"` | No cambiar default a sidecar |
 | `cortex-herdr-float --spawn` → `spawn_float_hud` | `bin/float.rs` | No “arreglar” el default |
 | Tests HUD | `tests/hud.rs` (8 tests) | Extender, no borrar |
 | Paleta branding retinte forest/mint | `cortex-branding/src/palette.rs` (`CYAN` token = `#8FDCB0`) | No reintroducir neón |
 
-**El HUD pinta. Aprobar todavía no ejecuta higiene.** Ese es el primer agujero. PR1 lo cierra.
+**El HUD pinta. Aprobar todavía no ejecuta higiene.** Ese es el primer agujero. C1 lo cierra.
 
 ---
 
@@ -145,18 +148,18 @@ HEAD de `feature/transformacion-2026-08` incluye `e55129b` `feat(obra17): HUD en
 
 | # | Decisión | Rationale |
 |---|---|---|
-| K1 | **Orden de PRs = ley.** Higiene `run()` (PR1–PR2) antes que prompt (PR3) antes que logo/Liquid (PR4) antes que sidecar (PR5) antes que spawn (PR6) antes que gates snapshot (PR7). Lotes 16 residuales después. | 17 §16: «Aprobar-higiene real antes que animación del logo». Cosmética sobre teatro es el fallo de los agentes anteriores. |
+| K1 | **Orden de commits locales = ley.** Higiene `run()` (C1–C2) antes que prompt (C3) antes que logo/Liquid (C4) antes que sidecar (C5) antes que spawn (C6) antes que gates snapshot (C7). Lotes 16 residuales después. | 17 §16: «Aprobar-higiene real antes que animación del logo». Cosmética sobre teatro es el fallo de los agentes anteriores. |
 | K2 | **HUD Approve no se recablea.** `approve_action` ya llama `Runner::execute`. Solo se cambia `catalog.rs::run()`. | El Companion no es el bug. El stub P6 sí. |
-| K3 | **`cortex-actions` NO depende de `cortex-cli`.** Extraer `reindex_vault` + `vectors_dir(dot_cortex)` + `resolve_reindex_model` a `cortex_app::reindex`. CLI, catálogo y PR11 usan **la misma** `vectors_dir`. | `cortex-cli` ya depende de `cortex-actions`. Ciclo = no compile. El path CLI actual `workspace_root.join(".cortex").join("vectors")` es split-brain en layout nuevo. |
+| K3 | **`cortex-actions` NO depende de `cortex-cli`.** Extraer `reindex_vault` + `vectors_dir(dot_cortex)` + `resolve_reindex_model` a `cortex_app::reindex`. CLI, catálogo y C11 usan **la misma** `vectors_dir`. | `cortex-cli` ya depende de `cortex-actions`. Ciclo = no compile. El path CLI actual `workspace_root.join(".cortex").join("vectors")` es split-brain en layout nuevo. |
 | K4 | **`SessionSummary.phase: Option<String>`** (última `Checkpoint.phase` en orden reverse). Literales de test se actualizan a `phase: None`. No `Default` mágico que esconda regresiones. | 17 §6.2 necesita fase en la UI. `summary_of` hoy tira checkpoints. |
 | K5 | **Un solo enum de RAM.** `MarkRam` vive en `hud_brand.rs`. `pub type LiquidRam = crate::hud_brand::MarkRam;` en `app.rs`. Blit y `AppState.liquid` son el mismo tipo. Cero PNG extra. | Evita drift Idle/Awake entre logo y estado. D7. |
 | K6 | **GGUF lazy en el runner, no en `update`.** `run_app` arranca `llm = None`. Load en el loop al ver `Effect::BrainTurn` **o** `!st.hud_ask.is_empty()` (primera consulta). `update` sigue puro. Timeout testeable: `st.liquid_idle: Duration` default 180 s. | `AppState::new` nunca abrió llama: un test de Idle al new no prueba el bug. |
-| K7 | **Sidecar reusa `hud_copy` / `hud_approve` / `hud_skip` y `hud_ask`.** Añadir `CompanionMode::Sidecar` en **todos** los `matches!` de teclado/hit-test listados en PR5. Esc **no** hace quit. | Hoy Typed/Enter/q/hit_test son solo Float (q) o Float\|Copilot. Olvidar un sitio mata el dock. |
+| K7 | **Sidecar reusa `hud_copy` / `hud_approve` / `hud_skip` y `hud_ask`.** Añadir `CompanionMode::Sidecar` en **todos** los `matches!` de teclado/hit-test listados en C5. Esc **no** hace quit. | Hoy Typed/Enter/q/hit_test son solo Float (q) o Float\|Copilot. Olvidar un sitio mata el dock. |
 | K8 | **Spawn: una función pura `conclude_spawn` que los tres wrappers deben llamar.** Tests ejercitan `conclude_spawn`, no helpers huérfanos. Cero `let _ =` en swap/resize. Cero `Ok(())` si falta `pane_id`. | Extraer `parse_*` y dejar los wrappers iguales dejaría el bug verde. |
 | K9 | **`session.close_stale` permanece report-only.** Se cambia el copy para no vender cierre. No llama `SessionService::close`. | D3. El agente que codea cierra. |
 | K10 | **`cortex finish` es CLI + MCP/skills, nunca botón HUD.** Excepción D3: pantalla Sessions (no HUD) puede llamar `finish_session` in-process **después del modal**. `is_hygiene` sigue solo vault/learn/memory/knowledge. Wrapper: texto MCP que empieza con `❌` → `Err` (rc 1), no éxito verde. | 16 lote 2 ∩ 17 D3. Help raíz self-golden **no** se recaptura. |
-| K11 | **Skip persistido es PR10, no bloquea v1 visual.** HUD Skip ya oculta el id en la corrida. Learner es extra barato. | 17: «v1 puede persistir skip o no». |
-| K12 | **Path deps de workspace permitidas; crates.io no.** PR1 añade `cortex-core` + `sha2` (ya workspace) a `cortex-app`. PR2 puede añadir `cortex-enterprise` a `cortex-actions`. | Cero paquetes nuevos en Cargo.lock. |
+| K11 | **Skip persistido es C10, no bloquea v1 visual.** HUD Skip ya oculta el id en la corrida. Learner es extra barato. | 17: «v1 puede persistir skip o no». |
+| K12 | **Path deps de workspace permitidas; crates.io no.** C1 añade `cortex-core` + `sha2` (ya workspace) a `cortex-app`. C2 puede añadir `cortex-enterprise` a `cortex-actions`. | Cero paquetes nuevos en Cargo.lock. |
 | K13 | **DoD = test de comportamiento.** `actions.len() >= 4` no cuenta. El test de higiene ejecuta `run(false)` en fixture y aserta que el mensaje **no** contiene `P11`/`P12` y que el validador corrió. | 16 §13.2 / 17 §14. |
 | K14 | **`memory.prune` deja de ser `report_action`.** Al borrar: `reversible=false`, `auto_ok=false`, `cost=Seconds`. Lo mismo `knowledge.promote`. Promote = `review` + `plan_promotion` + `apply_promotion` **con** `require_review: true` (default). No apagar review para que el test pase. `vault.validate_docs` sigue report-like. `learn.topic` no se toca. | `apply_promotion` salta no-reviewed. Discover+apply a pelo imprime `promovidos: 0`. |
 | K15 | **Backup+rollback de vectors viven dentro de `reindex_vault`.** `ReindexOutcome.backup_dir: Option<PathBuf>`. El CLI solo hace `echo` de ese path y conserva `--prune-old-caches`. El catálogo no imprime. | HUD Approve sin backup no puede rollback. No hay fork “¿wrapper o núcleo?”. |
@@ -223,7 +226,7 @@ flowchart LR
 pub fn vectors_dir(dot_cortex: &Path) -> PathBuf { dot_cortex.join("vectors") }
 ```
 
-CLI wrapper, catalog `run()`, y PR11 (`NativeMemory::open_with_embeddings`, **privada** en `memory.rs` ~L175) llaman `vectors_dir(dot_cortex)`. El wrapper **deja de** usar `workspace_root.join(".cortex").join("vectors")`.
+CLI wrapper, catalog `run()`, y C11 (`NativeMemory::open_with_embeddings`, **privada** en `memory.rs` ~L175) llaman `vectors_dir(dot_cortex)`. El wrapper **deja de** usar `workspace_root.join(".cortex").join("vectors")`.
 
 **Backup (ley, K15):** `reindex_vault` hace backup `vectors.backup-{ts}` + rollback si `put_many` falla. `ReindexOutcome.backup_dir`. CLI solo echo + `--prune-old-caches`. Catálogo no imprime. No hay helper opcional “por si acaso”.
 
@@ -278,7 +281,7 @@ Misma convención que `catalog.rs::fase_sugerida` (último con phase, no el últ
 
 Añadir `phase: None` en fakes. No deriva `Default` en `SessionSummary` (evitar que un test nuevo compile sin decidir fase).
 
-`HomeData.prompt` vacío **ya** significa «derivar»: `home_data` en `runner.rs` ~L302 setea `prompt: String::new()`. PR3 **no** “arregla” eso hardcodeando IMPLEMENTACIÓN. Solo añade `phase` + `compose_agent_prompt`. Si `data.prompt` no está vacío, gana (gancho v1.1 de Liquid rewrite; v1 no lo llena).
+`HomeData.prompt` vacío **ya** significa «derivar»: `home_data` en `runner.rs` ~L302 setea `prompt: String::new()`. C3 **no** “arregla” eso hardcodeando IMPLEMENTACIÓN. Solo añade `phase` + `compose_agent_prompt`. Si `data.prompt` no está vacío, gana (gancho v1.1 de Liquid rewrite; v1 no lo llena).
 
 ### Liquid RAM → blit (mismo MARK, sin PNG extra)
 
@@ -412,7 +415,7 @@ PROMPT_NEXT_CLOSE = "el trabajo está en review. cerrá la sesión con las skill
 PROMPT_PHASE_CLOSE = "la sesión ya está en close. no empujes más fase. si falta evidencia, documentala; no le pidas al humano un comando Cortex."
 ```
 
-Test de bucle (PR3): **para cada** phase (`grill|spec|plan|implement|review|close`) más sin-fase y sin-sesión, el string **no** contiene `cortex session`, `cortex finish` ni `cortex spec` como instrucción al humano.
+Test de bucle (C3): **para cada** phase (`grill|spec|plan|implement|review|close`) más sin-fase y sin-sesión, el string **no** contiene `cortex session`, `cortex finish` ni `cortex spec` como instrucción al humano.
 
 ### Sidecar
 
@@ -538,7 +541,7 @@ let written = svc.apply_promotion(&plan, "companion")?;
 
 `apply_promotion` a pelo sobre `discover_candidates` imprime `promovidos: 0` en un `org.yaml` stock (status no es `reviewed`). Eso es teatro. Dry-run: `plan_promotion` tras review **o** solo `discover` + N, sin `apply`.
 
-Lote 1 no-HUD (PR8, no ensanchar `is_hygiene`):
+Lote 1 no-HUD (C8, no ensanchar `is_hygiene`):
 
 | id | Stub actual | Comportamiento nuevo |
 |---|---|---|
@@ -576,7 +579,7 @@ pub fn should_unload(liquid: MarkRam, last: Instant, idle: Duration, now: Instan
 
 `herdr.rs` añade `SpawnKind` + `conclude_spawn` (ver Proposed Design).
 
-### CLI finish (PR9)
+### CLI finish (C9)
 
 `dispatch_native` añade:
 
@@ -611,8 +614,8 @@ No inventar TUI interactiva.
 ## Data Model Changes
 
 - YAML de sesión: **sin cambio de schema**. `Checkpoint.phase` ya existe (`CheckpointPhase`). Solo se **lee** en `summary_of`.
-- `.cortex/actions.yaml`: PR10 — `Effect::HudSkip { id }` en `effects::apply` llama `Learner::new(&be.action_log_dir()).registrar_decision(&id, "skip")`. `action_log_dir()` ya es `.cortex` (`engine.rs:251-254`). **No** inventar método Backend nuevo. `HudSkip` hoy solo setea `hud_skipped` y devuelve `None` (`app.rs:598-605`); hay que emitir Effect para I/O (reducer puro).
-- `.cortex/vectors/vectors.v3.bin`: PR1 escribe vía `vectors_dir(dot_cortex)`. PR11 edita la fn **privada** `NativeMemory::open_with_embeddings` (`memory.rs:175`), no un método público. Si el archivo existe, `VectorStore::get_many`; si no, fallback re-embeber.
+- `.cortex/actions.yaml`: C10 — `Effect::HudSkip { id }` en `effects::apply` llama `Learner::new(&be.action_log_dir()).registrar_decision(&id, "skip")`. `action_log_dir()` ya es `.cortex` (`engine.rs:251-254`). **No** inventar método Backend nuevo. `HudSkip` hoy solo setea `hud_skipped` y devuelve `None` (`app.rs:598-605`); hay que emitir Effect para I/O (reducer puro).
+- `.cortex/vectors/vectors.v3.bin`: C1 escribe vía `vectors_dir(dot_cortex)`. C11 edita la fn **privada** `NativeMemory::open_with_embeddings` (`memory.rs:175`), no un método público. Si el archivo existe, `VectorStore::get_many`; si no, fallback re-embeber.
 - `.cortex/action_log.jsonl`: el Runner ya appendea; no cambiar formato.
 - Migración: ninguna. Fixtures viejos sin `phase` → `SessionSummary.phase = None` → prompt `PROMPT_NO_PHASE`.
 
@@ -664,19 +667,25 @@ Auth: no hay red. Cero nube. Datos en `.cortex/` del repo.
 
 ## Observability
 
-- `Runner::execute` ya loguea `{id, ts, trigger, dry_run, ok, message, duration_ms}` en `.cortex/action_log.jsonl`. Tras PR1, `ok=true` en validate/reindex reales; el mensaje deja de ser el stub P11. **Alerta humana:** si un approve de higiene escribe `P11`/`P12` en el log, el PR1 no está hecho.
+- `Runner::execute` ya loguea `{id, ts, trigger, dry_run, ok, message, duration_ms}` en `.cortex/action_log.jsonl`. Tras C1, `ok=true` en validate/reindex reales; el mensaje deja de ser el stub P11. **Alerta humana:** si un approve de higiene escribe `P11`/`P12` en el log, el C1 no está hecho.
 - Outcome del HUD: `st.actions.outcome` (ya). Mostrar la línea bajo higiene si `Some` (si no entra en 12 filas, el modal/status basta; no agrandar el HUD con una cuarta tarjeta).
 - Liquid: `eprintln!("⚠ {e} — sigo en modo determinista")` en open fallido (ya existe). Al unload, no spam: un log debug no; TUI no tiene logger. El logo **es** el indicador.
-- Spawn: `Err` va a `eprintln!` en `bin/float.rs` / `sidecar.rs` (ya) y **rc 1**. Tras PR6, ese Err incluye resize/swap.
+- Spawn: `Err` va a `eprintln!` en `bin/float.rs` / `sidecar.rs` (ya) y **rc 1**. Tras C6, ese Err incluye resize/swap.
 - Métricas: no nuevas. No Prometheus. Test counts no son métrica de producto.
 
 ---
 
 ## Rollout Plan
 
-Solo commits locales. Sin feature flags de servidor. Sin push.
+Solo commits locales en `feature/transformacion-2026-08`. Sin feature flags. Sin push. Sin PR a GitHub. Sin `main`.
 
-### Cómo el dueño prueba (manual, después de PR1+)
+```
+git push            # PROHIBIDO
+gh pr create        # PROHIBIDO
+git checkout main   # PROHIBIDO
+```
+
+### Cómo el dueño prueba (manual, después de C1+)
 
 ```bash
 cd /home/chucho/Cortex
@@ -693,7 +702,7 @@ Checklist dueño (no sustituye tests):
 4. Campo ask → logo cambia (o débil si no hay GGUF). Esperar 3 min o salir → logo dormido.
 5. Atajo sidecar: misma jerarquía, más chat, no dashboard.
 
-Rollback: `git revert` del commit del gate. Cada PR es un gate. No hay migración de datos que deshacer salvo `vectors.v3.bin` (reindex es idempotente; hay backup `vectors.backup-*` que el CLI ya hace).
+Rollback: `git revert` del commit del gate. Cada commit local es un gate. No hay migración de datos que deshacer salvo `vectors.v3.bin` (reindex es idempotente; hay backup `vectors.backup-*` que el CLI ya hace).
 
 ### Fallback si cargo registry EPERM/DNS
 
@@ -706,7 +715,7 @@ cargo clippy -p cortex-actions -p cortex-app -p cortex-cli --offline -- -D warni
 cargo fmt -p cortex-actions -p cortex-app -p cortex-cli -- --check
 ```
 
-Ajustar `-p` al crate del PR. Si `--offline` falla porque `target/` está vacío: **parar**. Body del commit: `Gate: NO CORRIÓ (target vacío, sin red). No marcar hecho.`
+Ajustar `-p` al crate del commit. Si `--offline` falla porque `target/` está vacío: **parar**. Body del commit: `Gate: NO CORRIÓ (target vacío, sin red). No marcar hecho.`
 
 La receta `rustc --extern …/libcortex_app.rlib` **no es normativa** (los rlibs reales son `target/debug/deps/libcortex_app-*.rlib` hasheados; faltan serde/chrono/mods). No usarla como gate.
 
@@ -735,7 +744,7 @@ git -C /home/chucho/Cortex commit -m "$(cat /tmp/msg.txt)"
 | Timeout Liquid 180 s molesta en consulta larga | Baja | 17: «orden de minutos». 180 es ley de este plan. No 30 s. |
 | Spawn tests no cubren herdr real | Media | Tests de `conclude_spawn` (no helpers huérfanos). El dueño prueba `--spawn`. Wrappers no pueden `Ok(())` si resize falla. |
 | `cortex finish` vs help raíz self-golden | Media | No recapturar HELP_ROOT. Verbo existe por `dispatch_native`. README en el mismo lote. |
-| Doctor stubs: tests JSON de `cli_memory_report.rs` | Media | PR11 actualiza **tests Rust** que asertan el string. No tocar goldens Python/MCP. |
+| Doctor stubs: tests JSON de `cli_memory_report.rs` | Media | C11 actualiza **tests Rust** que asertan el string. No tocar goldens Python/MCP. |
 | Sidecar hit-test hereda Home 80×24 por olvidar la rama | Alta | Test `sidecar_no_usa_home_sessions_btn` + `hit_test` Copiar. |
 | Agente “completa” Copilot inject | Alta | Grep gate: `send_text_to_pane` solo en `herdr.rs` definición. Test Enter vacío = `CopyPrompt`. |
 
@@ -745,9 +754,9 @@ git -C /home/chucho/Cortex commit -m "$(cat /tmp/msg.txt)"
 
 Solo forks reales. Si el 17 lo cerró, no está acá.
 
-1. **Número de versión user-facing** (README 0.7.0 vs workspace `0.1.0`). El 17 no lo cierra. PR11 **no** lo toca.
+1. **Número de versión user-facing** (README 0.7.0 vs workspace `0.1.0`). El 17 no lo cierra. C11 **no** lo toca.
 2. **¿`cortex session checkpoint` gana `--phase`?** Fuera de este plan. `checkpoint_now` pasa `None` (`session_cmd.rs` L185).
-3. **Autopilot `--auto` sin `DocumenterFinalize`.** El fail explícito actual es honesto. PR11 no lo “arregla”. Si el dueño inyecta finisher, otro PR.
+3. **Autopilot `--auto` sin `DocumenterFinalize`.** El fail explícito actual es honesto. C11 no lo “arregla”. Si el dueño inyecta finisher, otro commit.
 
 No son preguntas: default HUD, inject, finish desde HUD, paleta, timeout 180 s, promote = review+plan+apply, close_stale report-only, help raíz congelado, backup dentro de `reindex_vault`.
 
@@ -774,13 +783,13 @@ No son preguntas: default HUD, inject, finish desde HUD, paleta, timeout 180 s, 
 
 ---
 
-## PR Plan
+## Plan de commits locales (esta rama, sin remoto)
 
-Orden **obligatorio**. Cada PR = un work order. No fusionar PR1 con logo. No empezar por sidecar.
+Orden **obligatorio**. Cada C# = **un `git commit` local** en `feature/transformacion-2026-08`. No es un pull request. No fusionar C1 con logo. No empezar por sidecar.
 
 ---
 
-### PR1 — `feat(actions): higiene real validate_docs y reindex`
+### C1 — `feat(actions): higiene real validate_docs y reindex`
 
 **Título:** `feat(actions): higiene real validate_docs y reindex`
 
@@ -907,11 +916,11 @@ Gate: cargo test -p cortex-app -p cortex-actions -p cortex-cli
 
 ---
 
-### PR2 — `feat(actions): prune olvida y promote aplica`
+### C2 — `feat(actions): prune olvida y promote aplica`
 
 **Título:** `feat(actions): prune olvida y promote aplica`
 
-**Dependencias:** PR1.
+**Dependencias:** C1.
 
 **Archivos:**
 
@@ -1002,11 +1011,11 @@ Gate: cargo test -p cortex-actions
 
 ---
 
-### PR3 — `feat(companion): prompt COMPOSED según fase`
+### C3 — `feat(companion): prompt COMPOSED según fase`
 
 **Título:** `feat(companion): prompt COMPOSED según fase`
 
-**Dependencias:** ninguna estricta sobre PR1 (puede ir en paralelo **después** de commitear PR1, no antes de empezar el lote visual-de-producto: la ley de orden dice prompt después de higiene). **No empieces PR3 si PR1 no está commiteado.**
+**Dependencias:** ninguna estricta sobre C1 (puede ir en paralelo **después** de commitear C1, no antes de empezar el lote visual-de-producto: la ley de orden dice prompt después de higiene). **No empieces C3 si C1 no está commiteado.**
 
 **Archivos:**
 
@@ -1076,11 +1085,11 @@ Gate: cargo test -p cortex-companion
 
 ---
 
-### PR4 — `feat(companion): Liquid load/unload y logo vivo`
+### C4 — `feat(companion): Liquid load/unload y logo vivo`
 
 **Título:** `feat(companion): Liquid load/unload y logo vivo`
 
-**Dependencias:** PR3 (el HUD ya deriva prompt; el logo no bloquea prompt, pero la ley dice logo **junto** con load/unload, no GIF suelto, y **después** de higiene).
+**Dependencias:** C3 (el HUD ya deriva prompt; el logo no bloquea prompt, pero la ley dice logo **junto** con load/unload, no GIF suelto, y **después** de higiene).
 
 **Archivos:**
 
@@ -1165,11 +1174,11 @@ Gate: cargo test -p cortex-companion
 
 ---
 
-### PR5 — `feat(companion): sidecar del mismo HUD, no Home 80x24`
+### C5 — `feat(companion): sidecar del mismo HUD, no Home 80x24`
 
 **Título:** `feat(companion): sidecar del mismo HUD, no Home 80x24`
 
-**Dependencias:** PR3 (prompt/fase) y PR4 (logo ram). Si PR4 se atrasara, sidecar puede pintar `MarkRam::Idle` fijo, pero **no** reintroducir dashboard.
+**Dependencias:** C3 (prompt/fase) y C4 (logo ram). Si C4 se atrasara, sidecar puede pintar `MarkRam::Idle` fijo, pero **no** reintroducir dashboard.
 
 **Archivos:**
 
@@ -1186,9 +1195,9 @@ Gate: cargo test -p cortex-companion
 - `sidecar_areas(area)`: brand (~min(22, width/3)) + dialogs. Copy/Approve/Skip/Ask reusa ids de HUD. Chat body `Min(6)` filas para `brain.messages`.
 - Contenido: META, prompt, Copiar, una higiene, ask, mensajes. Cero “Doctor: OK”, cero “Sesiones” protagonista, cero inject.
 - `hit_test`: `CompanionMode::Sidecar` entra en la rama que hoy es Float|Copilot (copy/approve/skip).
-- Enter vacío → `CopyPrompt`. Enter con ask → `BrainTurn` (carga Liquid, PR4).
+- Enter vacío → `CopyPrompt`. Enter con ask → `BrainTurn` (carga Liquid, C4).
 - Esc/Back stack vacía: **no** `quit` (solo Float/Copilot).
-- `bin/sidecar.rs` no cambia flags. `--spawn` sigue `spawn_split_sidecar` (la honestidad de ratio es PR6).
+- `bin/sidecar.rs` no cambia flags. `--spawn` sigue `spawn_split_sidecar` (la honestidad de ratio es C6).
 
 **Tests:**
 
@@ -1232,7 +1241,7 @@ fn sidecar_q_en_home_no_sale() {
 }
 ```
 
-`sidecar_esc_no_sale` **hoy ya es true** (Back solo quita Float|Copilot). No alcanza: tiene que existir `render_sidecar` y el test de Copiar. Si el PR solo cambia Esc y deja `render_home`, `sidecar_render_tiene_copiar_no_dashboard` falla.
+`sidecar_esc_no_sale` **hoy ya es true** (Back solo quita Float|Copilot). No alcanza: tiene que existir `render_sidecar` y el test de Copiar. Si el commit solo cambia Esc y deja `render_home`, `sidecar_render_tiene_copiar_no_dashboard` falla.
 
 **Prohibido:** cuatro cards, `send_text`, cambiar default open a sidecar, fusionar con cortex-tui, rehacer Copilot.
 
@@ -1252,11 +1261,11 @@ Gate: cargo test -p cortex-companion
 
 ---
 
-### PR6 — `fix(herdr): spawn no miente el ratio`
+### C6 — `fix(herdr): spawn no miente el ratio`
 
 **Título:** `fix(herdr): spawn no miente el ratio`
 
-**Dependencias:** ninguna sobre higiene; **después** de PR5 para no mezclar layout con spawn. Puede adelantarse si PR5 se traba, pero no antes de PR1.
+**Dependencias:** ninguna sobre higiene; **después** de C5 para no mezclar layout con spawn. Puede adelantarse si C5 se traba, pero no antes de C1.
 
 **Archivos:**
 
@@ -1351,11 +1360,11 @@ Gate: cargo test -p cortex-companion
 
 ---
 
-### PR7 — `test(companion): gates v1 del producto 17 §14`
+### C7 — `test(companion): gates v1 del producto 17 §14`
 
 **Título:** `test(companion): gates v1 del producto 17 §14`
 
-**Dependencias:** PR1–PR6.
+**Dependencias:** C1–C6.
 
 **Archivos:** `tests/hud.rs` (extender), opcional `tests/v1_gates.rs`
 
@@ -1369,8 +1378,8 @@ Mapa test ↔ gate:
 |---|---|
 | 1 HUD default / Esc overlay sale | ya `hud_esc_quits`; añadir `toml_open_es_float_split` leyendo `herdr-plugin.toml` (`id = "open"` command contiene `entrypoint", "float"` / `float`) |
 | 2 Copiar, cero send-text | ya `hud_copy_click`; añadir `fn send_text_no_se_llama_desde_companion_productivo` grep: el único `send_text_to_pane` está en `herdr.rs` con `#[allow(dead_code)]`. `enter_without_ask_copies_not_injects` ya existe |
-| 3 Aprobar higiene nativa, no finish en HUD | `is_hygiene` ya; añadir `approve_validate_docs_en_fixture_no_p11` **en cortex-actions** (PR1). Aquí: snapshot HUD con propuesta `session.close_stale` **no** muestra Aprobar para esa id (`pick_hygiene` la salta) |
-| 4 idle ≠ awake | PR4 test blit |
+| 3 Aprobar higiene nativa, no finish en HUD | `is_hygiene` ya; añadir `approve_validate_docs_en_fixture_no_p11` **en cortex-actions** (C1). Aquí: snapshot HUD con propuesta `session.close_stale` **no** muestra Aprobar para esa id (`pick_hygiene` la salta) |
+| 4 idle ≠ awake | C4 test blit |
 | 5 snapshot 100×12 prompt+Copiar, no Menú/Sesiones/Doctor OK | ya `hud_render_has_copy_not_dashboard` |
 | 6 cargo test companion + actions | el gate del commit |
 
@@ -1395,7 +1404,7 @@ fn manifest_open_es_float_no_sidecar() {
 
 No recapturar goldens. No screenshot como gate.
 
-**Prohibido:** “arreglar” el producto en este PR salvo tests rojos de PRs previos (si están rojos, volver a ese PR; no parchear acá).
+**Prohibido:** “arreglar” el producto en este commit salvo tests rojos de commits previos (si están rojos, volver a ese commit; no parchear acá).
 
 **Gate:** `cargo test -p cortex-companion -p cortex-actions` && clippy `-D warnings` && fmt
 
@@ -1412,11 +1421,11 @@ Gate: cargo test -p cortex-companion -p cortex-actions
 
 ---
 
-### PR8 — `feat(actions): lote 1 residual no-HUD`
+### C8 — `feat(actions): lote 1 residual no-HUD`
 
 **Título:** `feat(actions): checkpoint setup ide gates reales; close_stale no cierra`
 
-**Dependencias:** PR1 (mismo crate; no pisa higiene). **Después** de PR7 (v1 producto primero, 17 D10).
+**Dependencias:** C1 (mismo crate; no pisa higiene). **Después** de C7 (v1 producto primero, 17 D10).
 
 **Archivos:** `catalog.rs`; `cortex-actions/Cargo.toml` path `cortex-setup` si hace falta para templates/adapters (cortex-app ya depende de cortex-setup; preferí llamar APIs reexportadas o `cortex_setup::` con path dep).
 
@@ -1500,11 +1509,11 @@ Gate: cargo test -p cortex-actions
 
 ---
 
-### PR9 — `feat(cli): cortex finish cierra con evidencia`
+### C9 — `feat(cli): cortex finish cierra con evidencia`
 
 **Título:** `feat(cli): cortex finish cierra con evidencia`
 
-**Dependencias:** PR8 no estricta; **después** de v1 HUD (PR7). El 16 quería finish temprano; el 17 lo saca del Companion. CLI sí.
+**Dependencias:** C8 no estricta; **después** de v1 HUD (C7). El 16 quería finish temprano; el 17 lo saca del Companion. CLI sí.
 
 **Archivos:**
 
@@ -1572,11 +1581,11 @@ Gate: cargo test -p cortex-cli -p cortex-companion
 
 ---
 
-### PR10 — `feat(companion): HUD Skip persiste el learner`
+### C10 — `feat(companion): HUD Skip persiste el learner`
 
 **Título:** `feat(companion): HUD Skip persiste el learner`
 
-**Dependencias:** PR7 (no bloquea v1; hacerlo cuando el resto está verde).
+**Dependencias:** C7 (no bloquea v1; hacerlo cuando el resto está verde).
 
 **Archivos:**
 
@@ -1587,7 +1596,7 @@ Gate: cargo test -p cortex-cli -p cortex-companion
 
 **Bug actual:** `HudSkip` solo setea `hud_skipped` en memoria de proceso. `Learner` / `PreferencesStore::registrar` existen y la UI no escribe (`actions.yaml`).
 
-**Comportamiento nuevo:** además de `hud_skipped`, persistir skip. No implementar `never` en v1 HUD (no hay botón Nunca). Accept se escribe cuando `approve_action` ok — **si es barato**: en `approve_action` tras `res.ok`, `Learner::registrar_decision(id, "accept")`. Un solo PR.
+**Comportamiento nuevo:** además de `hud_skipped`, persistir skip. No implementar `never` en v1 HUD (no hay botón Nunca). Accept se escribe cuando `approve_action` ok — **si es barato**: en `approve_action` tras `res.ok`, `Learner::registrar_decision(id, "accept")`. Un solo commit local.
 
 **Tests:**
 
@@ -1615,11 +1624,11 @@ Gate: cargo test -p cortex-companion -p cortex-actions
 
 ---
 
-### PR11 — `fix(platform): doctor nativo, vectors.v3.bin, flags`
+### C11 — `fix(platform): doctor nativo, vectors.v3.bin, flags`
 
 **Título:** `fix(platform): doctor nativo, vectors.v3.bin, flags honestos`
 
-**Dependencias:** PR1 (reindex escritor) y PR9 (finish). **Último.**
+**Dependencias:** C1 (reindex escritor) y C9 (finish). **Último.**
 
 **Archivos (acotar, no hervir el océano):**
 
@@ -1627,7 +1636,7 @@ Gate: cargo test -p cortex-companion -p cortex-actions
 - `rust/crates/cortex-cli/src/memory.rs` `NativeMemory::open_with_embeddings`: si `vectors_dir.join("vectors.v3.bin")` existe, `VectorStore::open` + `get_many` por fingerprints de chunks; si hit-rate completo, **no** `attach_embeddings_with`. Si miss, fallback actual (re-embeber). Path dep `cortex-core` ya en cli.
 - `remember_cmd.rs`: si `--summarize` y provider none, **truncar a 300** de verdad o dejar de decir que trunca. Elegir truncar (el warning ya existe; alinear el store).
 - `setup_cmd.rs` dry-run: no imprimir “memory init / gitignore” como hecho si no corre. El dry-run ya dice `[dry-run] crearía`. Verificar que no haya rama que imprima ✓ sobre git-index sin hacerlo.
-- Autopilot `--auto` sin `DocumenterFinalize`: el fail explícito se queda **honesto**; no fingir documenter. Si PR9 inyecta finisher, `--auto` puede usarlo. No silenciar el error.
+- Autopilot `--auto` sin `DocumenterFinalize`: el fail explícito se queda **honesto**; no fingir documenter. Si C9 inyecta finisher, `--auto` puede usarlo. No silenciar el error.
 - Versión 0.1.0 vs 0.7.0: **no elegir** (Open Question 1). No tocar.
 
 **Tests (tres que rompen; no un `include_str` de doctor):**
@@ -1648,7 +1657,7 @@ fn pm_documenter_module_ok_si_load_spec_anda() {
 
 #[test]
 fn native_memory_lee_vectors_v3_si_existe() {
-    // tmp con vectors.v3.bin escrito por reindex_vault (PR1) O canned
+    // tmp con vectors.v3.bin escrito por reindex_vault (C1) O canned
     // NativeMemory::open retrieve no exige ONNX para fingerprints presentes
     // Si no hay fixture de store: NO marcar hecho; body "Gate: blocked, no store fixture"
 }
@@ -1674,7 +1683,7 @@ Gate: cargo test -p cortex-doctor -p cortex-cli
 
 ---
 
-### Fuera de plan (no hay PR)
+### Fuera de plan (no hay commit para esto)
 
 - Lote 6 TUI dedup / fusionar crates
 - Radar, guardrails, fuzzy skills
@@ -1686,9 +1695,9 @@ Gate: cargo test -p cortex-doctor -p cortex-cli
 
 ## Definición de hecho de este plan
 
-Hecho cuando PR1–PR7 están commiteados **locales** y los seis bullets del 17 §14 son verdaderos al mismo tiempo (tests de PR7 verdes). PR8–PR11 son el resto 16 filtrado; no bloquean llamar v1 al HUD, pero PR1 **sí** bloquea v1 (Aprobar teatro).
+Hecho cuando C1–C7 están commiteados **locales** y los seis bullets del 17 §14 son verdaderos al mismo tiempo (tests de C7 verdes). C8–C11 son el resto 16 filtrado; no bloquean llamar v1 al HUD, pero C1 **sí** bloquea v1 (Aprobar teatro).
 
-Si un PR está “casi” y el test es un `len() >= N`, no está hecho.
+Si un commit está “casi” y el test es un `len() >= N`, no está hecho.
 
 ---
 
@@ -1698,4 +1707,4 @@ Este archivo **es** la copia canónica:
 
 `docs/transformacion/18-PLAN-IMPLEMENTACION-RESTO.md`
 
-El agente de código empieza por **PR1**. No reabre D1–D10. No rehace `e55129b`.
+El agente de código empieza por **C1**. Commits **solo locales** en `feature/transformacion-2026-08`. No `main`. No push. No PR de GitHub. No reabre D1–D10. No rehace `e55129b`.
