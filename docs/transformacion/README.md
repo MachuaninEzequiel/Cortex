@@ -4,12 +4,17 @@
 > Objetivo final: una versión superadora de Cortex — más eficiente, mejores resultados de retrieval,
 > más simple de usar — administrada por tramos documentales que permiten cambiar de sesión sin perder contexto.
 
+> **Obra activa (2026-08-29):** [16 · Deuda real y norte de pulido](16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md).
+> Ese documento **manda** sobre HANDOFF / ESTADO-ACTUAL / 15 para *qué
+> falta* y *cómo se pule*. Rama `feature/transformacion-2026-08`, commits
+> locales, sin push.
+
 ## Reglas de administración documental (obligatorias)
 
-1. Cada obra vive en su documento (`01..05`). Toda decisión se registra ahí, no en chat.
+1. Cada obra vive en su documento (`01..16`). Toda decisión se registra ahí, no en chat.
 2. Toda tarea ejecutable lleva checkbox `[ ]`; se marca `[x]` recién verificada. Nada "hecho" sin evidencia (comando + salida).
 3. Cada obra define **criterio de entrada** (pre-requisitos) y **criterio de salida** (gates). Un tramo no empieza sin entrada cumplida ni se cierra sin salida verificada.
-4. Cambio de sesión: leer este README + el documento de la obra activa + último estado en `ESTADO-ACTUAL.md`. Retomar exactamente donde quedó.
+4. Cambio de sesión: leer este README + **el documento 16** (obra activa). `ESTADO-ACTUAL.md` y `HANDOFF.md` son historia de 07/08.
 5. Los subagentes trabajan con scopes disjuntos y entregan incrementalmente (archivos escritos temprano y por secciones, o mensajes cortos encadenados).
 
 ## Los 5 obras (workstreams)
@@ -22,6 +27,15 @@
 | [04](04-VECTORIZACION-E-IDIOMA.md) | Vectorización + configuración por idioma | Investigación de modelos nuevos; config por idioma (ES/EN/multilingüe); corregir bugs silenciosos del stack vectorial |
 | [05](05-UX-TUI-ACTIONENGINE.md) | UX simplificada + ActionEngine | TUIs simples, comandos consolidados, motor de acciones que automatiza el aprendizaje (el usuario solo elige de vez en cuando) |
 | [06](06-INTELIGENCIA-LOCAL-LFM.md) | Inteligencia local LFM2.5 [FUTURO] | LLM edge local (Liquid) como reranker/summarizer/cerebro del ActionEngine — investigación profunda pendiente antes de implementar |
+
+Obras posteriores (historia 07/08 + pulido activo):
+
+| Doc | Obra | Estado |
+|---|---|---|
+| [07](07-AUDITORIA-2026-08-24.md)–[12](12-AUDITORIA-PYTHON-RESIDUAL.md) | Migración total a Rust + baja del passthrough | Historia. Núcleo nativo REAL. |
+| [13](13-MODO-COMPOSED-Y-SKILLS-EXPERTAS.md)–[14](14-HERDR-COMPANION.md) | COMPOSED + Companion Herdr | Dominio y máquina ELM REAL. Superficie diaria incompleta. |
+| [15](15-REBRANDING-TUI-HERDR-STATUS.md) | Rebrand + 3 modos Herdr | Relato del agente. Crítica §3–§4 vigente; §2 no describir el árbol. |
+| **[16](16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md)** | **Pulido (obra activa)** | **Autoridad. Engines + TUI + `finish` + Herdr real.** |
 
 ## Orden de tramos (con racional)
 

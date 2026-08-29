@@ -1,3 +1,8 @@
+> **HISTÓRICO (Obra 07 + 08).** A partir de 2026-08-29 la autoridad de
+> *qué está hecho / qué falta / qué se construye* es
+> `docs/transformacion/16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md`.
+> Este HANDOFF es crónica de cierre. Si contradice el 16, gana el 16.
+
 > **HANDOFF ACTIVO (2026-08-26, cierre completo OBRA 07).**
 > Obra 07: P0–P12 ✅ COMPLETADAS + cierre T1–T7 ✅ · **OBRA 07 — CIERRE
 > COMPLETO**. Si algo acá contradice historia vieja, MANDA ESTA SECCIÓN.
@@ -233,4 +238,3 @@ Deuda/fase 2 (documentada en 14-… §9):
   /home/chucho/Cortex/integrations/herdr` tras integrar la rama.
 - Verificación manual del dueño: pane open (INSTALL.md §Verificar, “Paso
   manual (UI)”) + navegación por clic en su sesión herdr (INSTALL.md §Uso).
->>>>>>> feature/obra08-streamB

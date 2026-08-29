@@ -1,5 +1,11 @@
 # ESTADO ACTUAL DEL PROGRAMA
 
+> **HISTÓRICO (Obra 07 + 08, corte 2026-08-28).** A partir de 2026-08-29
+> la autoridad de deuda y pulido es
+> `docs/transformacion/16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md`. Este archivo
+> conserva las tablas de fases y divergencias. El banner de “CLI
+> completo / baja definitiva” no describe el producto diario (ver 16 §1).
+
 > **ACTUALIZADO 2026-08-27 (ba ja definitiva completa — RUTA 1/2 + FASE FÍSICA).**
 > Obra 07 (migración total a Rust): **P0–P12 ✅ + cierre T1–T7 ✅ · CIERRE
 > COMPLETO · BAJA DEFINITIVA EJECUTADA**. El CLI nativo clap está wireado
