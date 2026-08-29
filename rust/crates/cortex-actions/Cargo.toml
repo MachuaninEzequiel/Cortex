@@ -11,5 +11,6 @@ serde_yaml = { workspace = true }
 chrono = { workspace = true }
 cortex-app = { path = "../cortex-app" }
 cortex-enterprise = { path = "../cortex-enterprise" }
+cortex-setup = { path = "../cortex-setup" }
 
 [dev-dependencies]

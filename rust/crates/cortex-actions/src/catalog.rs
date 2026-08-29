@@ -94,6 +94,7 @@ pub fn setup_finish_bootstrap(ctx: &ActionContext) -> Action {
     let run_config = config.clone();
     let run_dot = ctx.dot_cortex();
     let run_vault = vault.clone();
+    let run_ctx = ctx.clone();
     Action::new(
         "setup.finish_bootstrap",
         "Completar el bootstrap de Cortex en este proyecto",
@@ -124,8 +125,66 @@ pub fn setup_finish_bootstrap(ctx: &ActionContext) -> Action {
             };
             return ActionResult::new(true, format!("[dry-run] bootstrap crearía: {plan}"));
         }
-        ActionResult::fail(
-            "setup.finish_bootstrap real requiere SetupOrchestrator nativo (fase P8)",
+
+        let pctx = cortex_setup::detector::ProjectContext::detect(&run_ctx.repo_root);
+
+        fn write_file(root: &Path, rel: &str, content: &str) -> Result<(), String> {
+            let path = root.join(rel);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&path, content).map_err(|e| e.to_string())
+        }
+
+        use cortex_setup::setup_templates as tpl;
+        if let Err(e) = write_file(
+            &run_ctx.repo_root,
+            ".cortex/workspace.yaml",
+            &tpl::render_workspace_yaml(),
+        ) {
+            return ActionResult::fail(format!("error escribiendo workspace.yaml: {e}"));
+        }
+        if let Err(e) = write_file(
+            &run_ctx.repo_root,
+            "config.yaml",
+            &tpl::render_config_yaml(&pctx),
+        ) {
+            return ActionResult::fail(format!("error escribiendo config.yaml: {e}"));
+        }
+        let org_yaml =
+            match tpl::render_org_yaml(&pctx.stack.project_name, "small-company", true, false) {
+                Ok(s) => s,
+                Err(e) => return ActionResult::fail(format!("error renderizando org.yaml: {e}")),
+            };
+        if let Err(e) = write_file(&run_ctx.repo_root, ".cortex/org.yaml", &org_yaml) {
+            return ActionResult::fail(format!("error escribiendo org.yaml: {e}"));
+        }
+        let _ = write_file(
+            &run_ctx.repo_root,
+            ".cortex/vault/architecture.md",
+            &tpl::render_architecture_md(&pctx),
+        );
+        let _ = write_file(
+            &run_ctx.repo_root,
+            ".cortex/vault/context.md",
+            &tpl::render_context_md(&pctx),
+        );
+        let _ = write_file(
+            &run_ctx.repo_root,
+            ".cortex/vault/decisions/README.md",
+            &tpl::render_decisions_md(),
+        );
+        let _ = write_file(
+            &run_ctx.repo_root,
+            ".cortex/vault/runbooks/README.md",
+            &tpl::render_runbooks_md(&pctx),
+        );
+        let _ = std::fs::create_dir_all(run_ctx.dot_cortex().join("memory"));
+        let _ = std::fs::create_dir_all(run_ctx.dot_cortex().join("sessions"));
+
+        ActionResult::new(
+            true,
+            "bootstrap completado: config.yaml, .cortex/org.yaml, vault y memory creados",
         )
     })
     .checked()
@@ -150,13 +209,11 @@ pub fn session_close_stale(ctx: &ActionContext) -> Action {
     let hay_stale = move || !stale_ids(&hay_stale_ctx, DIAS_STALE).is_empty();
 
     let run_ctx = ctx.clone();
-    // Espejo de _report_action: reversible formal + undo no-op + instant +
-    // auto-ok. El run ignora dry_run y devuelve la guía (o "sin sesiones").
     report_action(
         "session.close_stale",
         &format!("Cerrar sesiones OPEN de más de {DIAS_STALE} días sin checkpoints"),
         Categoria::Maintenance,
-        &format!("muestra guía de finish/abandon para sesiones OPEN >{DIAS_STALE} días"),
+        &format!("informa sesiones OPEN stale (> {DIAS_STALE} días sin checkpoints)"),
         vec![Check::new(
             format!("hay sesiones OPEN >{DIAS_STALE}d sin checkpoints"),
             hay_stale,
@@ -166,16 +223,36 @@ pub fn session_close_stale(ctx: &ActionContext) -> Action {
             if ids.is_empty() {
                 return ActionResult::new(true, "sin sesiones stale");
             }
-            let guia: Vec<String> = ids
-                .iter()
-                .map(|i| format!("{i} → `cortex autopilot finish --session-id {i}` o abandon"))
-                .collect();
             ActionResult::new(
                 true,
-                format!("Cerrá las sesiones stale: {}", guia.join("; ")),
+                format!(
+                    "sesiones stale (ids): {} — el agente que codea cierra; Companion no cierra",
+                    ids.join(", ")
+                ),
             )
         },
     )
+}
+
+fn porcelain_paths(repo: &Path) -> Vec<String> {
+    let out = std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(repo)
+        .output();
+    let Ok(o) = out else { return Vec::new() };
+    let s = String::from_utf8_lossy(&o.stdout);
+    let mut res = Vec::new();
+    for line in s.lines() {
+        if line.len() > 3 {
+            let path_part = line[3..].trim();
+            if let Some((_, r)) = path_part.split_once(" -> ") {
+                res.push(r.trim().to_string());
+            } else {
+                res.push(path_part.to_string());
+            }
+        }
+    }
+    res
 }
 
 pub fn session_checkpoint_now(ctx: &ActionContext) -> Action {
@@ -183,14 +260,14 @@ pub fn session_checkpoint_now(ctx: &ActionContext) -> Action {
         if ctx.sesiones_abiertas().is_empty() {
             return false;
         }
-        let repo = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let repo = &ctx.repo_root;
         if !repo.join(".git").exists() {
             return false;
         }
         // git status --porcelain (timeout 5s en Python); vacío ⇒ sin cambios.
         std::process::Command::new("git")
             .args(["status", "--porcelain"])
-            .current_dir(&repo)
+            .current_dir(repo)
             .output()
             .map(|o| !o.stdout.is_empty())
             .unwrap_or(false)
@@ -221,7 +298,28 @@ pub fn session_checkpoint_now(ctx: &ActionContext) -> Action {
                 objetivo.session_id
             ));
         }
-        ActionResult::fail("checkpoint real requiere SessionService nativo (fase de integración)")
+        let storage =
+            cortex_app::session::SessionStorage::new(run_ctx.dot_cortex().join("sessions"));
+        let svc = cortex_app::session::service::SessionService::new(storage, &run_ctx.repo_root);
+        let artifacts = porcelain_paths(&run_ctx.repo_root);
+        match svc.checkpoint(
+            &objetivo.session_id,
+            cortex_app::session::CheckpointSource::Manual,
+            vec![],
+            vec![],
+            artifacts,
+            "checkpoint del Action Engine",
+            None,
+        ) {
+            Ok(rec) => {
+                let n = rec.checkpoints.len();
+                ActionResult::new(
+                    true,
+                    format!("checkpoint #{} registrado en {}", n, objetivo.session_id),
+                )
+            }
+            Err(e) => ActionResult::fail(format!("error al registrar checkpoint: {e}")),
+        }
     })
     .checked()
 }
@@ -360,12 +458,42 @@ pub fn quality_run_gates(ctx: &ActionContext) -> Action {
             if dry_run {
                 return ActionResult::dry("revisar último checkpoint con quality gates");
             }
-            // Nota P6: el Python acá compara un ReviewVerdict con "accept"
-            // (siempre False) e interpola el repr del objeto — ruta no
-            // gateada y ya quirk en el oráculo. El puerto lo declara
-            // explícitamente en vez de fingir paridad.
-            let _ = run_ctx;
-            ActionResult::fail("ruta real no gateada en P6 (verdict requiere LoadedSpec)")
+            let abiertas = run_ctx.sesiones_abiertas();
+            let Some(sesion) = abiertas.iter().find(|r| !r.checkpoints.is_empty()) else {
+                return ActionResult::fail("sin sesión abierta con checkpoints");
+            };
+            let last_cp = sesion.checkpoints.last().unwrap();
+            let files_in_scope = if !sesion.spec_path.is_empty() {
+                let spec_p = run_ctx.repo_root.join(&sesion.spec_path);
+                cortex_app::documenter::spec_loader::load_spec(&spec_p).files_in_scope
+            } else {
+                vec![]
+            };
+            let verdict =
+                cortex_app::session::quality_gates::review_checkpoint(last_cp, &files_in_scope);
+            let mut details = BTreeMap::new();
+            details.insert(
+                "accepted".to_string(),
+                serde_json::Value::Bool(verdict.accepted),
+            );
+            details.insert(
+                "action".to_string(),
+                serde_json::Value::String(verdict.action.as_str().to_string()),
+            );
+            details.insert(
+                "reason".to_string(),
+                serde_json::Value::String(verdict.reason.clone()),
+            );
+            ActionResult::new(
+                verdict.accepted,
+                format!(
+                    "accepted={} action={} reason={}",
+                    verdict.accepted,
+                    verdict.action.as_str(),
+                    verdict.reason
+                ),
+            )
+            .with_details(details)
         },
     )
 }
@@ -565,6 +693,7 @@ pub fn ide_resync(ctx: &ActionContext) -> Action {
     }
 
     let pre_ctx = ctx.clone();
+    let run_ctx = ctx.clone();
     Action::new(
         "ide.resync",
         "Re-sincronizar skills de Cortex en los IDEs configurados",
@@ -581,11 +710,40 @@ pub fn ide_resync(ctx: &ActionContext) -> Action {
         ActionResult::new(true, "re-sync idempotente — nada que deshacer")
     }))
     .cost(Costo::Seconds)
-    .run_fn(|dry_run| {
+    .run_fn(move |dry_run| {
         if dry_run {
             return ActionResult::dry("re-inyectar skills/config en los IDEs configurados");
         }
-        ActionResult::fail("inject_all real requiere cortex-setup nativo (P8)")
+        let home = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| run_ctx.repo_root.clone());
+        let ide_ctx = cortex_setup::ide::IdeCtx {
+            project_root: &run_ctx.repo_root,
+            home: &home,
+            now: chrono::Utc::now(),
+        };
+        let prompts = cortex_setup::ide::prompts::build_all_prompts(&ide_ctx);
+        let adapters = cortex_setup::ide::adapters::all_adapters();
+        let mut written_total = Vec::new();
+        for adapter in &adapters {
+            let configs = adapter.config_paths(&ide_ctx);
+            let present = configs.iter().any(|(_, p)| p.exists());
+            if present {
+                if let Ok(w) = adapter.inject_profiles(&ide_ctx, &prompts) {
+                    written_total.extend(w);
+                }
+                if let Ok(w) = adapter.inject_mcp(&ide_ctx) {
+                    written_total.extend(w);
+                }
+            }
+        }
+        ActionResult::new(
+            true,
+            format!(
+                "re-sync ide completado: {} archivos tocados",
+                written_total.len()
+            ),
+        )
     })
     .checked()
 }
@@ -1069,5 +1227,96 @@ mod tests {
             .split_once("mod tests")
             .expect("tests");
         assert!(!body.contains("usá `cortex promote-knowledge`"));
+    }
+
+    #[test]
+    fn finish_bootstrap_escribe_config_y_org() {
+        let g = tmpdir("bootstrap");
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (setup_finish_bootstrap(&ctx).run)(false);
+        assert!(res.ok, "{}", res.message);
+        assert!(g.0.join("config.yaml").exists(), "config.yaml debe crearse");
+        assert!(
+            g.0.join(".cortex").join("org.yaml").exists(),
+            ".cortex/org.yaml debe crearse"
+        );
+        assert!(
+            g.0.join(".cortex").join("vault").exists(),
+            ".cortex/vault debe crearse"
+        );
+    }
+
+    #[test]
+    fn close_stale_no_cambia_status() {
+        let g = tmpdir("close_stale");
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let storage = SessionStorage::new(ctx.dot_cortex().join("sessions"));
+        let rec = SessionRecord {
+            session_id: "2026-01-01_stale".into(),
+            status: cortex_app::session::SessionStatus::Open,
+            opened_at: "2026-01-01T00:00:00+00:00".into(),
+            checkpoints: vec![],
+            ..Default::default()
+        };
+        storage.save(&rec).unwrap();
+
+        let res = (session_close_stale(&ctx).run)(false);
+        assert!(res.ok, "{}", res.message);
+        assert!(res.message.contains("2026-01-01_stale"), "{}", res.message);
+        assert!(
+            res.message.contains("Companion no cierra"),
+            "{}",
+            res.message
+        );
+
+        let read_back = storage.load("2026-01-01_stale").unwrap();
+        assert_eq!(read_back.status, cortex_app::session::SessionStatus::Open);
+    }
+
+    #[test]
+    fn run_gates_no_dice_p6() {
+        let g = tmpdir("gates");
+        let ctx = ctx_con_sesion(&g.0, vec![cp(Some(CheckpointPhase::Implement))]);
+        let res = (quality_run_gates(&ctx).run)(false);
+        assert!(!res.message.contains("P6"), "{}", res.message);
+        assert!(
+            res.message.contains("accepted=") || res.message.contains("reason="),
+            "{}",
+            res.message
+        );
+    }
+
+    #[test]
+    fn checkpoint_now_append_en_sesion_open() {
+        let g = tmpdir("cp_now");
+        let ctx = ctx_con_sesion(&g.0, vec![cp(Some(CheckpointPhase::Implement))]);
+        let _ = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(&g.0)
+            .output();
+        std::fs::write(g.0.join("change.txt"), "hello").unwrap();
+
+        let n0 = ctx.sesiones_abiertas()[0].checkpoints.len();
+        let res = (session_checkpoint_now(&ctx).run)(false);
+        assert!(res.ok, "{}", res.message);
+
+        let storage = SessionStorage::new(ctx.dot_cortex().join("sessions"));
+        let read_back = storage.load("2026-08-28_fixture").unwrap();
+        assert_eq!(read_back.checkpoints.len(), n0 + 1);
+        let last = read_back.checkpoints.last().unwrap();
+        assert!(last.phase.is_none());
+        assert_eq!(last.note, "checkpoint del Action Engine");
+        assert!(last.artifacts_touched.contains(&"change.txt".to_string()));
+    }
+
+    #[test]
+    fn strings_teatro_p6_p8_no_viven_en_catalog() {
+        let (body, _) = include_str!("catalog.rs")
+            .split_once("mod tests")
+            .expect("tests");
+        assert!(!body.contains("fase P8"));
+        assert!(!body.contains("ruta real no gateada en P6"));
+        assert!(!body.contains("fase de integración"));
     }
 }

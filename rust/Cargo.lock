@@ -417,6 +417,7 @@ dependencies = [
  "chrono",
  "cortex-app",
  "cortex-enterprise",
+ "cortex-setup",
  "serde",
  "serde_json",
  "serde_yaml",
