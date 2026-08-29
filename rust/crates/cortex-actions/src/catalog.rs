@@ -393,18 +393,50 @@ pub fn knowledge_promote(ctx: &ActionContext) -> Action {
     let hay_enterprise_ctx = ctx.clone();
     let hay_enterprise = move || hay_enterprise_ctx.dot_cortex().join("enterprise").exists();
 
+    let run_ctx = ctx.clone();
     report_action(
         "knowledge.promote",
         "Revisar pendientes de promoción enterprise",
         Categoria::Knowledge,
-        "abre el flujo guiado de revisión de knowledge enterprise",
+        "promueve candidatos de conocimiento al vault enterprise (Approve = review)",
         vec![Check::new("workspace enterprise presente", hay_enterprise)],
-        |dry_run| {
+        move |dry_run| {
+            let mut svc = match cortex_enterprise::knowledge_promotion::KnowledgePromotionService::from_project_root(
+                &run_ctx.repo_root,
+                None,
+                Arc::new(cortex_enterprise::clock::SystemClock),
+            ) {
+                Ok(s) => s,
+                Err(e) => return ActionResult::fail(format!("{e}")),
+            };
+            let cands = match svc.discover_candidates() {
+                Ok(c) => c,
+                Err(e) => return ActionResult::fail(format!("{e}")),
+            };
             if dry_run {
-                ActionResult::new(true, "[dry-run] flujo review-knowledge guiado")
-            } else {
-                ActionResult::new(true, "usá `cortex promote-knowledge` — flujo interactivo")
+                return ActionResult::new(
+                    true,
+                    format!("[dry-run] promovería {} candidatos", cands.len()),
+                );
             }
+            if cands.is_empty() {
+                return ActionResult::new(true, "sin candidatos a promover");
+            }
+            for c in cands
+                .iter()
+                .filter(|c| c.issues.iter().all(|i| i.severity != "error"))
+            {
+                let _ = svc.review(&c.origin_id, true, "companion", Some("HUD Aprobar"));
+            }
+            let plan = match svc.plan_promotion() {
+                Ok(p) => p,
+                Err(e) => return ActionResult::fail(format!("{e}")),
+            };
+            let written = match svc.apply_promotion(&plan, "companion") {
+                Ok(w) => w,
+                Err(e) => return ActionResult::fail(format!("{e}")),
+            };
+            ActionResult::new(true, format!("promovidos: {}", written.len()))
         },
     )
 }
@@ -440,37 +472,90 @@ pub fn memory_prune(ctx: &ActionContext) -> Action {
     };
 
     let run_ctx = ctx.clone();
-    report_action(
+    Action::new(
         "memory.prune",
         "Revisar memorias con feedback negativo",
         Categoria::Quality,
-        "lista memorias candidatas a forget según feedback persistido (no borra)",
-        vec![Check::new(
-            "≥3 feedbacks negativos registrados",
-            hay_feedback_negativo,
-        )],
-        move |_dry_run| {
-            let mut conteo = conteo_candidatos(&run_ctx);
-            // sorted(conteo, key=conteo.get, reverse=True)[:5] — estable:
-            // iguales conteos conservan orden de primera aparición.
-            conteo.sort_by_key(|b| std::cmp::Reverse(b.1));
-            conteo.truncate(5);
-            let candidatos: Vec<String> = conteo.into_iter().map(|(k, _)| k).collect();
+        "olvida memorias con feedback negativo persistido vía NativeEpisodicStore",
+    )
+    .unwrap()
+    .preconditions(vec![Check::new(
+        "≥3 feedbacks negativos registrados",
+        hay_feedback_negativo,
+    )])
+    .cost(Costo::Seconds)
+    .auto_ok(false)
+    .reversible(false)
+    .run_fn(move |dry_run| {
+        let mut conteo = conteo_candidatos(&run_ctx);
+        conteo.sort_by_key(|b| std::cmp::Reverse(b.1));
+        conteo.truncate(5);
+        let candidatos: Vec<String> = conteo.into_iter().map(|(k, _)| k).collect();
+        if dry_run {
             let mut details = BTreeMap::new();
             details.insert(
                 "candidatos".to_string(),
                 serde_json::to_value(&candidatos).unwrap_or_default(),
             );
-            ActionResult::new(
-                true,
-                format!(
-                    "candidatos a olvidar (requiere confirmación aparte): {}",
-                    candidatos.join(", ")
-                ),
-            )
-            .with_details(details)
-        },
-    )
+            return ActionResult::dry(format!(
+                "olvidaría memorias con feedback negativo: {}",
+                candidatos.join(", ")
+            ))
+            .with_details(details);
+        }
+        if candidatos.is_empty() {
+            return ActionResult::new(true, "sin candidatos a olvidar");
+        }
+
+        let mem_dir = run_ctx.dot_cortex().join("memory");
+        let jsonl_path = if mem_dir.join("episodic_export.jsonl").exists() {
+            mem_dir.join("episodic_export.jsonl")
+        } else if mem_dir.join("memories.jsonl").exists() {
+            mem_dir.join("memories.jsonl")
+        } else {
+            return ActionResult::fail("sin store episódico; nada que olvidar");
+        };
+
+        let mut store = match cortex_app::episodic::NativeEpisodicStore::load(&jsonl_path) {
+            Ok(st) => st,
+            Err(e) => return ActionResult::fail(format!("error al cargar store episódico: {e}")),
+        };
+
+        let mut olvidadas = Vec::new();
+        let mut no_encontradas = Vec::new();
+        for id in &candidatos {
+            match store.delete(id) {
+                Ok(true) => olvidadas.push(id.clone()),
+                Ok(false) => no_encontradas.push(id.clone()),
+                Err(e) => return ActionResult::fail(format!("error al borrar {id}: {e}")),
+            }
+        }
+
+        let mut msg_parts = Vec::new();
+        if !olvidadas.is_empty() {
+            msg_parts.push(format!("olvidadas: {}", olvidadas.join(", ")));
+        }
+        if !no_encontradas.is_empty() {
+            msg_parts.push(format!("no encontradas: {}", no_encontradas.join(", ")));
+        }
+        let ok = !olvidadas.is_empty() || candidatos.is_empty();
+        let message = if msg_parts.is_empty() {
+            "sin cambios en memoria episódica".to_string()
+        } else {
+            msg_parts.join("; ")
+        };
+        let mut details = BTreeMap::new();
+        details.insert(
+            "olvidadas".to_string(),
+            serde_json::to_value(&olvidadas).unwrap_or_default(),
+        );
+        details.insert(
+            "no_encontradas".to_string(),
+            serde_json::to_value(&no_encontradas).unwrap_or_default(),
+        );
+        ActionResult::new(ok, message).with_details(details)
+    })
+    .checked()
 }
 
 pub fn ide_resync(ctx: &ActionContext) -> Action {
@@ -856,5 +941,133 @@ mod tests {
             .expect("tests");
         assert!(!body.contains("cola larga P11"));
         assert!(!body.contains("AgentMemory nativo (P12)"));
+    }
+
+    #[test]
+    fn prune_borra_id_del_jsonl() {
+        let g = tmpdir("prune_del");
+        let dot = g.0.join(".cortex");
+        let mem = dot.join("memory");
+        std::fs::create_dir_all(&mem).unwrap();
+        let fb_line = serde_json::json!({
+            "type": "explicit",
+            "memory_id": "mem-1",
+            "feedback_type": "not_useful",
+            "source": "tui",
+            "ts": "2026-08-29T12:00:00Z"
+        });
+        std::fs::write(
+            dot.join("feedback.jsonl"),
+            format!("{fb_line}\n{fb_line}\n{fb_line}\n"),
+        )
+        .unwrap();
+        let row1 = serde_json::json!({
+            "id": "mem-1",
+            "document": "Texto de memoria 1",
+            "meta": {"id": "mem-1", "memory_type": "general", "tags": "[]", "files": "[]", "timestamp": "2026-08-29T00:00:00+00:00", "metadata_json": "{}"},
+            "embedding": [0.1, 0.2, 0.3]
+        });
+        let row2 = serde_json::json!({
+            "id": "mem-2",
+            "document": "Texto de memoria 2",
+            "meta": {"id": "mem-2", "memory_type": "general", "tags": "[]", "files": "[]", "timestamp": "2026-08-29T00:00:00+00:00", "metadata_json": "{}"},
+            "embedding": [0.4, 0.5, 0.6]
+        });
+        std::fs::write(mem.join("memories.jsonl"), format!("{row1}\n{row2}\n")).unwrap();
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (memory_prune(&ctx).run)(false);
+        assert!(res.ok, "{}", res.message);
+        assert!(res.message.contains("olvidadas: mem-1"), "{}", res.message);
+
+        let post = std::fs::read_to_string(mem.join("memories.jsonl")).unwrap();
+        assert!(!post.contains("mem-1"), "mem-1 debe haber sido borrado");
+        assert!(post.contains("mem-2"), "mem-2 debe permanecer intacto");
+    }
+
+    #[test]
+    fn prune_dry_run_no_borra() {
+        let g = tmpdir("prune_dry");
+        let dot = g.0.join(".cortex");
+        let mem = dot.join("memory");
+        std::fs::create_dir_all(&mem).unwrap();
+        let fb_line = serde_json::json!({
+            "type": "explicit",
+            "memory_id": "mem-1",
+            "feedback_type": "not_useful",
+            "source": "tui",
+            "ts": "2026-08-29T12:00:00Z"
+        });
+        std::fs::write(
+            dot.join("feedback.jsonl"),
+            format!("{fb_line}\n{fb_line}\n{fb_line}\n"),
+        )
+        .unwrap();
+        let row1 = serde_json::json!({
+            "id": "mem-1",
+            "document": "Texto de memoria 1",
+            "meta": {"id": "mem-1", "memory_type": "general", "tags": "[]", "files": "[]", "timestamp": "2026-08-29T00:00:00+00:00", "metadata_json": "{}"},
+            "embedding": [0.1, 0.2, 0.3]
+        });
+        std::fs::write(mem.join("memories.jsonl"), format!("{row1}\n")).unwrap();
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (memory_prune(&ctx).run)(true);
+        assert!(res.ok);
+        assert!(res.message.contains("[dry-run]"));
+
+        let post = std::fs::read_to_string(mem.join("memories.jsonl")).unwrap();
+        assert!(post.contains("mem-1"), "dry-run no debe borrar mem-1");
+    }
+
+    #[test]
+    fn promote_sin_enterprise_no_se_ofrece() {
+        let g = tmpdir("no_ent");
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let a = knowledge_promote(&ctx);
+        assert!(!a.preconditions.iter().all(|c| c.cumple(false)));
+    }
+
+    #[test]
+    fn promote_approve_es_review_y_escribe_dest() {
+        let g = tmpdir("promote_app");
+        let local = g.0.join("vault");
+        let enterprise = g.0.join("vault-enterprise");
+        std::fs::create_dir_all(local.join("specs")).unwrap();
+        std::fs::create_dir_all(&enterprise).unwrap();
+        std::fs::create_dir_all(g.0.join(".cortex").join("enterprise")).unwrap();
+        std::fs::write(
+            local.join("specs/auth.md"),
+            "---\ntitle: Auth Spec\ndate: 2026-08-29\n---\n\nContenido de la spec\n",
+        )
+        .unwrap();
+        std::fs::write(g.0.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+        let mut config = cortex_enterprise::config::build_enterprise_org_config(
+            "Acme Org",
+            cortex_enterprise::models::OrgProfile::SmallCompany,
+            true,
+            false,
+        )
+        .unwrap();
+        config.promotion.require_review = true;
+        config.promotion.allowed_doc_types =
+            vec![cortex_enterprise::models::PromotableDocType::Spec];
+        cortex_enterprise::config::write_enterprise_config(&g.0, &config, None).unwrap();
+
+        let ctx = ActionContext::from_project_root(Some(&g.0));
+        let res = (knowledge_promote(&ctx).run)(false);
+        assert!(res.ok, "{}", res.message);
+        assert!(res.message.contains("promovidos: 1"), "{}", res.message);
+    }
+
+    #[test]
+    fn promote_ya_no_manda_al_cli() {
+        let (body, _) = include_str!("catalog.rs")
+            .split_once("mod tests")
+            .expect("tests");
+        assert!(!body.contains("usá `cortex promote-knowledge`"));
     }
 }
