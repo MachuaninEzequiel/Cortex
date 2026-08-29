@@ -391,3 +391,80 @@ pub fn spawn_copilot_split(project_root: &Path) -> Result<(), String> {
 
     Ok(())
 }
+
+pub const DEFAULT_SIDECAR_RATIO: f32 = 0.30;
+pub const DEFAULT_FLOAT_RATIO: f32 = 0.25;
+pub const DEFAULT_COPILOT_RATIO: f32 = 0.35;
+
+pub fn build_plugin_open_args<'a>(
+    entrypoint: &'a str,
+    direction: &'a str,
+    cwd: &'a str,
+) -> Vec<&'a str> {
+    vec![
+        "plugin",
+        "pane",
+        "open",
+        "--plugin",
+        "cortex.companion",
+        "--entrypoint",
+        entrypoint,
+        "--placement",
+        "split",
+        "--direction",
+        direction,
+        "--cwd",
+        cwd,
+    ]
+}
+
+pub fn build_resize_args<'a>(
+    direction: &'a str,
+    amount: &'a str,
+    pane_id: &'a str,
+) -> Vec<&'a str> {
+    vec![
+        "pane",
+        "resize",
+        "--direction",
+        direction,
+        "--amount",
+        amount,
+        "--pane",
+        pane_id,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_ratios_are_honest() {
+        assert!((DEFAULT_SIDECAR_RATIO - 0.30).abs() < f32::EPSILON);
+        assert!((DEFAULT_FLOAT_RATIO - 0.25).abs() < f32::EPSILON);
+        assert!((DEFAULT_COPILOT_RATIO - 0.35).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn sidecar_spawn_args_match_protocol() {
+        let args = build_plugin_open_args("sidecar", "right", "/tmp/proj");
+        assert_eq!(args[0], "plugin");
+        assert_eq!(args[1], "pane");
+        assert_eq!(args[2], "open");
+        assert_eq!(args[4], "cortex.companion");
+        assert_eq!(args[6], "sidecar");
+        assert_eq!(args[10], "right");
+        assert_eq!(args[12], "/tmp/proj");
+    }
+
+    #[test]
+    fn resize_args_match_protocol() {
+        let args = build_resize_args("right", "-0.20", "pane-123");
+        assert_eq!(args[0], "pane");
+        assert_eq!(args[1], "resize");
+        assert_eq!(args[3], "right");
+        assert_eq!(args[5], "-0.20");
+        assert_eq!(args[7], "pane-123");
+    }
+}
