@@ -118,6 +118,10 @@ pub fn apply_opt<B: Backend>(
         Effect::CopyPrompt { text } => {
             let _ = crate::clipboard::copy(&text);
         }
+        Effect::HudSkip { id } => {
+            let _ = cortex_actions::learning::Learner::new(log.directory())
+                .registrar_decision(&id, "skip");
+        }
         Effect::BrainTurn { text } => {
             // Un turno de chat: reads directas, propuestas mutantes como
             // mensajes Proposal (la aprobación llega al clickear
@@ -171,6 +175,10 @@ fn resolve<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState) {
         }
         ApprovalTarget::ApproveAction { id } => {
             let r = run_guarded(&mut ui, log, &req, || be.approve_action(&id));
+            if answer && r.is_ok() {
+                let _ = cortex_actions::learning::Learner::new(log.directory())
+                    .registrar_decision(&id, "accept");
+            }
             st.actions.outcome = Some(outcome_line(answer, r));
         }
         ApprovalTarget::ApproveBatch { ids } => {
@@ -182,7 +190,11 @@ fn resolve<B: Backend + ?Sized>(be: &B, log: &ActionLog, st: &mut AppState) {
                 for id in &ids {
                     let req = proposal_req(st, id);
                     match run_guarded(&mut ui, log, &req, || be.approve_action(id)) {
-                        Ok(()) => okc += 1,
+                        Ok(()) => {
+                            okc += 1;
+                            let _ = cortex_actions::learning::Learner::new(log.directory())
+                                .registrar_decision(id, "accept");
+                        }
                         Err(_) => failed.push(id.clone()),
                     }
                 }

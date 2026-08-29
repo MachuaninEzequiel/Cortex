@@ -138,8 +138,40 @@ fn hud_approve_opens_modal_for_hygiene() {
 fn hud_skip_remembers_hygiene_id() {
     let mut st = AppState::new(req_float());
     st.actions.proposals = vec![hygiene()];
-    assert!(update(&mut st, AppAction::HudSkip).is_none());
+    let fx = update(&mut st, AppAction::HudSkip);
+    assert_eq!(
+        fx,
+        Some(Effect::HudSkip {
+            id: "vault.validate_docs".into()
+        })
+    );
     assert_eq!(st.hud_skipped.as_deref(), Some("vault.validate_docs"));
+}
+
+#[test]
+fn hud_skip_escribe_actions_yaml() {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let root = std::env::temp_dir().join(format!("cortex-hud-skip-{}-{nanos}", std::process::id()));
+    std::fs::create_dir_all(root.join(".cortex")).unwrap();
+    let be = cortex_companion::engine::InProcessBackend::open(&root).unwrap();
+    let log = cortex_companion::approval::ActionLog::new(&root.join(".cortex"));
+    let mut st = AppState::new(req_float());
+    st.actions.proposals = vec![hygiene()];
+
+    let fx = update(&mut st, AppAction::HudSkip).expect("fx");
+    cortex_companion::effects::apply(&be, &log, &mut st, fx);
+
+    let actions_yaml = std::fs::read_to_string(root.join(".cortex/actions.yaml"))
+        .expect("actions.yaml debe existir");
+    assert!(actions_yaml.contains("vault.validate_docs"));
+    assert!(actions_yaml.contains("skips: 1"));
+
+    let learner = cortex_actions::learning::Learner::new(&root.join(".cortex"));
+    assert!(learner.multiplicador("vault.validate_docs") < 1.0);
+    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]

@@ -44,6 +44,11 @@ impl ActionLog {
         self.inner.path()
     }
 
+    /// Directorio del log de acciones (`.cortex/`).
+    pub fn directory(&self) -> &Path {
+        self.inner.path().parent().unwrap_or_else(|| Path::new("."))
+    }
+
     /// Apienda una línea de auditoría de aprobación:
     /// `{id, approved, outcome, message, ts(automático)}`.
     fn append_audit(

@@ -232,6 +232,8 @@ pub enum Effect {
     ResolveApproval,
     /// HUD: copiar texto al clipboard del terminal (OSC 52).
     CopyPrompt { text: String },
+    /// HUD: saltear acción de higiene persistiendo skip en el learner.
+    HudSkip { id: String },
     /// Un turno de chat del brain (B8): el runtime enruta por el engine
     /// in-process (determinista o protocolo TOOL con el LLM configurado).
     BrainTurn { text: String },
@@ -642,13 +644,14 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             }
         }
         AppAction::HudSkip => {
-            state.hud_skipped = state
+            let id = state
                 .actions
                 .proposals
                 .iter()
                 .find(|p| crate::screens::hud_screen::is_hygiene(&p.id))
                 .map(|p| p.id.clone());
-            None
+            state.hud_skipped = id.clone();
+            id.map(|id| Effect::HudSkip { id })
         }
         // ---- B8: propuesta del brain [Ejecutar] ----
         AppAction::RunBrainCommand { command, audit_key } => {
