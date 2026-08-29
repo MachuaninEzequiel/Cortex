@@ -165,6 +165,7 @@ fn dispatch_native(argv: &[String]) -> bool {
         "mcp-server" | "mcp-serve" => commands::mcp_cmd::run(rest),
         "reindex" => cortex_cli::memory_cmds::run_reindex(rest),
         "init" => commands::setup_cmd::run_init(rest),
+        "finish" | "finish-session" => commands::finish_cmd::run(rest),
         _ => false,
     }
 }

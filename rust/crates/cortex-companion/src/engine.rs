@@ -507,13 +507,8 @@ impl Backend for InProcessBackend {
     // ---- mutaciones: siempre detrás de la aprobación (B2/B6) ----
 
     fn close_session(&self, session_id: &str) -> Result<(), String> {
-        // El cierre CANÓNICO es verificado (hooks + documenter: "done means
-        // proven"). El Companion no puede fabricar ese camino sin el
-        // documenter integrado ⇒ fallo explícito con el comando exacto
-        // (patrón P6/P9, nunca un cierre sin gobernanza).
-        Err(format!(
-            "el cierre verificado requiere el documenter — corré `cortex finish` (o `cortex session abandon`) para cerrar {session_id}"
-        ))
+        cortex_cli::commands::finish_cmd::finish_session(Some(&self.root), Some(session_id), "auto")
+            .map(|_| ())
     }
 
     fn checkpoint_session(&self, _note: &str) -> Result<(), String> {

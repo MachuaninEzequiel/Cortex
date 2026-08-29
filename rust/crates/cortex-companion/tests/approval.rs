@@ -166,3 +166,27 @@ fn audit_reuses_native_action_log_format() {
     assert!(last.contains("\"approved\": true"), "línea: {last}");
     cleanup(&dir);
 }
+
+#[test]
+fn close_session_ya_no_manda_a_comando_muerto() {
+    let dir = unique_dir("close_sess");
+    std::fs::create_dir_all(dir.join(".cortex").join("sessions")).unwrap();
+    std::fs::write(dir.join("config.yaml"), "semantic:\n  vault_path: vault\n").unwrap();
+    let storage = cortex_app::session::SessionStorage::new(dir.join(".cortex").join("sessions"));
+    let rec = cortex_app::session::SessionRecord {
+        session_id: "2026-08-29_closeme".into(),
+        status: cortex_app::session::SessionStatus::Open,
+        opened_at: "2026-08-29T00:00:00+00:00".into(),
+        ..Default::default()
+    };
+    storage.save(&rec).unwrap();
+
+    let be = cortex_companion::engine::InProcessBackend::open(&dir).unwrap();
+    use cortex_companion::engine::Backend;
+    let res = be.close_session("2026-08-29_closeme");
+    assert!(res.is_ok(), "close_session debe triunfar: {res:?}");
+
+    let read_back = storage.load("2026-08-29_closeme").unwrap();
+    assert!(read_back.status.is_terminal());
+    cleanup(&dir);
+}

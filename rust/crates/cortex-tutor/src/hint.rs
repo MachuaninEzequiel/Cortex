@@ -111,7 +111,7 @@ pub fn get_hint(state: &ProjectState) -> Hint {
             icon: "📝",
             title: "No hay especificaciones creadas".into(),
             body: "Antes de codear, creá una spec para documentar qué vas a hacer.\nEsto alimenta el contexto para futuras búsquedas.".into(),
-            command: "cortex create-spec --title \"Mi Feature\" --goal \"Descripción del objetivo\"".into(),
+            command: "cortex session open --title \"Mi Feature\"".into(),
         };
     }
     // L2: specs pero sin sesiones.
@@ -120,7 +120,7 @@ pub fn get_hint(state: &ProjectState) -> Hint {
             icon: "💾",
             title: format!("Tenés {} spec(s) pero 0 sesiones guardadas", state.spec_count),
             body: "Después de trabajar, guardá tu sesión para alimentar la memoria.\nCortex usa estas sesiones para dar contexto en tareas futuras.".into(),
-            command: "cortex save-session --title \"Mi Sesión\" --spec-summary \"Lo que hice\"".into(),
+            command: "cortex finish --reason \"Lo que hice\"".into(),
         };
     }
     // L3: contenido creciendo sin pipeline.

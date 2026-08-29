@@ -4,6 +4,7 @@ pub mod autopilot;
 pub mod ci_cmd;
 pub mod docs_cmd;
 pub mod doctor;
+pub mod finish_cmd;
 pub mod hu_cmd;
 pub mod ide_cmd;
 pub mod mcp_cmd;
