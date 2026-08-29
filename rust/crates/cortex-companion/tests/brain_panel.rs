@@ -63,6 +63,7 @@ impl Backend for FakeBackend {
             status: "open".to_string(),
             mode: "composed".to_string(),
             opened_at: "2026-08-28T10:00:00Z".to_string(),
+            phase: None,
         }))
     }
     fn session_list(&self) -> Result<Vec<SessionSummary>, String> {

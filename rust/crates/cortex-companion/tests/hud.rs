@@ -154,3 +154,60 @@ fn enter_without_ask_copies_not_injects() {
         }
     );
 }
+
+#[test]
+fn prompt_plan_pide_implement_al_agente() {
+    let s = cortex_companion::engine::SessionSummary {
+        id: "SES-1".into(),
+        status: "open".into(),
+        mode: "composed".into(),
+        opened_at: "".into(),
+        phase: Some("plan".into()),
+    };
+    let p = cortex_companion::screens::hud_screen::compose_agent_prompt(Some(&s));
+    assert!(p.contains("files_in_scope") || p.contains("ticket"), "{p}");
+    assert!(!p.contains("cortex session"), "nunca CLI al humano: {p}");
+}
+
+#[test]
+fn prompt_sin_fase_pide_checkpoint_al_agente() {
+    let s = cortex_companion::engine::SessionSummary {
+        id: "SES-1".into(),
+        status: "open".into(),
+        mode: "composed".into(),
+        opened_at: "".into(),
+        phase: None,
+    };
+    let p = cortex_companion::screens::hud_screen::compose_agent_prompt(Some(&s));
+    assert!(p.contains("checkpoint"), "{p}");
+    assert!(!p.contains("cortex session"), "{p}");
+}
+
+#[test]
+fn prompt_sin_sesion_pide_skills_no_cli() {
+    let p = cortex_companion::screens::hud_screen::compose_agent_prompt(None);
+    assert!(!p.contains("cortex session"), "{p}");
+    assert!(p.contains("skills"), "{p}");
+}
+
+#[test]
+fn prompt_nunca_menciona_cortex_session() {
+    for ph in ["grill", "spec", "plan", "implement", "review", "close"] {
+        let s = cortex_companion::engine::SessionSummary {
+            id: "SES-1".into(),
+            status: "open".into(),
+            mode: "composed".into(),
+            opened_at: "".into(),
+            phase: Some(ph.into()),
+        };
+        let p = cortex_companion::screens::hud_screen::compose_agent_prompt(Some(&s));
+        assert!(
+            !p.contains("corré `cortex"),
+            "fase {ph} no debe pedir corré cortex: {p}"
+        );
+        assert!(
+            !p.contains("pedile al humano que"),
+            "fase {ph} no debe pedir al humano comandos: {p}"
+        );
+    }
+}

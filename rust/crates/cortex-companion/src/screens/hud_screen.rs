@@ -45,20 +45,42 @@ pub fn pick_hygiene<'a>(
         .find(|a| is_hygiene(&a.id) && skipped != Some(a.id.as_str()))
 }
 
+pub const PROMPT_NO_SESSION: &str = "no hay sesión activa. abrí el trabajo con las skills de Cortex (grill / to-spec / sesión). no pidas que el humano corra la CLI.";
+
+pub const PROMPT_NO_PHASE: &str = "checkpoint de lo que acabás de hacer: evidencia, artifacts tocados, nota de una línea. dirigido a vos, no un comando para el humano.";
+
+pub const PROMPT_NEXT_SPEC: &str = "el requisito ya está grillado. escribí una spec con Goal medible, Non-goals, Acceptance criteria SI/NO, files_in_scope y verification hooks. persistila con cortex_write_doc (doc_type spec). no le pidas al humano `cortex spec` ni `cortex session`.";
+
+pub const PROMPT_NEXT_PLAN: &str = "la spec está. ticketizá en vertical slices: What, Blocked by, Verification, Done when. persistí `.scratch/<feature>/issues/NN-slug.md`. no le pidas al humano `cortex session`.";
+
+pub const PROMPT_NEXT_IMPLEMENT: &str = "tomá el siguiente ticket desbloqueado e implementalo respetando files_in_scope de la spec; evidencia real en verified_claims (>10 chars); no salgas del alcance.";
+
+pub const PROMPT_NEXT_REVIEW: &str = "revisá en dos ejes (Standards y Spec) con hallazgos file:line. veredicto approve / request-changes / block. no le pidas al humano `cortex review` ni `cortex session`.";
+
+pub const PROMPT_NEXT_CLOSE: &str = "el trabajo está en review. cerrá la sesión con las skills/MCP de Cortex (documenter COMPOSED, tool cortex_finish_session). no le pidas al humano `cortex session` ni `cortex finish`.";
+
+pub const PROMPT_PHASE_CLOSE: &str = "la sesión ya está en close. no empujes más fase. si falta evidencia, documentala; no le pidas al humano un comando Cortex.";
+
+pub fn compose_agent_prompt(session: Option<&crate::engine::SessionSummary>) -> String {
+    let Some(s) = session else {
+        return PROMPT_NO_SESSION.to_string();
+    };
+    match s.phase.as_deref() {
+        Some("grill") => PROMPT_NEXT_SPEC.to_string(),
+        Some("spec") => PROMPT_NEXT_PLAN.to_string(),
+        Some("plan") => PROMPT_NEXT_IMPLEMENT.to_string(),
+        Some("implement") => PROMPT_NEXT_REVIEW.to_string(),
+        Some("review") => PROMPT_NEXT_CLOSE.to_string(),
+        Some("close") => PROMPT_PHASE_CLOSE.to_string(),
+        Some(_) | None => PROMPT_NO_PHASE.to_string(),
+    }
+}
+
 pub fn hud_prompt(data: &HomeData) -> String {
     if !data.prompt.is_empty() {
         return data.prompt.clone();
     }
-    match &data.session {
-        Some(s) => format!(
-            "sesión {} [{}]: seguí la spec activa. no salgas del alcance del trabajo.",
-            s.id, s.status
-        ),
-        None => {
-            "no hay sesión activa. pedile al agente que abra el trabajo con las skills de Cortex."
-                .into()
-        }
-    }
+    compose_agent_prompt(data.session.as_ref())
 }
 
 #[derive(Debug, Clone)]
@@ -258,7 +280,13 @@ pub fn render_hud(
     let sess = data
         .session
         .as_ref()
-        .map(|s| format!("{} [{}]", s.id, s.status))
+        .map(|s| {
+            if let Some(ref ph) = s.phase {
+                format!("{} [{}]  ·  fase {}", s.id, s.status, ph)
+            } else {
+                format!("{} [{}]", s.id, s.status)
+            }
+        })
         .unwrap_or_else(|| "sin sesión".into());
     let branch = data.branch.clone().unwrap_or_default();
     let meta = format!("{project}  ·  {branch}  ·  {sess}");

@@ -106,6 +106,7 @@ fn home_with_session_hides_open_button_and_shows_id() {
             status: "OPEN".into(),
             mode: "managed".into(),
             opened_at: "".into(),
+            phase: None,
         }),
         top_action: None,
         doctor: None,

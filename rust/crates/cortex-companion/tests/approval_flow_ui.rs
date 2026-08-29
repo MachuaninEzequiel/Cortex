@@ -107,6 +107,7 @@ fn summary(id: &str) -> SessionSummary {
         status: "OPEN".into(),
         mode: "managed".into(),
         opened_at: "2026-08-28T00:00:00+00:00".into(),
+        phase: None,
     }
 }
 

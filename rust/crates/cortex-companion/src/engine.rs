@@ -37,6 +37,9 @@ pub struct SessionSummary {
     pub status: String,
     pub mode: String,
     pub opened_at: String,
+    /// Último checkpoint con phase, recorriendo `checkpoints` al revés.
+    /// None = sesión sin fase COMPOSED (BYO/Observed/legado).
+    pub phase: Option<String>,
 }
 
 /// Propuesta del Action Engine para la pantalla Actions.
@@ -161,11 +164,18 @@ pub struct InProcessBackend {
 }
 
 fn summary_of(r: &SessionRecord) -> SessionSummary {
+    let phase = r
+        .checkpoints
+        .iter()
+        .rev()
+        .find_map(|c| c.phase)
+        .map(|p| p.as_str().to_string());
     SessionSummary {
         id: r.session_id.clone(),
         status: r.status.as_str().to_string(),
         mode: mode_str(r.mode).to_string(),
         opened_at: r.opened_at.clone(),
+        phase,
     }
 }
 
