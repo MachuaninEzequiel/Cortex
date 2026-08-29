@@ -276,10 +276,12 @@ Si el HTML y el GRID divergen, gana el GRID. La TUI se implementa contra el GRID
 Contrato visual (el branding voxel menta **ya elegido**, ahora bien
 hecho):
 
-- Paleta vigente (`palette.rs` menta/esmeralda, PNG
-  `assets/nueva-estetica/nuevo-logo-cortex.png`).
-- HUD: mark compacto, **no** wordmark CORTEX de 5 filas. Sidecar puede
-  mostrar wordmark chico en el header.
+- Paleta del PNG (bosque `#03522E`, menta `#8FDCB0`), no neón
+  `#34D399`. El mock de HUD usa esa paleta. `palette.rs` se alinea
+  cuando se pinte la TUI, no antes.
+- HUD: columna izquierda = isotipo **completo** + wordmark, separados
+  de los diálogos (ver `assets/hud-v1/GRID.md`). No recortar el mark
+  a 3 filas ni mezclarlo con el texto.
 - Pocas cajas. Casi ningún `Borders::ALL`. Jerarquía por peso, color
   menta, una línea divisoria si hace falta.
 - Cero emoji como arquitectura.

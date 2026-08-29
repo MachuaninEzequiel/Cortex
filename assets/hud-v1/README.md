@@ -2,7 +2,7 @@
 
 Prototipo barato del producto [17](../../docs/transformacion/17-PRODUCTO-EXPERTO-AL-LADO.md).
 
-- Abrí `index.html` en el navegador.
+- Abrí `index.html` en el navegador (placa izquierda = PNG real).
 - `Idle` = logo dormido, prompt + Copiar, higiene.
 - `Consulta` = Liquid en RAM, logo despierto, respuesta + prompt reescrito.
 - Escribí en “preguntale a Cortex” y Enter para pasar a consulta.

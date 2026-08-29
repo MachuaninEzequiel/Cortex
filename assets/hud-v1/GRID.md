@@ -1,59 +1,76 @@
 # HUD v1 — grilla canónica (contrato visual)
 
-Fuente de verdad para implementar en ratatui. El mock
-`assets/hud-v1/index.html` pinta **esta** grilla. Si el HTML y este
-archivo divergen, gana este archivo.
+Fuente de verdad para ratatui: **este archivo**. El HTML pinta esta
+partición. Logo = recortes de `assets/nueva-estetica/nuevo-logo-cortex.png`
+(`logo-mark.png` + `logo-word.png`), no una máscara 13×10.
 
-Pane de referencia: **100 columnas × 10 filas** (≈ 25% de un terminal
-40 filas). Si el pane es más ancho, las regiones de texto se estiran
-hacia la derecha; los botones se anclan a la derecha. Si es más angosto
-de 80, el mark pasa a 1 fila y el prompt a 1 línea.
+## Partición
 
-## Paleta (tokens de `cortex-branding`)
-
-| Token | Hex | Uso en el HUD |
-|---|---|---|
-| `BG` | `#071310` | fondo del pane |
-| `ICE` | `#EAFDF5` | texto de prompt, mark despierto (caras altas) |
-| `LIGHT` | `#A7F3D0` | hover / mark mid |
-| `CYAN` | `#34D399` | acento, botones, cursor de consulta |
-| `BLUE` | `#10B981` | mark cuerpo |
-| `DEEP` | `#064E3B` | mark dormido, bordes |
-| `SHADOW` | `#043328` | sombra mark |
-| `MUTED` | `#6E968B` | labels, meta |
-| `TEXT` | `#EAFDF5` | texto principal |
-| `BORDER_IDLE` | `#204138` | reglas horizontales `─` |
-| `SURFACE_SUBTLE` | `#0E241E` | hover de botón |
-
-## Rects (x, y, w, h) — origen esquina superior izquierda del HUD
+El HUD es **dos columnas**. El logo no comparte filas con el texto.
 
 ```
-MARK        ( 0, 0, 14, 3)   isotipo Mark recortado a 3 filas half-block
-BRAND       (15, 0, 12, 1)   "CORTEX"
-AGENT       (28, 0, 72, 1)   "pi idle" alineado a la derecha
-META        (15, 1, 85, 1)   proyecto · rama · sesión · fase
-RULE_1      ( 0, 3,100, 1)   línea menta muy oscura
-PROMPT      ( 0, 4, 82, 2)   instrucción para el agente que codea
-COPY        (84, 4, 16, 2)   [ Copiar ]
-RULE_2      ( 0, 6,100, 1)
-ACTION      ( 0, 7, 62, 1)   higiene propuesta
-APPROVE     (64, 7, 17, 1)   [ Aprobar ]
-SKIP        (82, 7, 18, 1)   [ Saltar ]
-RULE_3      ( 0, 8,100, 1)
-ASK         ( 0, 9,100, 1)   › preguntale a Cortex
+┌──────────────────┬─────────────────────────────────────────────┐
+│ BRAND            │ DIALOGS                                     │
+│ (placa papel)    │ meta / prompt / higiene / ask               │
+│ isotipo completo │                                             │
+│ wordmark CORTEX  │                                             │
+└──────────────────┴─────────────────────────────────────────────┘
 ```
 
-## Estados del mark (logo = RAM)
+Pane de referencia: **~100 columnas × 12 filas** de terminal, de las
+cuales **28 columnas** son BRAND y el resto DIALOGS. Si el pane es más
+angosto de 90, BRAND baja a 22 cols y el wordmark se recorta a “mark
+solo”.
 
-| Estado | Look | Significa |
+## Paleta (del PNG, no neón)
+
+| Rol | Hex | Nota |
 |---|---|---|
-| `idle` | DEEP/BLUE, glow ICE al 40%, respiración 3.2s | Liquid **no** está en RAM |
-| `awake` | ICE/LIGHT/CYAN a plena, glow CYAN | Liquid **cargado** (consulta) |
-| `no_color` | silueta plana, sin animar | `NO_COLOR` / reduced-motion |
+| paper | `#F6F7F5` | fondo de la placa (el PNG nació sobre claro) |
+| forest | `#03522E` | extrusión 3D del voxel |
+| forest-deep | `#06331C` | sombra |
+| mint | `#8FDCB0` | estantes inferiores |
+| mint-soft | `#AEE8C6` | acento suave |
+| mint-pale | `#C8F0DC` | highlight |
+| text | `#E4EDE7` | texto de diálogos |
+| muted | `#8A9E93` | labels |
+| bg | `#0C1410` | fondo de diálogos |
+| border | `#2A4A3A` | reglas |
+| accent | `#3D6B54` | borde de botón |
 
-Idle: ciclo `opacity` 0.62 ↔ 0.92 sobre las caras ICE/LIGHT, 3.2s ease-in-out, loop. Awake: sin atenuar; +1px glow CYAN.
+Prohibido en v1: `#34D399`, `#10B981` y cualquier glow cian eléctrico.
 
-## Copy del mock (no cambiar en v1 salvo el dueño)
+## Rects relativos al HUD (cols × filas, origen arriba-izq)
+
+```
+BRAND_WELL  ( 0, 0, 28, 12)   placa clara; no se pinta texto encima
+MARK_IMG    ( 1, 0, 26,  9)   isotipo PNG contain
+WORD_IMG    ( 1, 9, 26,  3)   wordmark PNG contain
+DIVIDER     (28, 0,  1, 12)   línea forest
+DIALOGS     (30, 0, 70, 12)   todo lo demás
+
+dentro de DIALOGS (x relativo a col 30):
+  EYEBROW   ( 0, 0, 40, 1)   "COMPANION"
+  AGENT     (50, 0, 20, 1)   "pi idle" a la derecha
+  META      ( 0, 1, 70, 1)
+  RULE_1    ( 0, 2, 70, 1)
+  PROMPT    ( 0, 3, 52, 3)
+  COPY      (54, 3, 16, 2)
+  RULE_2    ( 0, 6, 70, 1)
+  ACTION    ( 0, 7, 38, 1)
+  APPROVE   (39, 7, 15, 1)
+  SKIP      (55, 7, 15, 1)
+  RULE_3    ( 0, 8, 70, 1)
+  ASK       ( 0, 9, 70, 2)
+```
+
+## Estados del logo (RAM)
+
+La placa **no cambia de paleta**. Idle = paper dusk + respiración suave
+de brillo 0.92–1.0. Awake = paper pleno, sin atenuar. El PNG se muestra
+siempre con sus colores reales.
+
+## Copy (igual que v1 de producto)
 
 Prompt idle:
 
@@ -62,28 +79,6 @@ descomponé el plan en tickets según la spec de auth;
 no toques fuera de src/auth.
 ```
 
-Higiene idle: `Validar documentos del vault`
+Higiene: `Validar documentos del vault`
 
-Ask placeholder: `preguntale a Cortex`
-
-Consulta (estado awake), pregunta: `hay una decisión de jwt?`
-
-Respuesta (reemplaza PROMPT+ACTION; COPY sigue, ASK queda):
-
-```
-sí — vault/decisions/2026-04-jwt-hs256.md
-HS256 local, no RS256. el spec de auth lo cita.
-```
-
-Prompt copiable en consulta (COPY toma esto):
-
-```
-implementá auth según vault/decisions/2026-04-jwt-hs256.md
-(HS256). no cambies el algoritmo. no toques fuera de src/auth.
-```
-
-## Qué no va en esta grilla
-
-Botones Sesiones / Menú / Brain / Doctor OK / conteos de memoria.
-Cajas `Borders::ALL`. Emoji. Wordmark CORTEX 5 filas. Inyectar.
-Finish / cerrar sesión.
+Ask: `preguntale a Cortex`
