@@ -1,13 +1,16 @@
 # 16 · Deuda real y norte de pulido
 
-> **DOCUMENTO INSIGNIA.** A partir del 29 de agosto de 2026, **este archivo
-> manda** sobre `HANDOFF.md`, `ESTADO-ACTUAL.md`, el doc 15 y cualquier
-> prompt de handoff cuando haya que decidir *qué está hecho*, *qué es
-> teatro* y *qué se construye ahora*.
+> **MAPA DE HONESTIDAD.** A partir del 29 de agosto de 2026, **este archivo
+> manda** sobre `HANDOFF.md`, `ESTADO-ACTUAL.md` y el doc 15 cuando haya
+> que decidir *qué está hecho* y *qué es teatro*.
 >
-> Esos documentos siguen siendo historia útil de las Obras 07 y 08. No son
-> el mapa de trabajo. Si un checkbox dice RESUELTO / PASS / 100% y este
-> archivo dice lo contrario, gana este archivo.
+> **Qué se construye ahora** no es este archivo: es
+> [17-PRODUCTO-EXPERTO-AL-LADO.md](17-PRODUCTO-EXPERTO-AL-LADO.md).
+> La deuda residual de acá queda **diferida**. Si el norte del §12 choca
+> con el 17 (sidecar default, inject, finish desde Companion), gana el 17.
+>
+> Si un checkbox dice RESUELTO / PASS / 100% y este archivo dice lo
+> contrario sobre el árbol, gana este archivo.
 >
 > **Rama:** `feature/transformacion-2026-08` · **Commits locales, sin push.**
 > **Fecha:** 2026-08-29 · **Autor:** auditoría contra código, no contra
