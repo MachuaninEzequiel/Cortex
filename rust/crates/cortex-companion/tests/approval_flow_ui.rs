@@ -131,6 +131,7 @@ fn setup(screen: Screen, fb: &FakeBackend) -> AppState {
     let mut st = AppState::new(UiRequest {
         screen,
         project_root: PathBuf::from("/tmp/fixture"),
+        mode: Default::default(),
     });
     st.actions = ActionsData {
         proposals: fb.proposals.clone(),

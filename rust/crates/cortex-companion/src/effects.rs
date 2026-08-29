@@ -115,6 +115,9 @@ pub fn apply_opt<B: Backend>(
                 Err(e) => st.search.outcome = Some((e, true)),
             }
         }
+        Effect::CopyPrompt { text } => {
+            let _ = crate::clipboard::copy(&text);
+        }
         Effect::BrainTurn { text } => {
             // Un turno de chat: reads directas, propuestas mutantes como
             // mensajes Proposal (la aprobación llega al clickear

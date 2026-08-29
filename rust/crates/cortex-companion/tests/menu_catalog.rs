@@ -30,6 +30,7 @@ fn menu_state(scroll: u16) -> AppState {
     let mut st = AppState::new(UiRequest {
         screen: Screen::Menu,
         project_root: committed_fixture(),
+        mode: Default::default(),
     });
     st.scroll_offset = scroll;
     st
@@ -273,6 +274,7 @@ fn home_menu_button_navigates_to_menu() {
     let mut st = AppState::new(UiRequest {
         screen: Screen::Home,
         project_root: committed_fixture(),
+        mode: Default::default(),
     });
     let action =
         hit_test(&st, HOME_MENU_BTN.x + 5, HOME_MENU_BTN.y + 1).expect("botón Menú en Home");

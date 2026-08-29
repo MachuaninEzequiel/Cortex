@@ -1,6 +1,6 @@
-//! Paleta oficial de Cortex (identidad monocromática azul/cyan fría).
+//! Paleta oficial de Cortex (identidad voxel esmeralda/menta/verde bosque).
 //!
-//! Fuente de verdad: `docs/logo/prompt-logo.md` §3 (aprobada por el dueño).
+//! Fuente de verdad: `assets/nueva-estetica/nuevo-logo-cortex.png`.
 //! No hardcodear colores en otros módulos: todo pasa por acá.
 
 /// Color RGB simple, sin dependencias externas.
@@ -18,48 +18,46 @@ impl Rgb {
     }
 }
 
-// ── Gradiente del isotipo (hielo → cyan → azul eléctrico) ──
+// ── Gradiente del isotipo (menta blanco → verde menta → esmeralda → verde bosque) ──
 
-/// Blanco azulado (puntas más altas / highlights).
-pub const ICE: Rgb = Rgb(0xD9, 0xF4, 0xFF);
-/// Cyan claro.
-pub const LIGHT: Rgb = Rgb(0xA9, 0xE3, 0xFF);
-/// Cyan principal.
-pub const CYAN: Rgb = Rgb(0x55, 0xCA, 0xF7);
-/// Azul eléctrico.
-pub const BLUE: Rgb = Rgb(0x20, 0x9C, 0xEB);
-/// Azul profundo (base inferior).
-pub const DEEP: Rgb = Rgb(0x11, 0x67, 0xC4);
-/// Glow periférico (azul noche).
-pub const SHADOW: Rgb = Rgb(0x0B, 0x31, 0x58);
+/// Blanco menta (puntas más altas / caras superiores de bloques voxel).
+pub const ICE: Rgb = Rgb(0xC8, 0xF0, 0xDC);
+/// Menta suave / seafoam highlight.
+pub const LIGHT: Rgb = Rgb(0xAE, 0xE8, 0xC6);
+/// Verde menta principal / acento interactivo (GRID mint; no neón).
+pub const CYAN: Rgb = Rgb(0x8F, 0xDC, 0xB0);
+/// Verde bosque (extrusión 3D del voxel).
+pub const BLUE: Rgb = Rgb(0x03, 0x52, 0x2E);
+/// Verde bosque profundo (base y caras 3D de sombra).
+pub const DEEP: Rgb = Rgb(0x06, 0x33, 0x1C);
+/// Glow y sombras periféricas (bosque oscuro).
+pub const SHADOW: Rgb = Rgb(0x04, 0x1C, 0x12);
 
 // ── Texto y fondo de referencia ──
 
-/// Texto principal del chrome TUI (identidad de marca, prompt §3).
-pub const TEXT: Rgb = Rgb(0xD9, 0xF4, 0xFF);
-/// Texto secundario del chrome TUI (identidad de marca).
-pub const MUTED: Rgb = Rgb(0x6E, 0x89, 0x9B);
-/// Fondo de referencia (SOLO para screens que decidan fondo propio; jamás
-/// pintar la terminal del usuario — ver prompt §26).
-pub const BG: Rgb = Rgb(0x05, 0x0A, 0x10);
+/// Texto principal del chrome TUI (menta blanco).
+pub const TEXT: Rgb = Rgb(0xE4, 0xED, 0xE7);
+/// Texto secundario del chrome TUI (verde salvia muted).
+pub const MUTED: Rgb = Rgb(0x8A, 0x9E, 0x93);
+/// Fondo de referencia oscuro (HUD / chrome).
+pub const BG: Rgb = Rgb(0x0C, 0x14, 0x10);
 
-// ── Semántica del chrome TUI (spec rediseño: tokens desaturados, pocos, ──
-// ── centralizados; el azul identifica selección/actividad, no decora) ────
+// ── Semántica del chrome TUI (tokens refinados para la identidad menta/esmeralda) ────
 
 /// Texto normal de pantallas de datos.
-pub const TEXT_PRIMARY: Rgb = Rgb(0xD8, 0xDE, 0xE9);
+pub const TEXT_PRIMARY: Rgb = Rgb(0xDF, 0xEB, 0xE7);
 /// Metadatos, ayudas y etiquetas pasivas.
-pub const TEXT_MUTED: Rgb = Rgb(0x7F, 0x8C, 0x9D);
-/// Borde de panel sin foco.
-pub const BORDER_IDLE: Rgb = Rgb(0x35, 0x40, 0x52);
-/// Fondo de selección sutil (solo con color real; respeta fondo del usuario).
-pub const SURFACE_SUBTLE: Rgb = Rgb(0x18, 0x20, 0x2B);
-/// Éxito (semántico; nunca para categorías arbitrarias).
-pub const SUCCESS: Rgb = Rgb(0x7B, 0xC9, 0x9B);
-/// Advertencia (semántico; reemplaza el ámbar ad-hoc del Home).
-pub const WARNING: Rgb = Rgb(0xE4, 0xB8, 0x6A);
-/// Error (semántico).
-pub const ERROR: Rgb = Rgb(0xE0, 0x6C, 0x75);
+pub const TEXT_MUTED: Rgb = Rgb(0x78, 0x96, 0x8E);
+/// Borde de panel sin foco (verde bosque sutil).
+pub const BORDER_IDLE: Rgb = Rgb(0x2A, 0x4A, 0x3A);
+/// Fondo de selección sutil (verde bosque tenue).
+pub const SURFACE_SUBTLE: Rgb = Rgb(0x0E, 0x24, 0x1E);
+/// Éxito (verde brillante).
+pub const SUCCESS: Rgb = Rgb(0x4A, 0xDE, 0x80);
+/// Advertencia (oro / ámbar cálido).
+pub const WARNING: Rgb = Rgb(0xFB, 0xBF, 0x24);
+/// Error (coral / rojo suave).
+pub const ERROR: Rgb = Rgb(0xF8, 0x71, 0x71);
 // Info == CYAN: la marca no duplica consts — un solo token por color.
 
 /// Stops del gradiente vertical del isotipo, de arriba hacia abajo.
@@ -95,9 +93,9 @@ pub enum Ansi16 {
 /// conserva su significado en 16 colores: Success→Green, Warning→Yellow,
 /// Error→Red. Todo lo demás cae en la escala neutra.
 pub fn fallback(rgb: Rgb) -> Ansi16 {
-    if rgb == ICE || rgb == CYAN {
+    if rgb == CYAN {
         Ansi16::Cyan
-    } else if rgb == LIGHT || rgb == TEXT || rgb == TEXT_PRIMARY {
+    } else if rgb == ICE || rgb == LIGHT || rgb == TEXT || rgb == TEXT_PRIMARY {
         Ansi16::LightCyan
     } else if rgb == BLUE {
         Ansi16::Blue

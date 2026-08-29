@@ -62,6 +62,10 @@ fn home_renders_buttons_wordmark_and_budget() {
             vault_path: "vault/".into(),
         }),
         error: None,
+        prompt: String::new(),
+        hygiene: None,
+        agent_label: String::new(),
+        ask: String::new(),
     };
     let (text, info) = render(&data);
     // Datos visibles.
@@ -107,6 +111,10 @@ fn home_with_session_hides_open_button_and_shows_id() {
         doctor: None,
         stats: None,
         error: None,
+        prompt: String::new(),
+        hygiene: None,
+        agent_label: String::new(),
+        ask: String::new(),
     };
     let (text, info) = render(&data);
     assert!(text.contains("SES-2026-08-28_x"), "id de sesión no visible");

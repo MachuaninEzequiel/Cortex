@@ -127,6 +127,7 @@ fn state_at(screen: Screen) -> AppState {
     AppState::new(UiRequest {
         screen,
         project_root: PathBuf::from("."),
+        mode: Default::default(),
     })
 }
 

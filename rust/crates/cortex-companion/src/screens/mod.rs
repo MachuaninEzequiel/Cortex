@@ -4,7 +4,9 @@
 
 pub mod actions_screen;
 pub mod brain_screen;
+pub mod copilot_screen;
 pub mod home;
+pub mod hud_screen;
 pub mod menu_screen;
 pub mod search_screen;
 pub mod sessions_screen;
@@ -13,7 +15,9 @@ pub use actions_screen::{actions_areas, render_actions, ActionsAreas, ActionsRen
 pub use brain_screen::{
     brain_areas, brain_rows, render_brain, BrainAreas, BrainRenderInfo, BrainRow,
 };
+pub use copilot_screen::{copilot_areas, render_copilot, CopilotAreas};
 pub use home::{render_home, AppRenderInfo as HomeRenderInfo, BrandAssets, HomeAreas, HomeData};
+pub use hud_screen::{hud_areas, render_hud, HudAreas};
 pub use menu_screen::{menu_areas, render_menu, AppRenderInfo as MenuRenderInfo, MenuAreas};
 pub use modal::render_modal;
 pub use search_screen::{render_search, search_areas, SearchAreas, SearchData, SearchRenderInfo};

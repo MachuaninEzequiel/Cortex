@@ -17,12 +17,26 @@ use std::path::PathBuf;
 pub mod app;
 pub mod approval;
 pub mod brain_panel;
+pub mod clipboard;
 pub mod effects;
 pub mod engine;
 pub mod feedback;
+pub mod herdr;
+pub mod hud_brand;
 pub mod menu;
+pub mod runner;
 pub mod screens;
 pub mod widgets;
+
+/// Modos de ejecución del Companion (Sidecar, Float HUD, Co-Pilot, Normal).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CompanionMode {
+    #[default]
+    Normal,
+    Sidecar,
+    Float,
+    Copilot,
+}
 
 /// Pantallas del Companion (lo consume la app en B3+).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,4 +54,5 @@ pub enum Screen {
 pub struct UiRequest {
     pub screen: Screen,
     pub project_root: PathBuf,
+    pub mode: CompanionMode,
 }

@@ -132,6 +132,7 @@ fn search_state(be: &FakeBackend) -> AppState {
     AppState::new(UiRequest {
         screen: Screen::Search,
         project_root: PathBuf::from("/tmp"),
+        mode: Default::default(),
     })
 }
 
@@ -160,6 +161,7 @@ fn slash_navigates_to_search_from_other_screens() {
     let mut st = AppState::new(UiRequest {
         screen: Screen::Home,
         project_root: PathBuf::from("/tmp"),
+        mode: Default::default(),
     });
     let fx = update(&mut st, AppAction::Typed('/'));
     assert!(fx.is_none());

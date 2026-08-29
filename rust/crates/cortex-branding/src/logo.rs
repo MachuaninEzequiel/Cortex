@@ -1,102 +1,99 @@
-//! Geometría del isotipo Cortex (prompt-logo.md §1-2, §30).
+//! Geometría del isotipo Cortex Voxel 3D Isométrico.
 //!
-//! Las máscaras son la FUENTE DE VERDAD del branding TUI: derivadas del PNG
-//! aprobado (`docs/logo/cortex-logo.png`), curadas a mano y congeladas acá.
-//! El PNG jamás se carga en runtime (prompt §35).
-//!
-//! Jerarquía visual al recortar (prompt §39): silueta C > X > layers >
-//! gradiente > highlights > glow. `Mark` conserva C+X+insinuación de capas.
+//! Fuente de verdad: `assets/nueva-estetica/nuevo-logo-cortex.png`.
+//! - Bloques superiores blancos/menta ('H' -> ICE, '#' -> TEXT)
+//! - Núcleo brillante ('X' -> CYAN menta)
+//! - Estantes inferiores esmeralda ('L' -> BLUE/CYAN)
+//! - Sombras 3D ('S' -> DEEP sombra)
 
 use crate::pixels::PixelMap;
 use std::sync::OnceLock;
 
-/// Variante del isotipo (prompt §13).
+/// Variante del isotipo.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum LogoVariant {
-    /// Splash/onboarding/empty states grandes: 44×34 px → 44 cols × 17 filas.
+    /// Splash/onboarding/empty states grandes: 44×34 px -> 44 cols x 17 filas.
     Full,
-    /// Pantallas con menos espacio: 28×20 px → 28 cols × 10 filas.
+    /// Pantallas con menos espacio: 28×20 px -> 28 cols x 10 filas.
     Compact,
-    /// Headers: 13×10 px → 13 cols × 5 filas.
+    /// Headers y sidebar: 13×10 px -> 13 cols x 5 filas.
     Mark,
 }
 
-// Generado desde docs/logo/cortex-logo.png (script desechable + curación a mano).
-// '#'=Mark 'X'=Cross 'L'=Layer 'H'=Highlight. Filas cortas = padding transparente.
 pub(crate) const FULL_ROWS: &[&str] = &[
-    "                   HHHHHHHHHHHHHHHH",
-    "                 ####################",
-    "               ########################",
-    "             ############################",
-    "            ##########       ###########",
-    "           #########            #########",
-    "          ########                 #######",
-    "         #######                      ###HH",
-    "        ######                           HHH",
-    " LLLLL  #####",
-    "LLL     #####",
-    "L       #####      XXXXX             XXXXX",
-    "      LL#####      XXXXXXX         XXXXXXX",
-    "   LLLLL#####      XXXXXXXX       XXXXXXXX",
-    " LLLLL  #####        XXXXXXXX   XXXXXXXX",
-    "LLL     #####          XXXXXXXXXXXXXXX",
-    "L     LL#####            XXXXXXXXXXX",
-    "   LLLLL#####             XXXXXXXXX",
-    " LLLLL  #####            XXXXXXXXXXX",
-    "LLL     #####          XXXXXXXXXXXXXXX",
-    "L       #####        XXXXXXXX   XXXXXXXX",
-    "      LL#####      XXXXXXXX       XXXXXXXX",
-    "   LLLLL#####      XXXXXXX         XXXXXXX",
-    " LLLLL  #####      XXXXX             XXXXX",
-    "LLL     #####",
-    "L       ######                           HHH",
-    "         #######                      ##HHH",
-    "          ########                 #######",
-    "           #########            #########",
-    "            ##########       ###########",
-    "             ############################",
-    "               ########################",
-    "                 ####################",
-    "                   ################",
+    "               HHHHHHHHHH                   ",
+    "             HHHHHHHHHHHHHH                 ",
+    "            HHHHHHHHHHHHHHHH                ",
+    "             #################              ",
+    "              #################             ",
+    "               #################            ",
+    "                #################           ",
+    "                 #################          ",
+    "                  #################         ",
+    "                   #################        ",
+    "                    #################       ",
+    "                     #################      ",
+    "                      #################     ",
+    "                       #################    ",
+    "  LLLLLLLLLLLL          #################   ",
+    " LLLLLLLLLLLLLL          #################  ",
+    "LLLLLLLLLLLLLLLL         XXXX############## ",
+    "LLLLLLLLLLLLLLLL        XXXXXX############# ",
+    " LLLLLLLLLLLLLL        XXXXXXXX###########  ",
+    "  LLLLLLLLLLLL         XXXXXXXXX#########   ",
+    "                       XXXXXXXXXX#######    ",
+    " LLLLLLLLLLLLLL         XXXXXXXXXX#####     ",
+    "LLLLLLLLLLLLLLLL         #########HH        ",
+    "LLLLLLLLLLLLLLLL          ######HH          ",
+    " LLLLLLLLLLLLLL            ####HH           ",
+    "                            ##HH            ",
+    "LLLLLLLLLLLLLLLLLL           HH             ",
+    "LLLLLLLLLLLLLLLLLLL          HH             ",
+    "LLLLLLLLLLLLLLLLLLLL         HH             ",
+    " LLLLLLLLLLLLLLLLLL          HH             ",
+    "  LLLLLLLLLLLLLLLL           HH             ",
+    "   LLLLLLLLLLLLLL                           ",
+    "     LLLLLLLLLL                             ",
+    "       LLLLLL                               ",
 ];
 
 pub(crate) const COMPACT_ROWS: &[&str] = &[
-    "            HHHHHHHHHHH",
-    "          ###############",
-    "        ######    #######",
-    "       #####        ######",
-    "      ####            #####",
-    "LLLLL###                ####",
-    "     ###    XXX         XXX",
-    "     ###    XXXXX     XXXXX",
-    "LLLLL###     XXXXXX XXXXXX",
-    "     ###       XXXXXXXXX",
-    "     ###         XXXXX",
-    "LLLLL###       XXXXXXXXX",
-    "     ###     XXXXXX XXXXXX",
-    "     ###    XXXXX     XXXXX",
-    "LLLLL###    XXX         ####",
-    "      ####            #####",
-    "       #####        ######",
-    "        ######    #######",
-    "          ###############",
-    "            ###########",
+    "            HHHHHHHH        ",
+    "          HHHHHHHHHHHH      ",
+    "         HHHHHHHHHHHHHH     ",
+    "          ##############    ",
+    "           ##############   ",
+    "            ##############  ",
+    "             ############## ",
+    "              ##############",
+    " LLLLLLL       XXXXX########",
+    "LLLLLLLLL     XXXXXXX###### ",
+    "LLLLLLLLL      XXXXXXX####  ",
+    " LLLLLLL        ####HHHH    ",
+    "                 ##HH       ",
+    "LLLLLLLLLL        HH        ",
+    "LLLLLLLLLLL       HH        ",
+    "LLLLLLLLLLLL      HH        ",
+    " LLLLLLLLLL       HH        ",
+    "  LLLLLLLL                  ",
+    "    LLLL                    ",
+    "     LL                     ",
 ];
 
 pub(crate) const MARK_ROWS: &[&str] = &[
-    "    #######",
-    "  ##########",
-    " ## XX XX #",
-    "L##  XXXX   #",
-    "LL#   XX",
-    "L##   XX",
-    "L##  XXXX   #",
-    "L## XX XX #",
-    "  ##########",
-    "    #######",
+    "   HHHHH     ",
+    "    #####    ",
+    "     ####    ",
+    "      ####   ",
+    " LLL  XXXX   ",
+    " LLL  XXXX#  ",
+    "LLLLLL  ###  ",
+    " LLLLL  ##   ",
+    "  LLL   ##   ",
+    "   L    ##   ",
 ];
 
-/// Isotipo Full con glow periférico (prompt §22), computado una sola vez.
+/// Isotipo Full con glow periférico.
 pub fn full() -> &'static PixelMap {
     static MASK: OnceLock<PixelMap> = OnceLock::new();
     MASK.get_or_init(|| {
@@ -106,20 +103,19 @@ pub fn full() -> &'static PixelMap {
     })
 }
 
-/// Isotipo Compact: sin glow (el espacio es apretado, prompt §16).
+/// Isotipo Compact.
 pub fn compact() -> &'static PixelMap {
     static MASK: OnceLock<PixelMap> = OnceLock::new();
     MASK.get_or_init(|| PixelMap::parse(COMPACT_ROWS))
 }
 
-/// Isotipo Mark: C + X + una insinuación de capas (prompt §17).
+/// Isotipo Mark.
 pub fn mark() -> &'static PixelMap {
     static MASK: OnceLock<PixelMap> = OnceLock::new();
     MASK.get_or_init(|| PixelMap::parse(MARK_ROWS))
 }
 
 impl LogoVariant {
-    /// Máscara de píxeles de la variante.
     pub fn pixel_map(self) -> &'static PixelMap {
         match self {
             LogoVariant::Full => full(),
@@ -128,7 +124,6 @@ impl LogoVariant {
         }
     }
 
-    /// Etiqueta estable para tests y métricas.
     pub fn label(self) -> &'static str {
         match self {
             LogoVariant::Full => "full",

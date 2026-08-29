@@ -11,7 +11,7 @@ use ratatui::layout::{Position, Rect};
 use crate::approval::ApprovalRequest;
 use crate::engine::{ActionProposal, SessionSummary};
 use crate::menu::{self, MenuOutput};
-use crate::{Screen, UiRequest};
+use crate::{CompanionMode, Screen, UiRequest};
 
 /// Rects canónicas del Home (header). B3 definió la de Sesiones y los tests
 /// la usan; B4 agrega las de acciones y abrir-sesión. El hit-test (`hit_test`)
@@ -162,6 +162,10 @@ pub enum AppAction {
     Back,
     /// Salir de la app.
     Quit,
+    /// HUD: copiar el prompt al clipboard (OSC 52). Nunca inyecta al agente.
+    CopyPrompt,
+    /// HUD: saltar la higiene actual (no se vuelve a mostrar en esta corrida).
+    HudSkip,
 }
 
 /// Efecto declarado por el reducer para que el runtime lo aplique. El reducer
@@ -183,6 +187,8 @@ pub enum Effect {
     /// Resolver la aprobación pendiente: el runtime (`effects::apply`)
     /// ejecuta `run_guarded` con la decisión guardada en `pending`.
     ResolveApproval,
+    /// HUD: copiar texto al clipboard del terminal (OSC 52).
+    CopyPrompt { text: String },
     /// Un turno de chat del brain (B8): el runtime enruta por el engine
     /// in-process (determinista o protocolo TOOL con el LLM configurado).
     BrainTurn { text: String },
@@ -275,12 +281,16 @@ pub struct Areas {
     pub home_menu_btn: Option<Rect>,
     pub menu_back_btn: Option<Rect>,
     pub home_brain_btn: Option<Rect>,
+    pub hud_copy: Option<Rect>,
+    pub hud_approve: Option<Rect>,
+    pub hud_skip: Option<Rect>,
 }
 
 /// Estado global de la app (máquina ELM-lite).
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub screen: Screen,
+    pub mode: CompanionMode,
     /// Pila de navegación (para `Back`).
     pub stack: Vec<Screen>,
     pub areas: Areas,
@@ -304,12 +314,19 @@ pub struct AppState {
     /// Panel Brain (B8): chat, input y propuestas — los mensajes son estado
     /// del usuario; el runtime enruta turnos por el engine in-process.
     pub brain: BrainPanel,
+    /// Prompt copiable del HUD (lo refresca el runtime).
+    pub hud_prompt: String,
+    /// Consulta en el campo del HUD.
+    pub hud_ask: String,
+    /// Higiene saltada en esta corrida (id).
+    pub hud_skipped: Option<String>,
 }
 
 impl AppState {
     pub fn new(req: UiRequest) -> Self {
         Self {
             screen: req.screen,
+            mode: req.mode,
             stack: Vec::new(),
             areas: Areas {
                 home_sessions_btn: Some(HOME_SESSIONS_BTN),
@@ -318,6 +335,9 @@ impl AppState {
                 home_menu_btn: Some(HOME_MENU_BTN),
                 menu_back_btn: Some(MENU_BACK_BTN),
                 home_brain_btn: Some(HOME_BRAIN_BTN),
+                hud_copy: None,
+                hud_approve: None,
+                hud_skip: None,
             },
             quit: false,
             scroll_offset: 0,
@@ -328,6 +348,9 @@ impl AppState {
             actions: ActionsData::default(),
             search: SearchData::default(),
             brain: BrainPanel::default(),
+            hud_prompt: String::new(),
+            hud_ask: String::new(),
+            hud_skipped: None,
         }
     }
 }
@@ -379,6 +402,8 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             if let Some(prev) = state.stack.pop() {
                 state.screen = prev;
                 state.scroll_offset = 0;
+            } else if matches!(state.mode, CompanionMode::Float | CompanionMode::Copilot) {
+                state.quit = true;
             }
             None
         }
@@ -401,7 +426,10 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
         // 'q' global: salida fuera de los inputs de texto (Search/Brain),
         // donde es carácter (finding review B7: tipear "query" mataba el
         // proceso). Ctrl+C sigue cerrando en todas (mapeo explícito B3).
-        AppAction::Typed('q') if !matches!(state.screen, Screen::Search | Screen::Brain) => {
+        AppAction::Typed('q')
+            if !matches!(state.screen, Screen::Search | Screen::Brain)
+                && !(state.screen == Screen::Home && state.mode == CompanionMode::Float) =>
+        {
             state.quit = true;
             None
         }
@@ -409,6 +437,9 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             match state.screen {
                 Screen::Search => state.search.query.push(c),
                 Screen::Brain => state.brain.input.push(c),
+                Screen::Home if state.mode == CompanionMode::Float => {
+                    state.hud_ask.push(c);
+                }
                 _ => {}
             }
             None
@@ -420,6 +451,9 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
                 }
                 Screen::Brain => {
                     state.brain.input.pop();
+                }
+                Screen::Home if state.mode == CompanionMode::Float => {
+                    state.hud_ask.pop();
                 }
                 _ => {}
             }
@@ -442,6 +476,23 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
                     return None;
                 }
                 Some(Effect::Search { query: q })
+            }
+            Screen::Home if matches!(state.mode, CompanionMode::Float | CompanionMode::Copilot) => {
+                let q = state.hud_ask.trim().to_string();
+                if q.is_empty() {
+                    if state.hud_prompt.is_empty() {
+                        None
+                    } else {
+                        Some(Effect::CopyPrompt {
+                            text: state.hud_prompt.clone(),
+                        })
+                    }
+                } else {
+                    state.hud_ask.clear();
+                    state.stack.push(state.screen);
+                    state.screen = Screen::Brain;
+                    Some(Effect::BrainTurn { text: q })
+                }
             }
             _ => None,
         },
@@ -535,6 +586,24 @@ pub fn update(state: &mut AppState, action: AppAction) -> Option<Effect> {
             None
         }
         AppAction::MarkUseful { memory_id } => Some(Effect::MarkUseful { memory_id }),
+        AppAction::CopyPrompt => {
+            if state.hud_prompt.is_empty() {
+                None
+            } else {
+                Some(Effect::CopyPrompt {
+                    text: state.hud_prompt.clone(),
+                })
+            }
+        }
+        AppAction::HudSkip => {
+            state.hud_skipped = state
+                .actions
+                .proposals
+                .iter()
+                .find(|p| crate::screens::hud_screen::is_hygiene(&p.id))
+                .map(|p| p.id.clone());
+            None
+        }
         // ---- B8: propuesta del brain [Ejecutar] ----
         AppAction::RunBrainCommand { command, audit_key } => {
             let toks = crate::brain_panel::tokenize(&command);
@@ -615,6 +684,26 @@ pub fn hit_test(state: &AppState, x: u16, y: u16) -> Option<AppAction> {
         return None;
     }
     match state.screen {
+        Screen::Home if matches!(state.mode, CompanionMode::Float | CompanionMode::Copilot) => {
+            let p = Position::new(x, y);
+            if state.areas.hud_copy.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::CopyPrompt);
+            }
+            if state.areas.hud_approve.is_some_and(|r| r.contains(p)) {
+                let id = state
+                    .actions
+                    .proposals
+                    .iter()
+                    .find(|p| crate::screens::hud_screen::is_hygiene(&p.id))?
+                    .id
+                    .clone();
+                return Some(AppAction::ApproveProposal { id });
+            }
+            if state.areas.hud_skip.is_some_and(|r| r.contains(p)) {
+                return Some(AppAction::HudSkip);
+            }
+            None
+        }
         Screen::Home => {
             let p = Position::new(x, y);
             if state.areas.home_sessions_btn.is_some_and(|r| r.contains(p)) {

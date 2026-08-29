@@ -17,6 +17,7 @@ fn req() -> UiRequest {
     UiRequest {
         screen: Screen::Home,
         project_root: PathBuf::from("/tmp/fixture"),
+        mode: Default::default(),
     }
 }
 
@@ -102,6 +103,7 @@ fn q_in_search_types_into_query_and_never_quits() {
     let mut st = AppState::new(UiRequest {
         screen: Screen::Search,
         project_root: PathBuf::from("/tmp/fixture"),
+        mode: Default::default(),
     });
     st.search.query.push_str("uery-before");
     assert!(update(&mut st, act).is_none());
@@ -132,6 +134,7 @@ fn ctrl_c_quits_even_from_search() {
     let mut st = AppState::new(UiRequest {
         screen: Screen::Search,
         project_root: PathBuf::from("/tmp/fixture"),
+        mode: Default::default(),
     });
     update(&mut st, act);
     assert!(st.quit, "Ctrl+C debe cerrar incluso desde Search");

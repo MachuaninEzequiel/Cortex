@@ -42,23 +42,60 @@ herdr plugin action list --plugin cortex.companion
 #   → open, next, status, doctor (4 acciones, contexto workspace)
 ```
 
-**Paso manual (UI)** — abrir el pane Companion dentro de tu sesión herdr:
+## Superficies (una app, default = HUD abajo)
+
+Doc 17: el Companion es el experto al lado, no el que codea. **Nunca
+inyecta texto al pane del agente** — botón Copiar (OSC 52). Esc en el HUD
+cierra el pane.
+
+### Default — `cortex-herdr-float` (HUD ~25% abajo)
+
+Split inferior. Logo voxel en celdas a la izquierda, prompt copiable +
+higiene + consulta a la derecha. La acción `open` del plugin abre esto.
 
 ```bash
-herdr plugin pane open --plugin cortex.companion --entrypoint companion --placement overlay
+cortex-herdr-float --spawn
 ```
 
-Tenés que ver el Home del Companion (proyecto, rama, sesión, doctor-lite).
-Si preferís un acceso por tecla, agregalo en `~/.config/herdr/config.toml`
-(sintaxis real de `[[keys.command]]`, verificada contra
-`herdr --default-config`; `type = "shell"` corre el CLI destacado y el pane
-queda abierto en la sesión):
+### Atajo — `cortex-herdr-sidecar` (~30% izquierda)
+
+Cuando la consulta se alarga. Misma máquina de estados, más aire para el
+chat con Liquid.
+
+```bash
+cortex-herdr-sidecar --spawn
+```
+
+### Atajo — `cortex-herdr-copilot`
+
+Vista densa al lado del agente. Copiar, no pegar. Esc cierra.
+
+```bash
+cortex-herdr-copilot --spawn
+```
+
+## Configuración de Atajos de Teclado en Herdr (`~/.config/herdr/config.toml`)
+
+Podés mapear teclas rápidas para cada modo:
 
 ```toml
+# Abrir Dock Lateral (Sidecar)
+[[keys.command]]
+key = "prefix+s"
+type = "shell"
+command = "cortex-herdr-sidecar --spawn"
+
+# Abrir HUD Flotante (Float)
+[[keys.command]]
+key = "prefix+f"
+type = "shell"
+command = "cortex-herdr-float --spawn"
+
+# Abrir Co-Pilot Dual
 [[keys.command]]
 key = "prefix+c"
 type = "shell"
-command = "herdr plugin pane open --plugin cortex.companion --entrypoint companion --placement overlay"
+command = "cortex-herdr-copilot --spawn"
 ```
 
 ## Uso

@@ -12,11 +12,47 @@ title = "Cortex"
 placement = "overlay"          # sticky sobre los panes del dev
 command = ["cortex-companion"]
 
+[[panes]]
+id = "sidecar"
+title = "Cortex Sidecar"
+placement = "split"
+command = ["cortex-herdr-sidecar"]
+
+[[panes]]
+id = "float"
+title = "Cortex HUD"
+placement = "split"
+command = ["cortex-herdr-float"]
+
+[[panes]]
+id = "copilot"
+title = "Cortex Co-Pilot"
+placement = "split"
+command = ["cortex-herdr-copilot"]
+
+[[actions]]
+id = "sidecar"
+title = "Cortex: open sidecar"
+contexts = ["workspace"]
+command = ["cortex-herdr-sidecar", "--spawn"]
+
+[[actions]]
+id = "float"
+title = "Cortex: open floating HUD"
+contexts = ["workspace"]
+command = ["cortex-herdr-float", "--spawn"]
+
+[[actions]]
+id = "copilot"
+title = "Cortex: open co-pilot"
+contexts = ["workspace"]
+command = ["cortex-herdr-copilot", "--spawn"]
+
 [[actions]]
 id = "open"
-title = "Open Cortex Companion"
+title = "Open Cortex HUD"
 contexts = ["workspace"]
-command = ["herdr", "plugin", "pane", "open", "--plugin", "cortex.companion", "--entrypoint", "companion", "--placement", "overlay"]
+command = ["herdr", "plugin", "pane", "open", "--plugin", "cortex.companion", "--entrypoint", "float", "--placement", "split"]
 
 [[actions]]
 id = "next"

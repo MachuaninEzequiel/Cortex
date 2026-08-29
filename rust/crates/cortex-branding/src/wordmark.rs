@@ -1,66 +1,101 @@
-//! Wordmark "Cortex" en pixel-font propia 5×7 (prompt-logo.md §20-21).
+//! Wordmark "CORTEX" en pixel-font 3D isométrica voxel (5×7).
 //!
-//! Independiente del isotipo: se renderiza con el mismo half-block renderer
-//! para que el branding se vea idéntico en cualquier terminal. Solo se definen
-//! los glifos que la marca necesita.
+//! Fuente de verdad: `assets/nueva-estetica/nuevo-logo-cortex.png`.
+//! 'H'=Highlight (cara superior iluminada -> ICE),
+//! '#'=Mark (cara frontal blanca/menta -> ICE/TEXT),
+//! 'L'=Layer (sombra 3D derecha/inferior -> DEEP/SHADOW).
 
-use crate::pixels::PixelMap;
+use crate::pixels::{PixelKind, PixelMap};
 use std::sync::OnceLock;
 
-/// Glifos 5×7 (filas, de arriba hacia abajo). `'.'`/`' '` = vacío.
-/// `static` (no `const`) para que los glifos tengan préstamo `'static`.
 static GLYPHS: &[(&str, [&str; 7])] = &[
     (
         "C",
         [
-            ".###.", "#...#", "#....", "#....", "#....", "#...#", ".###.",
+            "HHHH.",
+            "#..HL",
+            "#...L",
+            "#...L",
+            "#...L",
+            "#..HL",
+            "####L",
         ],
     ),
     (
-        "o",
+        "O",
         [
-            ".....", ".....", ".###.", "#...#", "#...#", "#...#", ".###.",
+            "HHHH.",
+            "#..HL",
+            "#..HL",
+            "#..HL",
+            "#..HL",
+            "#..HL",
+            "####L",
         ],
     ),
     (
-        "r",
+        "R",
         [
-            ".....", ".....", "#.##.", "##..#", "#....", "#....", "#....",
+            "HHHH.",
+            "#..HL",
+            "#..HL",
+            "####L",
+            "#..HL",
+            "#..HL",
+            "#...L",
         ],
     ),
     (
-        "t",
+        "T",
         [
-            ".....", ".#...", "###..", ".#...", ".#...", ".#...", "..##.",
+            "HHHHH",
+            "..#..",
+            "..#..",
+            "..#..",
+            "..#..",
+            "..#..",
+            "..#..",
         ],
     ),
     (
-        "e",
+        "E",
         [
-            ".....", ".....", ".###.", "#...#", "#####", "#....", ".###.",
+            "HHHH.",
+            "#...L",
+            "#...L",
+            "####L",
+            "#...L",
+            "#...L",
+            "####L",
         ],
     ),
     (
-        "x",
+        "X",
         [
-            ".....", ".....", "#...#", ".#.#.", "..#..", ".#.#.", "#...#",
+            "#...#",
+            ".#.#L",
+            "..#..",
+            "..#..",
+            ".#.#L",
+            "#...#",
+            "#...#",
         ],
     ),
 ];
 
 fn glyph(ch: char) -> Option<&'static [&'static str; 7]> {
+    let upper = ch.to_ascii_uppercase();
     GLYPHS
         .iter()
-        .find(|(name, _)| name.starts_with(ch))
+        .find(|(name, _)| name.starts_with(upper))
         .map(|(_, rows)| rows)
 }
 
-/// "Cortex" como `PixelMap` (35×7 px → 35 cols × 4 filas con half-blocks).
-/// Computado una sola vez (el wordmark es estático, prompt §47).
+/// "CORTEX" como `PixelMap` (35×7 px -> 35 cols x 4 filas con half-blocks).
 pub fn wordmark() -> &'static PixelMap {
     static WORDMARK: OnceLock<PixelMap> = OnceLock::new();
     WORDMARK.get_or_init(|| {
-        const LETTERS: &str = "Cortex";
+        const LETTERS: &str = "CORTEX";
         const GLYPH_W: usize = 5;
         const GAP: usize = 1;
         let w = LETTERS.len() * GLYPH_W + (LETTERS.len() - 1) * GAP;
@@ -70,8 +105,15 @@ pub fn wordmark() -> &'static PixelMap {
             let ox = i * (GLYPH_W + GAP);
             for (y, row) in rows.iter().enumerate() {
                 for (x, ch) in row.chars().enumerate() {
-                    if ch == '#' {
-                        *map.get_mut(ox + x, y) = crate::pixels::PixelKind::Mark;
+                    let kind = match ch {
+                        '#' => PixelKind::Mark,
+                        'H' => PixelKind::Highlight,
+                        'L' => PixelKind::Layer,
+                        'X' => PixelKind::Cross,
+                        _ => PixelKind::Transparent,
+                    };
+                    if kind != PixelKind::Transparent {
+                        *map.get_mut(ox + x, y) = kind;
                     }
                 }
             }
@@ -94,7 +136,7 @@ mod tests {
 
     #[test]
     fn todos_los_glifos_presentes() {
-        for ch in "Cortex".chars() {
+        for ch in "CORTEX".chars() {
             assert!(glyph(ch).is_some(), "falta glifo {ch}");
         }
     }
@@ -102,7 +144,8 @@ mod tests {
     #[test]
     fn silueta_no_vacia_y_contenida() {
         let wm = wordmark();
-        assert!(wm.count(PixelKind::Mark) > 20);
-        assert_eq!(wm.get(0, 0), PixelKind::Transparent);
+        assert!(wm.count(PixelKind::Mark) > 10);
+        assert!(wm.count(PixelKind::Highlight) > 5);
+        assert_eq!(wm.get(4, 0), PixelKind::Transparent);
     }
 }

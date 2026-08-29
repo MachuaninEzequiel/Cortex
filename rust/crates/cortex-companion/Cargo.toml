@@ -44,3 +44,15 @@ path = "src/lib.rs"
 [[bin]]
 name = "cortex-companion"
 path = "src/bin/companion.rs"
+
+[[bin]]
+name = "cortex-herdr-sidecar"
+path = "src/bin/sidecar.rs"
+
+[[bin]]
+name = "cortex-herdr-float"
+path = "src/bin/float.rs"
+
+[[bin]]
+name = "cortex-herdr-copilot"
+path = "src/bin/copilot.rs"

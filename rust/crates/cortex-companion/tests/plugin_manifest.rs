@@ -131,8 +131,12 @@ fn manifest_has_required_top_level_fields_verbatim() {
 fn manifest_declares_companion_pane_overlay() {
     let m = parse_manifest(src());
     let panes: Vec<_> = m.sections.iter().filter(|(n, _)| n == "panes").collect();
-    assert_eq!(panes.len(), 1, "exactamente un pane (spec 14 §4)");
-    let keys = &panes[0].1;
+    assert!(!panes.is_empty(), "al menos un pane (spec 14 §4)");
+    let companion = panes
+        .iter()
+        .find(|(_, k)| k.get("id").map(String::as_str) == Some("companion"))
+        .expect("pane companion");
+    let keys = &companion.1;
     assert_eq!(keys.get("id").map(String::as_str), Some("companion"));
     assert_eq!(keys.get("title").map(String::as_str), Some("Cortex"));
     assert_eq!(keys.get("placement").map(String::as_str), Some("overlay"));
@@ -165,7 +169,7 @@ fn manifest_declares_four_actions_with_canonical_commands() {
         open.1.get("command").map(String::as_str),
         Some(
             "[\"herdr\", \"plugin\", \"pane\", \"open\", \"--plugin\", \"cortex.companion\", \
-             \"--entrypoint\", \"companion\", \"--placement\", \"overlay\"]"
+             \"--entrypoint\", \"float\", \"--placement\", \"split\"]"
         )
     );
     assert_eq!(
