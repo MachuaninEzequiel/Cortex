@@ -66,6 +66,7 @@ fn home_renders_buttons_wordmark_and_budget() {
         hygiene: None,
         agent_label: String::new(),
         ask: String::new(),
+        liquid: Default::default(),
     };
     let (text, info) = render(&data);
     // Datos visibles.
@@ -116,6 +117,7 @@ fn home_with_session_hides_open_button_and_shows_id() {
         hygiene: None,
         agent_label: String::new(),
         ask: String::new(),
+        liquid: Default::default(),
     };
     let (text, info) = render(&data);
     assert!(text.contains("SES-2026-08-28_x"), "id de sesión no visible");

@@ -128,7 +128,8 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
         let _ = terminal.draw(|f| {
             match st.screen {
                 Screen::Home => {
-                    let mut data = home_data(&be, st.hud_skipped.as_deref(), &st.hud_ask);
+                    let mut data =
+                        home_data(&be, st.hud_skipped.as_deref(), &st.hud_ask, st.liquid.ram());
                     data.agent_label = agent_label.clone();
                     if mode == CompanionMode::Float {
                         let mut areas = crate::screens::hud_screen::hud_areas(f.area());
@@ -219,10 +220,12 @@ pub fn run_app(mode: CompanionMode, root: PathBuf, model: Option<String>) {
                         other => other,
                     };
                     if let Some(fx) = app::update(&mut st, action) {
+                        st.liquid.mark_active();
                         let llm_ref = llm
                             .as_mut()
                             .map(|b| b.as_mut() as &mut dyn cortex_brain::chat::LlmBackend);
                         effects::apply_opt(&be, &log, &mut st, fx, llm_ref);
+                        st.liquid.mark_idle();
                     }
                 }
             }
@@ -278,7 +281,12 @@ fn actions_data(
     }
 }
 
-fn home_data(be: &InProcessBackend, skipped: Option<&str>, ask: &str) -> HomeData {
+fn home_data(
+    be: &InProcessBackend,
+    skipped: Option<&str>,
+    ask: &str,
+    liquid: crate::hud_brand::MarkRam,
+) -> HomeData {
     let project = be.root.display().to_string();
     let branch = be.current_branch().ok().flatten();
     let session = be.session_current().ok().flatten();
@@ -303,5 +311,6 @@ fn home_data(be: &InProcessBackend, skipped: Option<&str>, ask: &str) -> HomeDat
         hygiene,
         agent_label: String::new(),
         ask: ask.to_string(),
+        liquid,
     }
 }

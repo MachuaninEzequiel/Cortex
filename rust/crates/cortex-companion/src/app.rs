@@ -5,13 +5,56 @@
 //! produce un `Effect` opcional que el runtime (binario) aplica. El hit-test
 //! es puro: `rects` registradas + coordenadas del click ⇒ `AppAction`.
 
+use std::time::Instant;
+
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 
 use crate::approval::ApprovalRequest;
 use crate::engine::{ActionProposal, SessionSummary};
+pub use crate::hud_brand::MarkRam;
 use crate::menu::{self, MenuOutput};
 use crate::{CompanionMode, Screen, UiRequest};
+
+pub const LIQUID_IDLE_SECS: u64 = 90;
+
+/// Estado de actividad de Liquid RAM para el HUD y gestión de memoria (doc 17).
+#[derive(Debug, Clone)]
+pub struct LiquidRam {
+    pub last_activity: Instant,
+    pub active: bool,
+}
+
+impl Default for LiquidRam {
+    fn default() -> Self {
+        Self {
+            last_activity: Instant::now(),
+            active: false,
+        }
+    }
+}
+
+impl LiquidRam {
+    pub fn ram(&self) -> MarkRam {
+        if self.active {
+            MarkRam::Awake
+        } else if self.last_activity.elapsed().as_secs() < LIQUID_IDLE_SECS {
+            MarkRam::WeakAwake
+        } else {
+            MarkRam::Idle
+        }
+    }
+
+    pub fn mark_active(&mut self) {
+        self.active = true;
+        self.last_activity = Instant::now();
+    }
+
+    pub fn mark_idle(&mut self) {
+        self.active = false;
+        self.last_activity = Instant::now();
+    }
+}
 
 /// Rects canónicas del Home (header). B3 definió la de Sesiones y los tests
 /// la usan; B4 agrega las de acciones y abrir-sesión. El hit-test (`hit_test`)
@@ -320,6 +363,8 @@ pub struct AppState {
     pub hud_ask: String,
     /// Higiene saltada en esta corrida (id).
     pub hud_skipped: Option<String>,
+    /// Estado de actividad de Liquid RAM (doc 17).
+    pub liquid: LiquidRam,
 }
 
 impl AppState {
@@ -351,6 +396,7 @@ impl AppState {
             hud_prompt: String::new(),
             hud_ask: String::new(),
             hud_skipped: None,
+            liquid: LiquidRam::default(),
         }
     }
 }

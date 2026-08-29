@@ -211,3 +211,16 @@ fn prompt_nunca_menciona_cortex_session() {
         );
     }
 }
+
+#[test]
+fn liquid_ram_transition_idle_weak_awake() {
+    use cortex_companion::app::{LiquidRam, MarkRam};
+    let mut lr = LiquidRam::default();
+    assert_eq!(lr.ram(), MarkRam::WeakAwake);
+    lr.mark_active();
+    assert_eq!(lr.ram(), MarkRam::Awake);
+    lr.mark_idle();
+    assert_eq!(lr.ram(), MarkRam::WeakAwake);
+    lr.last_activity = std::time::Instant::now() - std::time::Duration::from_secs(91);
+    assert_eq!(lr.ram(), MarkRam::Idle);
+}

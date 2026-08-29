@@ -242,7 +242,7 @@ pub fn render_hud(
         area,
     );
 
-    hud_brand::blit_mark(f.buffer_mut(), areas.mark);
+    hud_brand::blit_mark(f.buffer_mut(), areas.mark, data.liquid);
     if areas.word.width >= 10 && areas.word.height >= 2 {
         hud_brand::blit_word(f.buffer_mut(), areas.word);
     }

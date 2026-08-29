@@ -44,6 +44,8 @@ pub struct HomeData {
     pub agent_label: String,
     /// Texto en el campo de consulta del HUD.
     pub ask: String,
+    /// Estado de actividad de Liquid RAM para el tono del logo vivo (doc 17).
+    pub liquid: crate::hud_brand::MarkRam,
 }
 
 /// Áreas del Home: botones hit-testables (consts de `app.rs`, idénticas a la

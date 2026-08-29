@@ -150,6 +150,29 @@ fn paint_cell(buf: &mut Buffer, x: u16, y: u16, top: Option<Color>, bot: Option<
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum MarkRam {
+    #[default]
+    Idle,
+    WeakAwake,
+    Awake,
+}
+
+pub fn tone(v: u32, ram: MarkRam) -> u32 {
+    if v == 0 {
+        return 0;
+    }
+    let factor = match ram {
+        MarkRam::Idle => 0.72,
+        MarkRam::WeakAwake => 0.88,
+        MarkRam::Awake => 1.0,
+    };
+    let r = (((v >> 16) & 0xFF) as f64 * factor) as u32;
+    let g = (((v >> 8) & 0xFF) as f64 * factor) as u32;
+    let b = ((v & 0xFF) as f64 * factor) as u32;
+    (r << 16) | (g << 8) | b
+}
+
 /// Pinta una grilla voxel con half-blocks. Recorta a `area`. No pinta transparentes.
 pub fn blit(buf: &mut Buffer, area: Rect, data: &[u32], w: usize, h: usize) {
     let rows = h.div_ceil(2).min(area.height as usize);
@@ -168,8 +191,21 @@ pub fn blit(buf: &mut Buffer, area: Rect, data: &[u32], w: usize, h: usize) {
     }
 }
 
-pub fn blit_mark(buf: &mut Buffer, area: Rect) {
-    blit(buf, area, &MARK, MARK_W, MARK_H);
+pub fn blit_mark(buf: &mut Buffer, area: Rect, ram: MarkRam) {
+    let rows = MARK_H.div_ceil(2).min(area.height as usize);
+    let cols = MARK_W.min(area.width as usize);
+    for cy in 0..rows {
+        let py = cy * 2;
+        for cx in 0..cols {
+            let top = rgb(tone(pix(&MARK, MARK_W, cx, py), ram));
+            let bot = if py + 1 < MARK_H {
+                rgb(tone(pix(&MARK, MARK_W, cx, py + 1), ram))
+            } else {
+                None
+            };
+            paint_cell(buf, area.x + cx as u16, area.y + cy as u16, top, bot);
+        }
+    }
 }
 
 pub fn blit_word(buf: &mut Buffer, area: Rect) {
@@ -200,5 +236,16 @@ mod tests {
             assert_ne!(*c, 0x34D399);
             assert_ne!(*c, 0x10B981);
         }
+    }
+
+    #[test]
+    fn ram_tones_darken_idle() {
+        let original = 0xE4EDE7;
+        let awake = tone(original, MarkRam::Awake);
+        let weak = tone(original, MarkRam::WeakAwake);
+        let idle = tone(original, MarkRam::Idle);
+        assert_eq!(awake, original);
+        assert!(weak < awake);
+        assert!(idle < weak);
     }
 }
