@@ -164,6 +164,56 @@ impl SemanticIndex {
         Ok(self.chunks.len())
     }
 
+    /// Intenta cargar embeddings desde un VectorStore ya construido en disco.
+    /// Devuelve Ok(true) si todos los chunks tienen hit en el store.
+    pub fn attach_embeddings_from_store(
+        &mut self,
+        store: &cortex_core::store::VectorStore,
+        model_name: &str,
+    ) -> Result<bool, String> {
+        let Some(dim) = store.dim() else {
+            return Ok(false);
+        };
+        let infos: Vec<chunker::Chunk> = self
+            .docs
+            .iter()
+            .map(chunks_for_doc)
+            .collect::<Vec<_>>()
+            .concat();
+        if infos.is_empty() {
+            return Ok(true);
+        }
+        let fps: Vec<String> = infos
+            .iter()
+            .map(|c| crate::reindex::cache_fingerprint(model_name, &c.embedding_text()))
+            .collect();
+        let n = fps.len();
+        let mut out_matrix = vec![0.0f32; n * dim];
+        let mut out_present = vec![false; n];
+        let hits = store
+            .get_many(&fps, &mut out_matrix, &mut out_present)
+            .map_err(|e| e.to_string())?;
+        if hits == n {
+            self.chunks = infos
+                .into_iter()
+                .enumerate()
+                .map(|(i, info)| {
+                    let emb = out_matrix[i * dim..(i + 1) * dim]
+                        .iter()
+                        .map(|v| *v as f64)
+                        .collect();
+                    IndexedChunk {
+                        info,
+                        embedding: emb,
+                    }
+                })
+                .collect();
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     /// Puerto de `VaultReader.index_file` (P12A-1): re-parsea UN archivo del
     /// vault, upsertea el documento (posición de inserción preservada si ya
     /// existía, como el dict de Python), purga y regenera sus chunks,
@@ -318,7 +368,7 @@ impl SemanticIndex {
 /// Chunks de un documento según routing — compartido por `sync`
 /// (`attach_embeddings_with`) e `index_file`, para que ambos caminos
 /// produzcan exactamente los mismos chunks.
-fn chunks_for_doc(d: &SemDoc) -> Vec<chunker::Chunk> {
+pub fn chunks_for_doc(d: &SemDoc) -> Vec<chunker::Chunk> {
     let doc_type = routing::doc_type_from_rel(&d.rel).unwrap_or(routing::DocType::Glossary);
     let route = routing::route(doc_type);
     if !route.chunking_enabled {

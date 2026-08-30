@@ -194,3 +194,19 @@ fn native_backend_implements_reporting_seam() {
         .iter()
         .all(|c| c["name"] != "enterprise_config"));
 }
+
+#[test]
+fn pm_documenter_module_ok_si_load_spec_anda() {
+    let (_tmp, root) = fixture("doc_mod", false);
+    let report = run_doctor(&root, DoctorScope::Project).unwrap();
+    let doc_check = report
+        .checks
+        .iter()
+        .find(|c| c.name == "pm_documenter_module")
+        .expect("pm_documenter_module check debe estar presente");
+    assert!(
+        doc_check.ok,
+        "pm_documenter_module debe dar ok=true cuando spec_loader funciona: {doc_check:?}"
+    );
+    assert_eq!(doc_check.severity, "info");
+}

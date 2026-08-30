@@ -94,8 +94,13 @@ pub fn run_remember(argv: &[String]) -> bool {
             extra_metadata.insert(k.to_string(), serde_json::Value::String(v.to_string()));
         }
     }
+    let content = if args.summarize && config_llm_provider(&mem.layout.config_path()) == "none" {
+        args.content.chars().take(300).collect()
+    } else {
+        args.content.clone()
+    };
     let params = AppendParams {
-        content: args.content.clone(),
+        content,
         memory_type: args.r#type,
         tags: args.tag,
         files: args.file,

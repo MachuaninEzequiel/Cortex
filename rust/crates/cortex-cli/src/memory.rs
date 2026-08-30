@@ -192,20 +192,39 @@ impl NativeMemory {
         let semantic = SemanticIndex::build(&vault)
             .map_err(|e| MemoryOpenError::Io(format!("semantic index: {e}")))?;
         let episodic = EpisodicLoad::load(&layout, &cfg);
-        // B7 (desacople): el modelo ONNX se abre SOLO cuando el modo lo pide.
-        // `open_without_embeddings` era eager a pesar del nombre: cargaba el
-        // ort Session (~90 MB RSS) y solo gateaba el attach. Ningún caller de
-        // la variante sin embeddings llama a `retrieve` (verificado: stats y
-        // forget), así que la salida no cambia — solo el timing/RSS.
-        let mut embedder = if want_embeddings {
+        // B7 (desacople): el modelo ONNX se abre SOLO cuando el modo lo pide
+        // y no se puede satisfacer desde el VectorStore persistido (C11).
+        let mut semantic = semantic;
+        let mut attached_from_store = false;
+        if want_embeddings {
+            let model_name = "all-MiniLM-L6-v2";
+            let v_dir = if layout
+                .workspace_root
+                .join("vectors")
+                .join("vectors.v3.bin")
+                .exists()
+            {
+                layout.workspace_root.join("vectors")
+            } else {
+                layout.repo_root.join(".cortex").join("vectors")
+            };
+            if v_dir.join("vectors.v3.bin").exists() {
+                if let Ok(store) = cortex_core::store::VectorStore::open(&v_dir, model_name) {
+                    if let Ok(true) = semantic.attach_embeddings_from_store(&store, model_name) {
+                        attached_from_store = true;
+                    }
+                }
+            }
+        }
+
+        let mut embedder = if want_embeddings && !attached_from_store {
             crate::memory_cmds::default_model_dir().and_then(|dir| OnnxEmbedder::open(&dir).ok())
         } else {
             None
         };
         // Chunks+embeddings del vault con el MISMO modelo que el oráculo
         // (imprescindible para que los scores semánticos bit-matcheen).
-        let mut semantic = semantic;
-        if want_embeddings {
+        if want_embeddings && !attached_from_store {
             if let Some(emb) = embedder.as_mut() {
                 let _ = semantic.attach_embeddings_with(emb);
             }

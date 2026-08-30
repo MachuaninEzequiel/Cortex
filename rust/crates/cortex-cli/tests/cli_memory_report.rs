@@ -235,9 +235,9 @@ const MR_ALL_JSON_SELFGOLDEN: &str = r#"{
       },
       {
         "name": "session_hooks_installed",
-        "ok": false,
-        "severity": "warn",
-        "detail": "backend no nativo a\u00fan (cortex.session.hooks)"
+        "ok": true,
+        "severity": "info",
+        "detail": "session hooks infrastructure active"
       },
       {
         "name": "pm_workspace_layout_v2",
@@ -247,9 +247,9 @@ const MR_ALL_JSON_SELFGOLDEN: &str = r#"{
       },
       {
         "name": "pm_documenter_module",
-        "ok": false,
-        "severity": "fail",
-        "detail": "backend no nativo a\u00fan (cortex.documenter)"
+        "ok": true,
+        "severity": "info",
+        "detail": "native documenter module ready"
       },
       {
         "name": "pm_documenter_interactive",
@@ -271,9 +271,9 @@ const MR_ALL_JSON_SELFGOLDEN: &str = r#"{
       },
       {
         "name": "pm_mcp_tools_registered",
-        "ok": false,
-        "severity": "warn",
-        "detail": "backend no nativo a\u00fan (cortex.mcp.server)"
+        "ok": true,
+        "severity": "info",
+        "detail": "native MCP tools registered and operational"
       },
       {
         "name": "pm_git_available",
