@@ -23,5 +23,10 @@ tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# G-A2: getuid() en Linux para el path fallback del socket. Sólo se
+# usa bajo cfg(target_os = "linux"); en macOS/Windows no se compila.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 # sin deps: los tests del crate (G-A1: sólo smoke) no requieren nada.

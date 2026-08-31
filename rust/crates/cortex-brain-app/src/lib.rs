@@ -1,16 +1,17 @@
-//! cortex-brain-app — shell Tauri de Cortex Brain (Obra 20, G-A1).
+//! cortex-brain-app — shell Tauri de Cortex Brain (Obra 20, G-A1+).
 //!
-//! Estado: scaffolding mínimo. La app abre una ventana Tauri con un
-//! "Hello, Cortex Brain" del lado de React (apps/brain-ui/).
+//! Estado: scaffolding + IPC esqueleto (G-A2). La app abre una ventana
+//! Tauri con un "Hello, Cortex Brain" del lado de React (apps/brain-ui/).
 //!
 //! Próximos gates:
-//! - G-A2: IPC server (JSON-lines por socket).
 //! - G-A3: scan recursivo de proyectos.
 //! - G-A4: integración con `cortex_brain` (lib) para chat in-process.
 //!
 //! Spec: docs/transformacion/20-CORTEX-BRAIN-APP.md
 
-#![forbid(unsafe_code)]
+#![allow(unsafe_code)] // std::env::set_var en tests con HOME_LOCK (serialización de test).
+
+pub mod ipc;
 
 /// Roles del binario unificado `cortex-brain` (decisión del dueño,
 /// doc 20 §12.1 opción C). En G-A1 sólo se implementa `App`; los
@@ -44,10 +45,70 @@ impl Role {
 
 /// Construye la app Tauri.
 ///
-/// En G-A1 sólo se llama desde el entrypoint GUI; en gates siguientes
+/// G-A2: al setup, intenta bindear el server IPC. Si ya hay una
+/// instancia escuchando, conecta como cliente y **continúa como GUI**
+/// (no mata la instancia existente, no es nuestro trabajo decidir eso).
+/// El server mismo vive en un thread dedicado, fuera del ciclo de
+/// Tauri: acepta conexiones y por cada query loggea en stderr. El
+/// loop de motor real (que responde al cliente) llega en G-A4; el
+/// streaming de chunks reales en G-A6.
+///
+/// En G-A1 sólo se llamaba desde el entrypoint GUI; en gates siguientes
 /// se le agregan los commands (Tauri commands invocados desde React).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use std::io::BufReader;
+
+    match ipc::try_bind() {
+        Ok(server) => {
+            // Spawn del loop de accept en un thread dedicado. El handle
+            // se descarta; el thread muere con el proceso.
+            let _ = std::thread::Builder::new()
+                .name("cortex-brain-ipc".into())
+                .spawn(move || {
+                    while let Ok(conn) = server.accept() {
+                        let (raw_read, _write) = match conn.into_split() {
+                            Ok(parts) => parts,
+                            Err(e) => {
+                                eprintln!("ipc: split falló: {e}");
+                                continue;
+                            }
+                        };
+                        // Por cada conexión entrante, leemos queries
+                        // hasta EOF y las loggeamos. G-A4 las enruta al
+                        // motor y responde por el `_write`. G-A6 lo hace
+                        // en chunks streaming.
+                        let _ = std::thread::spawn(move || {
+                            let mut reader = BufReader::new(raw_read);
+                            while let Ok(Some(req)) =
+                                ipc::read_json_line::<ipc::QueryRequest, _>(&mut reader)
+                            {
+                                eprintln!(
+                                    "ipc: query recibida: project={} text={:?} request_id={}",
+                                    req.project, req.text, req.request_id
+                                );
+                            }
+                        });
+                    }
+                });
+        }
+        Err(ipc::BindError::AlreadyBound(_)) => {
+            // Hay otra instancia. Lo registramos; el comportamiento de
+            // "forward to running instance" como cliente es responsabilidad
+            // del flag --query (main.rs). Acá sólo dejamos el aviso.
+            eprintln!(
+                "cortex-brain: otra instancia ya está corriendo. Las queries por \
+                 --query se mandan a esa instancia; esta GUI corre en paralelo."
+            );
+        }
+        Err(ipc::BindError::NotSupported) => {
+            eprintln!("cortex-brain: IPC no soportado en este OS (G-A2: sólo Unix)");
+        }
+        Err(e) => {
+            eprintln!("cortex-brain: error al bindear IPC: {e}");
+        }
+    }
+
     tauri::Builder::default()
         .setup(|_app| Ok(()))
         .run(tauri::generate_context!())
