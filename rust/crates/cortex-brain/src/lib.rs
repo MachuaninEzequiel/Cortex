@@ -9,6 +9,7 @@
 //! Backend real: llama.cpp/GGUF LFM2.5 tras `--features llama` (--model).
 
 pub mod chat;
+pub mod download;
 #[cfg(feature = "llama")]
 pub mod llama;
 pub mod paths;

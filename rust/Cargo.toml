@@ -57,6 +57,11 @@ sha2 = "0.10"
 rmcp = { version = "0.8", features = ["server", "transport-io"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "time"] }
 
+# Obra 19 (G-L1): cliente HTTP sync para descarga del GGUF. ureq ya
+# está resuelto en el lock transitivamente (lo trae ort-sys para bajar
+# binarios de onnxruntime); cero paquetes nuevos al lock.
+ureq = "3"
+
 # Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
 # - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.
 # - cortex-embed: wrapper de inferencia ONNX (ort). dim SIEMPRE paramétrica.

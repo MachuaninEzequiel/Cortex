@@ -14,6 +14,8 @@ regex = "1"
 serde_json = "1"
 encoding_rs = "0.8"
 cortex-branding = { path = "../cortex-branding" }
+# C-L1.2: cliente HTTP sync para descarga del GGUF. Spec: doc 19 §2.
+ureq = { workspace = true }
 
 # BRAIN-2: backend llama.cpp/GGUF (feature opcional: compila llama.cpp vía cmake;
 # sólo se activa con --features llama para no penalizar builds que no lo usan).
