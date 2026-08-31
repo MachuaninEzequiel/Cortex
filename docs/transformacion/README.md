@@ -7,6 +7,7 @@
 > **Obra activa (2026-08-29):** [17 · Producto: el experto al lado](17-PRODUCTO-EXPERTO-AL-LADO.md).
 > Eso es **lo que se construye**. El [16](16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md)
 > manda sobre *qué es teatro* en el árbol; su deuda residual está diferida.
+> **Tramo de motor en curso (2026-08-31):** [19 · Liquid: descarga, streaming y vida visual](19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md).
 > Rama `feature/transformacion-2026-08`, commits locales, sin push.
 
 ## Reglas de administración documental (obligatorias)
@@ -37,6 +38,8 @@ Obras posteriores (historia 07/08 + pulido activo):
 | [15](15-REBRANDING-TUI-HERDR-STATUS.md) | Rebrand + 3 modos Herdr | Relato del agente. Crítica §3–§4 vigente; §2 no describir el árbol. |
 | [16](16-DEUDA-REAL-Y-NORTE-DE-PULIDO.md) | Deuda real (honestidad del árbol) | Autoridad de *qué es teatro*. Residual **diferido**. |
 | **[17](17-PRODUCTO-EXPERTO-AL-LADO.md)** | **Producto: experto al lado** | **Obra activa. HUD + Liquid on-demand + prompts copiables.** |
+| [19](19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md) | Liquid LFM2.5: descarga, streaming y vida visual | Tramo actual del motor. `cortex brain install`, streaming de tokens, respiración del logo. Foco en 1, 5 y 7 del deep-review. |
+| [20](20-CORTEX-BRAIN-APP.md) | Cortex Brain App: experto local como aplicación | **Propuesta pendiente de aprobación.** App Tauri (Rust+React) estilo Handy: lista de proyectos + chat con Liquid + descarga de modelos. Reemplaza el scope de "subcomandos CLI" del doc 19; reutiliza C-L1.1 y C-L1.2. |
 
 ## Orden de tramos (con racional)
 

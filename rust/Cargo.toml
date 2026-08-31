@@ -36,6 +36,9 @@ members = [
     "crates/cortex-tutor",
     # Obra 08 (stream B): docs/transformacion/14-HERDR-COMPANION.md
     "crates/cortex-companion",
+    # Obra 20 (G-A1): docs/transformacion/20-CORTEX-BRAIN-APP.md — shell Tauri
+    # de la app standalone (binario unificado `cortex-brain`).
+    "crates/cortex-brain-app",
 ]
 
 [workspace.package]

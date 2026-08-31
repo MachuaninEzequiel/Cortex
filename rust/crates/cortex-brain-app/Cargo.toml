@@ -1,0 +1,27 @@
+[package]
+name = "cortex-brain-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Cortex Brain App: shell Tauri del experto local (Obra 20, G-A1)."
+
+[[bin]]
+name = "cortex-brain"
+path = "src/main.rs"
+
+[lib]
+name = "cortex_brain_app"
+path = "src/lib.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# G-A1: shell Tauri mínimo. Cero lógica de motor (esa entra en G-A4).
+# El motor (Liquid, downloads, paths) ya vive en cortex-brain como lib.
+tauri = { version = "2", features = [] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+# sin deps: los tests del crate (G-A1: sólo smoke) no requieren nada.
