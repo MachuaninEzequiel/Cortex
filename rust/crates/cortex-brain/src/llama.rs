@@ -23,13 +23,14 @@ use crate::chat::LlmBackend;
 const N_CTX: u32 = 4096;
 const MAX_GEN_TOKENS: usize = 512;
 
-/// Ruta default del GGUF (~/.cache/cortex/models/).
+/// Ruta default del GGUF (`~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`).
+///
+/// **DEPRECADO desde C-L1.1:** delegar en [`crate::paths::default_model_path`].
+/// Se conserva para no romper callers existentes (binario, tests); se
+/// elimina cuando se migren.
 #[must_use]
 pub fn model_path_default() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_default();
-    PathBuf::from(home)
-        .join(".cache/cortex/models")
-        .join("LFM2.5-1.2B-Instruct-Q4_K_M.gguf")
+    crate::paths::default_model_path()
 }
 
 /// Backend de chat sobre un GGUF ya descargado.

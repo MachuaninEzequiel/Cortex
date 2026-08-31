@@ -11,6 +11,7 @@
 pub mod chat;
 #[cfg(feature = "llama")]
 pub mod llama;
+pub mod paths;
 
 pub mod i18n;
 pub mod router;
