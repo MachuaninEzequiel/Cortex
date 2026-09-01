@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A3
+# 21 — Cortex Brain App: estado al cierre de G-A5
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A4, listo para G-A5.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A5, listo para G-A6.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -50,7 +50,7 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A2 | IPC esqueleto: server + cliente, JSON-lines | ✅ **HECHO** (`f3efa5d`) |
 | G-A3 | Scan recursivo de proyectos | ✅ **HECHO** (este commit) |
 | G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (este commit) |
-| G-A5 | Integración Liquid real (feature `llama`) | ⏳ |
+| G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (este commit) |
 | G-A6 | Streaming por IPC (chunks) | ⏳ |
 | G-A7 | UI completa (sidebar, chat, status bar, settings) | ⏳ |
 | G-A8 | Descarga de modelos en UI | ⏳ |
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(tauri): chat in-process con el motor cortex_brain (G-A4)
+(este commit) app(tauri): integración Liquid real con feature llama (G-A5)
+4b23dd1 app(tauri): chat in-process con el motor cortex_brain (G-A4)
 5c00691 app(tauri): scan recursivo de proyectos con cache (G-A3)
 f3efa5d app(tauri): IPC esqueleto JSON-lines por Unix socket (G-A2)
 053cbe2 app(tauri): scaffold de Cortex Brain App con Tauri 2 + React + Vite
@@ -187,7 +188,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 
 ---
 
-## 6. Lo que la app YA hace (G-A1 a G-A4)
+## 6. Lo que la app YA hace (G-A1 a G-A5)
 
 1. Abre una ventana Tauri 1100×720 con "Hello, Cortex Brain" en el centro.
 2. Al setup, bindea un Unix socket en `~/.cache/cortex-brain.sock`
@@ -218,27 +219,36 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 11. Command Tauri `chat_turn` (G-A4): la UI hace turnos de chat por
     proyecto con el MISMO engine compartido que el server IPC
     (`SharedEngine`, registrado via `app.manage`).
+12. Con feature `llama` + GGUF presente, el primer query de un
+    proyecto carga el modelo real (`LlamaChatBackend`, greedy temp 0
+    / seed 42, system prompt con catálogo de tools) y responde con el
+    LFM2.5 (G-A5). Sin feature o sin GGUF: determinista con aviso.
+13. Unload por idle (G-A5): los backends vencidos (>90s sin uso)
+    se descargan al empezar el próximo turno o via `reap_idle()`,
+    que el ticker de la UI llamará (G-A7/G-A10).
+14. Smoke real verificado (G-A5): el GGUF carga en ~0.5s, el modelo
+    responde, y el protocolo TOOL rechaza con gracia una tool
+    inexistente (el modelo sugirió `doctor`, fuera del catálogo).
 
 ---
 
 ## 7. Lo que la app TODAVÍA NO hace
 
-- ❌ No carga el modelo Liquid (G-A5): el LLM no se usa todavía; el
-  chat corre en modo determinista (router 1:1, igual que `--no-model`
-  del motor).
-- ❌ No streamea tokens al cliente (G-A6).
+- ❌ No streamea tokens al cliente (G-A6): la respuesta llega de una
+  pieza; el motor ya expone `generate_streaming` (doc 19 §3) para
+  cablear los chunks.
 - ❌ UI mínima: sólo el placeholder, sin sidebar, sin chat real,
   sin status bar con `MarkRam` (G-A7).
 - ❌ No descarga modelos desde la UI (G-A8).
-- ❌ No forwarda `--query` a una GUI ya abierta (G-A9): hoy el
-  cliente retorna "no hay GUI"; el flag existe pero no hace
-  forward. La app actual puede coexistir con otra instancia,
-  pero el cliente externo no la encuentra.
+- ❌ No hace single-instance estricto ni forward de foco (G-A9):
+  desde G-A4 el `--query` SÍ funciona end-to-end contra la GUI
+  abierta (manda y recibe respuesta); lo que falta es traer la
+  ventana al frente y evitar dos GUI simultáneas.
 - ❌ No funciona en Windows (G-A2.1: named pipes).
 
 ---
 
-## 8. Estructura del repo al cierre de G-A4
+## 8. Estructura del repo al cierre de G-A5
 
 ```
 /home/chucho/Cortex/
@@ -483,22 +493,93 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
   registro del command ya compila y el e2e del server cubre el mismo
   engine.
 
-## 13. Próximo gate (G-A5): integración Liquid real
+## 13. G-A5: integración Liquid real (cerrado)
 
-Del doc 20 §7: con `--features llama` + GGUF instalado (la
-convención de rutas vive en `cortex_brain::paths`), el chat usa
-`LlamaChatBackend` con load/unload. En el engine (`chat.rs`), el
-lug natural es la fábrica de backends por proyecto: si hay GGUF y el
-feature está activo, `insert_backend`/`or_insert_with` monta
-`LlamaChatBackend` (con el system prompt del binario del motor).
+### Lo que se creó
 
-Criterio de pase: smoke con modelo cargado — elegir proyecto, hacer
-pregunta, respuesta real. Load/unload por idle timeout llega con la
-UI (G-A7/G-A10, mismo `MarkRam` del Companion).
+- `Cargo.toml` (app): feature `llama = ["cortex-brain/llama"]` —
+  default OFF (tests/CI sin cmake ni modelo). Con ON compila
+  llama.cpp vía llama-cpp-2 (2m16s de check en esta máquina).
+- `src/chat.rs`:
+  - **Fábrica de backends:** `BrainEngine { backends, idle_timeout,
+    factory }`; `new()` usa la fábrica default, `with_factory(idle,
+    factory)` permite inyectar (los tests inyectan `|| None` y así
+    la suite corre idéntica con y sin feature, sin cargar el GGUF).
+  - `crear_backend_llama()` (cfg llama): monta
+    `LlamaChatBackend::open(gguf, system_prompt)` con el GGUF de la
+    convención (`cortex_brain::paths::default_model_path_if_exists`),
+    greedy temp 0 / seed 42 (defaults del binario del motor).
+    Falta de GGUF o error de carga ⇒ None + aviso ⇒ determinista.
+  - **Load perezoso por proyecto:** el modelo entra en RAM en el
+    primer query del proyecto; cada proyecto tiene su historial
+    propio. Limitación v1 anotada: N proyectos activos = N copias
+    del modelo; el modelo compartido entre proyectos queda para
+    después.
+  - **Unload por idle (doc 20 §2.2):** `TurnState { backend,
+    last_used }`; vencidos (>90s default) se descargan al empezar
+    cada turno y via `reap_idle()` público — el ticker de la UI lo
+    llamará (G-A7/G-A10 con `MarkRam`). `loaded_projects()` para el
+    status bar.
+  - `system_prompt()`: espejo del binario del motor (help_text +
+    reglas TOOL) con la frase de ejecución adaptada a la GUI
+    (read auto, mutaciones se proponen).
+  - Smoke real: `smoke_llama_real_responde` (cfg llama + #[ignore])
+    — carga el GGUF y genera; correr con `cargo test -p
+    cortex-brain-app --features llama -- --ignored`.
+
+### Verificación
+
+- Sin feature: `cargo test -p cortex-brain-app` **28/28** (26 lib —
+  4 role + 6 ipc + 1 e2e + 6 projects + 8 chat + 1 main — + 2 smoke),
+  `cargo clippy --all-targets -- -D warnings` rc 0, `cargo fmt
+  --check` rc 0.
+- Con feature: `cargo check -p cortex-brain-app --features llama` rc
+  0 (2m16s; compila llama.cpp — y confirma que `LlamaChatBackend` es
+  `Send`, requisito del engine compartido), suite completa rc 0
+  (1 ignored: el smoke).
+- **Smoke REAL del criterio de pase (doc 20 §7 G-A5):** el GGUF
+  existe en esta máquina; `cargo test --features llama -- --ignored`
+  pasó: modelo cargado en ~0.5s, respuesta del LFM2.5 en ~5s total,
+  backend "llama.cpp (GGUF)". De yapa quedó demostrado el loop
+  completo: el modelo sugirió `TOOL: doctor` (fuera del catálogo) y
+  el protocolo TOOL la rechazó con el aviso i18n correcto.
+
+### Hallazgos
+
+- `LlamaChatBackend` ES `Send` (llama_cpp_2: backend/modelo Send, no
+  Sync): encaja directo en `Box<dyn LlmBackend + Send>` del engine
+  compartido por threads.
+- La carga real tomó 0.5s en SSD — el “puede tardar” del log quedó
+  conservador; igual el load es perezoso (primer query) y el status
+  de carga será visible con `MarkRam` (G-A10).
+- El modelo sugirió una tool fuera del catálogo (`doctor` en vez de
+  `cortex.health`): el protocolo la rechaza limpio. Si el prompt
+  necesita refuerzo (mencionar los nombres exactos), es pulido de
+  prompt para G-A7+, no bloquea el gate.
+
+### Smoke que NO pude verificar yo
+
+- **GUI con modelo real** (requiere DISPLAY): abrir
+  `cargo tauri dev --features llama` (o binario con feature), hacer
+  una pregunta por `--query` o por la UI futura, ver respuesta real
+  del LFM2.5. El camino de engine es exactamente el que cubre el
+  smoke ignorado.
+
+## 14. Próximo gate (G-A6): streaming de tokens por IPC
+
+Del doc 20 §7: `LlamaChatBackend::generate_streaming` (ya existe en
+el motor, doc 19 §3) emite chunks; el server IPC los manda como
+mensajes `chunk` al cliente, el frontend los renderea. Requiere
+revisar el modelo "un request por conexión" del G-A4: los chunks
+viajan por la MISMA conexión hasta el `done` final.
+
+Criterio de pase: la respuesta aparece incrementalmente, no de
+golpe (test con backend que emite piezas + test del envelope
+`chunk`).
 
 ---
 
-## 14. Referencias rápidas
+## 15. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`

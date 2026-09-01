@@ -38,3 +38,11 @@ libc = "0.2"
 
 [dev-dependencies]
 # sin deps: los tests del crate (G-A1: sólo smoke) no requieren nada.
+
+# G-A5: Liquid real. Activa el feature `llama` del motor (compila
+# llama.cpp vía cmake — minutos — y carga el GGUF de
+# ~/.cache/cortex/models/ en el primer query). Default OFF: tests/CI
+# rápidos, sin cmake ni modelo. Smoke real: cargo test -p
+# cortex-brain-app --features llama -- --ignored
+[features]
+llama = ["cortex-brain/llama"]
