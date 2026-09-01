@@ -7,6 +7,8 @@ interface GovernanceBarProps {
   doctorReport: DoctorReportPayload | null;
   onOpenWebGraph: () => void;
   onOpenDoctor: () => void;
+  onOpenOrgMemory: () => void;
+  orgCandidatesCount?: number;
   onSaveCheckpoint: () => void;
   pinnedNodes: PinnedContextNode[];
   onRemovePinnedNode: (id: string) => void;
@@ -18,6 +20,8 @@ export const GovernanceBar: React.FC<GovernanceBarProps> = ({
   doctorReport,
   onOpenWebGraph,
   onOpenDoctor,
+  onOpenOrgMemory,
+  orgCandidatesCount = 0,
   onSaveCheckpoint,
   pinnedNodes,
   onRemovePinnedNode,
@@ -63,6 +67,21 @@ export const GovernanceBar: React.FC<GovernanceBarProps> = ({
 
         {/* Right: Quick Action Buttons (WebGraph & Doctor) */}
         <div className="flex items-center gap-2">
+          {/* Memoria Organizacional Trigger */}
+          <button
+            onClick={onOpenOrgMemory}
+            className="flex items-center gap-1.5 rounded-lg border border-mocha-surface bg-mocha-surface/30 px-3 py-1 text-xs text-mocha-text hover:border-[#cba6f7] hover:text-[#cba6f7] transition active:scale-95"
+            title="Abrir Memoria Organizacional y Enterprise Knowledge Vault"
+          >
+            <span>🏛️</span>
+            <span className="font-semibold">Memoria Org</span>
+            {orgCandidatesCount > 0 && (
+              <span className="rounded-full bg-[#cba6f7]/20 border border-[#cba6f7]/40 px-1.5 py-0.2 text-[10px] text-[#cba6f7] font-bold">
+                {orgCandidatesCount}
+              </span>
+            )}
+          </button>
+
           {/* WebGraph Trigger */}
           <button
             onClick={onOpenWebGraph}
