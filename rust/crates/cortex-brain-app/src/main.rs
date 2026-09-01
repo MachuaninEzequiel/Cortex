@@ -1,21 +1,21 @@
-//! Entrypoint del binario `cortex-brain` (G-A1 + G-A2).
+//! Entrypoint del binario `cortex-brain` (G-A1 + G-A2 + G-A3).
 //!
 //! Decide el rol según argv:
 //! - `--query <text> [--project <path>]`  ⇒ cliente IPC: conecta al
 //!   server, manda query, lee respuestas, imprime a stdout, sale.
-//! - `--projects-list`                     ⇒ lista proyectos y sale
-//!   (llega en G-A3; hoy error explícito).
+//! - `--projects-list`                     ⇒ lista proyectos Cortex
+//!   detectados desde el cache y sale (G-A3).
 //! - sin flag reconocido                    ⇒ GUI Tauri (default).
 //!
-//! G-A1 implementaba el camino GUI. G-A2 implementa el camino cliente
-//! con eco (el server hace echo; el motor real entra en G-A4).
+//! G-A1 implementó el camino GUI. G-A2 el camino cliente. G-A3 el
+//! listado de proyectos.
 
 use std::process::ExitCode;
 
 use cortex_brain_app::ipc::{
     read_json_line, write_json_line, ConnectError, QueryRequest, QueryResponse,
 };
-use cortex_brain_app::{run as run_app, Role};
+use cortex_brain_app::{projects, run as run_app, Role};
 
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
@@ -27,11 +27,43 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Role::QueryClient => run_query_client(&argv),
-        Role::ProjectsList => {
-            eprintln!("cortex-brain: --projects-list todavía no implementado (llega en G-A3).");
-            ExitCode::from(2)
-        }
+        Role::ProjectsList => run_projects_list(),
     }
+}
+
+/// Implementación del flag `--projects-list` (G-A3): lista los
+/// proyectos Cortex detectados, sin abrir GUI. Formato
+/// machine-readable: una línea por proyecto,
+/// `path\tbranch\tstatus`.
+///
+/// Lee el cache; si el cache todavía no existe (primera vez en esta
+/// máquina), corre un scan fresh una vez para que el flag sirva
+/// standalone y deje el cache listo.
+fn run_projects_list() -> ExitCode {
+    let entries = if projects::cache_path().is_file() {
+        projects::list_projects()
+    } else {
+        projects::refresh_projects()
+    };
+    if entries.is_empty() {
+        eprintln!(
+            "cortex-brain: no hay proyectos Cortex detectados todavía.\n\
+             Un proyecto Cortex tiene config.yaml + .cortex/. Corré \
+             `cortex-brain` para que la app escanee tu HOME."
+        );
+        return ExitCode::SUCCESS;
+    }
+    for entry in &entries {
+        let status = if !entry.valid_config {
+            "invalid"
+        } else if entry.has_session {
+            "session"
+        } else {
+            "ok"
+        };
+        println!("{}\t{}\t{}", entry.path, entry.branch, status);
+    }
+    ExitCode::SUCCESS
 }
 
 /// Implementación del flag `--query`: conecta al server, manda el

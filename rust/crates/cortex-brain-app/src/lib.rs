@@ -1,17 +1,19 @@
 //! cortex-brain-app — shell Tauri de Cortex Brain (Obra 20, G-A1+).
 //!
-//! Estado: scaffolding + IPC esqueleto (G-A2). La app abre una ventana
-//! Tauri con un "Hello, Cortex Brain" del lado de React (apps/brain-ui/).
+//! Estado: scaffolding + IPC esqueleto (G-A2) + scan de proyectos
+//! (G-A3). La app abre una ventana Tauri con un "Hello, Cortex Brain"
+//! del lado de React (apps/brain-ui/).
 //!
 //! Próximos gates:
-//! - G-A3: scan recursivo de proyectos.
 //! - G-A4: integración con `cortex_brain` (lib) para chat in-process.
+//! - G-A7: UI completa (sidebar con los proyectos de `projects.rs`).
 //!
 //! Spec: docs/transformacion/20-CORTEX-BRAIN-APP.md
 
 #![allow(unsafe_code)] // std::env::set_var en tests con HOME_LOCK (serialización de test).
 
 pub mod ipc;
+pub mod projects;
 
 /// Roles del binario unificado `cortex-brain` (decisión del dueño,
 /// doc 20 §12.1 opción C). En G-A1 sólo se implementa `App`; los
@@ -43,6 +45,22 @@ impl Role {
     }
 }
 
+/// Command Tauri: lista los proyectos desde el cache (rápido, no
+/// recorre el árbol; elimina entradas stale). G-A7 lo invoca desde la
+/// sidebar. Async para no bloquear el main thread de Tauri.
+#[tauri::command]
+async fn list_projects() -> Vec<projects::ProjectEntry> {
+    projects::list_projects()
+}
+
+/// Command Tauri: scan completo de la raíz + reescritura del cache.
+/// Operación cara (segundos en un home grande): async para no
+/// bloquear el main thread de Tauri.
+#[tauri::command]
+async fn refresh_projects() -> Vec<projects::ProjectEntry> {
+    projects::refresh_projects()
+}
+
 /// Construye la app Tauri.
 ///
 /// G-A2: al setup, intenta bindear el server IPC. Si ya hay una
@@ -53,8 +71,8 @@ impl Role {
 /// loop de motor real (que responde al cliente) llega en G-A4; el
 /// streaming de chunks reales en G-A6.
 ///
-/// En G-A1 sólo se llamaba desde el entrypoint GUI; en gates siguientes
-/// se le agregan los commands (Tauri commands invocados desde React).
+/// G-A3: registra los commands `list_projects` / `refresh_projects`
+/// (sidebar de proyectos; el frontend los consume en G-A7).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use std::io::BufReader;
@@ -110,6 +128,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![list_projects, refresh_projects])
         .setup(|_app| Ok(()))
         .run(tauri::generate_context!())
         .expect("error al iniciar Cortex Brain");
