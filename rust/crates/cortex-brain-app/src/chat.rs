@@ -50,13 +50,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "llama")]
-use cortex_brain::chat::help_text;
-use cortex_brain::chat::{
-    extraer_tool, procesar_respuesta_modelo, DeterministicBackend, LlmBackend,
-};
+use cortex_brain::chat::{DeterministicBackend, LlmBackend, extraer_tool};
 use cortex_brain::i18n::{self, Lang};
-use cortex_brain::tools::{build_tools, Tier};
+use cortex_brain::tools::Tier;
 
 /// Backend de un proyecto. `Send` porque el engine se comparte por
 /// `Arc` entre threads del server IPC.
@@ -401,17 +397,40 @@ impl BrainEngine {
             });
         }
 
+        let all_tools = build_all_tools();
         let tool_calls = extraer_tool(&out)
             .map(|(tool, args)| vec![ToolCall { tool, args }])
             .unwrap_or_default();
-        let processed = procesar_respuesta_modelo(&out, &build_tools(), &mut |tool, _args| {
-            // Read ⇒ auto-ejecuta (decisión del dueño, G-A4);
-            // SafeAction y desconocidas ⇒ denegadas (el modal de
-            // aprobación llega con la UI completa).
-            build_tools()
-                .get(tool)
-                .is_some_and(|spec| spec.tier == Tier::Read)
-        });
+
+        let processed = if let Some((ref tool, ref args_tool)) = extraer_tool(&out) {
+            if let Some(spec) = all_tools.get(tool.as_str()) {
+                if spec.tier == Tier::Read {
+                    let tool_out = match dispatch_tool(tool, args_tool, Path::new(project)) {
+                        Ok(res) => res,
+                        Err(e) => format!("⚠ {e}"),
+                    };
+                    let sin_tool = cortex_brain::chat::respuesta_sin_tool(&out);
+                    if sin_tool.trim().is_empty() {
+                        format!("{tool_out}\n")
+                    } else {
+                        format!("{sin_tool}\n\n{tool_out}\n")
+                    }
+                } else {
+                    // SafeAction: se reporta para confirmación del usuario y se avisa en el texto
+                    let mut s = cortex_brain::chat::respuesta_sin_tool(&out);
+                    if !s.trim().is_empty() {
+                        s.push('\n');
+                    }
+                    s.push_str(i18n::no_ejecutado(lang));
+                    s.push('\n');
+                    s
+                }
+            } else {
+                format!("{}\n{}", out, i18n::tool_inexistente(lang, tool))
+            }
+        } else {
+            out
+        };
 
         Ok(ChatTurn {
             text: processed,
@@ -451,8 +470,12 @@ impl ChdirGuard {
         if project.is_empty() {
             return Ok(Self { previo: None });
         }
+        let p = Path::new(project);
+        if !p.is_dir() {
+            return Ok(Self { previo: None });
+        }
         let previo = std::env::current_dir().ok();
-        std::env::set_current_dir(project)
+        std::env::set_current_dir(p)
             .map_err(|e| format!("no pude entrar al proyecto {project}: {e}"))?;
         Ok(Self { previo })
     }
@@ -466,12 +489,137 @@ impl Drop for ChdirGuard {
     }
 }
 
-/// Catálogo compacto de tools para el prompt del LLM. Espejo de
-/// `cortex-brain/src/main.rs::catalogo_tools` (esa vive en el binario
-/// del motor, no en la lib; duplicarla acá evita tocar el crate del
-/// motor, que no es de esta obra).
+/// Catálogo completo de tools de Cortex Brain (base + gobernanza + webgraph).
+pub fn build_all_tools() -> std::collections::BTreeMap<&'static str, cortex_brain::tools::ToolSpec> {
+    let mut t = cortex_brain::tools::build_tools();
+    t.insert(
+        "session.status",
+        cortex_brain::tools::ToolSpec {
+            name: "session.status",
+            description: "Consulta la sesión activa en .cortex/sessions/, spec asociada y checkpoints.",
+            tier: Tier::Read,
+            args_hint: "",
+        },
+    );
+    t.insert(
+        "session.checkpoint",
+        cortex_brain::tools::ToolSpec {
+            name: "session.checkpoint",
+            description: "Registra un checkpoint en la sesión activa.",
+            tier: Tier::SafeAction,
+            args_hint: "<nota>",
+        },
+    );
+    t.insert(
+        "session.finish_and_document",
+        cortex_brain::tools::ToolSpec {
+            name: "session.finish_and_document",
+            description: "Coordina la documentación de evidencia y cierre de la sesión.",
+            tier: Tier::SafeAction,
+            args_hint: "",
+        },
+    );
+    t.insert(
+        "doctor.inspect",
+        cortex_brain::tools::ToolSpec {
+            name: "doctor.inspect",
+            description: "Diagnóstico de salud de Cortex (workspace, vault, memoria).",
+            tier: Tier::Read,
+            args_hint: "",
+        },
+    );
+    t.insert(
+        "webgraph.query",
+        cortex_brain::tools::ToolSpec {
+            name: "webgraph.query",
+            description: "Consulta archivos, módulos y specs en el grafo del proyecto.",
+            tier: Tier::Read,
+            args_hint: "<termino>",
+        },
+    );
+    t
+}
+
+/// Ejecuta una tool despachando entre las herramientas de la app y el motor base.
+pub fn dispatch_tool(tool: &str, args: &str, project_root: &Path) -> Result<String, String> {
+    match tool {
+        "session.status" => {
+            let s = crate::graph::inspect_session_status(project_root);
+            if s.active {
+                let id = s.session_id.unwrap_or_else(|| "activa".to_string());
+                let spec = s.spec_path.unwrap_or_else(|| "vault/specs/spec.md".to_string());
+                let last = s.last_checkpoint.unwrap_or_else(|| "Inicio".to_string());
+                Ok(format!(
+                    "📌 **Sesión Activa:** [Sesión #{id}]({spec})\n- **Checkpoints:** {}\n- **Último avance:** {last}",
+                    s.checkpoints_count
+                ))
+            } else {
+                Ok("○ No hay ninguna sesión de trabajo activa en .cortex/sessions/. Podés iniciar una nueva sesión para registrar tus avances.".to_string())
+            }
+        }
+        "doctor.inspect" => {
+            let doc = crate::graph::inspect_doctor_health(project_root);
+            let mut out = format!(
+                "🛡️ **Auditoría de Salud de Cortex:** {}\n\n",
+                if doc.is_healthy { "✓ Proyecto en estado óptimo" } else { "⚠ Se detectaron detalles para corregir" }
+            );
+            for c in doc.checks {
+                let icon = match c.status.as_str() {
+                    "ok" => "✓",
+                    "warn" => "▲",
+                    _ => "✗",
+                };
+                out.push_str(&format!("- [{icon}] **{}**: {}\n", c.name, c.message));
+            }
+            Ok(out)
+        }
+        "webgraph.query" => {
+            let g = crate::graph::extract_project_graph(project_root);
+            let q = args.trim().to_lowercase();
+            let matches: Vec<_> = g.nodes.into_iter().filter(|n| {
+                q.is_empty() || n.label.to_lowercase().contains(&q) || n.path.to_lowercase().contains(&q)
+            }).take(8).collect();
+
+            if matches.is_empty() {
+                Ok(format!("No se encontraron nodos en el grafo para '{args}'."))
+            } else {
+                let mut out = format!("🕸️ **Nodos encontrados en WebGraph para '{args}':**\n");
+                for m in matches {
+                    let icon = match m.kind.as_str() { "module" => "📦", "spec" => "📄", "adr" => "🏛️", _ => "📄" };
+                    out.push_str(&format!("- {} [{}]({})\n", icon, m.label, m.path));
+                }
+                Ok(out)
+            }
+        }
+        "vault.stats" => {
+            let count = count_markdown(&project_root.join("vault"));
+            Ok(format!("Vault: {count} notas .md"))
+        }
+        _ => cortex_brain::tools::dispatch(tool, std::slice::from_ref(&args.to_string())),
+    }
+}
+
+fn count_markdown(dir: &Path) -> usize {
+    if !dir.is_dir() {
+        return 0;
+    }
+    let mut count = 0;
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                count += count_markdown(&p);
+            } else if p.extension().is_some_and(|e| e == "md") {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+/// Catálogo compacto de tools para el prompt del LLM.
 fn catalogo_tools() -> String {
-    build_tools()
+    build_all_tools()
         .values()
         .map(|t| {
             let tier = match t.tier {
@@ -538,12 +686,15 @@ fn crear_backend_llama(model_filename: &str) -> Option<BoxBackend> {
 #[cfg(feature = "llama")]
 fn system_prompt() -> String {
     format!(
-        "Sos el asistente local de Cortex, experto en ESTE proyecto.\n\n{}\nReglas estrictas:\n\
-         - NUNCA ejecutás mutaciones: si la acción es mutante, proponés el comando CLI exacto para que el usuario lo corra.\n\
-         - Si necesitás datos reales (salud, búsqueda, stats), respondé UNICAMENTE una línea con el formato:\nTOOL: <nombre> <argumentos>\n\
-         y nada más; las tools de lectura el brain las ejecuta automáticamente.\n\
+        "Sos el asistente local de Cortex, experto en gobernanza, arquitectura y ciclo de vida de ESTE proyecto.\n\n\
+         Catálogo de herramientas disponibles:\n{}\n\n\
+         Reglas estrictas:\n\
+         - NUNCA ejecutás mutaciones destructivas: si la acción es mutante, proponés el comando exacto para que el usuario apruebe.\n\
+         - Si necesitás datos reales (sesión, memoria, salud, grafo, stats), respondé UNICAMENTE una línea con el formato:\nTOOL: <nombre> <argumentos>\n\
+         y nada más; las tools [read] el brain las ejecuta automáticamente y enriquece la respuesta.\n\
+         - Si mencionás un archivo o spec, incluí su ruta en formato markdown: [nombre.md](file:///ruta).\n\
          - Si no necesitás herramientas, respondé normalmente y breve.",
-        help_text()
+        catalogo_tools()
     )
 }
 

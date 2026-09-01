@@ -17,6 +17,7 @@
 use tauri::Manager;
 
 pub mod chat;
+pub mod graph;
 pub mod ipc;
 pub mod projects;
 
@@ -343,6 +344,24 @@ async fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> Result<(), S
     Ok(())
 }
 
+/// Command Tauri: extrae el grafo de conocimiento del proyecto (WebGraph).
+#[tauri::command]
+async fn get_project_graph(project: String) -> Result<graph::ProjectGraphPayload, String> {
+    Ok(graph::extract_project_graph(std::path::Path::new(&project)))
+}
+
+/// Command Tauri: estado de la sesión activa en .cortex/sessions/.
+#[tauri::command]
+async fn get_session_status(project: String) -> Result<graph::SessionStatusPayload, String> {
+    Ok(graph::inspect_session_status(std::path::Path::new(&project)))
+}
+
+/// Command Tauri: auditoría y diagnóstico de salud (Cortex Doctor).
+#[tauri::command]
+async fn run_doctor_inspect(project: String) -> Result<graph::DoctorReportPayload, String> {
+    Ok(graph::inspect_doctor_health(std::path::Path::new(&project)))
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -529,7 +548,10 @@ pub fn run() {
             toggle_window,
             hide_window,
             show_window,
-            set_always_on_top
+            set_always_on_top,
+            get_project_graph,
+            get_session_status,
+            run_doctor_inspect
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
