@@ -83,9 +83,27 @@ native core:
 |---|---|
 | **CLI** | 25+ command families (`session`, `docs`, `ci`, `setup`, `search`, `context`, `next`, `hu`, `pr-context`, `reindex`, `ide`…). Text and `--json`. |
 | **TUI** | A ratatui terminal interface: splash, home, sessions, search and the action-approval screen (`cortex`, `cortex session watch`, `cortex next --tui`). |
+| **Brain App** | Native standalone desktop app (Tauri 2 + React + Rust) with global quick launcher (`Ctrl+Shift+B`), floating mode, multi-model catalog, and auto tool execution. |
 | **MCP server** | `cortex mcp-serve` exposes 30+ canonical tools to any MCP client. |
 | **IDE integration** | 11 validated adapters install hooks, prompts and skills into your editor/agent. |
-| **Brain** | The local AI assistant (read-only by design). |
+
+### The Cortex Brain Desktop App
+
+Cortex Brain is a native, standalone desktop application that acts as your local AI coding expert with zero cloud dependency.
+
+![Cortex Brain App](docs/cortex-brain/Captura%20de%20pantalla_20260901_100855.png)
+
+* **🧠 In-Process Local LLM Inference:** Powered by `llama.cpp` and optimized for Liquid AI's **Liquid LFM2.5 1.2B Instruct (Q4_K_M)** (~730 MB), running at lightning-fast sub-second speeds completely offline.
+* **📦 Curated Multi-Model Catalog:** Hot-swap between specialized local models with 1 click:
+  * *Liquid LFM2.5 1.2B* — Ultra-lightweight hybrid architecture, ideal for low-RAM / CPU machines.
+  * *Qwen 2.5 Coder (1.5B / 3B)* — Multilingual coding & refactoring specialist.
+  * *DeepSeek R1 Distill 1.5B* — Step-by-step reasoning (*Chain-of-Thought*).
+  * *Custom GGUFs* — Paste any HuggingFace `.gguf` URL to download and run locally.
+* **🚀 Floating Global Launcher (`Ctrl + Shift + B`):** Summon or hide Cortex Brain instantly from any IDE, editor, or browser. Press `Escape` to dismiss back to your code. Includes an *Always-on-Top* pin mode.
+* **⚡ Autonomous Safe Tool Protocol:** Read-only tools (`memory.search`, `vault.stats`, `docs.related`, `git.status`) execute automatically to enrich responses. Mutating actions require explicit user approval via interactive modals.
+* **💾 Project History Persistence:** Automatically saves conversation turns in `<project>/.cortex/brain/history.jsonl` per workspace.
+* **🍃 Zero Idle RAM Overhead:** Automatically unloads the model from RAM after 90 seconds of inactivity, freeing memory completely until the next query.
+* **🖥️ Cross-Platform Native Installers:** Available as `.deb` (Debian/Ubuntu Linux), `.exe` / NSIS setup (Windows), and `.dmg` (macOS Apple Silicon & Intel).
 
 ### The TUI
 
@@ -302,14 +320,16 @@ administra por diseño.
 
 | Part | Role |
 |---|---|
+| `rust/crates/cortex-brain-app` | Native standalone desktop app (Tauri 2 + IPC server) with global quick launcher. |
+| `apps/brain-ui` | Cortex Brain frontend (React 18 + Vite + Tailwind + Catppuccin Mocha). |
+| `rust/crates/cortex-brain` | Local LLM inference engine (Liquid LFM2.5 GGUF + llama.cpp) & tool execution loop. |
 | `rust/crates/cortex-app` | Core services: sessions, documenter, retrieval, quality gates. |
 | `rust/crates/cortex-cli` | The native CLI — text and `--json` output for every command. |
 | `rust/crates/cortex-tui` | ratatui screens (splash, home, sessions, actions approval). |
 | `rust/crates/cortex-mcp` | The MCP server with canonical tool payloads. |
 | `rust/crates/cortex-actions` | The Action Engine (scheduler, registry, learning, signals). |
 | `rust/crates/cortex-setup` | Bootstrap, templates, IDE adapters and hooks. |
-| `rust/crates/cortex-brain` | The local AI assistant (llama.cpp, optional feature). |
-| `rust/crates/cortex-app` | …and the rest of the workspace: embed, webgraph, pipeline, doctor, tutor, enterprise. |
+| `rust/crates/cortex-companion` | Real-time companion HUD & visual approval engine. |
 
 ## Local AIs
 
