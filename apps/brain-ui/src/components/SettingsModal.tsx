@@ -8,7 +8,7 @@ interface SettingsModalProps {
   models: ModelEntry[];
   selectedModel: string;
   onSelectModel: (filename: string) => void;
-  onDownloadModel: (url?: string) => void;
+  onDownloadModel: (url?: string, filename?: string) => void;
   isDownloading: boolean;
   downloadProgress: DownloadProgressPayload | null;
   detectedCount: number;
@@ -44,37 +44,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onToggleAlwaysOnTop,
 }) => {
   const [activeTab, setActiveTab] = useState<"model" | "paths" | "general" | "about">("model");
+  const [customGgufUrl, setCustomGgufUrl] = useState<string>("");
   const t = getT(lang);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
     };
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const activeModelObj = models.find((m) => m.filename === selectedModel) || models[0];
+  const formatBytes = (bytes?: number) => {
+    if (!bytes) return "—";
+    if (bytes >= 1024 * 1024 * 1024) {
+      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  };
+
+  const handleDownloadCustom = () => {
+    if (!customGgufUrl.trim()) return;
+    const parts = customGgufUrl.trim().split("/");
+    const customFilename = parts[parts.length - 1] || "custom-model.gguf";
+    onDownloadModel(customGgufUrl.trim(), customFilename);
+    setCustomGgufUrl("");
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="flex h-[520px] w-[640px] flex-col rounded-xl border border-mocha-surface bg-mocha-base shadow-2xl overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-mocha-crust/80 backdrop-blur-sm p-4 animate-fade-in select-none">
+      <div className="flex h-[560px] w-full max-w-2xl flex-col rounded-xl border border-mocha-surface bg-mocha-base shadow-2xl overflow-hidden font-sans">
         {/* Modal Header */}
-        <div className="flex h-12 items-center justify-between border-b border-mocha-surface px-5 bg-mocha-base">
+        <div className="flex h-12 items-center justify-between border-b border-mocha-surface bg-mocha-surface/30 px-5">
           <div className="flex items-center gap-2">
-            <span className="text-mocha-mauve font-mono text-base font-bold">⚙</span>
-            <h2 className="text-sm font-semibold text-mocha-text font-mono">
+            <span className="text-base">⚙</span>
+            <h3 className="font-semibold text-mocha-text font-mono text-sm">
               {t.settings.title}
-            </h2>
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-mocha-subtext0 hover:bg-mocha-surface hover:text-mocha-text transition"
-            title={t.settings.close}
+            className="rounded p-1 text-mocha-subtext0 hover:bg-mocha-surface hover:text-mocha-text transition"
           >
             ✕
           </button>
@@ -83,7 +97,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Modal Body: Tabs Sidebar + Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* Tabs Navigation */}
-          <div className="w-44 border-r border-mocha-surface bg-mocha-base/50 p-2 space-y-1 select-none font-mono text-xs">
+          <div className="w-48 border-r border-mocha-surface bg-mocha-surface/10 p-3 space-y-1 font-mono text-xs select-none">
             <button
               onClick={() => setActiveTab("model")}
               className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left transition ${
@@ -133,115 +147,164 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex-1 overflow-y-auto p-5 text-xs text-mocha-text">
             {activeTab === "model" && (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold font-mono text-mocha-subtext0 mb-1">
-                    {t.settings.activeModel}
-                  </label>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => onSelectModel(e.target.value)}
-                    disabled={isDownloading}
-                    className="w-full rounded border border-mocha-surface bg-mocha-surface/60 p-2 text-xs font-mono text-mocha-text focus:border-mocha-mauve focus:outline-none disabled:opacity-50"
-                  >
-                    {models.map((m) => (
-                      <option key={m.filename} value={m.filename}>
-                        {m.name} {!m.exists ? " (no descargado)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {activeModelObj && (
-                  <div className="rounded-lg border border-mocha-surface bg-mocha-surface/20 p-3 space-y-2 font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-mocha-surface2">{t.settings.modelFile}</span>
-                      <span className="text-mocha-text">{activeModelObj.filename}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-mocha-surface2">{t.settings.modelStatus}</span>
-                      <span className={activeModelObj.exists ? "text-cortex-mint font-bold" : "text-mocha-mauve"}>
-                        {activeModelObj.exists ? t.settings.installed : t.settings.notInstalled}
+                {/* Download Progress Bar (if active) */}
+                {isDownloading && (
+                  <div className="space-y-2 rounded-lg border border-mocha-mauve/40 bg-mocha-surface/30 p-3 animate-pulse">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="flex items-center gap-2 text-mocha-mauve font-semibold">
+                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-mocha-mauve border-t-transparent" />
+                        {t.settings.downloading}
+                      </span>
+                      <span className="text-mocha-text font-bold">
+                        {downloadProgress?.percentage !== undefined
+                          ? `${downloadProgress.percentage.toFixed(1)}%`
+                          : "0%"}
                       </span>
                     </div>
-                    {activeModelObj.size_bytes && (
-                      <div className="flex justify-between">
-                        <span className="text-mocha-surface2">Tamaño:</span>
-                        <span className="text-mocha-text">
-                          {(activeModelObj.size_bytes / (1024 * 1024)).toFixed(1)} MB
-                        </span>
-                      </div>
-                    )}
-                    <div className="text-[10px] text-mocha-surface2 truncate pt-1 border-t border-mocha-surface/40" title={activeModelObj.path}>
-                      {t.settings.modelPath} {activeModelObj.path}
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-mocha-base">
+                      <div
+                        className="h-full bg-cortex-mint transition-all duration-300"
+                        style={{
+                          width: `${Math.min(100, Math.max(5, downloadProgress?.percentage || 5))}%`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between text-[10px] font-mono text-mocha-subtext0">
+                      <span>
+                        {downloadProgress
+                          ? `${(downloadProgress.bytes_done / (1024 * 1024)).toFixed(1)} MB`
+                          : "0 MB"}
+                        {downloadProgress?.bytes_total
+                          ? ` / ${(downloadProgress.bytes_total / (1024 * 1024)).toFixed(1)} MB`
+                          : ""}
+                      </span>
+                      <span className="text-mocha-surface2">HuggingFace</span>
                     </div>
                   </div>
                 )}
 
-                {/* Download / Re-download Section */}
-                <div className="pt-2 border-t border-mocha-surface/40">
-                  {isDownloading ? (
-                    <div className="space-y-2 rounded-lg border border-mocha-mauve/40 bg-mocha-surface/30 p-3">
-                      <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="flex items-center gap-2 text-mocha-mauve font-semibold">
-                          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-mocha-mauve border-t-transparent" />
-                          {t.settings.downloading}
-                        </span>
-                        <span className="text-mocha-text font-bold">
-                          {downloadProgress?.percentage !== undefined
-                            ? `${downloadProgress.percentage.toFixed(1)}%`
-                            : "0%"}
-                        </span>
-                      </div>
+                {downloadProgress?.status === "done" && !isDownloading && (
+                  <div className="rounded bg-cortex-forest/40 p-2 font-mono text-[11px] text-cortex-mint">
+                    ✓ {t.settings.downloadSuccess}
+                  </div>
+                )}
 
-                      {/* Progress Bar */}
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-mocha-base">
+                {downloadProgress?.status === "error" && !isDownloading && (
+                  <div className="rounded bg-red-900/40 p-2 font-mono text-[11px] text-red-300">
+                    ✗ {t.settings.downloadError} {downloadProgress.error}
+                  </div>
+                )}
+
+                {/* Catálogo Curado de Modelos */}
+                <div>
+                  <h4 className="font-semibold font-mono text-mocha-mauve text-xs mb-1">
+                    📦 {t.settings.curatedCatalogTitle}
+                  </h4>
+                  <p className="text-[11px] text-mocha-subtext0 font-sans mb-3">
+                    {t.settings.curatedCatalogDesc}
+                  </p>
+
+                  <div className="space-y-2.5">
+                    {models.map((m) => {
+                      const isSelected = selectedModel === m.filename;
+                      return (
                         <div
-                          className="h-full bg-cortex-mint transition-all duration-300"
-                          style={{
-                            width: `${Math.min(100, Math.max(5, downloadProgress?.percentage || 5))}%`,
-                          }}
-                        />
-                      </div>
+                          key={m.filename}
+                          className={`rounded-lg border p-3 transition ${
+                            isSelected
+                              ? "border-mocha-mauve bg-mocha-mauve/10 shadow-sm"
+                              : "border-mocha-surface bg-mocha-surface/20 hover:border-mocha-surface2"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs text-mocha-text">
+                                  {m.name}
+                                </span>
+                                {isSelected && (
+                                  <span className="rounded bg-mocha-mauve px-1.5 py-0.5 text-[9px] font-mono font-bold text-mocha-base">
+                                    ✓ {t.settings.selectedActive}
+                                  </span>
+                                )}
+                                {m.exists ? (
+                                  <span className="rounded bg-cortex-forest/60 px-1.5 py-0.5 text-[9px] font-mono text-cortex-mint">
+                                    {t.settings.installed}
+                                  </span>
+                                ) : (
+                                  <span className="rounded bg-mocha-surface px-1.5 py-0.5 text-[9px] font-mono text-mocha-surface2">
+                                    {t.settings.notInstalled}
+                                  </span>
+                                )}
+                              </div>
 
-                      <div className="flex justify-between text-[10px] font-mono text-mocha-subtext0">
-                        <span>
-                          {downloadProgress
-                            ? `${(downloadProgress.bytes_done / (1024 * 1024)).toFixed(1)} MB`
-                            : "0 MB"}
-                          {downloadProgress?.bytes_total
-                            ? ` / ${(downloadProgress.bytes_total / (1024 * 1024)).toFixed(1)} MB`
-                            : " / ~730 MB"}
-                        </span>
-                        <span className="text-mocha-surface2">HuggingFace (LiquidAI/LFM2.5)</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => onDownloadModel()}
-                        className="flex items-center justify-center gap-2 rounded bg-cortex-forest px-4 py-2 font-mono text-xs font-semibold text-cortex-mint shadow transition hover:bg-cortex-forest/80 active:scale-95"
-                      >
-                        <span>⬇</span>
-                        <span>
-                          {activeModelObj?.exists
-                            ? t.settings.redownloadModel
-                            : t.settings.downloadModel}
-                        </span>
-                      </button>
+                              {m.description && (
+                                <p className="mt-1 text-[11px] text-mocha-subtext0 font-sans">
+                                  {m.description}
+                                </p>
+                              )}
 
-                      {downloadProgress?.status === "done" && (
-                        <div className="rounded bg-cortex-forest/40 p-2 font-mono text-[11px] text-cortex-mint">
-                          ✓ {t.settings.downloadSuccess}
+                              <div className="mt-1.5 flex items-center gap-3 font-mono text-[10px] text-mocha-surface2">
+                                <span>{m.filename}</span>
+                                <span>•</span>
+                                <span>{formatBytes(m.size_bytes)}</span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {m.exists ? (
+                                !isSelected && (
+                                  <button
+                                    onClick={() => onSelectModel(m.filename)}
+                                    disabled={isDownloading}
+                                    className="rounded bg-mocha-surface px-2.5 py-1 font-mono text-[11px] text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition disabled:opacity-40"
+                                  >
+                                    {t.settings.selectModel}
+                                  </button>
+                                )
+                              ) : (
+                                <button
+                                  onClick={() => onDownloadModel(m.url, m.filename)}
+                                  disabled={isDownloading}
+                                  className="flex items-center gap-1 rounded bg-cortex-forest px-2.5 py-1 font-mono text-[11px] font-semibold text-cortex-mint hover:bg-cortex-forest/80 transition active:scale-95 disabled:opacity-40"
+                                >
+                                  <span>⬇</span>
+                                  <span>{t.settings.downloadModel}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      );
+                    })}
+                  </div>
+                </div>
 
-                      {downloadProgress?.status === "error" && (
-                        <div className="rounded bg-red-900/40 p-2 font-mono text-[11px] text-red-300">
-                          ✗ {t.settings.downloadError} {downloadProgress.error}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                {/* Custom GGUF URL Download */}
+                <div className="pt-3 border-t border-mocha-surface/40 space-y-2">
+                  <h4 className="font-semibold font-mono text-mocha-subtext0 text-xs">
+                    🌐 {t.settings.customGgufTitle}
+                  </h4>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder={t.settings.customGgufPlaceholder}
+                      value={customGgufUrl}
+                      onChange={(e) => setCustomGgufUrl(e.target.value)}
+                      disabled={isDownloading}
+                      className="flex-1 rounded border border-mocha-surface bg-mocha-surface/60 px-3 py-1.5 font-mono text-xs text-mocha-text focus:border-mocha-mauve focus:outline-none disabled:opacity-50"
+                    />
+                    <button
+                      onClick={handleDownloadCustom}
+                      disabled={isDownloading || !customGgufUrl.trim()}
+                      className="rounded bg-mocha-surface px-3 py-1.5 font-mono text-xs text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition disabled:opacity-40"
+                    >
+                      {t.settings.customGgufBtn}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

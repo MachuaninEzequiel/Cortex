@@ -29,6 +29,8 @@ export interface ModelEntry {
   exists: boolean;
   active: boolean;
   size_bytes?: number;
+  url?: string;
+  description?: string;
 }
 
 export interface ChatChunkPayload {

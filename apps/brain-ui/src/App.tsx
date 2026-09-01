@@ -110,8 +110,18 @@ export function App() {
     }
   };
 
-  // Descarga de modelos (G-A8)
-  const handleDownloadModel = async (customUrl?: string) => {
+  // Cambio de modelo activo con notificación al backend
+  const handleSelectModel = async (filename: string) => {
+    setSelectedModel(filename);
+    try {
+      await tauriInvoke("set_active_model", { filename });
+    } catch (e) {
+      console.error("Error al conmutar modelo activo:", e);
+    }
+  };
+
+  // Descarga de modelos (G-A8 / Pilar 3)
+  const handleDownloadModel = async (customUrl?: string, filename?: string) => {
     if (isDownloading) return;
     setIsDownloading(true);
     setDownloadProgress({ bytes_done: 0, status: "downloading" });
@@ -122,9 +132,15 @@ export function App() {
         setDownloadProgress(payload);
       });
 
-      await tauriInvoke<string>("download_model", { url: customUrl || null });
+      await tauriInvoke<string>("download_model", {
+        url: customUrl || null,
+        filename: filename || null,
+      });
       setDownloadProgress({ bytes_done: 0, status: "done" });
       await loadModels();
+      if (filename) {
+        handleSelectModel(filename);
+      }
     } catch (e) {
       console.error("Error en download_model:", e);
       setDownloadProgress({
@@ -394,7 +410,7 @@ export function App() {
       <TopBar
         models={models}
         selectedModel={selectedModel}
-        onSelectModel={setSelectedModel}
+        onSelectModel={handleSelectModel}
         markRamState={markRamState}
         onOpenSettings={() => setIsSettingsOpen(true)}
         lang={lang}
@@ -439,7 +455,7 @@ export function App() {
         onClose={() => setIsSettingsOpen(false)}
         models={models}
         selectedModel={selectedModel}
-        onSelectModel={setSelectedModel}
+        onSelectModel={handleSelectModel}
         onDownloadModel={handleDownloadModel}
         isDownloading={isDownloading}
         downloadProgress={downloadProgress}

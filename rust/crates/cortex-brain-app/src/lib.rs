@@ -147,8 +147,14 @@ pub struct DownloadProgressPayload {
 
 /// Command Tauri: descarga el modelo oficial (o custom URL) vía HttpSource
 /// en un thread dedicado emitiendo eventos `download-progress` (G-A8).
+/// Command Tauri: descarga un modelo (oficial, catálogo o custom URL) vía HttpSource
+/// en un thread dedicado emitiendo eventos `download-progress` (G-A8 / Pilar 3).
 #[tauri::command]
-async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<String, String> {
+async fn download_model(
+    app: tauri::AppHandle,
+    url: Option<String>,
+    filename: Option<String>,
+) -> Result<String, String> {
     use cortex_brain::download::{DownloadProgress, HttpSource, ModelSource};
     use cortex_brain::paths;
     use tauri::Emitter;
@@ -162,7 +168,10 @@ async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<St
         None => HttpSource::new(),
     };
 
-    let dest = paths::default_model_path();
+    let dest = match filename {
+        Some(f) => paths::default_model_dir().join(f),
+        None => paths::default_model_path(),
+    };
 
     tauri::async_runtime::spawn_blocking(move || {
         let res = source.fetch(
@@ -214,6 +223,14 @@ async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<St
     })
     .await
     .map_err(|e| format!("falló el task de descarga: {e}"))?
+}
+
+/// Command Tauri: establece el modelo activo en el motor de chat.
+#[tauri::command]
+async fn set_active_model(app: tauri::AppHandle, filename: String) -> Result<(), String> {
+    let engine = app.state::<chat::SharedEngine>();
+    engine.set_active_model(&filename);
+    Ok(())
 }
 
 /// Obtiene la ruta al archivo de historial conversacional del proyecto: `<project>/.cortex/brain/history.jsonl`.
@@ -505,6 +522,7 @@ pub fn run() {
             reap_idle,
             list_models,
             download_model,
+            set_active_model,
             load_chat_history,
             save_chat_message,
             clear_chat_history,
@@ -833,5 +851,24 @@ mod tests {
 
             let _ = std::fs::remove_dir_all(&tmp);
         });
+    }
+
+    #[test]
+    fn catalogo_multimodelo_contiene_modelos_curados() {
+        let models = chat::list_available_models();
+        assert!(models.len() >= 4, "debe contener al menos los 4 modelos curados");
+        let filenames: Vec<&str> = models.iter().map(|m| m.filename.as_str()).collect();
+        assert!(filenames.contains(&"LFM2.5-1.2B-Instruct-Q4_K_M.gguf"));
+        assert!(filenames.contains(&"qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"));
+        assert!(filenames.contains(&"qwen2.5-coder-3b-instruct-q4_k_m.gguf"));
+        assert!(filenames.contains(&"DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf"));
+    }
+
+    #[test]
+    fn engine_conmuta_modelo_activo() {
+        let engine = chat::BrainEngine::new();
+        assert_eq!(engine.active_model(), "LFM2.5-1.2B-Instruct-Q4_K_M.gguf");
+        engine.set_active_model("qwen2.5-coder-1.5b-instruct-q4_k_m.gguf");
+        assert_eq!(engine.active_model(), "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf");
     }
 }

@@ -93,43 +93,97 @@ pub struct ModelEntry {
     pub exists: bool,
     pub active: bool,
     pub size_bytes: Option<u64>,
+    pub url: Option<String>,
+    pub description: Option<String>,
 }
 
+struct CuratedModelInfo {
+    name: &'static str,
+    filename: &'static str,
+    url: &'static str,
+    description: &'static str,
+    estimated_size: u64,
+}
+
+const CURATED_MODELS: &[CuratedModelInfo] = &[
+    CuratedModelInfo {
+        name: "Liquid LFM2.5 1.2B Instruct (Q4_K_M)",
+        filename: "LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
+        url: "https://huggingface.co/LiquidCloud/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
+        description: "Oficial Cortex. Arquitectura híbrida ultraligera optimizada para CPU y bajo consumo de RAM (~730 MB).",
+        estimated_size: 728_500_000,
+    },
+    CuratedModelInfo {
+        name: "Qwen 2.5 Coder 1.5B Instruct (Q4_K_M)",
+        filename: "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        description: "Especialista en código fuente, refactorizaciones y generación multilingüe (~1.1 GB).",
+        estimated_size: 1_100_000_000,
+    },
+    CuratedModelInfo {
+        name: "Qwen 2.5 Coder 3B Instruct (Q4_K_M)",
+        filename: "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+        url: "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+        description: "Mayor capacidad de razonamiento en código, ideal para GPUs o CPUs potentes (~2.1 GB).",
+        estimated_size: 2_100_000_000,
+    },
+    CuratedModelInfo {
+        name: "DeepSeek R1 Distill 1.5B (Q4_K_M)",
+        filename: "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
+        url: "https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
+        description: "Especialista en razonamiento matemático y deducción paso a paso (Chain-of-Thought) (~1.1 GB).",
+        estimated_size: 1_100_000_000,
+    },
+];
+
 /// Lista los modelos disponibles en la convención `~/.cache/cortex/models/`.
-/// Siempre incluye el modelo oficial por default (`LFM2.5-1.2B-Instruct-Q4_K_M.gguf`),
-/// marcando si existe en disco o está pendiente de descarga.
+/// Incluye el catálogo curado oficial y cualquier archivo GGUF adicional en disco.
 #[must_use]
 pub fn list_available_models() -> Vec<ModelEntry> {
     let dir = cortex_brain::paths::default_model_dir();
-    let default_file = cortex_brain::paths::DEFAULT_MODEL_FILENAME;
-    let default_path = cortex_brain::paths::default_model_path();
-    let default_exists = default_path.is_file();
-    let default_size = default_path.metadata().ok().map(|m| m.len());
+    let mut models = Vec::new();
+    let mut seen_filenames = std::collections::HashSet::new();
 
-    let mut models = vec![ModelEntry {
-        name: "LFM2.5 1.2B Instruct (Q4_K_M)".to_string(),
-        filename: default_file.to_string(),
-        path: default_path.to_string_lossy().into_owned(),
-        exists: default_exists,
-        active: default_exists,
-        size_bytes: default_size,
-    }];
+    // 1. Catálogo curado oficial
+    for cm in CURATED_MODELS {
+        let p = dir.join(cm.filename);
+        let exists = p.is_file();
+        let size = if exists {
+            p.metadata().ok().map(|m| m.len())
+        } else {
+            Some(cm.estimated_size)
+        };
+        seen_filenames.insert(cm.filename.to_string());
+        models.push(ModelEntry {
+            name: cm.name.to_string(),
+            filename: cm.filename.to_string(),
+            path: p.to_string_lossy().into_owned(),
+            exists,
+            active: cm.filename == cortex_brain::paths::DEFAULT_MODEL_FILENAME && exists,
+            size_bytes: size,
+            url: Some(cm.url.to_string()),
+            description: Some(cm.description.to_string()),
+        });
+    }
 
+    // 2. Archivos GGUF adicionales escaneados en disco
     if let Ok(entries) = std::fs::read_dir(&dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() {
                 let name_os = entry.file_name();
                 let name_str = name_os.to_string_lossy();
-                if name_str.ends_with(".gguf") && name_str != default_file {
+                if name_str.ends_with(".gguf") && !seen_filenames.contains(name_str.as_ref()) {
                     let size = entry.metadata().ok().map(|m| m.len());
                     models.push(ModelEntry {
-                        name: name_str.trim_end_matches(".gguf").replace('_', " "),
-                        filename: name_str.into_owned(),
+                        name: name_str.trim_end_matches(".gguf").replace('_', " ").replace('-', " "),
+                        filename: name_str.to_string(),
                         path: path.to_string_lossy().into_owned(),
                         exists: true,
                         active: false,
                         size_bytes: size,
+                        url: None,
+                        description: Some("Modelo GGUF personalizado detectado en caché local.".to_string()),
                     });
                 }
             }
@@ -159,7 +213,7 @@ const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(90);
 
 /// Fábrica de backend default (sin inyección). Con feature `llama` +
 /// GGUF presente monta el modelo real; si no, None ⇒ determinista.
-type BackendFactory = fn() -> Option<BoxBackend>;
+type BackendFactory = fn(&str) -> Option<BoxBackend>;
 
 /// Backend de un proyecto + cuándo se usó por última vez (para el
 /// unload por idle).
@@ -175,6 +229,7 @@ pub struct BrainEngine {
     backends: Mutex<HashMap<String, TurnState>>,
     idle_timeout: Duration,
     factory: BackendFactory,
+    active_model: Mutex<String>,
 }
 
 /// Engine compartido: un único `Arc` para el server IPC y para el
@@ -197,13 +252,33 @@ impl BrainEngine {
 
     /// Engine con timeout y fábrica a medida. La fábrica inyectable
     /// permite que la suite corra idéntica con y sin feature `llama`
-    /// (los tests inyectan `|| None` para no cargar el GGUF real).
+    /// (los tests inyectan `|_| None` para no cargar el GGUF real).
     pub fn with_factory(idle_timeout: Duration, factory: BackendFactory) -> Self {
         Self {
             backends: Mutex::new(HashMap::new()),
             idle_timeout,
             factory,
+            active_model: Mutex::new(cortex_brain::paths::DEFAULT_MODEL_FILENAME.to_string()),
         }
+    }
+
+    /// Establece el modelo activo (filename) y desaloja los backends en RAM para que el siguiente turno monte el nuevo modelo.
+    pub fn set_active_model(&self, filename: &str) {
+        if let Ok(mut cur) = self.active_model.lock() {
+            *cur = filename.to_string();
+        }
+        if let Ok(mut map) = self.backends.lock() {
+            map.clear();
+        }
+        eprintln!("chat: modelo activo cambiado a '{filename}' (backends descargados).");
+    }
+
+    /// Obtiene el filename del modelo activo actualmente.
+    pub fn active_model(&self) -> String {
+        self.active_model
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Inyecta/reemplaza el backend de un proyecto (tests; y para
@@ -302,9 +377,10 @@ impl BrainEngine {
         let _cwd = ChdirGuard::nuevo(project)?;
         let lang = Self::fijar_idioma(project);
 
+        let active_model_name = self.active_model();
         let ts = map.entry(project.to_string()).or_insert_with(|| {
-            let backend =
-                (self.factory)().unwrap_or_else(|| Box::new(DeterministicBackend) as BoxBackend);
+            let backend = (self.factory)(&active_model_name)
+                .unwrap_or_else(|| Box::new(DeterministicBackend) as BoxBackend);
             TurnState {
                 backend,
                 last_used: Instant::now(),
@@ -408,35 +484,38 @@ fn catalogo_tools() -> String {
         .join("\n")
 }
 
-// ── Fábrica de backends (G-A5) ────────────────────────────────────────
+// ── Fábrica de backends (G-A5 / Pilar 3) ──────────────────────────────
 
 /// Fábrica default del engine. Con feature `llama` intenta el GGUF;
 /// sin feature no hay modelo posible (None ⇒ determinista).
 #[cfg(feature = "llama")]
-fn factory_backend_default() -> Option<BoxBackend> {
-    crear_backend_llama()
+fn factory_backend_default(model_filename: &str) -> Option<BoxBackend> {
+    crear_backend_llama(model_filename)
 }
 
 #[cfg(not(feature = "llama"))]
-fn factory_backend_default() -> Option<BoxBackend> {
+fn factory_backend_default(_model_filename: &str) -> Option<BoxBackend> {
     None
 }
 
-/// Monta `LlamaChatBackend` con el GGUF de la convención de rutas
-/// (`~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`, ver
-/// `cortex_brain::paths`). Carga real: segundos de disco/CPU. Si
-/// falta el GGUF o la carga falla ⇒ None (aviso) y el engine cae a
-/// determinista. Muestreo greedy (temp 0) con seed 42, como el
-/// default del binario del motor.
+/// Monta `LlamaChatBackend` con el GGUF especificado (o el oficial por default).
+/// Carga real: segundos de disco/CPU. Si falta el GGUF o la carga falla ⇒ None
+/// (aviso) y el engine cae a determinista. Muestreo greedy (temp 0) con seed 42.
 #[cfg(feature = "llama")]
-fn crear_backend_llama() -> Option<BoxBackend> {
-    let model_path = cortex_brain::paths::default_model_path_if_exists()?;
+fn crear_backend_llama(model_filename: &str) -> Option<BoxBackend> {
+    let dir = cortex_brain::paths::default_model_dir();
+    let model_path = dir.join(model_filename);
+    let resolved_path = if model_path.is_file() {
+        model_path
+    } else {
+        cortex_brain::paths::default_model_path_if_exists()?
+    };
     eprintln!(
         "chat: cargando modelo {} (puede tardar unos segundos)…",
-        model_path.display()
+        resolved_path.display()
     );
     let start = Instant::now();
-    match cortex_brain::llama::LlamaChatBackend::open(&model_path, Some(&system_prompt())) {
+    match cortex_brain::llama::LlamaChatBackend::open(&resolved_path, Some(&system_prompt())) {
         Ok(backend) => {
             eprintln!(
                 "chat: modelo cargado en {:.1}s",
@@ -526,7 +605,7 @@ pub(crate) mod tests {
         // haya GGUF, los tests NUNCA cargan el modelo real (rápidos y
         // deterministas); el camino llama se cubre con el smoke
         // #[ignore].
-        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, |_| None);
         engine.insert_backend(
             project,
             Box::new(ScriptedBackend::new(
@@ -574,7 +653,7 @@ pub(crate) mod tests {
         // Sin backend inyectado ⇒ fábrica (None en tests ⇒
         // DeterministicBackend). Texto libre sin match ni keywords ⇒
         // razón + ayuda, sin invocar el CLI cortex.
-        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, |_| None);
         let turn = engine.respond("", "xyzzy").expect("turno");
         assert!(turn.text.contains("sin match"), "text: {}", turn.text);
         assert!(turn.text.contains("memory.search"), "text: {}", turn.text);
@@ -583,7 +662,7 @@ pub(crate) mod tests {
 
     #[test]
     fn slash_quit_no_mata_la_app() {
-        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, |_| None);
         let turn = engine.respond("", "/quit").expect("turno");
         assert_eq!(turn.text, i18n::hasta_proxima(i18n::actual()));
         assert!(turn.tool_calls.is_empty());
@@ -592,7 +671,7 @@ pub(crate) mod tests {
     #[test]
     fn reap_idle_descarga_backend_vencido() {
         let proj = tmp_project("reap");
-        let engine = BrainEngine::with_factory(Duration::from_millis(10), || None);
+        let engine = BrainEngine::with_factory(Duration::from_millis(10), |_| None);
         engine.insert_backend(&proj, Box::new(ScriptedBackend::new("reap-test", ["uno"])));
         let t = engine.respond(&proj, "x").expect("turno");
         assert_eq!(t.text.trim(), "uno");
@@ -617,7 +696,7 @@ pub(crate) mod tests {
     #[test]
     fn backend_vigente_no_se_reapea() {
         let proj = tmp_project("vigente");
-        let engine = BrainEngine::with_factory(Duration::from_secs(60), || None);
+        let engine = BrainEngine::with_factory(Duration::from_secs(60), |_| None);
         engine.insert_backend(&proj, Box::new(ScriptedBackend::new("vigente", ["x"])));
         engine.respond(&proj, "q").expect("turno");
         engine.reap_idle();
@@ -628,7 +707,7 @@ pub(crate) mod tests {
     #[test]
     fn streaming_entrega_piezas_en_orden() {
         let proj = tmp_project("stream");
-        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, |_| None);
         engine.insert_backend(
             &proj,
             Box::new(PiezasBackend {
@@ -652,7 +731,7 @@ pub(crate) mod tests {
         // respond() delega en respond_streaming con callback no-op: el
         // resultado final es idéntico al camino batch (G-A4 intacto).
         let proj = tmp_project("batch");
-        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, |_| None);
         engine.insert_backend(
             &proj,
             Box::new(PiezasBackend {
@@ -730,6 +809,6 @@ pub(crate) mod tests {
             models[0].filename,
             cortex_brain::paths::DEFAULT_MODEL_FILENAME
         );
-        assert_eq!(models[0].name, "LFM2.5 1.2B Instruct (Q4_K_M)");
+        assert!(models[0].name.contains("LFM2.5"));
     }
 }
