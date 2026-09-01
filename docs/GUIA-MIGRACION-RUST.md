@@ -1,6 +1,6 @@
-# Guia de Coexistencia y Migracion: Cortex Python a Cortex Rust
+# Guia de Coexistencia, Compilacion y Migracion: Cortex Python a Cortex Rust
 
-> **Para desarrolladores y beta testers:** Esta guia explica como probar y utilizar la nueva version de Cortex en Rust (**Cortex CLI** y **Cortex Brain Desktop**) en paralelo con tu instalacion actual de Cortex en Python, **sin romper tus proyectos, sin colisiones de comandos y sin alterar tu configuracion previa**.
+> **Para desarrolladores y beta testers (Windows, macOS y Linux):** Esta guia explica como compilar, probar y utilizar la nueva version de Cortex en Rust (**Cortex CLI** y **Cortex Brain Desktop App**) en paralelo con tu instalacion actual de Cortex en Python, **sin romper tus proyectos, sin colisiones de comandos y sin alterar tu configuracion previa**.
 
 ---
 
@@ -8,7 +8,7 @@
 
 Cortex Rust fue disenado bajo el principio de **paridad estricta y coexistencia pacifica**:
 
-1. **Tu entorno de Python sigue intacto:** El comando global `cortex` (instalado mediante `pipx`) sigue respondiendo exactamente igual en tu terminal.
+1. **Tu entorno de Python sigue intacto:** El comando global `cortex` (instalado mediante `pipx` o `pip`) sigue respondiendo exactamente igual en tu terminal.
 2. **Archivos de proyecto compartidos:** Ambas versiones leen y escriben en la misma estructura estandar (`vault/` para notas y `.cortex/` para sesiones y configuracion). Ninguna version corrompe los archivos de la otra.
 3. **Embeddings y Cache Aislados:** El nuevo motor de embeddings valida la identidad y dimension del modelo; si cambias entre modelos, el indice se actualiza automaticamente sin mezclar vectores obsoletos.
 
@@ -26,51 +26,156 @@ git clone <url-de-tu-repo> ~/pruebas/mi-proyecto-cortex-rust
 cd ~/pruebas/mi-proyecto-cortex-rust
 ```
 
-*(Si no deseas clonar todo el repositorio, simplemente realiza un respaldo rapido de tu carpeta de metadatos: `cp -r .cortex .cortex.backup`).*
+*(Si no deseas clonar todo el repositorio, simplemente realiza un respaldo rapido de tu carpeta de metadatos: `cp -r .cortex .cortex.backup` en macOS/Linux o `Copy-Item -Recurse .cortex .cortex.backup` en Windows PowerShell).*
 
 ---
 
-## 3. Instalacion de Cortex Rust
+## 3. Requisitos Previos para Compilar Localmente
 
-Tienes dos componentes disponibles: la **Aplicacion de Escritorio (Cortex Brain)** y el **CLI Nativo (`cortex-rs`)**.
+Para compilar Cortex Rust y la aplicacion Cortex Brain en tu maquina, necesitas:
 
-### Opcion A: Cortex Brain Desktop (App Grafica con LLM Local)
-Ideal para explorar el **WebGraph visual**, auditar la salud con **Doctor** y chatear con el modelo local **Liquid LFM2.5**.
-
-* **En Windows:** Descarga `Cortex Brain_<version>_x64-setup.exe` desde la seccion [Releases de GitHub](https://github.com/MachuaninEzequiel/Cortex/releases), ejecuta el instalador y abrelo desde el Menu Inicio.
-* **En macOS:** Descarga `Cortex Brain_<version>_universal.dmg` (compatible con Apple Silicon M1/M2/M3/M4 e Intel), arrastra la app a tu carpeta `Applications` y ejecutala.
-* **En Linux:** Descarga el paquete `.deb` (`sudo dpkg -i cortex-brain_amd64.deb`) o ejecuta el binario portable `/ruta/target/release/cortex-brain`.
+| Herramienta | Version Minima | Windows | macOS | Linux |
+| :--- | :--- | :--- | :--- | :--- |
+| **Rust & Cargo** | 1.75+ | `winget install Rustlang.Rustup` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Node.js & npm** | Node 18+ / 20+ | `winget install OpenJS.NodeJS` | `brew install node` | `sudo apt install nodejs npm` |
+| **CMake** | 3.20+ | `winget install Kitware.CMake` | `brew install cmake` | `sudo apt install cmake build-essential` |
+| **C++ Compiler** | MSVC / Clang / GCC | Visual Studio Build Tools (C++) | Xcode Command Line Tools | `gcc` / `g++` (`build-essential`) |
 
 ---
 
-### Opcion B: CLI Nativo de Rust (`cortex-rs`)
-Si deseas compilar e instalar el CLI nativo en tu sistema sin sobreescribir el comando `cortex` de Python:
+## 4. Guia Paso a Paso por Sistema Operativo
+
+### Opcion A: En Windows (PowerShell)
+
+Abre **PowerShell** como usuario normal (o Administrador si necesitas instalar herramientas base):
+
+```powershell
+# 1. Clonar el codigo fuente de Cortex
+git clone https://github.com/MachuaninEzequiel/Cortex.git cortex-rust-source
+cd cortex-rust-source
+
+# 2. Instalar dependencias y compilar el Frontend React de Cortex Brain
+npm --prefix apps/brain-ui install
+npm --prefix apps/brain-ui run build
+
+# 3. Compilar los binarios nativos en modo Release (con motor LLM local llama.cpp)
+cd rust
+cargo build --release -p cortex-cli -p cortex-brain-app --features llama
+
+# 4. Crear carpeta local para binarios (si no existe) y copiar ejecutables con alias
+New-Item -ItemType Directory -Force -Path "$HOME\.local\bin"
+Copy-Item target\release\cortex-cli.exe "$HOME\.local\bin\cortex-rs.exe"
+Copy-Item target\release\cortex-brain.exe "$HOME\.local\bin\cortex-brain.exe"
+
+# 5. Agregar $HOME\.local\bin al PATH de tu usuario (solo si aun no lo tenes)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$HOME\.local\bin", "User")
+```
+
+> **Verificacion en Windows:**
+> * `cortex --version` -> Ejecuta la version previa de Python.
+> * `cortex-rs --version` -> Ejecuta la version nativa de Rust.
+> * `cortex-brain` o `target\release\cortex-brain.exe` -> Abre la app de escritorio Cortex Brain.
+
+---
+
+### Opcion B: En macOS (Terminal / zsh - Apple Silicon e Intel)
+
+Abre tu **Terminal**:
 
 ```bash
-# 1. Clonar y compilar Cortex Rust
-git clone https://github.com/MachuaninEzequiel/Cortex.git cortex-source
-cd cortex-source
+# 1. Instalar herramientas de desarrollo base (si no las tienes)
+xcode-select --install
+brew install cmake node
 
-# 2. Compilar en modo Release
+# 2. Clonar el repositorio
+git clone https://github.com/MachuaninEzequiel/Cortex.git cortex-rust-source
+cd cortex-rust-source
+
+# 3. Compilar el Frontend React de Cortex Brain
+npm --prefix apps/brain-ui install
 npm --prefix apps/brain-ui run build
-cd rust && cargo build --release -p cortex-cli -p cortex-brain-app --features llama
 
-# 3. Instalar con un alias seguro en ~/.local/bin
+# 4. Compilar los binarios nativos en modo Release
+cd rust
+cargo build --release -p cortex-cli -p cortex-brain-app --features llama
+
+# 5. Instalar en ~/.local/bin con alias seguro
+mkdir -p ~/.local/bin
+cp target/release/cortex-cli ~/.local/bin/cortex-rs
+cp target/release/cortex-brain ~/.local/bin/cortex-brain
+
+# 6. Asegurar que ~/.local/bin este en tu PATH (en ~/.zshrc)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+> **Verificacion en macOS:**
+> * `cortex --version` -> Ejecuta la version de Python.
+> * `cortex-rs --version` -> Ejecuta la version de Rust.
+> * `cortex-brain` -> Lanza la interfaz de Cortex Brain.
+
+---
+
+### Opcion C: En Linux (Debian / Ubuntu / Mint / Fedora / Arch)
+
+Abre tu terminal favorita:
+
+```bash
+# 1. Instalar dependencias de compilacion del sistema
+# En Ubuntu / Debian / Mint:
+sudo apt update && sudo apt install -y \
+  build-essential cmake pkg-config libssl-dev \
+  libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+
+# En Fedora:
+# sudo dnf install gcc-c++ cmake openssl-devel webkit2gtk4.1-devel libappindicator-gtk3-devel
+
+# En Arch Linux:
+# sudo pacman -S base-devel cmake openssl webkit2gtk-4.1 libappindicator-gtk3
+
+# 2. Clonar y compilar
+git clone https://github.com/MachuaninEzequiel/Cortex.git cortex-rust-source
+cd cortex-rust-source
+
+# 3. Compilar Frontend y Binarios
+npm --prefix apps/brain-ui install
+npm --prefix apps/brain-ui run build
+cd rust
+cargo build --release -p cortex-cli -p cortex-brain-app --features llama
+
+# 4. Copiar a ~/.local/bin
 mkdir -p ~/.local/bin
 cp target/release/cortex-cli ~/.local/bin/cortex-rs
 cp target/release/cortex-brain ~/.local/bin/cortex-brain
 ```
 
-> **Verificacion de comandos en tu terminal:**
-> * `cortex --version` -> Ejecuta la version de **Python** (`~/.local/bin/cortex`).
-> * `cortex-rs --version` -> Ejecuta la version de **Rust** (`~/.local/bin/cortex-rs`).
-> * `cortex-brain` -> Lanza la **App de Escritorio**.
+---
+
+## 5. Como Generar los Instaladores Oficiales (Bundles de Tauri)
+
+Si deseas generar el instalador distribuible nativo (`.exe` NSIS en Windows, `.dmg` en macOS, `.deb` en Linux):
+
+```bash
+# 1. Instalar la herramienta Tauri CLI de Cargo (solo una vez)
+cargo install tauri-cli --version "^2.0.0" --locked
+
+# 2. Posicionarte en la carpeta de la app de Cortex Brain
+cd cortex-rust-source/rust/crates/cortex-brain-app
+
+# 3. Compilar el bundle instalador
+cargo tauri build --features llama
+```
+
+Los instaladores empaquetados quedaran listos en:
+* **Windows:** `rust/target/release/bundle/nsis/Cortex Brain_0.1.0_x64-setup.exe`
+* **macOS:** `rust/target/release/bundle/dmg/Cortex Brain_0.1.0_universal.dmg` (o `.app`)
+* **Linux:** `rust/target/release/bundle/deb/cortex-brain_0.1.0_amd64.deb`
 
 ---
 
-## 4. Desplegar los Nuevos Agentes y Skills
+## 6. Desplegar los Nuevos Agentes y Skills Composed
 
-En tu repositorio de prueba, despliega la nueva arquitectura de **Skills Composed** (inspirada en los estandares abiertos de Matt Pocock) y la triada reestructurada de agentes:
+En la carpeta de tu repositorio o sandbox de pruebas:
 
 ```bash
 cd ~/pruebas/mi-proyecto-cortex-rust
@@ -87,11 +192,11 @@ cortex-rs setup composed
    * `/cortex-sync` (`cortex-sync.md`) con proposal mode y pericia en `cortex-sync-spec-craft.md`.
    * `/cortex-SDDwork` (`cortex-SDDwork.md`) con pericia en `cortex-SDDwork-implement-craft.md`.
    * `/cortex-documenter` (`cortex-documenter.md`) con pericia en `cortex-documenter-close-craft.md`.
-2. **Familia de Skills Composed:** 8 skills abiertas (`grill/`, `to-spec/`, `to-tickets/`, `implement/`, `tdd/`, `diagnose/`, `review/`, `glossary/`) con ciclo de vida por fases (`CheckpointPhase`).
+2. **Familia de Skills Composed (Estandar Matt Pocock):** 8 skills abiertas (`grill/`, `to-spec/`, `to-tickets/`, `implement/`, `tdd/`, `diagnose/`, `review/`, `glossary/`) con ciclo de vida por fases (`CheckpointPhase`).
 
 ---
 
-## 5. Configurar el Servidor MCP en tu IDE / Agente
+## 7. Configurar el Servidor MCP en tu IDE / Agente
 
 Los clientes de IA (Claude Code, Cursor, Windsurf, Codex, etc.) se conectan a Cortex via **transporte stdio**. Puedes alternar que servidor usar facilmente:
 
@@ -113,7 +218,7 @@ En el archivo `.mcp.json` de tu proyecto:
   "mcpServers": {
     "cortex": {
       "command": "cortex-rs",
-      "args": ["mcp-server", "--stdio", "--project-root", "."]
+      "args": ["mcp-serve"]
     }
   }
 }
@@ -123,11 +228,11 @@ En el archivo `.mcp.json` de tu proyecto:
 
 ---
 
-## 6. Embeddings ONNX y Modelos por Idioma
+## 8. Embeddings ONNX y Modelos por Idioma
 
 Es importante distinguir los dos tipos de modelos que utiliza Cortex:
 
-1. **LLM Conversacional de Chat (GGUF):** Utilizado exclusivamente dentro de la app Cortex Brain (*Liquid LFM2.5 1.2B*).
+1. **LLM Conversacional de Chat (GGUF):** Utilizado exclusivamente dentro de la app Cortex Brain (*Liquid LFM2.5 1.2B Instruct*, ~712 MB en RAM). Corre 100% offline en tu maquina.
 2. **Embeddings de Busqueda Semantica (ONNX):** Utilizado por el CLI y MCP para vectorizar notas en `vault/` y la memoria episodica.
 
 ### Enrutamiento por Idioma (`config.yaml`)
@@ -152,7 +257,7 @@ embedding:
 
 ---
 
-## 7. Rollback Inmediato (Como volver atras)
+## 9. Rollback Inmediato (Como volver atras)
 
 Si en algun momento deseas regresar 100% al flujo previo de Python:
 
