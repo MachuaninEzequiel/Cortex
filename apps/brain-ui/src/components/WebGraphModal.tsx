@@ -43,8 +43,6 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   // Filtrado de nodos
   const filteredNodes = useMemo(() => {
     if (!graphData || !graphData.nodes) return [];
@@ -141,6 +139,8 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
         return "#89b4fa"; // Blue
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
