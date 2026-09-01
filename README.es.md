@@ -5,205 +5,174 @@
   </a>
   <br />
 
-  <h1>CORTEX</h1>
+  <h1>CORTEX 2.0</h1>
 
   <p>
-    <strong>Memoria híbrida, gobernanza y un brain de IA local — para tus agentes y tu equipo.</strong>
+    <strong>Memoria cognitiva híbrida, gobernanza de sesiones y un Brain de IA local nativo en Rust — para tus agentes y tu equipo.</strong>
   </p>
 
   <p>
-    <a href="README.md">🇬🇧 English</a> · <a href="README.es.md">🇪🇸 Español</a>
+    <a href="README.md">🇬🇧 English</a> · <a href="README.es.md">🇪🇸 Español</a> · <a href="docs/GUIA-MIGRACION-RUST.md">🦀 Guía de Migración Python → Rust</a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Rust-2021_Edition-orange?logo=rust&style=flat-square" alt="Rust" />
+    <img src="https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&style=flat-square" alt="Tauri 2" />
+    <img src="https://img.shields.io/badge/Local_LLM-Liquid_LFM2.5-purple?style=flat-square" alt="Liquid LFM" />
+    <img src="https://img.shields.io/badge/Embeddings-ONNX_Runtime-green?style=flat-square" alt="ONNX" />
+    <img src="https://img.shields.io/badge/MCP-32_Canonical_Tools-blueviolet?style=flat-square" alt="MCP" />
+    <img src="https://img.shields.io/badge/Theme-Catppuccin_Mocha-pink?style=flat-square" alt="Catppuccin" />
   </p>
 </div>
 
 ---
 
-## Qué es Cortex
+## 🖥️ Cortex Brain Desktop App
 
-Cortex es una **capa de memoria y gobernanza para agentes de IA**. Vive en
-tu repositorio y les da a todos los agentes que uses — Claude Code, Cursor,
-Codex, OpenCode, Pi o cualquier herramienta con MCP — el mismo contexto
-persistente, el mismo flujo disciplinado y el mismo cierre verificable que
-tiene un buen equipo de ingeniería: *specs → trabajo verificado → sesiones
-documentadas*.
+**Cortex Brain** es una aplicación de escritorio nativa, ultraliviana e interactiva construida en **Tauri 2 + React + Rust**, equipada con inferencia local in-process mediante `llama.cpp` y el modelo **Liquid LFM2.5 1.2B Instruct**:
 
-Todo corre **en tu máquina**. La experiencia central no necesita API keys,
-ni nube, ni telemetría: un binario nativo (Rust), tu vault como markdown y
-— opcionalmente — un LLM local que habla el idioma de tu proyecto.
+<div align="center">
+  <img src="assets/shots/cortex-brain-main.png" alt="Cortex Brain Desktop App" width="95%" />
+</div>
 
-## Por qué existe
+### ✨ Capacidades Principales de Cortex Brain
 
-Los agentes de IA son potentes y amnésicos. Cada sesión arranca de cero:
-olvidan decisiones, pierden contexto entre tareas y rara vez dejan evidencia
-verificable de lo que hicieron. Cuantos más agentes usás, peor la
-fragmentación.
+* **🧠 LLM Local In-Process (100% Offline):** Equipado con **Liquid LFM2.5 1.2B Instruct (Q4_K_M)** (~712 MB en RAM). Responde en milisegundos con cero dependencias en la nube y sin enviar tu código a servidores externos.
+* **🕸️ WebGraph Interactivo & Orbital:** Mapeo y exploración visual en tiempo real de todos los archivos, módulos, specs de requerimientos y ADRs de arquitectura de tu proyecto.
+* **🛡️ Cortex Doctor & Auditoría en Vivo:** Diagnóstico de salud continuo de la estructura de tu proyecto, sesiones activas, índices vectoriales y estado del LLM.
+* **🚀 Floating Launcher Global (`Ctrl + Shift + B`):** Abrí o minimizá Cortex Brain instantáneamente desde cualquier editor (VSCode, Cursor, Zed) o navegador con un atajo global de teclado y modo *Always-on-Top*.
+* **⚡ Protocolo Autónomo de Herramientas Seguras:** Ejecuta herramientas de consulta (`vault.stats`, `memory.search`, `git.status`, `doctor.inspect`) de forma autónoma para enriquecer el contexto, mientras las acciones mutadoras requieren aprobación explícita.
+* **🍃 Zero RAM Overhead (Auto-Unload):** Descarga automáticamente el modelo LLM de la memoria RAM tras 90 segundos de inactividad, liberando recursos del sistema hasta la próxima consulta.
 
-Cortex resuelve las tres fallas que vuelven poco confiable el trabajo con
-agentes a escala:
+---
 
-| Falla | Qué hace Cortex |
-|---|---|
-| **Amnesia** | Las sesiones persisten cada decisión y resultado como memoria híbrida (episódica + semántica), consultable en dos idiomas. |
-| **Sin disciplina** | Cada unidad de trabajo es una Sesión spec-driven con checkpoints, quality gates y cierre verificable. "Listo" significa *probado*, no *dicho*. |
-| **Sin contexto compartido** | El mismo vault, las mismas sesiones y las mismas reglas los leen todos los agentes vía CLI y MCP — una sola fuente de verdad por proyecto. |
+## 🕸️ WebGraph Visual del Proyecto
 
-## La vida dentro de Cortex
+El **WebGraph** analiza el AST y la documentación de tu repositorio para generar una topología interactiva orbital de conocimiento:
 
-Una Sesión es la unidad de trabajo. Abre desde una spec, registra
-checkpoints mientras avanzás y se cierra solo cuando la verificación pasa:
+<div align="center">
+  <img src="assets/shots/cortex-brain-webgraph.png" alt="Cortex WebGraph Modal" width="95%" />
+</div>
 
-```text
-abrir una sesión  →  cortex session current / checkpoint / task
-hacer el trabajo  →  tu agente, tu IDE, tu forma
-cerrarla          →  cortex finish            (corren los verification hooks)
-¿y ahora?         →  cortex next              (lo sugiere el Action Engine)
+* **Directorio Lateral y Filtro:** Buscá y filtrá rápidamente entre módulos, ADRs, specs y archivos fuente.
+* **Fijación de Contexto:** Hacé click en cualquier nodo del grafo para fijarlo en el chat y pedirle a Cortex Brain análisis de dependencias y responsabilidades.
+* **Servidor Web Dedicado:** Levantá el servidor HTTP nativo (`cortex-rs webgraph serve`) con 1 click para explorar el grafo a pantalla completa en tu navegador web.
+
+---
+
+## 🛡️ Auditoría de Salud: Cortex Doctor
+
+Mantené tu repositorio en perfecto estado de gobernanza y calidad mediante diagnósticos automatizados:
+
+<div align="center">
+  <img src="assets/shots/cortex-brain-doctor.png" alt="Cortex Doctor Audit" width="75%" />
+</div>
+
+* **Verificación de Layout:** Estructura `.cortex/` y `vault/` validada contra los estándares de ingeniería.
+* **Inspección de Sesiones:** Detección de sesiones activas, cantidad de checkpoints y consistencia de hashes de Git.
+* **Salud Vectorial:** Consistencia de índices ONNX y fingerprint de modelos por idioma.
+
+---
+
+## 🧬 Memoria Cognitiva Híbrida & Embeddings ONNX
+
+Cortex combina **búsqueda léxica BM25** con **búsqueda semántica vectorial densa** mediante **ONNX Runtime nativo (`ort`)**:
+
+```mermaid
+graph TD
+    subgraph Memoria_Hibrida [Capa de Memoria Híbrida]
+        Doc["Documentos en vault/ (*.md)"] --> Chunker["Chunker con Contexto de Headers"]
+        Chunker --> ONNX["ONNX Runtime nativo (ort)"]
+        Chunker --> BM25["Índice BM25 In-Memory"]
+        ONNX --> Dense["Vectores Densos (384d / 1024d)"]
+        Dense --> RRF["Fusión de Rango Recíproco (RRF)"]
+        BM25 --> RRF
+        RRF --> Retrieval["Contexto de Máxima Precisión"]
+    end
+    Retrieval --> Brain["Cortex Brain / Agentes MCP"]
 ```
 
-El **Action Engine** es la capa proactiva de Cortex: lee el estado del
-proyecto y sugiere el siguiente paso útil — validar docs, re-indexar el
-vault, aprender un tópico — cada uno con costo, score y efecto concreto:
+* **Enrutamiento por Idioma (`config.yaml`):**
+  * **Inglés (`en`):** `all-MiniLM-L6-v2` (384 dimensiones).
+  * **Español (`es`):** `intfloat/multilingual-e5-large` (1024 dimensiones) para máxima fidelidad semántica en español.
+* **Fingerprint Salado:** La clave en `.cortex_index.json` valida el modelo y la dimensión (`sha256(model + schema + texto)`). Si se cambia de modelo, el índice se actualiza automáticamente sin mezclar dimensiones.
 
-![Action Engine](assets/shots/action-engine.png)
+---
 
-## Tres modos operativos
+## 🤖 Tríada de Agentes & Skills Composed (Estándar Matt Pocock)
 
-Cada sesión corre en uno de tres modos, inferidos automáticamente. Describen
-**cómo llegan los checkpoints** a la sesión:
-
-| Modo | Cómo se registra el progreso |
-|---|---|
-| **Managed** | Un skill orquestador verifica cada paso antes de avanzar. |
-| **Observed** | Tu IDE emite checkpoints por hooks (Claude Code, Cursor, Pi, OpenCode…). |
-| **BYO** | Traé tu propio workflow; el reconstructor sintetiza la sesión desde git diff + checkpoints. |
-
-## Interfaces
-
-Cortex no es una herramienta monolítica — es una familia de superficies
-alrededor de un mismo núcleo nativo:
-
-| Superficie | Formato |
-|---|---|
-| **CLI** | 25+ familias de comandos (`session`, `docs`, `ci`, `setup`, `search`, `context`, `next`, `hu`, `pr-context`, `reindex`, `ide`…). Texto y `--json`. |
-| **TUI** | Interfaz de terminal ratatui: splash, home y pantalla de sesiones. |
-| **Brain App** | Aplicación de escritorio nativa (Tauri 2 + React + Rust) con launcher flotante global (`Ctrl+Shift+B`), catálogo multi-modelo y auto-ejecución de tools. |
-| **Servidor MCP** | `cortex mcp-serve` expone 30+ tools canónicas a cualquier cliente MCP. |
-| **Integración IDE** | 11 adapters validados instalan hooks, prompts y skills en tu editor/agente. |
-
-### La Aplicación Cortex Brain (Desktop GUI)
-
-Cortex Brain es la aplicación de escritorio nativa que actúa como tu experto local de IA en tu código, 100% offline y sin consumo de APIs en la nube.
-
-![Cortex Brain App](docs/cortex-brain/Captura%20de%20pantalla_20260901_100855.png)
-
-* **🧠 Inferencia Local en el Proceso:** Motor `llama.cpp` ultra-optimizado para el modelo oficial **Liquid LFM2.5 1.2B Instruct (Q4_K_M)** (~730 MB), con respuestas sub-segundo en CPU sin requerir GPU dedicada.
-* **📦 Catálogo Curado Multi-Modelo:** Conmutación en caliente (*hot-swapping*) con un solo click:
-  * *Liquid LFM2.5 1.2B* — Arquitectura híbrida ultraligera, optimizada para bajo consumo de memoria.
-  * *Qwen 2.5 Coder (1.5B / 3B)* — Especialista en generación de código, refactorizaciones y sintaxis multi-lenguaje.
-  * *DeepSeek R1 Distill 1.5B* — Especialista en razonamiento paso a paso (*Chain-of-Thought*).
-  * *GGUFs Personalizados* — Pegá cualquier URL de HuggingFace para descargar y usar cualquier modelo `.gguf`.
-* **🚀 Launcher Global Flotante (`Ctrl + Shift + B`):** Abrí o minimizá Cortex Brain desde cualquier editor o navegador. Presioná `Escape` para volver al código. Incluye modo fijado *Always-on-Top*.
-* **⚡ Protocolo de Herramientas Seguras:** Las herramientas de lectura (`memory.search`, `vault.stats`, `docs.related`, `git.status`) se auto-ejecutan enriqueciendo la conversación; las acciones mutantes solicitan aprobación interactiva previa.
-* **💾 Persistencia de Historial por Proyecto:** Guarda automáticamente los turnos de conversación en `<proyecto>/.cortex/brain/history.jsonl`.
-* **🍃 Cero Consumo de RAM en Inactividad:** Desaloja el modelo de la memoria RAM automáticamente tras 90 segundos sin consultas, liberando la memoria por completo.
-* **🖥️ Instaladores Nativos Multi-Plataforma:** Paquetes `.deb` (Linux Debian/Ubuntu), `.exe` / instalador NSIS (Windows) y `.dmg` (macOS Apple Silicon & Intel).
-
-### La TUI
-
-![Splash](assets/shots/splash-full.png)
-
-![Home](assets/shots/home-es.png)
-
-![Sesiones](assets/shots/sessions-real.png)
-
-### El CLI
+Cortex incorpora el flujo de trabajo moderno por fases (`CheckpointPhase`) inspirado en los estándares abiertos de skills:
 
 ```text
-cortex session list      sesiones en disco, tabla viva
-cortex next              sugerencias del Action Engine
-cortex search "auth"     retrieval híbrido episódico + semántico
-cortex context           bundle de contexto enriquecido para la tarea
-cortex doctor            chequeo de salud de gobernanza
-cortex tutor             guía interactiva offline
+Grill (Aclarar) → Spec (Especificar) → Plan (Descomponer) → Implement (TDD) → Review (Revisar) → Close (Documentar)
 ```
 
-### El servidor MCP
+1. **Tríada Thin + Craft On-Demand:**
+   * `/cortex-sync`: Pre-flight, análisis de dependencias, lectura de `CONTEXT.md` y proposal mode antes de crear specs.
+   * `/cortex-SDDwork`: Implementación disciplinada de specs con verificación de claims.
+   * `/cortex-documenter`: Cierre verificable de sesión, ejecución de quality gates y documentación en el vault.
+2. **Familia de 8 Skills Abiertas (`templates/composed/`):**
+   * `grill/`, `to-spec/`, `to-tickets/`, `implement/`, `tdd/`, `diagnose/`, `review/`, `glossary/`.
 
-Un comando expone Cortex a cualquier agente con MCP:
+---
 
-```text
-cortex mcp-serve   →  initialize / list_tools / call_tool por stdio
+## 🔌 Servidor MCP Universal (32 Tools Canónicas)
+
+Cortex expone **32 herramientas canónicas** a cualquier cliente MCP (**Claude Code, Cursor, Windsurf, Codex, OpenCode, Pi, Antigravity**):
+
+```bash
+# Servidor MCP nativo por transporte stdio (sub-milisegundos de latencia)
+cortex-rs mcp-serve
 ```
 
-Las tools se agrupan por familia: **búsqueda** (`cortex_search`,
-`cortex_search_vector`, `cortex_context`), **spec y docs**
-(`cortex_create_spec`, `cortex_write_doc`, `cortex_emit_proposal`),
-**sesiones** (`cortex_session_open/checkpoint/close`, `cortex_save_session`,
-`cortex_finish_session`), **revisión** (`cortex_self_review_note`,
-`cortex_review_checkpoint`, `cortex_verify_session_claims`), **work items**
-(`cortex_import_hu`, `cortex_get_hu`) y **autopilot**
-(`cortex_autopilot_start/preflight/checkpoint/finish/status`).
-
-## Sus partes
-
-| Parte | Rol |
-|---|---|
-| `rust/crates/cortex-brain-app` | Aplicación desktop nativa (Tauri 2 + servidor IPC) con quick launcher global. |
-| `apps/brain-ui` | Frontend de Cortex Brain (React 18 + Vite + Tailwind + Catppuccin Mocha). |
-| `rust/crates/cortex-brain` | Motor de inferencia LLM local (Liquid LFM2.5 GGUF + llama.cpp) y loop de tools. |
-| `rust/crates/cortex-app` | Servicios núcleo: sesiones, documenter, retrieval, quality gates. |
-| `rust/crates/cortex-cli` | El CLI nativo — salida texto y `--json` para cada comando. |
-| `rust/crates/cortex-tui` | Pantallas ratatui (splash, home, sesiones). |
-| `rust/crates/cortex-mcp` | El servidor MCP con payloads de tools canónicos. |
-| `rust/crates/cortex-actions` | El Action Engine (scheduler, registry, learning, signals). |
-| `rust/crates/cortex-setup` | Bootstrap, templates, adapters de IDE y hooks. |
-| `rust/crates/cortex-companion` | HUD de acompañamiento en tiempo real y motor de aprobación visual. |
-
-## IAs locales
-
-Cortex trae un asistente local y una capa opcional con modelo:
-
-- **cortex-brain** — un asistente nativo (Rust + llama.cpp) que conoce
-  *este* proyecto. Responde preguntas de solo lectura y propone el comando
-  exacto para todo lo demás. Las mutaciones son imposibles por diseño:
-  propone, y corrés vos.
-
-```text
-🧠 cortex-brain — backend: llama.cpp (GGUF)
-
-Vos: ¿cuántas notas hay en el vault?
-🔧 sugerencia del modelo [read]: vault.stats
-¿Ejecutás 'vault.stats' ? [s/N]: s
-Vault: 128 notas .md
+Configuración en `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cortex-rs",
+      "args": ["mcp-serve"]
+    }
+  }
+}
 ```
 
-- Sin modelo, degrada a un router determinista (cero tokens).
-- Los embedders son **por idioma**: español (`multilingual-e5-large`,
-  MRR@10 0.96) e inglés (`MiniLM-L6-v2`, MRR@10 1.0), elegidos por
-  frontmatter o heurística.
+---
 
-## Addons e integraciones
+## 📦 Descarga e Instalación
 
-Cortex se adapta a los stacks que ya usás:
+### 🖥️ 1. Instaladores de Cortex Brain Desktop (Releases)
 
-| Addon | Qué instala |
-|---|---|
-| **11 adapters de IDE/agente** | Claude Code, Codex, OpenCode, Pi, Cursor, Windsurf, VS Code, Claude Desktop, Hermes, Antigravity… — cada uno con hooks validados, prompts y skills de agente. |
-| **Skills** | Templates de skill de agente para el workflow orquestador (el modo *Managed*). |
-| **Plugin CI** | `cortex ci validate-pr` y comandos de review-session para pipelines de PR. |
-| **Pipeline** | Un pipeline nativo con stages de security/lint/test/documentation. |
+Descargá la última versión lista para usar desde [GitHub Releases](https://github.com/MachuaninEzequiel/Cortex/releases):
 
-## Idioma
+* **Windows:** `Cortex Brain_x64-setup.exe` (Instalador estándar NSIS).
+* **macOS:** `Cortex Brain_universal.dmg` (Compatible con Apple Silicon M1/M2/M3/M4 e Intel).
+* **Linux:** `Cortex Brain_amd64.deb` o binario portable.
 
-UI y salidas son bilingües — español por defecto, inglés a demanda
-(`ui.language` en config, o `LANG=en`). La calidad de retrieval está medida
-por idioma y es deliberadamente alta en ambos.
+---
 
-## Estado
+### ⚡ 2. Compilación del CLI Nativo (`cortex-rs`)
 
-Cortex es **100% nativo Rust** desde la transformación 2026-08: el CLI ya no
-delega en Python, cada comando que el oráculo expone está wireado, y el
-paquete Python sobrevive solo como oráculo de paridad congelado del CI.
-Versión: **0.7.0**.
+Si deseás compilar el CLI de Rust y tenerlo en paralelo con tu versión de Python:
 
-> Las guías de instalación y uso viven fuera de este README — ver
-> `docs/` (próximamente). Licencia: MIT (`LICENSE`).
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/MachuaninEzequiel/Cortex.git
+cd Cortex
+
+# 2. Compilar el CLI y la App Desktop
+npm --prefix apps/brain-ui run build
+cd rust && cargo build --release -p cortex-cli -p cortex-brain-app --features llama
+
+# 3. Instalar en ~/.local/bin
+cp target/release/cortex-cli ~/.local/bin/cortex-rs
+cp target/release/cortex-brain ~/.local/bin/cortex-brain
+```
+
+> 📖 Para una guía paso a paso sobre cómo convivir y probar sin romper nada, consultá la [**Guía de Coexistencia y Migración**](docs/GUIA-MIGRACION-RUST.md).
+
+---
+
+## 📜 Licencia
+
+Distribuido bajo la Licencia MIT. Consultá `LICENSE` para más detalles.
