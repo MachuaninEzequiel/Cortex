@@ -518,8 +518,8 @@ fn batch_button_hover_paints_accent() {
         ..Default::default()
     };
     let cell_pos = (ACTIONS_BATCH_BTN.x + 1, ACTIONS_BATCH_BTN.y);
-    let cyan = cortex_branding::palette::CYAN;
-    let cyan = Color::Rgb(cyan.0, cyan.1, cyan.2);
+    // Rediseño: el acento de hover es el mauve de `theme` (ya no el menta).
+    let accent = cortex_companion::theme::accent();
 
     let hover = render_actions_buffer(&data, Some(cell_pos));
     let idle = render_actions_buffer(&data, None);
@@ -528,12 +528,12 @@ fn batch_button_hover_paints_accent() {
         |buf: &ratatui::buffer::Buffer, pos: (u16, u16)| -> Option<Color> { buf[pos].style().fg };
     assert_eq!(
         fg(&hover, cell_pos),
-        Some(cyan),
-        "el borde del botón debe pintar el acento cyan con hover"
+        Some(accent),
+        "el borde del botón debe pintar el acento del tema con hover"
     );
     assert_ne!(
         fg(&idle, cell_pos),
-        Some(cyan),
+        Some(accent),
         "sin hover el botón no usa el acento"
     );
 }

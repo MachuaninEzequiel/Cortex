@@ -26,6 +26,7 @@ pub mod hud_brand;
 pub mod menu;
 pub mod runner;
 pub mod screens;
+pub mod theme;
 pub mod widgets;
 
 /// Modos de ejecución del Companion (Sidecar, Float HUD, Co-Pilot, Normal).

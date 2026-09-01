@@ -1,7 +1,7 @@
 //! Pantalla Co-Pilot Dual (Opción 3) — interacción en vivo con el agente adyacente.
 
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::prelude::{Buffer, Color, Frame, Line, Span, Style};
+use ratatui::prelude::{Buffer, Frame, Line, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use std::time::Instant;
 
@@ -9,7 +9,7 @@ use crate::herdr::HerdrAgentInfo;
 use crate::screens::home::{AppRenderInfo, HomeData};
 use crate::widgets::{button, panel, to_color, Button, Panel};
 use cortex_branding::logo;
-use cortex_branding::palette::{CYAN, DEEP, ICE, LIGHT, MUTED, SHADOW};
+use cortex_branding::palette::{CYAN, DEEP, ICE, LIGHT, SHADOW};
 use cortex_branding::pixels::PixelKind;
 use cortex_branding::Rgb;
 
@@ -28,9 +28,12 @@ pub struct CopilotAreas {
 }
 
 pub fn copilot_areas(area: Rect) -> CopilotAreas {
+    // Header = filas 0-12: marca (0-2), fases (3), botón principal (4-6) y
+    // grilla 2x2 (7-12). El body ARRANCA ABAJO de los botones: con Length(8)
+    // los paneles se pintaban ENCIMA de la grilla (z-order de Paragraph).
     let [header, body, footer] = Layout::vertical([
-        Constraint::Length(8),
-        Constraint::Min(8),
+        Constraint::Length(13),
+        Constraint::Min(4),
         Constraint::Length(1),
     ])
     .areas(area);
@@ -78,11 +81,11 @@ pub fn render_copilot(
         Span::styled(
             " CORTEX CO-PILOT",
             Style::default()
-                .fg(to_color(CYAN))
+                .fg(crate::theme::accent())
                 .add_modifier(ratatui::style::Modifier::BOLD),
         ),
         Span::raw(" "),
-        Span::styled("· DUAL RUNTIME", Style::default().fg(to_color(MUTED))),
+        Span::styled("· DUAL RUNTIME", Style::default().fg(crate::theme::text_muted())),
     ]);
     f.render_widget(
         Paragraph::new(title_line),
@@ -91,7 +94,7 @@ pub fn render_copilot(
 
     let agent_line = match agent_info {
         Some(a) => Line::from(vec![
-            Span::styled("● VINCULADO: ", Style::default().fg(Color::Green)),
+            Span::styled("● VINCULADO: ", Style::default().fg(crate::theme::success())),
             Span::styled(
                 format!(
                     "{} ({})",
@@ -99,19 +102,19 @@ pub fn render_copilot(
                     a.pane_id
                 ),
                 Style::default()
-                    .fg(to_color(ICE))
+                    .fg(crate::theme::text())
                     .add_modifier(ratatui::style::Modifier::BOLD),
             ),
             Span::styled(
                 format!(" [{}]", data.project),
-                Style::default().fg(to_color(MUTED)),
+                Style::default().fg(crate::theme::text_muted()),
             ),
         ]),
         None => Line::from(vec![
-            Span::styled("○ AGENTE: ", Style::default().fg(to_color(MUTED))),
+            Span::styled("○ AGENTE: ", Style::default().fg(crate::theme::text_muted())),
             Span::styled(
                 "Standalone (sin agente adyacente)",
-                Style::default().fg(to_color(MUTED)),
+                Style::default().fg(crate::theme::text_muted()),
             ),
         ]),
     };
@@ -127,19 +130,19 @@ pub fn render_copilot(
 
     // 2. Barra de fases
     let phase_line = Line::from(vec![
-        Span::styled("FASES: ", Style::default().fg(to_color(MUTED))),
-        Span::styled("1.SPEC", Style::default().fg(to_color(MUTED))),
-        Span::styled(" ➔ ", Style::default().fg(to_color(MUTED))),
-        Span::styled("2.PLAN", Style::default().fg(to_color(MUTED))),
-        Span::styled(" ➔ ", Style::default().fg(to_color(MUTED))),
+        Span::styled("FASES: ", Style::default().fg(crate::theme::text_muted())),
+        Span::styled("1.SPEC", Style::default().fg(crate::theme::text_muted())),
+        Span::styled(" ➔ ", Style::default().fg(crate::theme::text_muted())),
+        Span::styled("2.PLAN", Style::default().fg(crate::theme::text_muted())),
+        Span::styled(" ➔ ", Style::default().fg(crate::theme::text_muted())),
         Span::styled(
             "▶ 3.IMPLEMENTACIÓN",
             Style::default()
-                .fg(to_color(CYAN))
+                .fg(crate::theme::accent())
                 .add_modifier(ratatui::style::Modifier::BOLD),
         ),
-        Span::styled(" ➔ ", Style::default().fg(to_color(MUTED))),
-        Span::styled("4.VERIFICACIÓN", Style::default().fg(to_color(MUTED))),
+        Span::styled(" ➔ ", Style::default().fg(crate::theme::text_muted())),
+        Span::styled("4.VERIFICACIÓN", Style::default().fg(crate::theme::text_muted())),
     ]);
     f.render_widget(
         Paragraph::new(phase_line),
@@ -161,18 +164,18 @@ pub fn render_copilot(
     let inject_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(if is_inject_hovered {
-            to_color(ICE)
+            crate::theme::text()
         } else {
-            to_color(CYAN)
+            crate::theme::accent()
         }));
 
     let inject_label = Line::from(vec![Span::styled(
         "  [ENTER] Copiar prompt para el agente ",
         Style::default()
             .fg(if is_inject_hovered {
-                to_color(ICE)
+                crate::theme::text()
             } else {
-                to_color(CYAN)
+                crate::theme::accent()
             })
             .add_modifier(ratatui::style::Modifier::BOLD),
     )]);
@@ -205,14 +208,14 @@ pub fn render_copilot(
         vec![
             Line::from(vec![Span::styled(
                 format!("\"{}\"", prompt_text),
-                Style::default().fg(to_color(ICE)),
+                Style::default().fg(crate::theme::text()),
             )]),
             Line::from(vec![Span::styled(
                 "Presioná Enter para copiar. Nunca se pega al agente.",
-                Style::default().fg(to_color(MUTED)),
+                Style::default().fg(crate::theme::text_muted()),
             )]),
         ],
-        to_color(CYAN),
+        crate::theme::accent(),
     );
 
     panel(
@@ -226,9 +229,9 @@ pub fn render_copilot(
                 .as_ref()
                 .map(|a| a.title.as_str())
                 .unwrap_or("Sin acciones pendientes"),
-            Style::default().fg(to_color(CYAN)),
+            Style::default().fg(crate::theme::accent()),
         )])],
-        to_color(CYAN),
+        crate::theme::accent(),
     );
 
     panel(
@@ -244,12 +247,12 @@ pub fn render_copilot(
                     .as_ref()
                     .map(|s| s.id.as_str())
                     .unwrap_or("ninguna"),
-                Style::default().fg(to_color(ICE)),
+                Style::default().fg(crate::theme::text()),
             ),
             Span::raw("  ·  doctor: "),
-            Span::styled("OK", Style::default().fg(Color::Green)),
+            Span::styled("OK", Style::default().fg(crate::theme::success())),
         ])],
-        to_color(CYAN),
+        crate::theme::accent(),
     );
 
     // 5. Botones secundarios
@@ -263,13 +266,13 @@ pub fn render_copilot(
         Button {
             id: "copilot-approve",
             rect: areas.approve_btn,
-            label: "⚡ Aprobar (A)".into(),
+            label: "↯ Aprobar (A)".into(),
             enabled: data.top_action.is_some(),
         },
         Button {
             id: "copilot-sync",
             rect: areas.sync_btn,
-            label: "🔄 Sincronizar (S)".into(),
+            label: "↻ Sincronizar (S)".into(),
             enabled: true,
         },
         Button {
@@ -300,10 +303,10 @@ pub fn render_copilot(
     // 6. Footer
     f.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("▸ Brain (Tab)", Style::default().fg(to_color(CYAN))),
+            Span::styled("▸ Brain (Tab)", Style::default().fg(crate::theme::accent())),
             Span::styled(
                 "  ·  Enter copia el prompt  ·  A Aprobar  ·  q salir",
-                Style::default().fg(to_color(MUTED)),
+                Style::default().fg(crate::theme::text_muted()),
             ),
         ])),
         areas.footer,

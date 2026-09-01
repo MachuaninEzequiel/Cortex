@@ -7,7 +7,7 @@
 use std::time::Instant;
 
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::prelude::{Buffer, Color};
+use ratatui::prelude::Buffer;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::Frame;
@@ -15,7 +15,8 @@ use ratatui::Frame;
 use cortex_branding::gradient::color_for;
 use cortex_branding::logo;
 use cortex_branding::pixels::PixelKind;
-use cortex_branding::wordmark;
+
+use crate::hud_brand;
 use cortex_branding::Rgb;
 
 use crate::app::{
@@ -159,8 +160,9 @@ fn paint_half_block(cell: &mut ratatui::buffer::Cell, c_top: Option<Rgb>, c_bott
     }
 }
 
-/// Pinta el Logo Voxel Isométrico a la izquierda y el Wordmark "CORTEX" en 3D
-/// con caras iluminadas (ICE), cuerpo esmeralda (CYAN) y sombra 3D (DEEP).
+/// Pinta el Logo Voxel Isométrico (isotipo de marca, esmeralda) a la
+/// izquierda y el Wordmark "CORTEX" compacto del rediseño con paleta fría
+/// (sky/ice/zafiro/navy, `hud_brand::WORD`).
 fn blit_brand_header(buf: &mut Buffer, area: Rect) {
     let mark = logo::mark();
     let (mw, mh) = (mark.w() as u16, mark.h() as u16);
@@ -184,27 +186,18 @@ fn blit_brand_header(buf: &mut Buffer, area: Rect) {
     }
 
     let wm_x = area.x + mw + 2;
-    if area.width > (mw + 4) {
-        let wm = wordmark::wordmark();
-        let (ww, wh) = (wm.w() as u16, wm.h() as u16);
-        let cells_w = (wh as usize).div_ceil(2);
-        for cy in 0..cells_w.min(area.height as usize) {
-            let py_top = cy * 2;
-            let py_bottom = py_top + 1;
-            for px in 0..ww.min(area.width.saturating_sub(mw + 2)) {
-                let top = wm.get(px as usize, py_top);
-                let bottom = if py_bottom < wh as usize {
-                    wm.get(px as usize, py_bottom)
-                } else {
-                    PixelKind::Transparent
-                };
-                let c_top = color_for(top, py_top, wh as usize);
-                let c_bottom = color_for(bottom, py_bottom, wh as usize);
-                let cell = buf.cell_mut((wm_x + px, area.y + cy as u16));
-                let Some(cell) = cell else { continue };
-                paint_half_block(cell, c_top, c_bottom);
-            }
-        }
+    // Wordmark compacto del rediseño (misma paleta fría que el HUD): 29 px
+    // de ancho → 3 filas de half-block. El grande (53 cols) es de cortex-tui.
+    if area.width >= mw + 2 + hud_brand::WORD_W as u16 {
+        hud_brand::blit_word(
+            buf,
+            Rect::new(
+                wm_x,
+                area.y,
+                hud_brand::WORD_W as u16,
+                hud_brand::WORD_H.div_ceil(2) as u16,
+            ),
+        );
     }
 }
 
@@ -214,7 +207,7 @@ fn session_lines(data: &HomeData) -> Vec<Line<'static>> {
         Some(s) => vec![Line::from(vec![
             Span::styled(
                 "id:  ",
-                Style::default().fg(to_color(cortex_branding::palette::MUTED)),
+                Style::default().fg(crate::theme::text_muted()),
             ),
             Span::styled(s.id.clone(), accent_style()),
             Span::raw("  "),
@@ -229,14 +222,14 @@ fn session_lines(data: &HomeData) -> Vec<Line<'static>> {
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(cortex_branding::palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 fn status_color(status: &str) -> Style {
     if status.eq_ignore_ascii_case("open") {
-        Style::default().fg(to_color(cortex_branding::palette::ICE))
+        Style::default().fg(crate::theme::success())
     } else {
-        Style::default().fg(to_color(cortex_branding::palette::MUTED))
+        Style::default().fg(crate::theme::text_muted())
     }
 }
 
@@ -244,7 +237,7 @@ fn next_action_lines(data: &HomeData) -> Vec<Line<'static>> {
     if let Some(err) = &data.error {
         return vec![Line::from(vec![Span::styled(
             format!("⚠ {err}"),
-            Style::default().fg(Color::Red),
+            Style::default().fg(crate::theme::error()),
         )])];
     }
     match &data.top_action {
@@ -260,14 +253,14 @@ fn next_action_lines(data: &HomeData) -> Vec<Line<'static>> {
 }
 
 fn muted_style() -> Style {
-    Style::default().fg(to_color(cortex_branding::palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 fn verdict_style(v: &str) -> Style {
     match v {
-        "ok" => Style::default().fg(Color::Green),
-        "fail" => Style::default().fg(Color::Red),
-        _ => Style::default().fg(Color::Yellow),
+        "ok" => Style::default().fg(crate::theme::success()),
+        "fail" => Style::default().fg(crate::theme::error()),
+        _ => Style::default().fg(crate::theme::warning()),
     }
 }
 

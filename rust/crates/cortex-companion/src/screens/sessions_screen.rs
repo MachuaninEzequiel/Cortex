@@ -9,18 +9,17 @@
 use std::time::Instant;
 
 use ratatui::layout::{Position, Rect};
-use ratatui::prelude::{Color, Line, Style};
+use ratatui::prelude::{Line, Style};
 use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use cortex_branding::palette;
 
 use crate::app::{
     SessionsData, SESSIONS_CLOSE_BTN, SESSIONS_DETAIL, SESSIONS_LIST_HEIGHT, SESSIONS_LIST_LEFT,
     SESSIONS_LIST_TOP, SESSIONS_LIST_WIDTH, SESSIONS_OUTCOME,
 };
-use crate::widgets::{button, to_color, Button};
+use crate::widgets::{button, Button};
 
 /// Áreas de Sessions: lista, botón cerrar, detalle y salida — MISMA
 /// geometría que `hit_test`.
@@ -58,18 +57,18 @@ pub struct SessionsRenderInfo {
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 fn muted_style_raw() -> Style {
-    Style::default().fg(to_color(palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 fn status_style(status: &str) -> Style {
     if status.eq_ignore_ascii_case("open") {
-        Style::default().fg(to_color(palette::ICE))
+        Style::default().fg(crate::theme::success())
     } else {
-        Style::default().fg(to_color(palette::MUTED))
+        Style::default().fg(crate::theme::text_muted())
     }
 }
 
@@ -119,7 +118,7 @@ pub fn render_sessions(
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 format!("⚠ {err}"),
-                Style::default().fg(Color::Red),
+                Style::default().fg(crate::theme::error()),
             ))),
             Rect::new(
                 area.x + 2,
@@ -198,7 +197,7 @@ pub fn render_sessions(
             Paragraph::new(Line::from(Span::styled(
                 msg.clone(),
                 if *is_err {
-                    Style::default().fg(Color::Red)
+                    Style::default().fg(crate::theme::error())
                 } else {
                     accent_style()
                 },

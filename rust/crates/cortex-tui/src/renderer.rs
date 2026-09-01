@@ -39,8 +39,23 @@ impl ratatui::widgets::Widget for CortexLogo {
     }
 }
 
-/// Renderiza un `PixelMap` centrado dentro de `area` (recortado si no entra).
+/// Renderiza un `PixelMap` centrado dentro de `area` (recortado si no entra),
+/// usando el gradiente menta del isotipo (`gradient::color_for`).
 pub fn render_pixel_map(map: &PixelMap, mode: ColorMode, area: Rect, buf: &mut Buffer) {
+    render_pixel_map_with(map, mode, area, buf, |kind, y| {
+        cortex_branding::gradient::color_for(kind, y, map.h())
+    });
+}
+
+/// Como [`render_pixel_map`] pero con función de color propia (p. ej. la
+/// paleta fría del wordmark, que NO es el gradiente menta del isotipo).
+pub fn render_pixel_map_with(
+    map: &PixelMap,
+    mode: ColorMode,
+    area: Rect,
+    buf: &mut Buffer,
+    color_fn: impl Fn(PixelKind, usize) -> Option<Rgb>,
+) {
     let cols = (map.w() as u16).min(area.width);
     let rows = (map.h().div_ceil(2) as u16).min(area.height);
     if cols == 0 || rows == 0 {
@@ -67,8 +82,8 @@ pub fn render_pixel_map(map: &PixelMap, mode: ColorMode, area: Rect, buf: &mut B
                     cell.set_bg(Color::Reset);
                 }
                 (top, bottom) => {
-                    let c_top = cortex_branding::gradient::color_for(top, my, map.h());
-                    let c_bottom = cortex_branding::gradient::color_for(bottom, my + 1, map.h());
+                    let c_top = color_fn(top, my);
+                    let c_bottom = color_fn(bottom, my + 1);
                     match (c_top, c_bottom) {
                         (None, None) => {
                             cell.set_symbol(" ");

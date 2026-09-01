@@ -22,8 +22,9 @@ fn dimensiones_de_las_tres_variantes() {
 }
 
 #[test]
-fn wordmark_35x7() {
-    assert_eq!((wordmark().w(), wordmark().h()), (35, 7));
+fn wordmark_53x14() {
+    // 6 letras de 7 px con trazos de 2 px + extrusión (+1) + barra underline doble.
+    assert_eq!((wordmark().w(), wordmark().h()), (53, 14));
 }
 
 #[test]

@@ -9,19 +9,17 @@
 use std::time::Instant;
 
 use ratatui::layout::Rect;
-use ratatui::prelude::{Color, Line, Style};
+use ratatui::prelude::{Line, Style};
 use ratatui::text::Span;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
-use cortex_branding::palette;
 
 use crate::app::{
     OutcomeLine, SEARCH_DETAIL, SEARCH_INPUT, SEARCH_LIST_HEIGHT, SEARCH_LIST_LEFT,
     SEARCH_LIST_TOP, SEARCH_LIST_WIDTH, SEARCH_STATUS, SEARCH_USEFUL_W, SEARCH_USEFUL_X,
 };
 use crate::engine::SearchHit;
-use crate::widgets::to_color;
 
 /// Datos de la pantalla Search (query, hits, selección, marcas de esta
 /// sesión y resultado del último feedback).
@@ -79,11 +77,11 @@ pub struct SearchRenderInfo {
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 fn muted_style() -> Style {
-    Style::default().fg(to_color(palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 /// Fila de un hit: badge de fuente, título, score y la columna [Útil]/✓
@@ -108,14 +106,14 @@ fn hit_line(h: &SearchHit, marked: bool, selected: bool, hovered: bool) -> Line<
     let right = if !marked && h.id.is_some() {
         Span::styled(
             "[ Útil ]",
-            Style::default().fg(Color::Green).add_modifier(if hovered {
+            Style::default().fg(crate::theme::success()).add_modifier(if hovered {
                 ratatui::style::Modifier::BOLD
             } else {
                 ratatui::style::Modifier::empty()
             }),
         )
     } else if marked {
-        Span::styled("✓ útil ", Style::default().fg(Color::Yellow))
+        Span::styled("✓ útil ", Style::default().fg(crate::theme::warning()))
     } else {
         Span::raw("       ")
     };
@@ -153,9 +151,9 @@ pub fn render_search(
             Paragraph::new(Line::from(Span::styled(
                 msg.clone(),
                 if *is_err {
-                    Style::default().fg(Color::Red)
+                    Style::default().fg(crate::theme::error())
                 } else {
-                    Style::default().fg(Color::Yellow)
+                    Style::default().fg(crate::theme::warning())
                 },
             ))),
             areas.status,
@@ -164,7 +162,7 @@ pub fn render_search(
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 format!("⚠ {err}"),
-                Style::default().fg(Color::Red),
+                Style::default().fg(crate::theme::error()),
             ))),
             areas.status,
         );
@@ -179,7 +177,7 @@ pub fn render_search(
         .block(
             Block::default()
                 .borders(Borders::BOTTOM)
-                .border_style(Style::default().fg(Color::DarkGray)),
+                .border_style(Style::default().fg(crate::theme::overlay0())),
         ),
         areas.input,
     );

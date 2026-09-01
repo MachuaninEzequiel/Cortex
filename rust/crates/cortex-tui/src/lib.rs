@@ -17,7 +17,11 @@
 
 pub mod actions;
 pub mod app;
+pub mod clipboard;
 pub mod components;
+pub mod deprecated;
+pub mod event;
+pub mod hit;
 pub mod home;
 pub mod keymap;
 pub mod layout;
@@ -28,8 +32,12 @@ pub mod sessions;
 pub mod splash;
 pub mod terminal;
 pub mod theme;
+pub mod view;
 
 pub use actions::{ActionView, ActionsData};
+pub use clipboard::copy_to_clipboard;
+pub use event::map_event;
+pub use view::draw;
 
 pub use app::{Action, AppState, Effect, LoadState, Overlay, Screen};
 pub use cortex_branding::ansi::ColorMode;

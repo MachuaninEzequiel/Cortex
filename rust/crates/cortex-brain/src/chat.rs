@@ -232,7 +232,9 @@ pub fn banner_plain() -> &'static str {
 }
 
 fn banner_map() -> cortex_branding::pixels::PixelMap {
-    let logo = cortex_branding::logo::LogoVariant::Compact.pixel_map();
+    // Con el wordmark 3D ancho (53 cols), el Compact desbordaría el contrato
+    // de 80 columnas del banner del chat; el Mark mantiene la marca visible.
+    let logo = cortex_branding::logo::LogoVariant::Mark.pixel_map();
     let wordmark = cortex_branding::wordmark::wordmark();
     let gap = 2;
     let w = logo.w() + gap + wordmark.w();

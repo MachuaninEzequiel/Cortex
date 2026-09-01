@@ -4,11 +4,11 @@
 //! el splash respeta la terminal del usuario. La tagline es un componente
 //! separado del logo (§14).
 
-use crate::renderer::{render_pixel_map, CortexLogo};
+use crate::renderer::{render_pixel_map_with, CortexLogo};
 use crate::theme::Theme;
 use crate::{branding_mode, lang, BrandingMode};
 use cortex_branding::ansi::ColorMode;
-use cortex_branding::wordmark::wordmark;
+use cortex_branding::wordmark::{self, wordmark};
 use ratatui::prelude::{Constraint, Layout, Rect};
 use ratatui::widgets::{Paragraph, Widget};
 use ratatui::Frame;
@@ -32,10 +32,10 @@ pub fn render(f: &mut Frame<'_>, mode: ColorMode) {
 }
 
 fn render_full(f: &mut Frame<'_>, area: Rect, mode: ColorMode) {
-    // isotipo (17 filas) + wordmark (4 filas) + tagline (1 fila), con aire.
+    // isotipo (17 filas) + wordmark 3D (7 filas) + tagline (1 fila), con aire.
     let [logo_area, word_area, tag_area] = Layout::vertical([
         Constraint::Length(19),
-        Constraint::Length(5),
+        Constraint::Length(8),
         Constraint::Length(2),
     ])
     .areas(area);
@@ -43,7 +43,9 @@ fn render_full(f: &mut Frame<'_>, area: Rect, mode: ColorMode) {
         CortexLogo::new(crate::LogoVariant::Full).with_mode(mode),
         logo_area,
     );
-    render_pixel_map(wordmark(), mode, word_area, f.buffer_mut());
+    render_pixel_map_with(wordmark(), mode, word_area, f.buffer_mut(), |kind, _y| {
+        wordmark::color_for(kind)
+    });
     render_tagline(f, tag_area);
 }
 

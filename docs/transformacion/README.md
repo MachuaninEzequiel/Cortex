@@ -40,6 +40,7 @@ Obras posteriores (historia 07/08 + pulido activo):
 | **[17](17-PRODUCTO-EXPERTO-AL-LADO.md)** | **Producto: experto al lado** | **Obra activa. HUD + Liquid on-demand + prompts copiables.** |
 | [19](19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md) | Liquid LFM2.5: descarga, streaming y vida visual | Tramo actual del motor. `cortex brain install`, streaming de tokens, respiración del logo. Foco en 1, 5 y 7 del deep-review. |
 | [20](20-CORTEX-BRAIN-APP.md) | Cortex Brain App: experto local como aplicación | **Propuesta pendiente de aprobación.** App Tauri (Rust+React) estilo Handy: lista de proyectos + chat con Liquid + descarga de modelos. Reemplaza el scope de "subcomandos CLI" del doc 19; reutiliza C-L1.1 y C-L1.2. |
+| [21](21-CORTEX-BRAIN-APP-ESTADO.md) | Cortex Brain App: estado al cierre de G-A2 | Asentamiento. G-A1 (scaffold Tauri) y G-A2 (IPC esqueleto) cerrados. G-A3 (scan de proyectos) es el próximo. |
 
 ## Orden de tramos (con racional)
 

@@ -8,19 +8,18 @@
 use std::time::Instant;
 
 use ratatui::layout::{Position, Rect};
-use ratatui::prelude::{Color, Line, Style};
+use ratatui::prelude::{Line, Style};
 use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use cortex_branding::palette;
 
 use crate::app::{
     ActionsData, ACTIONS_APPROVE_W, ACTIONS_APPROVE_X, ACTIONS_BATCH_BTN, ACTIONS_LIST_HEIGHT,
     ACTIONS_LIST_LEFT, ACTIONS_LIST_TOP, ACTIONS_LIST_WIDTH, ACTIONS_OUTCOME,
 };
 use crate::engine::ActionProposal;
-use crate::widgets::{button, to_color, Button};
+use crate::widgets::{button, Button};
 
 /// Áreas de Actions: lista de propuestas, botón lote, columna [Aprobar] y
 /// salida — MISMA geometría que `hit_test`.
@@ -64,11 +63,11 @@ pub struct ActionsRenderInfo {
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 fn muted_style() -> Style {
-    Style::default().fg(to_color(palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 /// El lote auto-ok solo agrupa reversibles de costo instant (spec 14 §3):
@@ -95,10 +94,10 @@ fn proposal_line(p: &ActionProposal, hovered_row: bool) -> Line<'static> {
     };
     let approve_style = if hovered_row {
         Style::default()
-            .fg(Color::Green)
+            .fg(crate::theme::success())
             .add_modifier(ratatui::style::Modifier::BOLD)
     } else {
-        Style::default().fg(Color::Green)
+        Style::default().fg(crate::theme::success())
     };
     Line::from(vec![
         Span::styled(format!("{body}{}", " ".repeat(pad)), row_style),
@@ -133,7 +132,7 @@ pub fn render_actions(
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 format!("⚠ {err}"),
-                Style::default().fg(Color::Red),
+                Style::default().fg(crate::theme::error()),
             ))),
             Rect::new(
                 area.x + 2,
@@ -195,7 +194,7 @@ pub fn render_actions(
             Paragraph::new(Line::from(Span::styled(
                 msg.clone(),
                 if *is_err {
-                    Style::default().fg(Color::Red)
+                    Style::default().fg(crate::theme::error())
                 } else {
                     accent_style()
                 },

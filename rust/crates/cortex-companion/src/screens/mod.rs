@@ -29,7 +29,7 @@ pub use sessions_screen::{render_sessions, sessions_areas, SessionsAreas, Sessio
 /// [Aprobar]/[Denegar] cuyas rects comparten geometría con `hit_test`.
 mod modal {
     use ratatui::layout::Rect;
-    use ratatui::prelude::Color;
+    
     use ratatui::style::{Modifier, Style};
     use ratatui::text::{Line, Span};
     use ratatui::widgets::{Block, Borders, Paragraph};
@@ -39,7 +39,7 @@ mod modal {
     use crate::approval::ApprovalRequest;
 
     pub fn render_modal(f: &mut Frame<'_>, req: &ApprovalRequest) {
-        let title = Span::styled(req.title.clone(), Style::default().fg(Color::Yellow));
+        let title = Span::styled(req.title.clone(), Style::default().fg(crate::theme::warning()));
         let effect = effect_content(&req.effect);
         f.render_widget(
             Paragraph::new(vec![Line::from(effect)])
@@ -50,7 +50,7 @@ mod modal {
             Paragraph::new(Line::from(Span::styled(
                 "[ Aprobar ]",
                 Style::default()
-                    .fg(Color::Green)
+                    .fg(crate::theme::success())
                     .add_modifier(Modifier::BOLD),
             ))),
             MODAL_APROBAR_RECT,
@@ -58,14 +58,14 @@ mod modal {
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 "[ Denegar ]",
-                Style::default().fg(Color::Red),
+                Style::default().fg(crate::theme::error()),
             ))),
             MODAL_DENEGAR_RECT,
         );
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 "clic decide · Esc/deny · el efecto exacto se audita",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(crate::theme::overlay0()),
             ))),
             Rect::new(
                 MODAL_RECT.x + 2,
@@ -82,9 +82,9 @@ mod modal {
         let content: String = effect.chars().collect();
         if content.chars().count() > max {
             let cut: String = content.chars().take(max.saturating_sub(1)).collect();
-            Span::styled(format!("{cut}…"), Style::default().fg(Color::White))
+            Span::styled(format!("{cut}…"), Style::default().fg(crate::theme::text()))
         } else {
-            Span::styled(content, Style::default().fg(Color::White))
+            Span::styled(content, Style::default().fg(crate::theme::text()))
         }
     }
 }

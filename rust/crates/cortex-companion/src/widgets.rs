@@ -9,19 +9,21 @@ use ratatui::layout::Rect;
 use ratatui::prelude::Color;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use ratatui::Frame;
 
+use crate::theme;
 use cortex_branding::palette;
 
 /// Convierte un color de la paleta de branding a un `Color` de ratatui.
+/// (Solo para el ISOTIPO menta; el chrome pasa por `crate::theme`.)
 pub(crate) fn to_color(c: palette::Rgb) -> Color {
     Color::Rgb(c.0, c.1, c.2)
 }
 
-/// Cyan oficial de la familia (hover / acento interactivo).
+/// Acento de marca del rediseño (mauve Catppuccin, igual que cortex-tui).
 pub(crate) fn accent() -> Color {
-    to_color(palette::CYAN)
+    theme::accent()
 }
 
 /// Botón mínimo: rect + etiqueta + estado. Hover se pinta en el borde y la
@@ -37,30 +39,41 @@ pub struct Button {
 impl Button {
     fn color(&self, hovered: bool) -> Color {
         if !self.enabled {
-            Color::DarkGray
+            theme::overlay0()
         } else if hovered {
-            accent()
+            theme::accent()
         } else {
-            to_color(palette::DEEP)
+            theme::surface2()
         }
     }
 }
 
-/// Dibuja un botón (borde + etiqueta centrada).
+/// Dibuja un botón (borde redondeado + etiqueta centrada + hover interactivo).
 pub fn button(f: &mut Frame<'_>, b: &Button, hovered: bool) {
     let color = b.color(hovered);
+    let border_style = if hovered && b.enabled {
+        Style::default().fg(color).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(color)
+    };
     let block = Block::default()
+        .border_type(BorderType::Rounded)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(color));
+        .border_style(border_style);
+    let text_style = if hovered && b.enabled {
+        Style::default().fg(theme::text()).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(color)
+    };
     let para = Paragraph::new(Line::from(vec![Span::styled(
         b.label.clone(),
-        Style::default().fg(color),
+        text_style,
     )]))
     .block(block);
     f.render_widget(para, b.rect);
 }
 
-/// Panel con título y contenido de líneas estiladas.
+/// Panel con bordes redondeados, título y contenido de líneas estiladas.
 #[derive(Debug, Clone)]
 pub struct Panel {
     pub title: String,
@@ -68,10 +81,14 @@ pub struct Panel {
 }
 
 pub fn panel(f: &mut Frame<'_>, p: &Panel, lines: Vec<Line<'_>>, title_color: Color) {
-    let block = Block::default().borders(Borders::ALL).title(Span::styled(
-        p.title.clone(),
-        Style::default().fg(title_color),
-    ));
+    let block = Block::default()
+        .border_type(BorderType::Rounded)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::border_idle()))
+        .title(Span::styled(
+            p.title.clone(),
+            Style::default().fg(title_color).add_modifier(Modifier::BOLD),
+        ));
     f.render_widget(Paragraph::new(lines).block(block), p.rect);
 }
 
@@ -85,7 +102,10 @@ pub struct List {
 }
 
 pub fn list(f: &mut Frame<'_>, l: &List) {
-    let block = Block::default().borders(Borders::ALL);
+    let block = Block::default()
+        .border_type(BorderType::Rounded)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::border_idle()));
     let lines: Vec<Line<'_>> = l
         .items
         .iter()

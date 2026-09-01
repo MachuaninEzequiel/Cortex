@@ -17,14 +17,13 @@ use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use cortex_branding::palette;
 
 use crate::app::{
     MENU_BACK_BTN, MENU_LIST_HEIGHT, MENU_LIST_LEFT, MENU_LIST_TOP, MENU_LIST_WIDTH,
     MENU_OUTPUT_HEIGHT, MENU_OUTPUT_TOP,
 };
 use crate::menu::{flat_rows, FlatRow, MenuOutput};
-use crate::widgets::{button, to_color, Button};
+use crate::widgets::{button, Button};
 
 /// Áreas del Menu: lista (filas del catálogo), panel de salida y botón
 /// volver — MISMO geometría que `hit_test` (consts de `app.rs`).
@@ -54,11 +53,11 @@ pub fn menu_areas(area: Rect) -> MenuAreas {
 }
 
 fn muted_style() -> Style {
-    Style::default().fg(to_color(palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 /// Args legibles de una entrada (" family arg1 arg2" o "").
@@ -137,7 +136,7 @@ pub fn render_menu(
             FlatRow::Header(d) => Line::from(vec![Span::styled(
                 format!("▸ {}", d.label()),
                 Style::default()
-                    .fg(to_color(palette::CYAN))
+                    .fg(crate::theme::accent())
                     .add_modifier(ratatui::style::Modifier::BOLD),
             )]),
             FlatRow::Entry(e) => {
@@ -176,12 +175,12 @@ pub fn render_menu(
             let text = format!("{prefix}{}", o.text);
             (
                 fit_lines(&text, areas.output.width.saturating_sub(4) as usize, areas.output.height as usize),
-                if o.is_error { Color::Red } else { to_color(palette::DEEP) },
+                if o.is_error { crate::theme::error() } else { crate::theme::success() },
             )
         }
         None => (
             vec![Line::from("Sesiones · Memoria · Búsqueda · Docs · CI · Setup · Enterprise — todo Cortex, un solo lugar.")],
-            to_color(palette::MUTED),
+            crate::theme::text_muted(),
         ),
     };
     f.render_widget(

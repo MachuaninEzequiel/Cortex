@@ -9,7 +9,6 @@
 use std::time::Instant;
 
 use ratatui::layout::Rect;
-use ratatui::prelude::Color;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
@@ -20,7 +19,6 @@ use crate::app::{
     BRAIN_LIST_WIDTH, BRAIN_STATUS,
 };
 use crate::brain_panel::{BrainMode, BrainPanel};
-use crate::widgets::to_color;
 
 /// Áreas del Brain: status, input (alto 2 — lección B7), lista de filas y
 /// columna [Ejecutar]. MISMA geometría que `hit_test`.
@@ -96,11 +94,11 @@ pub struct BrainRenderInfo {
 }
 
 fn accent_style() -> Style {
-    Style::default().fg(to_color(cortex_branding::palette::CYAN))
+    Style::default().fg(crate::theme::accent())
 }
 
 fn muted_style() -> Style {
-    Style::default().fg(to_color(cortex_branding::palette::MUTED))
+    Style::default().fg(crate::theme::text_muted())
 }
 
 fn mode_label(mode: BrainMode) -> &'static str {
@@ -114,13 +112,13 @@ fn mode_label(mode: BrainMode) -> &'static str {
 /// columna del hit-test (misma técnica de padding que las filas de Search).
 fn proposal_line(command: &str, hovered: bool) -> Line<'static> {
     let shown: String = command.chars().take(58).collect();
-    let btn_style = Style::default().fg(Color::Green).add_modifier(if hovered {
+    let btn_style = Style::default().fg(crate::theme::success()).add_modifier(if hovered {
         Modifier::BOLD
     } else {
         Modifier::empty()
     });
     Line::from(vec![
-        Span::styled(shown, Style::default().fg(Color::Yellow)),
+        Span::styled(shown, Style::default().fg(crate::theme::warning())),
         Span::raw("  "),
         Span::styled("[Ejecutar]", btn_style),
     ])
@@ -154,9 +152,9 @@ pub fn render_brain(
             Paragraph::new(Line::from(Span::styled(
                 msg.clone(),
                 if *is_err {
-                    Style::default().fg(Color::Red)
+                    Style::default().fg(crate::theme::error())
                 } else {
-                    Style::default().fg(Color::Yellow)
+                    Style::default().fg(crate::theme::warning())
                 },
             ))),
             areas.status,
@@ -180,7 +178,7 @@ pub fn render_brain(
         .block(
             Block::default()
                 .borders(Borders::BOTTOM)
-                .border_style(Style::default().fg(Color::DarkGray)),
+                .border_style(Style::default().fg(crate::theme::overlay0())),
         ),
         areas.input,
     );

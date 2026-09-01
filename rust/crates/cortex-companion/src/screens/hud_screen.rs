@@ -15,14 +15,17 @@ use crate::widgets::{to_color, Button};
 
 use cortex_branding::Rgb;
 
-const TEXT: Rgb = Rgb(0xE4, 0xED, 0xE7);
-const MUTED: Rgb = Rgb(0x8A, 0x9E, 0x93);
-const MINT: Rgb = Rgb(0x8F, 0xDC, 0xB0);
-const MINT_SOFT: Rgb = Rgb(0xAE, 0xE8, 0xC6);
-const MINT_PALE: Rgb = Rgb(0xC8, 0xF0, 0xDC);
-const BORDER: Rgb = Rgb(0x2A, 0x4A, 0x3A);
-const ACCENT: Rgb = Rgb(0x3D, 0x6B, 0x54);
-const BG: Rgb = Rgb(0x0C, 0x14, 0x10);
+// Tokens del HUD flotante: mismos valores Catppuccin Mocha que `theme`/cortex-tui
+// (Rgb propio porque la conversión de catppuccin no es const-fn). El rediseño
+// eliminó la familia menta del chrome; solo el ISOTIPO conserva su verde.
+const TEXT: Rgb = Rgb(0xCD, 0xD6, 0xF4); // mocha.text
+const MUTED: Rgb = Rgb(0xA6, 0xAD, 0xC8); // mocha.subtext0
+const MINT: Rgb = Rgb(0xCB, 0xA6, 0xF7); // mocha.mauve (acento)
+const MINT_SOFT: Rgb = Rgb(0xB4, 0xBE, 0xFE); // mocha.lavender
+const MINT_PALE: Rgb = Rgb(0x89, 0xDC, 0xEB); // mocha.sky (wordmark)
+const BORDER: Rgb = Rgb(0x58, 0x5B, 0x70); // mocha.surface2
+const ACCENT: Rgb = Rgb(0x45, 0x47, 0x5A); // mocha.surface1
+const BG: Rgb = Rgb(0x1E, 0x1E, 0x2E); // mocha.base
 
 /// Acciones que el HUD puede mostrar y Aprobar (higiene, no ciclo de sesión).
 pub fn is_hygiene(id: &str) -> bool {
