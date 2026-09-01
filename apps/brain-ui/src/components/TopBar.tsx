@@ -9,6 +9,7 @@ interface TopBarProps {
   onSelectModel: (filename: string) => void;
   markRamState: MarkRamState;
   onOpenSettings: () => void;
+  onOpenWebGraph?: () => void;
   lang: "es" | "en";
 }
 
@@ -18,6 +19,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSelectModel,
   markRamState,
   onOpenSettings,
+  onOpenWebGraph,
   lang,
 }) => {
   const t = getT(lang);
@@ -39,6 +41,18 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {/* Model Selector & Actions */}
       <div className="flex items-center gap-3">
+        {/* Quick WebGraph trigger */}
+        {onOpenWebGraph && (
+          <button
+            onClick={onOpenWebGraph}
+            className="flex items-center gap-1.5 rounded border border-mocha-surface bg-mocha-surface/60 px-2.5 py-1 text-xs font-mono text-mocha-text transition hover:border-mocha-mauve hover:text-mocha-mauve active:scale-95"
+            title="Abrir Grafo de Conocimiento (WebGraph)"
+          >
+            <span>🕸️</span>
+            <span className="hidden sm:inline font-semibold">WebGraph</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-2">
           <label
             htmlFor="model-select"

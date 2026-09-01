@@ -558,6 +558,7 @@ export function App() {
         onSelectModel={handleSelectModel}
         markRamState={markRamState}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenWebGraph={handleOpenWebGraph}
         lang={lang}
       />
 

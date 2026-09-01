@@ -347,19 +347,38 @@ async fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> Result<(), S
 /// Command Tauri: extrae el grafo de conocimiento del proyecto (WebGraph).
 #[tauri::command]
 async fn get_project_graph(project: String) -> Result<graph::ProjectGraphPayload, String> {
-    Ok(graph::extract_project_graph(std::path::Path::new(&project)))
+    eprintln!("[cortex-brain] Extrayendo grafo de conocimiento para '{project}'...");
+    let g = graph::extract_project_graph(std::path::Path::new(&project));
+    eprintln!(
+        "[cortex-brain] Grafo extraído: {} nodos y {} aristas.",
+        g.nodes.len(),
+        g.edges.len()
+    );
+    Ok(g)
 }
 
 /// Command Tauri: estado de la sesión activa en .cortex/sessions/.
 #[tauri::command]
 async fn get_session_status(project: String) -> Result<graph::SessionStatusPayload, String> {
-    Ok(graph::inspect_session_status(std::path::Path::new(&project)))
+    let s = graph::inspect_session_status(std::path::Path::new(&project));
+    eprintln!(
+        "[cortex-brain] Sesión en '{project}': activa={}, checkpoints={}",
+        s.active, s.checkpoints_count
+    );
+    Ok(s)
 }
 
 /// Command Tauri: auditoría y diagnóstico de salud (Cortex Doctor).
 #[tauri::command]
 async fn run_doctor_inspect(project: String) -> Result<graph::DoctorReportPayload, String> {
-    Ok(graph::inspect_doctor_health(std::path::Path::new(&project)))
+    eprintln!("[cortex-brain] Auditando salud para '{project}'...");
+    let doc = graph::inspect_doctor_health(std::path::Path::new(&project));
+    eprintln!(
+        "[cortex-brain] Diagnóstico completado: sano={}, checks={}",
+        doc.is_healthy,
+        doc.checks.len()
+    );
+    Ok(doc)
 }
 
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
