@@ -5,9 +5,7 @@
   "identifier": "com.cortex.brain",
   "build": {
     "frontendDist": "../../../apps/brain-ui/dist",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm --prefix ../../apps/brain-ui run dev",
-    "beforeBuildCommand": "npm --prefix ../../apps/brain-ui run build"
+    "beforeBuildCommand": "npm --prefix ../../../apps/brain-ui run build"
   },
   "app": {
     "windows": [
