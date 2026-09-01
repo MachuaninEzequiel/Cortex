@@ -9,6 +9,8 @@ export default {
         // cortex-companion/src/screens/hud_screen.rs y theme del TUI).
         mocha: {
           base: "#1e1e2e",
+          mantle: "#181825",
+          crust: "#11111b",
           surface: "#313244",
           surface2: "#585b70",
           text: "#cdd6f4",
@@ -17,6 +19,13 @@ export default {
           lavender: "#b4befe",
           sky: "#89dceb",
           sapphire: "#04a5e5",
+          red: "#f38ba8",
+          peach: "#fab387",
+          yellow: "#f9e2af",
+          green: "#a6e3a1",
+          teal: "#94e2d5",
+          blue: "#89b4fa",
+          pink: "#f5c2e7",
         },
         // Marca voxel viva del mark (solo el isotipo usa verde;
         // chrome desciende a Mauve/Sky según doc 17).

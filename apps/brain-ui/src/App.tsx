@@ -619,6 +619,7 @@ export function App() {
         isLoading={isGraphLoading}
         highlightedNodeIds={highlightedNodeIds}
         onPinNode={handlePinNode}
+        onLaunchExternalServer={() => handleSendMessage("cortex webgraph serve")}
         lang={lang}
       />
 
