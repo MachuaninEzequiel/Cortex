@@ -26,7 +26,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb"],
+    "targets": ["deb", "nsis", "dmg", "app"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,6 +42,15 @@
       "deb": {
         "depends": ["libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37", "libgtk-3-0", "libappindicator3-1"]
       }
+    },
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
     }
   }
 }
