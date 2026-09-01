@@ -48,6 +48,12 @@ const SKIP_DIRS: &[&str] = &[
     "vendor",
     "Library",
     ".cache",
+    ".local",
+    ".rustup",
+    ".npm",
+    "bench",
+    "fixtures",
+    "archive",
 ];
 
 /// Límite de profundidad del scan (niveles por debajo de la raíz).
@@ -119,6 +125,27 @@ pub fn cache_path() -> PathBuf {
         .join("brain-projects.json")
 }
 
+/// Encuentra el archivo de configuración del proyecto según las convenciones Cortex:
+/// 1. `.cortex/config.yaml` (layout nuevo)
+/// 2. `config.yaml` (layout clásico)
+/// 3. `.cortex/workspace.yaml` (layout workspace)
+#[must_use]
+pub fn config_path_for(dir: &Path) -> Option<PathBuf> {
+    let p1 = dir.join(".cortex").join("config.yaml");
+    if p1.is_file() {
+        return Some(p1);
+    }
+    let p2 = dir.join("config.yaml");
+    if p2.is_file() {
+        return Some(p2);
+    }
+    let p3 = dir.join(".cortex").join("workspace.yaml");
+    if p3.is_file() {
+        return Some(p3);
+    }
+    None
+}
+
 // ── Scan ──────────────────────────────────────────────────────────────────
 
 /// Scan recursivo desde `root`, con límite de profundidad
@@ -136,10 +163,14 @@ fn scan_dir(dir: &Path, depth: usize, out: &mut Vec<ProjectEntry>) {
     if depth > MAX_DEPTH {
         return;
     }
-    // Heurística "es un proyecto Cortex": config.yaml + .cortex/.
-    let config = dir.join("config.yaml");
-    if config.is_file() && dir.join(".cortex").is_dir() {
-        out.push(build_entry(dir));
+    // Heurística "es un proyecto Cortex": .cortex/ existe y contiene o acompaña config.yaml / workspace.yaml
+    if dir.join(".cortex").is_dir() {
+        if let Some(cfg) = config_path_for(dir) {
+            out.push(build_entry(dir, &cfg));
+            // Crucial: una vez identificado como proyecto Cortex, NO recorremos
+            // subdirectorios internos (para no indexar fixtures/tests de benchmarking).
+            return;
+        }
     }
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -152,7 +183,12 @@ fn scan_dir(dir: &Path, depth: usize, out: &mut Vec<ProjectEntry>) {
             continue;
         }
         let name = entry.file_name();
-        if SKIP_DIRS.contains(&name.to_string_lossy().as_ref()) {
+        let name_str = name.to_string_lossy();
+        if SKIP_DIRS.contains(&name_str.as_ref()) {
+            continue;
+        }
+        // Ignorar directorios ocultos (ej. .p12b-doctor, .work, .gemini, etc.)
+        if depth > 0 && name_str.starts_with('.') {
             continue;
         }
         scan_dir(&entry.path(), depth + 1, out);
@@ -160,12 +196,12 @@ fn scan_dir(dir: &Path, depth: usize, out: &mut Vec<ProjectEntry>) {
 }
 
 /// Construye la entrada para un directorio que ya pasó la heurística.
-fn build_entry(dir: &Path) -> ProjectEntry {
+fn build_entry(dir: &Path, config: &Path) -> ProjectEntry {
     ProjectEntry {
         path: dir.to_string_lossy().into_owned(),
         branch: branch_of(dir).unwrap_or_default(),
         has_session: has_active_session(dir),
-        valid_config: config_is_valid(&dir.join("config.yaml")),
+        valid_config: config_is_valid(config),
         last_scan: now_secs(),
     }
 }
@@ -213,8 +249,8 @@ fn has_active_session(dir: &Path) -> bool {
 
 /// Lista proyectos desde el cache, SIN recorrer el árbol. Valida cada
 /// entrada contra el filesystem:
-/// - path inexistente ⇒ se elimina del cache (y se reescribe el file).
-/// - mtime o sha256 del `config.yaml` cambiaron ⇒ se re-deriva la
+/// - path inexistente o sin config ⇒ se elimina del cache (y se reescribe el file).
+/// - mtime o sha256 del config cambiaron ⇒ se re-deriva la
 ///   entrada (branch, sesión, validez) in-place.
 ///
 /// Es la misma función que usa el command Tauri `list_projects` y el
@@ -228,9 +264,12 @@ pub fn list_projects() -> Vec<ProjectEntry> {
     let mut dirty = false;
     for mut cached in cache.entries.drain(..) {
         let dir = PathBuf::from(&cached.entry.path);
-        let config = dir.join("config.yaml");
-        if !dir.is_dir() || !config.is_file() {
-            // Proyecto borrado de la máquina ⇒ fuera del cache.
+        let Some(config) = config_path_for(&dir) else {
+            // Proyecto borrado de la máquina o sin config ⇒ fuera del cache.
+            dirty = true;
+            continue;
+        };
+        if !dir.is_dir() {
             dirty = true;
             continue;
         }
@@ -238,7 +277,7 @@ pub fn list_projects() -> Vec<ProjectEntry> {
         let sha = sha256_file(&config).unwrap_or_default();
         if mtime != cached.mtime_secs || sha != cached.sha256_config {
             // El config cambió ⇒ re-derivar la entrada completa.
-            cached.entry = build_entry(&dir);
+            cached.entry = build_entry(&dir, &config);
             cached.mtime_secs = mtime;
             cached.sha256_config = sha;
             dirty = true;
@@ -264,7 +303,8 @@ pub fn refresh_projects() -> Vec<ProjectEntry> {
     let cached: Vec<CachedProject> = entries
         .iter()
         .map(|entry| {
-            let config = Path::new(&entry.path).join("config.yaml");
+            let dir = Path::new(&entry.path);
+            let config = config_path_for(dir).unwrap_or_else(|| dir.join("config.yaml"));
             CachedProject {
                 entry: entry.clone(),
                 mtime_secs: config_mtime_secs(&config).unwrap_or(0),
@@ -579,5 +619,41 @@ mod tests {
         unsafe { std::env::remove_var("HOME") };
         unsafe { std::env::remove_var("USERPROFILE") };
         let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn scan_detecta_layout_nuevo_con_dot_cortex_config() {
+        let root = tmp_root("layout-nuevo");
+        let dir = root.join("cortex-demo");
+        std::fs::create_dir_all(dir.join(".cortex")).unwrap();
+        std::fs::write(dir.join(".cortex").join("config.yaml"), VALID_CONFIG).unwrap();
+
+        let found = scan(&root);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].path, path_str(&dir));
+        assert!(found[0].valid_config);
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn scan_no_recurre_dentro_de_proyecto_identificado() {
+        let root = tmp_root("nested-projects");
+        let parent = make_project(&root, "cortex-root", Some(VALID_CONFIG), true, None, None);
+        // Subdirectorio con estructura de proyecto adentro del proyecto principal (ej. bench fixtures)
+        let _nested = make_project(
+            &parent,
+            "bench/fixtures/acme-api",
+            Some(VALID_CONFIG),
+            true,
+            None,
+            None,
+        );
+
+        let found = scan(&root);
+        assert_eq!(found.len(), 1, "solo debe encontrar el proyecto raíz y no el anidado");
+        assert_eq!(found[0].path, path_str(&parent));
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
