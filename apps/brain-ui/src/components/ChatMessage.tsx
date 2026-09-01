@@ -16,11 +16,55 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const t = getT(lang);
   const isUser = message.sender === "user";
 
-  // Simple formatter for lines and markdown code blocks
+  // Formateador con soporte para links markdown [nombre](ruta) y código en línea
   const renderFormattedText = (content: string) => {
+    // Regex para detectar links markdown: [texto](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = linkRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+
+      const label = match[1];
+      const href = match[2];
+      const isFile = href.startsWith("file://") || href.endsWith(".md") || href.endsWith(".rs") || href.endsWith(".ts");
+
+      parts.push(
+        <a
+          key={match.index}
+          href={href}
+          onClick={(e) => {
+            if (isFile) {
+              e.preventDefault();
+              navigator.clipboard?.writeText(href.replace(/^file:\/\//, ""));
+            }
+          }}
+          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs transition underline decoration-1 underline-offset-2 ${
+            isUser
+              ? "text-mocha-base bg-mocha-base/20 hover:bg-mocha-base/30"
+              : "text-cortex-mint bg-cortex-forest/30 hover:bg-cortex-forest/60"
+          }`}
+          title={isFile ? `Copiar ruta: ${href}` : href}
+        >
+          {isFile && <span className="text-[10px]">📄</span>}
+          <span>{label}</span>
+        </a>
+      );
+
+      lastIndex = linkRegex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
     return (
       <div className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-mocha-text">
-        {content}
+        {parts.length > 0 ? parts : content}
         {message.isStreaming && (
           <span className="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-cortex-mint ml-0.5" />
         )}

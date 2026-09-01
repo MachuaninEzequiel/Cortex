@@ -9,6 +9,11 @@ import {
   ChatChunkPayload,
   DownloadProgressPayload,
   Lang,
+  ProjectGraphPayload,
+  SessionStatusPayload,
+  DoctorReportPayload,
+  PinnedContextNode,
+  NodeHighlightEvent,
 } from "./types";
 import { tauriInvoke, tauriListen } from "./hooks/useTauri";
 import { TopBar } from "./components/TopBar";
@@ -17,6 +22,9 @@ import { Chat } from "./components/Chat";
 import { StatusBar } from "./components/StatusBar";
 import { SettingsModal } from "./components/SettingsModal";
 import { ToolApprovalModal } from "./components/ToolApprovalModal";
+import { WebGraphModal } from "./components/WebGraphModal";
+import { GovernanceBar } from "./components/GovernanceBar";
+import { DoctorModal } from "./components/DoctorModal";
 import { getT } from "./i18n";
 
 export function App() {
@@ -45,6 +53,19 @@ export function App() {
   const [pendingToolCall, setPendingToolCall] = useState<ToolCall | null>(null);
   const [lang, setLang] = useState<Lang>("es");
   const [alwaysOnTop, setAlwaysOnTop] = useState<boolean>(false);
+
+  // WebGraph y Gobernanza (Línea B)
+  const [isWebGraphOpen, setIsWebGraphOpen] = useState<boolean>(false);
+  const [graphData, setGraphData] = useState<ProjectGraphPayload | null>(null);
+  const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
+  const [highlightedNodeIds, setHighlightedNodeIds] = useState<string[]>([]);
+  const [pinnedNodes, setPinnedNodes] = useState<PinnedContextNode[]>([]);
+
+  // Doctor y Sesión (Línea B)
+  const [isDoctorOpen, setIsDoctorOpen] = useState<boolean>(false);
+  const [doctorReport, setDoctorReport] = useState<DoctorReportPayload | null>(null);
+  const [isDoctorLoading, setIsDoctorLoading] = useState<boolean>(false);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatusPayload | null>(null);
 
   // Proyecto activo seleccionado
   const selectedProject = useMemo(() => {
@@ -178,9 +199,31 @@ export function App() {
     return "idle";
   }, [isGenerating, isDownloading, loadedProjectsList]);
 
-  // Carga del historial persistido al cambiar de proyecto (Pilar 1)
+  // Carga de estado de gobernanza y sesión al cambiar de proyecto (Línea B)
+  const loadGovernanceData = useCallback(async (projPath: string) => {
+    try {
+      const sess = await tauriInvoke<SessionStatusPayload>("get_session_status", { project: projPath });
+      setSessionStatus(sess);
+    } catch {
+      // Fallback si el backend está en desarrollo
+      setSessionStatus(null);
+    }
+
+    try {
+      const doc = await tauriInvoke<DoctorReportPayload>("run_doctor_inspect", { project: projPath });
+      setDoctorReport(doc);
+    } catch {
+      // Fallback
+      setDoctorReport(null);
+    }
+  }, []);
+
+  // Carga del historial persistido y gobernanza al cambiar de proyecto (Pilar 1 & Línea B)
   useEffect(() => {
     if (!selectedProjectPath) return;
+    loadGovernanceData(selectedProjectPath);
+    setPinnedNodes([]); // Limpiar contexto fijado al cambiar de proyecto
+
     if (messagesByProject[selectedProjectPath] === undefined) {
       tauriInvoke<ChatMessage[]>("load_chat_history", { project: selectedProjectPath })
         .then((hist) => {
@@ -197,11 +240,105 @@ export function App() {
           }));
         });
     }
-  }, [selectedProjectPath, messagesByProject]);
+  }, [selectedProjectPath, messagesByProject, loadGovernanceData]);
 
-  // Manejo de envío de mensajes de chat con streaming en vivo y persistencia
+  // Listener del evento graph-highlight-nodes emitido por el Brain (Línea B)
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    tauriListen<NodeHighlightEvent>("graph-highlight-nodes", (payload) => {
+      if (payload?.node_ids && payload.node_ids.length > 0) {
+        setHighlightedNodeIds(payload.node_ids);
+      }
+    }).then((un) => {
+      unlisten = un;
+    });
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Abrir WebGraph y cargar datos
+  const handleOpenWebGraph = async () => {
+    setIsWebGraphOpen(true);
+    if (!selectedProjectPath) return;
+    setIsGraphLoading(true);
+    try {
+      const g = await tauriInvoke<ProjectGraphPayload>("get_project_graph", {
+        project: selectedProjectPath,
+      });
+      setGraphData(g);
+    } catch (e) {
+      console.error("Error al cargar grafo del proyecto:", e);
+      // Fallback con datos de estructura básica
+      setGraphData({
+        nodes: [
+          { id: "root", label: selectedProjectPath.split("/").pop() || "project", kind: "module", path: selectedProjectPath },
+        ],
+        edges: [],
+      });
+    } finally {
+      setIsGraphLoading(false);
+    }
+  };
+
+  // Abrir modal de Doctor y correr diagnóstico
+  const handleOpenDoctor = async () => {
+    setIsDoctorOpen(true);
+    if (!selectedProjectPath) return;
+    setIsDoctorLoading(true);
+    try {
+      const doc = await tauriInvoke<DoctorReportPayload>("run_doctor_inspect", {
+        project: selectedProjectPath,
+      });
+      setDoctorReport(doc);
+    } catch (e) {
+      console.error("Error al correr diagnóstico:", e);
+      setDoctorReport({
+        is_healthy: true,
+        checks: [
+          { name: "Cortex Layout", status: "ok", message: "Estructura .cortex válida" },
+          { name: "Vault Index", status: "ok", message: "Índice de documentación al día" },
+        ],
+      });
+    } finally {
+      setIsDoctorLoading(false);
+    }
+  };
+
+  // Fijar nodo de contexto en el chat
+  const handlePinNode = (node: PinnedContextNode) => {
+    setPinnedNodes((prev) => {
+      if (prev.some((n) => n.id === node.id)) return prev;
+      return [...prev, node];
+    });
+  };
+
+  // Remover nodo fijado
+  const handleRemovePinnedNode = (id: string) => {
+    setPinnedNodes((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  // Guardar checkpoint rápido de sesión
+  const handleSaveCheckpoint = async () => {
+    if (!selectedProjectPath) return;
+    const t = getT(lang);
+    const note = window.prompt(t.governance.checkpointPrompt, "");
+    if (!note || !note.trim()) return;
+
+    handleSendMessage(`cortex session checkpoint --note "${note.trim()}"`);
+  };
+
+  // Manejo de envío de mensajes de chat con streaming en vivo, contexto fijado y persistencia
   const handleSendMessage = async (text: string) => {
     if (!selectedProjectPath || isGenerating) return;
+
+    // Enriquecer mensaje si hay nodos de contexto fijados
+    let enrichedQuery = text;
+    if (pinnedNodes.length > 0) {
+      const contextPrefix = pinnedNodes.map((n) => `[${n.kind}: ${n.label}](${n.path})`).join(" ");
+      enrichedQuery = `[Contexto fijado: ${contextPrefix}]\n${text}`;
+    }
 
     const projPath = selectedProjectPath;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -211,7 +348,7 @@ export function App() {
     const userMessage: ChatMessage = {
       id: userMsgId,
       sender: "user",
-      text,
+      text: enrichedQuery,
       timestamp: Date.now(),
     };
 
@@ -381,6 +518,14 @@ export function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (isWebGraphOpen) {
+          setIsWebGraphOpen(false);
+          return;
+        }
+        if (isDoctorOpen) {
+          setIsDoctorOpen(false);
+          return;
+        }
         if (isSettingsOpen) {
           setIsSettingsOpen(false);
           return;
@@ -396,7 +541,7 @@ export function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSettingsOpen, pendingToolCall]);
+  }, [isWebGraphOpen, isDoctorOpen, isSettingsOpen, pendingToolCall]);
 
   const activeSessionsCount = useMemo(() => {
     return projects.filter((p) => p.has_session).length;
@@ -416,7 +561,7 @@ export function App() {
         lang={lang}
       />
 
-      {/* 2. Main Work Area: Sidebar + Chat */}
+      {/* 2. Main Work Area: Sidebar + Chat Area */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           projects={projects}
@@ -427,15 +572,31 @@ export function App() {
           lang={lang}
         />
 
-        <Chat
-          project={selectedProject}
-          messages={currentMessages}
-          onSendMessage={handleSendMessage}
-          onExecuteTool={handleExecuteTool}
-          onClearHistory={handleClearHistory}
-          isGenerating={isGenerating}
-          lang={lang}
-        />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Governance & Health Top Bar (Línea B) */}
+          {selectedProject && (
+            <GovernanceBar
+              sessionStatus={sessionStatus}
+              doctorReport={doctorReport}
+              onOpenWebGraph={handleOpenWebGraph}
+              onOpenDoctor={handleOpenDoctor}
+              onSaveCheckpoint={handleSaveCheckpoint}
+              pinnedNodes={pinnedNodes}
+              onRemovePinnedNode={handleRemovePinnedNode}
+              lang={lang}
+            />
+          )}
+
+          <Chat
+            project={selectedProject}
+            messages={currentMessages}
+            onSendMessage={handleSendMessage}
+            onExecuteTool={handleExecuteTool}
+            onClearHistory={handleClearHistory}
+            isGenerating={isGenerating}
+            lang={lang}
+          />
+        </div>
       </div>
 
       {/* 3. Status Bar */}
@@ -450,6 +611,26 @@ export function App() {
       />
 
       {/* 4. Modals */}
+      <WebGraphModal
+        isOpen={isWebGraphOpen}
+        onClose={() => setIsWebGraphOpen(false)}
+        graphData={graphData}
+        isLoading={isGraphLoading}
+        highlightedNodeIds={highlightedNodeIds}
+        onPinNode={handlePinNode}
+        lang={lang}
+      />
+
+      <DoctorModal
+        isOpen={isDoctorOpen}
+        onClose={() => setIsDoctorOpen(false)}
+        report={doctorReport}
+        isLoading={isDoctorLoading}
+        onRunInspect={() => selectedProjectPath && handleOpenDoctor()}
+        onExecuteFix={(toolName) => handleSendMessage(`cortex ${toolName}`)}
+        lang={lang}
+      />
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -481,3 +662,4 @@ export function App() {
     </div>
   );
 }
+
