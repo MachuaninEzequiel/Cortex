@@ -1,22 +1,22 @@
-# 🦀 Guía de Coexistencia y Migración: Cortex Python a Cortex Rust
+# Guia de Coexistencia y Migracion: Cortex Python a Cortex Rust
 
-> **Para desarrolladores y beta testers:** Esta guía explica cómo probar y utilizar la nueva versión de Cortex en Rust (**Cortex CLI** y **Cortex Brain Desktop**) en paralelo con tu instalación actual de Cortex en Python, **sin romper tus proyectos, sin colisiones de comandos y sin alterar tu configuración previa**.
+> **Para desarrolladores y beta testers:** Esta guia explica como probar y utilizar la nueva version de Cortex en Rust (**Cortex CLI** y **Cortex Brain Desktop**) en paralelo con tu instalacion actual de Cortex en Python, **sin romper tus proyectos, sin colisiones de comandos y sin alterar tu configuracion previa**.
 
 ---
 
-## 🧭 1. Principios de Coexistencia (Zero-Breakage)
+## 1. Principios de Coexistencia (Zero-Breakage)
 
-Cortex Rust fue diseñado bajo el principio de **paridad estricta y coexistencia pacífica**:
+Cortex Rust fue disenado bajo el principio de **paridad estricta y coexistencia pacifica**:
 
 1. **Tu entorno de Python sigue intacto:** El comando global `cortex` (instalado mediante `pipx`) sigue respondiendo exactamente igual en tu terminal.
-2. **Archivos de proyecto compartidos:** Ambas versiones leen y escriben en la misma estructura estándar (`vault/` para notas y `.cortex/` para sesiones y configuración). Ninguna versión corrompe los archivos de la otra.
-3. **Embeddings y Caché Aislados:** El nuevo motor de embeddings valida la identidad y dimensión del modelo; si cambiás entre modelos, el índice se actualiza automáticamente sin mezclar vectores obsoletos.
+2. **Archivos de proyecto compartidos:** Ambas versiones leen y escriben en la misma estructura estandar (`vault/` para notas y `.cortex/` para sesiones y configuracion). Ninguna version corrompe los archivos de la otra.
+3. **Embeddings y Cache Aislados:** El nuevo motor de embeddings valida la identidad y dimension del modelo; si cambias entre modelos, el indice se actualiza automaticamente sin mezclar vectores obsoletos.
 
 ---
 
-## 🧪 2. Estrategia Recomendada: Sandbox / Repositorio de Pruebas
+## 2. Estrategia Recomendada: Sandbox / Repositorio de Pruebas
 
-Para evaluar la nueva versión con total tranquilidad y realizar pruebas comparativas A/B:
+Para evaluar la nueva version con total tranquilidad y realizar pruebas comparativas A/B:
 
 ```bash
 # 1. Clonar tu repositorio en una carpeta de pruebas aislada
@@ -26,25 +26,25 @@ git clone <url-de-tu-repo> ~/pruebas/mi-proyecto-cortex-rust
 cd ~/pruebas/mi-proyecto-cortex-rust
 ```
 
-*(Si no deseás clonar todo el repositorio, simplemente hacé un respaldo rápido de tu carpeta de metadatos: `cp -r .cortex .cortex.backup`).*
+*(Si no deseas clonar todo el repositorio, simplemente realiza un respaldo rapido de tu carpeta de metadatos: `cp -r .cortex .cortex.backup`).*
 
 ---
 
-## 📥 3. Instalación de Cortex Rust
+## 3. Instalacion de Cortex Rust
 
-Tenés dos componentes disponibles: la **Aplicación de Escritorio (Cortex Brain)** y el **CLI Nativo (`cortex-rs`)**.
+Tienes dos componentes disponibles: la **Aplicacion de Escritorio (Cortex Brain)** y el **CLI Nativo (`cortex-rs`)**.
 
-### Opción A: Cortex Brain Desktop (App Gráfica con LLM Local)
+### Opcion A: Cortex Brain Desktop (App Grafica con LLM Local)
 Ideal para explorar el **WebGraph visual**, auditar la salud con **Doctor** y chatear con el modelo local **Liquid LFM2.5**.
 
-* **En Windows:** Descargá `Cortex Brain_<version>_x64-setup.exe` desde la sección [Releases de GitHub](https://github.com/MachuaninEzequiel/Cortex/releases), ejecutá el instalador y abrila desde el Menú Inicio.
-* **En macOS:** Descargá `Cortex Brain_<version>_universal.dmg` (compatible con Apple Silicon M1/M2/M3/M4 e Intel), arrastrá la app a tu carpeta `Applications` y ejecutala.
-* **En Linux:** Descargá el paquete `.deb` (`sudo dpkg -i cortex-brain_amd64.deb`) o ejecutá el binario portable `/ruta/target/release/cortex-brain`.
+* **En Windows:** Descarga `Cortex Brain_<version>_x64-setup.exe` desde la seccion [Releases de GitHub](https://github.com/MachuaninEzequiel/Cortex/releases), ejecuta el instalador y abrelo desde el Menu Inicio.
+* **En macOS:** Descarga `Cortex Brain_<version>_universal.dmg` (compatible con Apple Silicon M1/M2/M3/M4 e Intel), arrastra la app a tu carpeta `Applications` y ejecutala.
+* **En Linux:** Descarga el paquete `.deb` (`sudo dpkg -i cortex-brain_amd64.deb`) o ejecuta el binario portable `/ruta/target/release/cortex-brain`.
 
 ---
 
-### Opción B: CLI Nativo de Rust (`cortex-rs`)
-Si querés compilar e instalar el CLI nativo en tu sistema sin sobreescribir el comando `cortex` de Python:
+### Opcion B: CLI Nativo de Rust (`cortex-rs`)
+Si deseas compilar e instalar el CLI nativo en tu sistema sin sobreescribir el comando `cortex` de Python:
 
 ```bash
 # 1. Clonar y compilar Cortex Rust
@@ -61,16 +61,16 @@ cp target/release/cortex-cli ~/.local/bin/cortex-rs
 cp target/release/cortex-brain ~/.local/bin/cortex-brain
 ```
 
-> **Verificación de comandos en tu terminal:**
-> * `cortex --version` $\to$ Ejecuta la versión de **Python** (`~/.local/bin/cortex`).
-> * `cortex-rs --version` $\to$ Ejecuta la versión de **Rust** (`~/.local/bin/cortex-rs`).
-> * `cortex-brain` $\to$ Lanza la **App de Escritorio**.
+> **Verificacion de comandos en tu terminal:**
+> * `cortex --version` -> Ejecuta la version de **Python** (`~/.local/bin/cortex`).
+> * `cortex-rs --version` -> Ejecuta la version de **Rust** (`~/.local/bin/cortex-rs`).
+> * `cortex-brain` -> Lanza la **App de Escritorio**.
 
 ---
 
-## 🤖 4. Desplegar los Nuevos Agentes y Skills
+## 4. Desplegar los Nuevos Agentes y Skills
 
-En tu repositorio de prueba, desplegá la nueva arquitectura de **Skills Composed** (inspirada en los estándares abiertos de Matt Pocock) y la tríada reestructurada de agentes:
+En tu repositorio de prueba, despliega la nueva arquitectura de **Skills Composed** (inspirada en los estandares abiertos de Matt Pocock) y la triada reestructurada de agentes:
 
 ```bash
 cd ~/pruebas/mi-proyecto-cortex-rust
@@ -78,12 +78,12 @@ cd ~/pruebas/mi-proyecto-cortex-rust
 # 1. Inicializar la estructura base de gobernanza y vault
 cortex-rs setup init
 
-# 2. Desplegar la Tríada Thin + Craft y la Familia Composed
+# 2. Desplegar la Triada Thin + Craft y la Familia Composed
 cortex-rs setup composed
 ```
 
-### ¿Qué instala este comando?
-1. **Tríada de Agentes Thin + Craft On-Demand:**
+### Que instala este comando?
+1. **Triada de Agentes Thin + Craft On-Demand:**
    * `/cortex-sync` (`cortex-sync.md`) con proposal mode y pericia en `cortex-sync-spec-craft.md`.
    * `/cortex-SDDwork` (`cortex-SDDwork.md`) con pericia en `cortex-SDDwork-implement-craft.md`.
    * `/cortex-documenter` (`cortex-documenter.md`) con pericia en `cortex-documenter-close-craft.md`.
@@ -91,11 +91,11 @@ cortex-rs setup composed
 
 ---
 
-## 🔌 5. Configurar el Servidor MCP en tu IDE / Agente
+## 5. Configurar el Servidor MCP en tu IDE / Agente
 
-Los clientes de IA (Claude Code, Cursor, Windsurf, Codex, etc.) se conectan a Cortex vía **transporte stdio**. Podés alternar qué servidor usar fácilmente:
+Los clientes de IA (Claude Code, Cursor, Windsurf, Codex, etc.) se conectan a Cortex via **transporte stdio**. Puedes alternar que servidor usar facilmente:
 
-### Método 1: Automático mediante `ide setup`
+### Metodo 1: Automatico mediante `ide setup`
 En tu carpeta de proyecto:
 * **Para usar el MCP de Rust:**
   ```bash
@@ -106,7 +106,7 @@ En tu carpeta de proyecto:
   cortex ide setup cursor
   ```
 
-### Método 2: Manual por Proyecto (`.mcp.json`)
+### Metodo 2: Manual por Proyecto (`.mcp.json`)
 En el archivo `.mcp.json` de tu proyecto:
 ```json
 {
@@ -119,21 +119,21 @@ En el archivo `.mcp.json` de tu proyecto:
 }
 ```
 
-> **Compatibilidad garantizada:** Ambas versiones exponen exactamente el mismo catálogo de **32 tools canónicas** (`cortex_sync_ticket`, `cortex_create_spec`, `cortex_session_checkpoint`, `cortex_search_semantic`, etc.). Tus prompts y agentes funcionarán de forma idéntica, pero con latencias de respuesta en sub-milisegundos en Rust.
+> **Compatibilidad garantizada:** Ambas versiones exponen exactamente el mismo catalogo de **32 tools canonicas** (`cortex_sync_ticket`, `cortex_create_spec`, `cortex_session_checkpoint`, `cortex_search_semantic`, etc.). Tus prompts y agentes funcionaran de forma identica, pero con latencias de respuesta en sub-milisegundos en Rust.
 
 ---
 
-## 🧬 6. Embeddings ONNX y Modelos por Idioma
+## 6. Embeddings ONNX y Modelos por Idioma
 
 Es importante distinguir los dos tipos de modelos que utiliza Cortex:
 
 1. **LLM Conversacional de Chat (GGUF):** Utilizado exclusivamente dentro de la app Cortex Brain (*Liquid LFM2.5 1.2B*).
-2. **Embeddings de Búsqueda Semántica (ONNX):** Utilizado por el CLI y MCP para vectorizar notas en `vault/` y la memoria episódica.
+2. **Embeddings de Busqueda Semantica (ONNX):** Utilizado por el CLI y MCP para vectorizar notas en `vault/` y la memoria episodica.
 
 ### Enrutamiento por Idioma (`config.yaml`)
-Cortex detecta automáticamente el idioma de tus consultas y documentos:
-* **Inglés (`en`):** Usa `all-MiniLM-L6-v2` (384 dimensiones).
-* **Español (`es`):** Usa `intfloat/multilingual-e5-large` (1024 dimensiones) para máxima precisión de búsqueda y retrieval.
+Cortex detecta automaticamente el idioma de tus consultas y documentos:
+* **Ingles (`en`):** Usa `all-MiniLM-L6-v2` (384 dimensiones).
+* **Espanol (`es`):** Usa `intfloat/multilingual-e5-large` (1024 dimensiones) para maxima precision de busqueda y retrieval.
 
 ```yaml
 embedding:
@@ -147,15 +147,15 @@ embedding:
       backend: fastembed
 ```
 
-> **¿Qué pasa con mis documentos anteriores?**
-> Gracias a la clave salada con identidad de modelo (`sha256(model_name + schema_version + texto)`), si el sistema detecta un cambio de modelo o dimensión, re-indexa los documentos en limpio sin corromper el caché anterior.
+> **Que pasa con mis documentos anteriores?**
+> Gracias a la clave salada con identidad de modelo (`sha256(model_name + schema_version + texto)`), si el sistema detecta un cambio de modelo o dimension, re-indexa los documentos en limpio sin corromper el cache anterior.
 
 ---
 
-## ⏪ 7. Rollback Inmediato (¿Cómo volver atrás?)
+## 7. Rollback Inmediato (Como volver atras)
 
-Si en algún momento querés regresar 100% al flujo previo de Python:
+Si en algun momento deseas regresar 100% al flujo previo de Python:
 
-1. **En tu IDE:** Ejecutá `cortex ide setup <tu-ide>` para restaurar el comando `"cortex"`.
-2. **En tu terminal:** Seguí usando `cortex` (que apunta a tu instalación de pipx).
-3. **En Git:** Todas las versiones estables anteriores permanecen intactas en los tags de Git (`v0.5.0-baseline-seal`, `v1.0.0`, `v2.0.0`). Podés volver a cualquier commit previo con `git checkout <tag>`.
+1. **En tu IDE:** Ejecuta `cortex ide setup <tu-ide>` para restaurar el comando `"cortex"`.
+2. **En tu terminal:** Sigue usando `cortex` (que apunta a tu instalacion de pipx).
+3. **En Git:** Todas las versiones estables anteriores permanecen intactas en los tags de Git (`v0.5.0-baseline-seal`, `v1.0.0`, `v2.0.0`). Puedes volver a cualquier commit previo con `git checkout <tag>`.

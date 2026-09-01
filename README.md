@@ -12,7 +12,7 @@
   </p>
 
   <p>
-    <a href="README.md">🇬🇧 English</a> · <a href="README.es.md">🇪🇸 Español</a> · <a href="docs/GUIA-MIGRACION-RUST.md">🦀 Migration Guide (Python → Rust)</a>
+    <a href="README.md">English</a> · <a href="README.es.md">Español</a> · <a href="docs/GUIA-MIGRACION-RUST.md">Migration Guide (Python -> Rust)</a>
   </p>
 
   <p>
@@ -27,7 +27,42 @@
 
 ---
 
-## 🖥️ Cortex Brain Desktop App
+## What is Cortex
+
+Cortex is a **memory and governance layer for AI agents**. It lives in your repository and gives every agent you use — Claude Code, Cursor, Codex, OpenCode, Pi, or any MCP-capable tool — the same persistent context, disciplined workflow and verifiable closure that a well-run engineering team has: *specs -> verified work -> documented sessions*.
+
+Everything runs **on your machine**. The core experience needs no API keys, no cloud, no telemetry: a native binary (Rust), your vault as markdown, and — optionally — a local LLM speaking your project's language.
+
+---
+
+## Why it exists
+
+AI agents are powerful and amnesiac. Each session starts from zero: they forget decisions, lose context between tasks, and rarely leave behind verifiable evidence of what was done. The more agents you use, the worse the fragmentation.
+
+Cortex solves the three failures that make agent work unreliable at scale:
+
+| Failure | What Cortex does |
+| :--- | :--- |
+| **Amnesia** | Sessions persist every decision and outcome as hybrid memory (episodic + semantic), searchable in two languages. |
+| **No discipline** | Every unit of work is a spec-driven Session with checkpoints, quality gates and a verifiable close. "Done" means *proven*, not *said*. |
+| **No shared context** | The same vault, sessions and rules are read by every agent through the CLI and the MCP server — a single source of truth per project. |
+
+---
+
+## Life inside Cortex
+
+A Session is the unit of work. It opens from a spec, records checkpoints as you advance, and closes only when verification passes:
+
+```text
+open a session  ->  cortex session current / checkpoint / task
+do the work     ->  your agent, your IDE, your way
+close it        ->  cortex finish            (verification hooks run)
+next?           ->  cortex next              (the Action Engine suggests)
+```
+
+---
+
+## Cortex Brain Desktop App
 
 **Cortex Brain** is a lightweight, interactive standalone desktop application built with **Tauri 2 + React + Rust**, equipped with in-process local inference via `llama.cpp` and the **Liquid LFM2.5 1.2B Instruct** model:
 
@@ -35,18 +70,18 @@
   <img src="assets/shots/cortex-brain-main.png" alt="Cortex Brain Desktop App" width="95%" />
 </div>
 
-### ✨ Core Capabilities of Cortex Brain
+### Core Capabilities of Cortex Brain
 
-* **🧠 In-Process Local LLM (100% Offline):** Powered by **Liquid LFM2.5 1.2B Instruct (Q4_K_M)** (~712 MB in RAM). Responds with sub-second latency with zero cloud dependencies and no data ever leaving your machine.
-* **🕸️ Interactive Orbital WebGraph:** Real-time visual topology mapping files, modules, requirement specs, and architecture ADRs across your repository.
-* **🛡️ Live Cortex Doctor Audit:** Continuous health monitoring for workspace structure, active sessions, vector index consistency, and LLM state.
-* **🚀 Global Floating Launcher (`Ctrl + Shift + B`):** Summon or hide Cortex Brain instantly from any code editor (VSCode, Cursor, Zed) or browser with a global shortcut and *Always-on-Top* mode.
-* **⚡ Autonomous Safe Tool Protocol:** Read-only inspection tools (`vault.stats`, `memory.search`, `git.status`, `doctor.inspect`) run autonomously to enrich responses, while mutating actions require explicit user approval.
-* **🍃 Zero RAM Overhead (Auto-Unload):** Automatically unloads the model from RAM after 90 seconds of inactivity, freeing system resources until your next query.
+* **In-Process Local LLM (100% Offline):** Powered by **Liquid LFM2.5 1.2B Instruct (Q4_K_M)** (~712 MB in RAM). Responds with sub-second latency with zero cloud dependencies and no data ever leaving your machine.
+* **Interactive Orbital WebGraph:** Real-time visual topology mapping files, modules, requirement specs, and architecture ADRs across your repository.
+* **Live Cortex Doctor Audit:** Continuous health monitoring for workspace structure, active sessions, vector index consistency, and LLM state.
+* **Global Floating Launcher (Ctrl + Shift + B):** Summon or hide Cortex Brain instantly from any code editor (VSCode, Cursor, Zed) or browser with a global shortcut and *Always-on-Top* mode.
+* **Autonomous Safe Tool Protocol:** Read-only inspection tools (`vault.stats`, `memory.search`, `git.status`, `doctor.inspect`) run autonomously to enrich responses, while mutating actions require explicit user approval.
+* **Zero RAM Overhead (Auto-Unload):** Automatically unloads the model from RAM after 90 seconds of inactivity, freeing system resources until your next query.
 
 ---
 
-## 🕸️ Visual Project WebGraph
+## Visual Project WebGraph
 
 The **WebGraph** parses your repository AST and markdown vault to construct an interactive orbital knowledge map:
 
@@ -60,7 +95,7 @@ The **WebGraph** parses your repository AST and markdown vault to construct an i
 
 ---
 
-## 🛡️ Health & Governance: Cortex Doctor
+## Health & Governance: Cortex Doctor
 
 Keep your codebase and governance in top health with continuous automated audits:
 
@@ -74,7 +109,7 @@ Keep your codebase and governance in top health with continuous automated audits
 
 ---
 
-## 🧬 Hybrid Cognitive Memory & ONNX Embeddings
+## Hybrid Cognitive Memory & ONNX Embeddings
 
 Cortex merges **lexical BM25 search** with **dense semantic vector retrieval** using native **ONNX Runtime (`ort`)**:
 
@@ -99,12 +134,12 @@ graph TD
 
 ---
 
-## 🤖 Agent Triad & Composed Skills (Matt Pocock Standard)
+## Agent Triad & Composed Skills (Matt Pocock Standard)
 
 Cortex adopts a modern phased workflow (`CheckpointPhase`) inspired by open skill standards:
 
 ```text
-Grill (Clarify) → Spec (Specify) → Plan (Decompose) → Implement (TDD) → Review (Verify) → Close (Document)
+Grill (Clarify) -> Spec (Specify) -> Plan (Decompose) -> Implement (TDD) -> Review (Verify) -> Close (Document)
 ```
 
 1. **Thin + Craft On-Demand Triad:**
@@ -116,7 +151,7 @@ Grill (Clarify) → Spec (Specify) → Plan (Decompose) → Implement (TDD) → 
 
 ---
 
-## 🔌 Universal MCP Server (32 Canonical Tools)
+## Universal MCP Server (32 Canonical Tools)
 
 Cortex exposes **32 canonical tools** over stdio transport to any MCP client (**Claude Code, Cursor, Windsurf, Codex, OpenCode, Pi, Antigravity**):
 
@@ -139,9 +174,9 @@ Configuration in `.mcp.json`:
 
 ---
 
-## 📦 Downloads & Installation
+## Downloads & Installation
 
-### 🖥️ 1. Cortex Brain Desktop Installers (Releases)
+### 1. Cortex Brain Desktop Installers (Releases)
 
 Download ready-to-run releases from [GitHub Releases](https://github.com/MachuaninEzequiel/Cortex/releases):
 
@@ -151,7 +186,7 @@ Download ready-to-run releases from [GitHub Releases](https://github.com/Machuan
 
 ---
 
-### ⚡ 2. Building the Native Rust CLI (`cortex-rs`)
+### 2. Building the Native Rust CLI (`cortex-rs`)
 
 To compile the Rust CLI and run it side-by-side with your Python version:
 
@@ -169,10 +204,10 @@ cp target/release/cortex-cli ~/.local/bin/cortex-rs
 cp target/release/cortex-brain ~/.local/bin/cortex-brain
 ```
 
-> 📖 For detailed instructions on running Python and Rust concurrently with zero conflicts, read the [**Coexistence & Migration Guide**](docs/GUIA-MIGRACION-RUST.md).
+> For detailed instructions on running Python and Rust concurrently with zero conflicts, read the [**Coexistence & Migration Guide**](docs/GUIA-MIGRACION-RUST.md).
 
 ---
 
-## 📜 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
