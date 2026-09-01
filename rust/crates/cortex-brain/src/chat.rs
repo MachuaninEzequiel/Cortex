@@ -18,6 +18,24 @@ pub trait LlmBackend {
     /// Genera la próxima respuesta del asistente. `prompt` ya incluye el
     /// contexto conversacional; `tools_help` es el catálogo renderizado.
     fn generate(&mut self, prompt: &str, tools_help: &str) -> Result<String, String>;
+
+    /// Modo streaming: el callback recibe cada fragmento a medida que
+    /// se genera. Default = `generate` y emitir TODO en un solo
+    /// callback (compatibilidad hacia atrás; doc 19 §3.2). Sólo los
+    /// backends que generan de a piezas (llama.cpp) lo overridean.
+    /// `&mut dyn` (y no `impl Fn`) para mantener el trait
+    /// dyn-compatible (`Box<dyn LlmBackend>` se usa en binario,
+    /// companion y brain-app).
+    fn generate_streaming(
+        &mut self,
+        prompt: &str,
+        tools_help: &str,
+        on_piece: &mut dyn FnMut(&str),
+    ) -> Result<String, String> {
+        let full = self.generate(prompt, tools_help)?;
+        on_piece(&full);
+        Ok(full)
+    }
 }
 
 /// Backend FALSO scriptado: devuelve respuestas encoladas en orden y falla
@@ -239,4 +257,22 @@ pub fn help_text() -> String {
         ));
     }
     crate::i18n::ayuda(lang, &tools_render)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// El default del trait es la red de seguridad de compatibilidad:
+    /// emite la respuesta completa en UNA pieza (doc 19 §3.5).
+    #[test]
+    fn streaming_default_emite_todo_en_una_pieza() {
+        let mut backend = ScriptedBackend::new("test", ["respuesta completa"]);
+        let mut piezas: Vec<String> = Vec::new();
+        let out = backend
+            .generate_streaming("hola", "", &mut |p| piezas.push(p.to_string()))
+            .expect("streaming");
+        assert_eq!(out, "respuesta completa");
+        assert_eq!(piezas, vec!["respuesta completa"]);
+    }
 }

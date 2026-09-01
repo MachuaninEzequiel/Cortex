@@ -9,8 +9,10 @@
 //!   detectados desde el cache y sale (G-A3).
 //! - sin flag reconocido                    ⇒ GUI Tauri (default).
 
+use std::io::Write as _;
 use std::process::ExitCode;
 
+use cortex_brain_app::chat;
 use cortex_brain_app::ipc::{
     read_json_line, write_json_line, ConnectError, QueryRequest, QueryResponse,
 };
@@ -150,27 +152,66 @@ fn run_query_client(argv: &[String]) -> ExitCode {
         }
     }
 
-    if received.is_empty() {
+    // G-A6: los chunks llegan ANTES del done (streaming). Se imprimen
+    // en vivo; el done lleva el texto final procesado (autoritativo,
+    // con la salida de las tools integrada).
+    let mut chunks: usize = 0;
+    let mut saw_done = false;
+    let mut final_text = String::new();
+    let mut final_tool_calls: Option<Vec<chat::ToolCall>> = None;
+    let mut error_msg: Option<String> = None;
+    loop {
+        match read_json_line::<QueryResponse, _>(&mut read) {
+            Ok(Some(resp)) => match resp.kind.as_str() {
+                "chunk" => {
+                    print!("{}", resp.text);
+                    let _ = std::io::stdout().flush();
+                    chunks += 1;
+                }
+                "done" => {
+                    saw_done = true;
+                    final_text = resp.text;
+                    final_tool_calls = resp.tool_calls;
+                }
+                "error" => error_msg = Some(resp.text),
+                _ => {}
+            },
+            Ok(None) => break,
+            Err(e) => {
+                eprintln!("cortex-brain: error al leer: {e}");
+                break;
+            }
+        }
+    }
+
+    if let Some(msg) = error_msg {
+        eprintln!("cortex-brain: error del server: {msg}");
+        return ExitCode::SUCCESS;
+    }
+    if !saw_done && chunks == 0 {
         eprintln!(
             "cortex-brain: query enviada pero el server no respondió nada.\n\
              query: {text:?}"
         );
-    } else {
-        for r in &received {
-            if r.kind == "error" {
-                eprintln!("cortex-brain: error del server: {}", r.text);
-                continue;
-            }
-            print!("{}", r.text);
-            if let Some(tool_calls) = &r.tool_calls {
-                for tc in tool_calls {
-                    // Patrón del motor (doc 19 §3.3): el TOOL propuesto
-                    // se muestra como línea aparte. En G-A4 ya se ejecutó
-                    // si era read; safe-action queda propuesta.
-                    println!("> TOOL: {} {}", tc.tool, tc.args);
-                }
-            }
+        return ExitCode::SUCCESS;
+    }
+    if chunks == 0 {
+        // Respuesta batch (server viejo): comportamiento G-A4.
+        print!("{final_text}");
+    }
+    if let Some(tcs) = &final_tool_calls {
+        for tc in tcs {
+            // Patrón del motor (doc 19 §3.3): el TOOL propuesto se
+            // muestra como línea aparte. Se ejecutó si era read;
+            // safe-action queda propuesta.
+            println!("> TOOL: {} {}", tc.tool, tc.args);
+        }
+        if chunks > 0 {
+            // Con streaming la salida de la tool NO viaja en los
+            // chunks (viajó el texto crudo): el done la trae procesada.
+            print!("{final_text}");
         }
     }
+    let _ = std::io::stdout().flush();
     ExitCode::SUCCESS
 }

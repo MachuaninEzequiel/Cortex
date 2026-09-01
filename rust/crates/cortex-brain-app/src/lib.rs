@@ -83,10 +83,11 @@ async fn chat_turn(
 }
 
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
-/// responde `done`/`error`; después cierra (un request por conexión;
-/// el streaming multi-mensaje llega en G-A6). Con esto el cliente
-/// `--query` del binario funciona end-to-end: manda, lee hasta EOF,
-/// imprime.
+/// responde. Con G-A6 el backend streaming emite piezas: cada una sale
+/// por el socket como `chunk` EN VIVO, después va el `done`/`error`
+/// final y se cierra (un request por conexión; los chunks viajan por
+/// la MISMA conexión). El `done.text` es el texto procesado
+/// autoritativo (con la salida de las tools ya integrada).
 fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
     use std::io::BufReader;
     let (raw_read, mut write) = match conn.into_split() {
@@ -105,7 +106,19 @@ fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
             return;
         }
     };
-    let response = match engine.respond(&req.project, &req.text) {
+    let request_id = req.request_id.clone();
+    let result = engine.respond_streaming(&req.project, &req.text, &mut |piece: &str| {
+        let chunk = ipc::QueryResponse {
+            kind: "chunk".into(),
+            text: piece.to_string(),
+            request_id: request_id.clone(),
+            tool_calls: None,
+        };
+        if let Err(e) = ipc::write_json_line(&mut write, &chunk) {
+            eprintln!("ipc: no pude mandar chunk: {e}");
+        }
+    });
+    let response = match result {
         Ok(turn) => ipc::QueryResponse {
             kind: "done".into(),
             text: turn.text,
@@ -285,7 +298,18 @@ mod tests {
         drop(write); // EOF del cliente: el server ya respondió igual
 
         let mut br = BufReader::new(read);
-        let resp: ipc::QueryResponse = ipc::read_json_line(&mut br).unwrap().expect("respuesta");
+        // G-A6: SIEMPRE llega al menos un chunk antes del done (el
+        // default del trait emite el texto completo como una pieza).
+        let mut chunks: Vec<String> = Vec::new();
+        let resp = loop {
+            let msg: ipc::QueryResponse = ipc::read_json_line(&mut br).unwrap().expect("mensaje");
+            match msg.kind.as_str() {
+                "chunk" => chunks.push(msg.text),
+                "done" => break msg,
+                other => panic!("mensaje inesperado: {other}"),
+            }
+        };
+        assert_eq!(chunks, vec!["eco desde el motor"], "batch ⇒ 1 pieza");
         assert_eq!(resp.kind, "done");
         assert_eq!(resp.request_id, "r-e2e-1");
         assert_eq!(resp.text.trim(), "eco desde el motor");
@@ -293,6 +317,77 @@ mod tests {
             resp.tool_calls.is_none(),
             "script sin TOOL ⇒ sin tool_calls"
         );
+
+        server_thread.join().unwrap();
+        unsafe {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn server_streaming_chunks_antes_del_done() {
+        use crate::ipc;
+        use std::io::BufReader;
+
+        let _env_lock = ipc::tests::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let tmp = std::env::temp_dir().join(format!("cortex-brain-e2e-s-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let xdg = tmp.join("runtime");
+        std::fs::create_dir_all(&xdg).unwrap();
+        unsafe {
+            std::env::set_var("XDG_RUNTIME_DIR", &xdg);
+        }
+
+        let project = tmp.join("proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let engine = chat::BrainEngine::new();
+        engine.insert_backend(
+            &project.to_string_lossy(),
+            Box::new(chat::tests::PiezasBackend {
+                piezas: vec!["La ".into(), "sesión ".into(), "está activa".into()],
+            }),
+        );
+
+        let server = ipc::try_bind().expect("bind");
+        let server_thread = std::thread::spawn(move || {
+            let conn = server.accept().unwrap();
+            handle_connection(conn, &engine);
+        });
+
+        let client = ipc::try_connect().expect("connect");
+        let conn = client.into_connection();
+        let (read, mut write) = conn.into_split().unwrap();
+        let req = ipc::QueryRequest {
+            kind: "query".into(),
+            project: project.to_string_lossy().into_owned(),
+            text: "estado".into(),
+            request_id: "r-s1".into(),
+        };
+        ipc::write_json_line(&mut write, &req).unwrap();
+        drop(write);
+
+        let mut br = BufReader::new(read);
+        let mut chunks: Vec<String> = Vec::new();
+        let done = loop {
+            let msg: ipc::QueryResponse = ipc::read_json_line(&mut br).unwrap().expect("mensaje");
+            match msg.kind.as_str() {
+                "chunk" => chunks.push(msg.text),
+                "done" => break msg,
+                other => panic!("mensaje inesperado: {other}"),
+            }
+        };
+
+        // El criterio de pase del gate: la respuesta aparece
+        // INCREMENTALMENTE (3 chunks ANTES del done), no de golpe.
+        assert_eq!(chunks, vec!["La ", "sesión ", "está activa"]);
+        assert_eq!(done.request_id, "r-s1");
+        assert_eq!(done.text.trim(), "La sesión está activa");
+        assert!(done.tool_calls.is_none());
 
         server_thread.join().unwrap();
         unsafe {

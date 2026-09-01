@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A5
+# 21 — Cortex Brain App: estado al cierre de G-A6
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A5, listo para G-A6.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A6, listo para G-A7.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -51,7 +51,7 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A3 | Scan recursivo de proyectos | ✅ **HECHO** (este commit) |
 | G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (este commit) |
 | G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (este commit) |
-| G-A6 | Streaming por IPC (chunks) | ⏳ |
+| G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (este commit) |
 | G-A7 | UI completa (sidebar, chat, status bar, settings) | ⏳ |
 | G-A8 | Descarga de modelos en UI | ⏳ |
 | G-A9 | Single-instance + IPC cliente | ⏳ (G-A2 hace single-instance; G-A9 cablea el forward to running) |
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(tauri): integración Liquid real con feature llama (G-A5)
+(este commit) brain(chat): streaming de tokens + IPC chunks (G-A6)
+c500ff5 app(tauri): integración Liquid real con feature llama (G-A5)
 4b23dd1 app(tauri): chat in-process con el motor cortex_brain (G-A4)
 5c00691 app(tauri): scan recursivo de proyectos con cache (G-A3)
 f3efa5d app(tauri): IPC esqueleto JSON-lines por Unix socket (G-A2)
@@ -188,7 +189,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 
 ---
 
-## 6. Lo que la app YA hace (G-A1 a G-A5)
+## 6. Lo que la app YA hace (G-A1 a G-A6)
 
 1. Abre una ventana Tauri 1100×720 con "Hello, Cortex Brain" en el centro.
 2. Al setup, bindea un Unix socket en `~/.cache/cortex-brain.sock`
@@ -229,14 +230,16 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 14. Smoke real verificado (G-A5): el GGUF carga en ~0.5s, el modelo
     responde, y el protocolo TOOL rechaza con gracia una tool
     inexistente (el modelo sugirió `doctor`, fuera del catálogo).
+15. Streaming real por IPC (G-A6): las piezas que genera llama.cpp
+    salen como mensajes `chunk` EN VIVO por el socket, antes del
+    `done` final (texto procesado autoritativo + tool_calls). El
+    cliente `--query` las imprime en vivo con flush. Verificado con
+    el modelo real: 6 piezas en un turno.
 
 ---
 
 ## 7. Lo que la app TODAVÍA NO hace
 
-- ❌ No streamea tokens al cliente (G-A6): la respuesta llega de una
-  pieza; el motor ya expone `generate_streaming` (doc 19 §3) para
-  cablear los chunks.
 - ❌ UI mínima: sólo el placeholder, sin sidebar, sin chat real,
   sin status bar con `MarkRam` (G-A7).
 - ❌ No descarga modelos desde la UI (G-A8).
@@ -248,7 +251,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 
 ---
 
-## 8. Estructura del repo al cierre de G-A5
+## 8. Estructura del repo al cierre de G-A6
 
 ```
 /home/chucho/Cortex/
@@ -565,21 +568,97 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
   del LFM2.5. El camino de engine es exactamente el que cubre el
   smoke ignorado.
 
-## 14. Próximo gate (G-A6): streaming de tokens por IPC
+## 14. G-A6: streaming de tokens por IPC (cerrado)
 
-Del doc 20 §7: `LlamaChatBackend::generate_streaming` (ya existe en
-el motor, doc 19 §3) emite chunks; el server IPC los manda como
-mensajes `chunk` al cliente, el frontend los renderea. Requiere
-revisar el modelo "un request por conexión" del G-A4: los chunks
-viajan por la MISMA conexión hasta el `done` final.
+### Lo que se creó
 
-Criterio de pase: la respuesta aparece incrementalmente, no de
-golpe (test con backend que emite piezas + test del envelope
-`chunk`).
+**Hallazgo previo:** el doc 20 asumía que `generate_streaming` ya
+existía en el motor ("definido en C-L2"), pero nunca se implementó
+(los checkboxes del doc 19 §3 quedaron en `[ ]`). El `on_piece`
+existe en `generate_raw` de llama.rs pero era privado y descartado.
+Con autorización explícita del dueño se tocó cortex-brain
+mínimamente (única excepción al "no tocar crates hermanos" de la
+obra).
+
+**Motor `cortex-brain`** (doc 19 §3.2-3.3, tal cual estaba
+prescrito):
+- `LlmBackend::generate_streaming(prompt, tools_help, on_piece: &mut
+  dyn FnMut(&str))` con default que delega en `generate` y emite
+  todo en una pieza (backward-compatible; companion no se rompe).
+  `&mut dyn` y no `impl Fn` para mantener el trait dyn-compatible
+  (`Box<dyn LlmBackend>` se usa en el binario, companion y app).
+- Override en `LlamaChatBackend`: `turn()` compartido (push user →
+  `complete_turn(on_piece)` vía `generate_raw` → push assistant);
+  `generate` batch = `turn` con callback no-op.
+- Test unit: el default emite la respuesta completa en UNA pieza
+  (doc 19 §3.5).
+
+**App `cortex-brain-app`**:
+- `BrainEngine::respond_streaming(project, text, on_piece)`: mismo
+  flujo que `respond` (reap → chdir → i18n → turno → TOOL protocol)
+  pero con `generate_streaming`; `respond` delega con callback
+  no-op. Las piezas son la respuesta CRUDA (incluye `TOOL:` si el
+  modelo la produce); `ChatTurn::text` sigue siendo el texto
+  procesado autoritativo.
+- `handle_connection`: cada pieza sale por el socket como
+  `{type:chunk, text:…, request_id}` EN VIVO, después el `done`
+  final y cierre. Sigue un-request-por-conexión (los chunks viajan
+  por la misma conexión).
+- Cliente `--query`: chunks se imprimen en vivo con flush; en
+  `done`: si hubo tool_calls imprime `> TOOL: …` y re-imprime el
+  texto final procesado (la salida de las read-tools NO viaja en los
+  chunks — viajó el crudo — así no se pierde); sin chunks (server
+  viejo) mantiene el comportamiento G-A4.
+- Tests: backend de piezas propio (`PiezasBackend`, streaming real
+  de a piezas), e2e del server (3 chunks ANTES del done, concat ==
+  crudo, done == procesado), y el smoke real extendido a contar
+  piezas > 1 con el LFM2.5.
+
+### Verificación
+
+- Motor: `cargo test -p cortex-brain` **70/70**, `cargo test -p
+  cortex-companion` **38/38** (consume el trait, sin breakage),
+  clippy + fmt rc 0 en ambos.
+- App sin feature: `cargo test -p cortex-brain-app` **31/31** (29 lib
+  + 2 smoke), clippy + fmt rc 0.
+- App con feature: suite completa rc 0; **smoke real**: GGUF cargado
+  en ~0.7s y **6 piezas** generadas en un turno (streaming real
+  demostrado); el modelo sugirió `TOOL: cortex.health` (correcta),
+  se auto-ejecutó y la salida del doctor quedó integrada en el
+  `done` — pipeline completo end-to-end.
+
+### Notas
+
+- **Backends batch también emiten un chunk** (el default del trait
+  emite todo en una pieza): el contrato es "siempre hay chunks antes
+  del done; el done es autoritativo". Los clientes reconcilian con
+  el done.
+- Sin batching de 16ms (doc 20 §10): llama.cpp en CPU emite piezas a
+  ritmo humano sobre un socket local; batching = optimización
+  futura.
+- La salida de las read-tools (procesada en el server) viaja SOLO en
+  el `done`; los chunks son crudos. El CLI re-imprime el done cuando
+  hay tool_calls para no perderla.
+
+### Smoke que NO pude verificar yo
+
+- **Rendering en vivo del frontend** (G-A7 lo cablea): el protocolo
+  y el CLI ya están verificados; queda el efecto typewriter del doc
+  20 §5 del lado de React.
+
+## 15. Próximo gate (G-A7): UI completa
+
+Del doc 20 §7: top bar, sidebar, chat, status bar, settings modal,
+todo conectado. Con lo ya construido: `list_projects`/
+`refresh_projects` alimentan la sidebar; `chat_turn` + chunks
+alimentan el chat en vivo (reconciliar con el `done`);
+`reap_idle()`/`loaded_projects()` para el status bar con `MarkRam`.
+
+Criterio de pase: snapshot test de la UI; click flows cubiertos.
 
 ---
 
-## 15. Referencias rápidas
+## 16. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`

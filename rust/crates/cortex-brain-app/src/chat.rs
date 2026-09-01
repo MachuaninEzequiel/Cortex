@@ -189,14 +189,33 @@ impl BrainEngine {
         });
     }
 
-    /// Atiende un turno de chat para `project`. Espeja el loop del
-    /// binario del motor (main.rs): `generate(texto, catálogo)` →
-    /// `procesar_respuesta_modelo`. Serializado por el lock interno:
-    /// el chdir y el i18n global de proceso son seguros acá dentro.
+    /// Atiende un turno de chat para `project` (modo batch). Espeja
+    /// el loop del binario del motor (main.rs): `generate(texto,
+    /// catálogo)` → `procesar_respuesta_modelo`. Serializado por el
+    /// lock interno: el chdir y el i18n global de proceso son seguros
+    /// acá dentro.
     ///
     /// `project` vacío = sin contexto de proyecto (no hay chdir ni
     /// re-detección de idioma; útil para queries sin `--project`).
     pub fn respond(&self, project: &str, text: &str) -> Result<ChatTurn, String> {
+        self.respond_streaming(project, text, &mut |_p: &str| {})
+    }
+
+    /// Igual que [`respond`](Self::respond) pero en modo streaming
+    /// (G-A6): cada pieza que genera el backend sale por `on_piece` a
+    /// medida que se genera. Con backends batch (determinista, o el
+    /// default del trait) se emite una única pieza con todo el texto.
+    ///
+    /// Las piezas son la respuesta CRUDA del modelo (incluye líneas
+    /// `TOOL:` si el modelo las produce); `ChatTurn::text` sigue
+    /// siendo el texto procesado autoritativo (con la salida de las
+    /// tools ya integrada) que viaja en el `done`.
+    pub fn respond_streaming(
+        &self,
+        project: &str,
+        text: &str,
+        on_piece: &mut dyn FnMut(&str),
+    ) -> Result<ChatTurn, String> {
         let mut map = self
             .backends
             .lock()
@@ -215,7 +234,9 @@ impl BrainEngine {
             }
         });
         let backend_name = ts.backend.name().to_string();
-        let out = ts.backend.generate(text, &catalogo_tools())?;
+        let out = ts
+            .backend
+            .generate_streaming(text, &catalogo_tools(), on_piece)?;
         ts.last_used = Instant::now();
 
         // /quit del slash determinista: despedida, NUNCA exit del proceso.
@@ -378,11 +399,40 @@ fn system_prompt() -> String {
 // crate::ipc::tests::ENV_LOCK para no pisar XDG_RUNTIME_DIR.
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use cortex_brain::chat::ScriptedBackend;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Backend de test que emite de a piezas (implementa
+    /// generate_streaming con streaming real de a piezas). Lo usa el
+    /// módulo de tests de lib.rs para el e2e del server.
+    pub(crate) struct PiezasBackend {
+        pub(crate) piezas: Vec<String>,
+    }
+
+    impl LlmBackend for PiezasBackend {
+        fn name(&self) -> &str {
+            "piezas-test"
+        }
+
+        fn generate(&mut self, _prompt: &str, _tools_help: &str) -> Result<String, String> {
+            Ok(self.piezas.concat())
+        }
+
+        fn generate_streaming(
+            &mut self,
+            _prompt: &str,
+            _tools_help: &str,
+            on_piece: &mut dyn FnMut(&str),
+        ) -> Result<String, String> {
+            for p in &self.piezas {
+                on_piece(p);
+            }
+            Ok(self.piezas.concat())
+        }
+    }
 
     /// Proyecto real en tempdir: el engine hace chdir al atender un
     /// turno, así que el path debe existir.
@@ -498,7 +548,46 @@ mod tests {
         std::fs::remove_dir_all(&proj).unwrap();
     }
 
-    /// Smoke REAL del modelo (G-A5, criterio de pase del doc 20).
+    #[test]
+    fn streaming_entrega_piezas_en_orden() {
+        let proj = tmp_project("stream");
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        engine.insert_backend(
+            &proj,
+            Box::new(PiezasBackend {
+                piezas: vec!["La ".into(), "sesión ".into(), "está activa".into()],
+            }),
+        );
+        let mut recibidas: Vec<String> = Vec::new();
+        let turn = engine
+            .respond_streaming(&proj, "estado", &mut |p: &str| {
+                recibidas.push(p.to_string())
+            })
+            .expect("turno");
+        assert_eq!(recibidas, vec!["La ", "sesión ", "está activa"]);
+        assert_eq!(turn.text.trim(), "La sesión está activa");
+        assert_eq!(turn.backend, "piezas-test");
+        std::fs::remove_dir_all(&proj).unwrap();
+    }
+
+    #[test]
+    fn respond_batch_sigue_andando_sobre_streaming() {
+        // respond() delega en respond_streaming con callback no-op: el
+        // resultado final es idéntico al camino batch (G-A4 intacto).
+        let proj = tmp_project("batch");
+        let engine = BrainEngine::with_factory(DEFAULT_IDLE_TIMEOUT, || None);
+        engine.insert_backend(
+            &proj,
+            Box::new(PiezasBackend {
+                piezas: vec!["a".into(), "b".into()],
+            }),
+        );
+        let turn = engine.respond(&proj, "x").expect("turno");
+        assert_eq!(turn.text.trim(), "ab");
+        std::fs::remove_dir_all(&proj).unwrap();
+    }
+
+    /// Smoke REAL del modelo (G-A5/G-A6, criterio de pase del doc 20).
     /// Carga el GGUF de ~/.cache/cortex/models/ y genera una respuesta:
     /// puede tardar decenas de segundos en CPU.
     /// Correr con: cargo test -p cortex-brain-app --features llama -- --ignored
@@ -508,12 +597,17 @@ mod tests {
     fn smoke_llama_real_responde() {
         let proj = tmp_project("llama-smoke");
         let engine = BrainEngine::new(); // fábrica default ⇒ llama
+        let mut piezas: usize = 0;
         let turn = engine
-            .respond(&proj, "respondé con una sola palabra: hola")
+            .respond_streaming(&proj, "contá hasta tres separado por comas", &mut |_p| {
+                piezas += 1;
+            })
             .expect("turno con modelo real");
         assert_eq!(turn.backend, "llama.cpp (GGUF)");
         assert!(!turn.text.trim().is_empty(), "text: {:?}", turn.text);
-        eprintln!("smoke respuesta: {:?}", turn.text);
+        // Streaming REAL: llama.cpp genera de a piezas, no de una.
+        assert!(piezas > 1, "piezas generadas: {piezas} (¿streaming roto?)");
+        eprintln!("smoke: {piezas} piezas, respuesta: {:?}", turn.text);
         std::fs::remove_dir_all(&proj).unwrap();
     }
 

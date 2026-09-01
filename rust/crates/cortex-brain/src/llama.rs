@@ -204,19 +204,23 @@ impl LlamaChatBackend {
         Ok(generados.concat())
     }
 
-    /// Una llamada de generación sobre la conversación actual.
-    fn complete_turn(&mut self) -> Result<String, String> {
+    /// Una llamada de generación sobre la conversación actual. El
+    /// `on_piece` recibe cada pieza a medida que se genera (streaming
+    /// real de llama.cpp; doc 19 §3).
+    fn complete_turn(&mut self, on_piece: &mut dyn FnMut(&str)) -> Result<String, String> {
         let prompt = self.prompt()?;
-        self.generate_raw(&prompt, MAX_GEN_TOKENS, |_| {})
-    }
-}
-
-impl LlmBackend for LlamaChatBackend {
-    fn name(&self) -> &str {
-        "llama.cpp (GGUF)"
+        self.generate_raw(&prompt, MAX_GEN_TOKENS, |piece| on_piece(piece))
     }
 
-    fn generate(&mut self, user_msg: &str, tools_help: &str) -> Result<String, String> {
+    /// Un turno completo: push del mensaje user + generar + push del
+    /// assistant. `generate` (batch) y `generate_streaming` comparten
+    /// este camino; sólo difiere el destino de las piezas.
+    fn turn(
+        &mut self,
+        user_msg: &str,
+        tools_help: &str,
+        on_piece: &mut dyn FnMut(&str),
+    ) -> Result<String, String> {
         let contenido = if tools_help.is_empty() {
             user_msg.to_string()
         } else {
@@ -226,11 +230,32 @@ impl LlmBackend for LlamaChatBackend {
             LlamaChatMessage::new("user".into(), contenido)
                 .map_err(|e| format!("mensaje usuario: {e}"))?,
         );
-        let respuesta = self.complete_turn()?;
+        let respuesta = self.complete_turn(on_piece)?;
         self.history.push(
             LlamaChatMessage::new("assistant".into(), respuesta.clone())
                 .map_err(|e| format!("mensaje assistant: {e}"))?,
         );
         Ok(respuesta)
+    }
+}
+
+impl LlmBackend for LlamaChatBackend {
+    fn name(&self) -> &str {
+        "llama.cpp (GGUF)"
+    }
+
+    fn generate(&mut self, user_msg: &str, tools_help: &str) -> Result<String, String> {
+        self.turn(user_msg, tools_help, &mut |_| {})
+    }
+
+    /// Streaming real: cada pieza que genera llama.cpp sale por el
+    /// callback (el `on_piece` de `generate_raw`, doc 19 §3.3).
+    fn generate_streaming(
+        &mut self,
+        user_msg: &str,
+        tools_help: &str,
+        on_piece: &mut dyn FnMut(&str),
+    ) -> Result<String, String> {
+        self.turn(user_msg, tools_help, on_piece)
     }
 }
