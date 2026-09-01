@@ -1,0 +1,39 @@
+{
+  "adrs_created": [],
+  "checkpoints": [
+    {
+      "artifacts_touched": [],
+      "note": "hook del IDE",
+      "source": "ide-hook",
+      "timestamp": "{{TS}}",
+      "unverified_claims": [],
+      "verified_claims": [
+        "tests corren"
+      ]
+    },
+    {
+      "artifacts_touched": [
+        "src/auth.py"
+      ],
+      "note": "",
+      "source": "manual",
+      "timestamp": "{{TS}}",
+      "unverified_claims": [],
+      "verified_claims": []
+    }
+  ],
+  "closed_at": null,
+  "documenter_decision": null,
+  "end_commit": null,
+  "mode": "unknown",
+  "opened_at": "{{TS}}",
+  "session_id": "2026-08-24_fix-login",
+  "session_note_path": null,
+  "spec_path": "{{ROOT}}/specs/x.md",
+  "spec_summary": "Arregla login",
+  "start_branch": "",
+  "start_commit": "0000000000000000000000000000000000000000",
+  "status": "open",
+  "tasks": [],
+  "verification_results": []
+}

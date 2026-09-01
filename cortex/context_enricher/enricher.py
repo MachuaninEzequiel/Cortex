@@ -19,6 +19,7 @@ from cortex.context_enricher.config import ContextEnricherConfig
 from cortex.models import EnrichedContext, EnrichedItem, EpisodicHit
 
 if TYPE_CHECKING:
+    from cortex.context_enricher.filters import EnrichmentFilters
     from cortex.context_enricher.telemetry import PersistentObserver
     from cortex.episodic.memory_store import EpisodicMemoryStore
     from cortex.models import WorkContext
@@ -85,7 +86,6 @@ class ContextEnricher:
 
         # Phase 1: Execute all strategies
         strategy_results: dict[str, list] = {}
-        total_raw_hits = 0
 
         queries = work.search_queries
         fetch_k = max_items * 2  # Over-fetch for RRF
@@ -94,25 +94,21 @@ class ContextEnricher:
         if self.config.topic and len(queries) >= 1:
             hits = self._search_hybrid(queries[0], fetch_k)
             strategy_results["topic_search"] = hits
-            total_raw_hits += len(hits)
 
         # Strategy 2: File search
         if self.config.files and len(queries) >= 2:
             hits = self._search_hybrid(queries[1], fetch_k)
             strategy_results["file_search"] = hits
-            total_raw_hits += len(hits)
 
         # Strategy 3: Keyword search
         if self.config.keywords and len(queries) >= 3:
             hits = self._search_hybrid(queries[2], fetch_k)
             strategy_results["keyword_search"] = hits
-            total_raw_hits += len(hits)
 
         # Strategy 4: PR title search
         if self.config.pr_title and len(queries) >= 4:
             hits = self._search_hybrid(queries[3], fetch_k)
             strategy_results["pr_title_search"] = hits
-            total_raw_hits += len(hits)
 
         # Strategy 5: Entity search - comprehensive entity-based retrieval
         # Searches for functions, classes, errors, endpoints, etc. mentioned in current work
@@ -158,7 +154,41 @@ class ContextEnricher:
             
             if entity_hits:
                 strategy_results["entity_search"] = entity_hits
-                total_raw_hits += len(entity_hits)
+
+
+        ctx = self._finalize_items(strategy_results, work, max_items, filters=filters)
+
+        # Phase 7: telemetry (Fase 05 of canonical-documentation).
+        # Non-blocking: failures must not abort the pipeline.
+        if self._observer is not None:
+            try:
+                latency_ms = int((_time.perf_counter() - _t0) * 1000)
+                run_id = self._observer.record_enrichment(ctx, latency_ms=latency_ms)
+                if run_id:
+                    ctx = ctx.model_copy(update={"enricher_run_id": run_id})
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Telemetry record_enrichment failed: %s", exc)
+
+        return ctx
+
+    def _finalize_items(
+        self,
+        strategy_results: dict[str, list],
+        work: WorkContext,
+        max_items: int,
+        filters: EnrichmentFilters | None = None,
+    ) -> EnrichedContext:
+        """Fases 2-6 del pipeline, FUENTE ÚNICA para sync y async (V3).
+
+        Conversión a EnrichedItem, multi-match boost, co-ocurrencia,
+        typed graph, decay temporal, feedback loop, filtros estructurales
+        (Fase 08), DocIntent boost (Fase 08), umbral y budget.
+
+        AsyncContextEnricher delega acá tras ejecutar sus estrategias en
+        paralelo; así ninguna fase puede volver a drift-ear.
+        """
+        total_raw_hits = sum(len(v) for v in strategy_results.values())
+        queries = work.search_queries  # para DocIntent boost (Fase 4.6)
 
         # Phase 2: Convert to EnrichedItem format
         all_items: dict[str, EnrichedItem] = {}  # keyed by source_id
@@ -323,18 +353,6 @@ class ContextEnricher:
             total_chars=total_chars,
             within_budget=total_chars <= self.config.max_chars,
         )
-
-        # Phase 7: telemetry (Fase 05 of canonical-documentation).
-        # Non-blocking: failures must not abort the pipeline.
-        if self._observer is not None:
-            try:
-                latency_ms = int((_time.perf_counter() - _t0) * 1000)
-                run_id = self._observer.record_enrichment(ctx, latency_ms=latency_ms)
-                if run_id:
-                    ctx = ctx.model_copy(update={"enricher_run_id": run_id})
-            except Exception as exc:  # pragma: no cover - defensive
-                logger.warning("Telemetry record_enrichment failed: %s", exc)
-
         return ctx
 
     # ------------------------------------------------------------------
@@ -502,29 +520,6 @@ class ContextEnricher:
 
         self._co_occurrence_cache[store_id] = (cache_token, co_occurrence)
         return co_occurrence
-
-    def _build_entity_index(self) -> dict[str, dict[str, list[str]]]:
-        """
-        Build an entity index from existing episodic memories.
-        
-        Returns:
-            {entity_type: {entity_value: [memory_ids, ...]}, ...}
-        """
-        entity_index: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
-        
-        try:
-            # Get all episodic memories to build entity index
-            all_hits = self.episodic.search("", top_k=1000)
-            for hit in all_hits:
-                entry = hit.entry
-                entities = entry.metadata.get("entities", {})
-                for entity_type, values in entities.items():
-                    for value in values:
-                        entity_index[entity_type][value].append(entry.id)
-        except Exception as exc:
-            logger.debug("Could not build entity index: %s", exc)
-
-        return entity_index
 
     def _build_typed_graph(self):
         """

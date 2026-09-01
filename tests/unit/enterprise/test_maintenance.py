@@ -194,7 +194,7 @@ def test_archive_dry_run_does_not_move(tmp_path: Path) -> None:
 
 def test_archive_preserves_relative_path(tmp_path: Path) -> None:
     now = datetime.now(UTC)
-    src = _write_note(
+    _write_note(
         tmp_path / "vault" / "decisions", "ADR-001-foo", doc_type="adr",
         created_at=now - timedelta(days=9999),
         retention_days=30,

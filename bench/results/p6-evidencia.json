@@ -1,0 +1,60 @@
+{
+  "fase": "P6",
+  "fecha": "2026-08-24",
+  "stream": "A",
+  "crate": "rust/crates/cortex-actions",
+  "fuente": "cortex/action_engine/ (864 líneas) — spec: tests/unit/action_engine/",
+  "gate": "catálogo/scheduler parity + next --stats JSON + pct_motor igual",
+  "verificacion": {
+    "cargo_test": "cargo test -p cortex-actions → 35 passed, 0 failed",
+    "clippy": "cargo clippy -p cortex-actions --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-actions --check → limpio",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration -q --no-cov → 2455 passed, 18 skipped (2 corridas consecutivas verdes)",
+    "golden_p0_regresion": "capture_golden.py --verify → PASS doctor.txt + next_stats.json"
+  },
+  "paridad_golden": {
+    "script": "bench/parity/actions_golden_p6.py (build-fixtures | capture | verify)",
+    "goldens": "bench/parity/golden_actions/<escenario>/{next_stats.json,next_json.json,next_why_not.json,next_texto.txt}",
+    "escenarios": ["base", "preferencias", "git-dirty", "sin-config"],
+    "resultado_rust_vs_oraculo": "16/16 byte-a-byte (actions_check)",
+    "normalizacion": "{{ROOT}} ruta absoluta · {{MS}} elapsed_ms · \\n final único; resto byte-parity incl. orden de claves",
+    "determinismo": "verify regenera fixtures frescos en temp y compara contra lo commiteado → OK"
+  },
+  "cobertura_del_porteo": {
+    "models": "IMPACTO_BASE/COSTO_PENALIZACION, Check(deep_only, catch-panic), ActionResult(dry/fail), Action(validaciones contrato), ProposedAction, Decision, ahora_iso, redondear(compat round de Python)",
+    "store": "ActionLog JSONL append-only + rotación 1 gen + load tolerante; PreferencesStore actions.yaml formato-compatible (sort_keys=False, orden inserción); accept compensa hasta 2 skips; penalización max(0.4, 1−0.15·skips)",
+    "registry": "orden de inserción observable (desempate estable del scheduler)",
+    "scheduler": "score=(impacto·frescura−costo)·prefs·señales, propose(max_visible=5, estable), explain_why_not",
+    "signals": "ventana 14 días sobre feedback[.1].jsonl, dominio, multiplicador tope ±25% por categoría",
+    "metrics": "pct_motor = via_auto/reales·100 redondeado a 1 decimal, por_acción conteo desc estable, días únicos ts[:10]",
+    "runner": "irreversible exige approved, dry-run no escribe historial, todo se registra (incluye fallos y panics capturados), undo_last salta dry/no-reversibles/fallidos",
+    "learning": "Learner sobre PreferencesStore",
+    "catalog_v1": "10 acciones con metadata/precondiciones/dry-runs idénticos; run() reales que dependen de servicios no nativos (sync_vault→P12, DocValidator→P11, inject_all→P8) devuelven fallo explícito documentado",
+    "context": "ActionContext con discover legacy/nuevo layout (casos 1–3+bootstrap), dot_cortex, vault_path, sesiones vía cortex-app::session (paridad P4)"
+  },
+  "decisiones": [
+    "El CLI `next` Python NO inyecta señales al Scheduler (solo TUI core.py y brain/tools.py): la paridad CLI cubre dominio neutro; la lógica ±25% queda espejada en unit tests (test_fase_e).",
+    "learn.topic porta los 7 tópicos del tutor como datos estáticos (título+guide_path) con rotación por día-del-año local.",
+    "quality.run_gates real: el Python compara un ReviewVerdict con 'accept' (siempre False, quirk registrado); el puerto declara fallo explícito en vez de fingir paridad de una ruta no gateada.",
+    "cortex-actions depende de cortex-app SOLO para leer sesiones (formato P4); sin ciclo: cortex-app nunca dependerá de cortex-actions (integración P12 a nivel binario).",
+    "Serialización manual con orden de claves de inserción en el checker (serde_json default usaría BTreeMap)."
+  ],
+  "archivos_nuevos": [
+    "rust/crates/cortex-actions/Cargo.toml",
+    "rust/crates/cortex-actions/src/lib.rs",
+    "rust/crates/cortex-actions/src/models.rs",
+    "rust/crates/cortex-actions/src/store.rs",
+    "rust/crates/cortex-actions/src/registry.rs",
+    "rust/crates/cortex-actions/src/scheduler.rs",
+    "rust/crates/cortex-actions/src/signals.rs",
+    "rust/crates/cortex-actions/src/metrics.rs",
+    "rust/crates/cortex-actions/src/runner.rs",
+    "rust/crates/cortex-actions/src/learning.rs",
+    "rust/crates/cortex-actions/src/context.rs",
+    "rust/crates/cortex-actions/src/catalog.rs",
+    "rust/crates/cortex-actions/examples/actions_check.rs",
+    "bench/parity/actions_golden_p6.py",
+    "bench/parity/golden_actions/",
+    "docs/transformacion/progreso-streamA.md"
+  ]
+}

@@ -1,0 +1,1505 @@
+{
+ "modo": "hibrido",
+ "queries": [
+  {
+   "query": "runbook-719 memory-cache \"runbook-719 memory-cache\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-274.md"
+   ]
+  },
+  {
+   "query": "adr-584 cache-retrieval-verificacion \"adr-584 cache-retrieval-verificacion\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-724.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-972.md"
+   ]
+  },
+  {
+   "query": "chg-450 \"chg-450 [[chg-679]]",
+   "paths": [
+    "decisions/ADR-553.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-739.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-274.md",
+    "decisions/ADR-980.md"
+   ]
+  },
+  {
+   "query": "2026-07-23-0031-session retrieval-postmortem \"2026-07-23-0031-session retrieval-postmortem\"",
+   "paths": [
+    "runbooks/RUNBOOK-738.md",
+    "sessions/2026-08-12-0547-session.md",
+    "sessions/2026-08-11-0085-session.md",
+    "sessions/2026-08-06-0428-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "sessions/2026-08-18-0856-session.md",
+    "sessions/2026-08-08-0994-session.md",
+    "sessions/2026-08-27-0255-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-08-15-0690-session.md"
+   ]
+  },
+  {
+   "query": "glos-495 spec-deploy-embeddings \"glos-495 spec-deploy-embeddings\"",
+   "paths": [
+    "decisions/ADR-402.md",
+    "runbooks/RUNBOOK-028.md",
+    "specs/SPEC-533.md",
+    "specs/SPEC-676.md",
+    "glossary/GLOS-495.md",
+    "glossary/GLOS-233.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-087.md",
+    "hu/HU-432.md",
+    "specs/SPEC-766.md"
+   ]
+  },
+  {
+   "query": "dec-956 sesion-onnx \"dec-956 sesion-onnx\"",
+   "paths": [
+    "decisions/ADR-641.md",
+    "runbooks/RUNBOOK-871.md",
+    "decisions/ADR-919.md",
+    "postmortems/PM-146.md",
+    "decisions/ADR-746.md",
+    "sessions/2026-07-02-0762-session.md",
+    "decisions/ADR-509.md",
+    "sessions/2026-07-17-0901-session.md",
+    "incidents/INC-369.md",
+    "sessions/2026-07-19-0362-session.md"
+   ]
+  },
+  {
+   "query": "dec-789 memory-embeddings-indice \"dec-789 memory-embeddings-indice\"",
+   "paths": [
+    "decisions/ADR-295.md",
+    "changelog/CHG-797.md",
+    "decisions/ADR-388.md",
+    "runbooks/RUNBOOK-507.md",
+    "decisions/DEC-422.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-830.md",
+    "decisions/DEC-794.md",
+    "decisions/ADR-553.md",
+    "sessions/2026-07-06-0558-session.md"
+   ]
+  },
+  {
+   "query": "adr-865 cosine-budget \"adr-865 cosine-budget\"",
+   "paths": [
+    "decisions/ADR-952.md",
+    "decisions/ADR-972.md",
+    "decisions/ADR-790.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-628.md"
+   ]
+  },
+  {
+   "query": "2026-07-19-0796-session indice-runbook-latencia \"2026-07-19-0796-session indice-runbook-latencia\"",
+   "paths": [
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-738.md"
+   ]
+  },
+  {
+   "query": "adr-496 retrieval-policy-deploy \"adr-496 retrieval-policy-deploy\"",
+   "paths": [
+    "decisions/ADR-952.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-087.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-972.md"
+   ]
+  },
+  {
+   "query": "2026-07-01-0765-session cosine-memory \"2026-07-01-0765-session cosine-memory\"",
+   "paths": [
+    "sessions/2026-07-17-0901-session.md",
+    "decisions/ADR-830.md",
+    "sessions/2026-07-27-0598-session.md",
+    "decisions/ADR-641.md",
+    "sessions/2026-07-01-0765-session.md",
+    "sessions/2026-08-12-0589-session.md",
+    "decisions/ADR-553.md",
+    "sessions/2026-08-23-0220-session.md",
+    "sessions/2026-07-28-0157-session.md",
+    "sessions/2026-07-09-0184-session.md"
+   ]
+  },
+  {
+   "query": "2026-07-22-0346-session vector-cobertura-latencia \"2026-07-22-0346-session vector-cobertura-latencia\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-641.md",
+    "sessions/2026-07-03-0714-session.md",
+    "decisions/ADR-290.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-07-22-0346-session.md",
+    "sessions/2026-07-01-0765-session.md",
+    "decisions/ADR-830.md",
+    "sessions/2026-08-28-0109-session.md"
+   ]
+  },
+  {
+   "query": "spec-348 workspace-bateria \"spec-348 workspace-bateria\"",
+   "paths": [
+    "runbooks/RUNBOOK-274.md",
+    "decisions/ADR-078.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-496.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-966.md",
+    "postmortems/PM-756.md",
+    "hu/HU-827.md",
+    "sessions/2026-08-12-0547-session.md"
+   ]
+  },
+  {
+   "query": "pm-192 cache-memoria \"pm-192 cache-memoria\"",
+   "paths": [
+    "decisions/ADR-641.md",
+    "runbooks/RUNBOOK-643.md",
+    "sessions/2026-07-17-0901-session.md",
+    "decisions/ADR-830.md",
+    "sessions/2026-08-12-0547-session.md",
+    "specs/SPEC-806.md",
+    "sessions/2026-08-27-0255-session.md",
+    "sessions/2026-07-03-0714-session.md",
+    "sessions/2026-07-02-0762-session.md",
+    "sessions/2026-08-15-0238-session.md"
+   ]
+  },
+  {
+   "query": "adr-350 governance-checkpoint-quantization \"adr-350 governance-checkpoint-quantization\"",
+   "paths": [
+    "decisions/ADR-402.md",
+    "decisions/ADR-350.md",
+    "decisions/ADR-824.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-980.md",
+    "hu/HU-29.md",
+    "decisions/DEC-304.md",
+    "decisions/ADR-746.md",
+    "decisions/ADR-736.md",
+    "decisions/ADR-294.md"
+   ]
+  },
+  {
+   "query": "runbook-235 cache-throughput-schema \"runbook-235 cache-throughput-schema\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-036.md"
+   ]
+  },
+  {
+   "query": "hu-86 retrieval-glossary-cosine \"hu-86 retrieval-glossary-cosine\"",
+   "paths": [
+    "hu/HU-86.md",
+    "hu/HU-172.md",
+    "hu/HU-318.md",
+    "hu/HU-487.md",
+    "hu/HU-175.md",
+    "glossary/GLOS-776.md",
+    "decisions/DEC-333.md",
+    "glossary/GLOS-173.md",
+    "hu/HU-370.md",
+    "hu/HU-655.md"
+   ]
+  },
+  {
+   "query": "chg-594 migracion-indice-workspace \"chg-594 migracion-indice-workspace\"",
+   "paths": [
+    "postmortems/PM-576.md",
+    "changelog/CHG-526.md",
+    "changelog/CHG-594.md",
+    "runbooks/RUNBOOK-271.md",
+    "hu/HU-662.md",
+    "hu/HU-180.md",
+    "incidents/INC-743.md",
+    "hu/HU-974.md",
+    "postmortems/PM-282.md",
+    "specs/SPEC-873.md"
+   ]
+  },
+  {
+   "query": "chg-570 runbook-adr-cache \"chg-570 runbook-adr-cache\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-847.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-496.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-980.md",
+    "runbooks/RUNBOOK-966.md",
+    "decisions/ADR-952.md"
+   ]
+  },
+  {
+   "query": "adr-402 changelog-vector-migracion \"adr-402 changelog-vector-migracion\"",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-024.md"
+   ]
+  },
+  {
+   "query": "dec-706 migracion-latencia \"dec-706 migracion-latencia\"",
+   "paths": [
+    "runbooks/RUNBOOK-166.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-641.md",
+    "changelog/CHG-976.md",
+    "postmortems/PM-576.md",
+    "postmortems/PM-113.md",
+    "sessions/2026-08-11-0085-session.md",
+    "hu/HU-195.md",
+    "sessions/2026-07-27-0623-session.md"
+   ]
+  },
+  {
+   "query": "dec-858 vault-cache \"dec-858 vault-cache\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-724.md",
+    "decisions/DEC-955.md",
+    "sessions/2026-08-14-0516-session.md",
+    "decisions/DEC-191.md",
+    "sessions/2026-08-08-0497-session.md",
+    "sessions/2026-08-25-0778-session.md",
+    "sessions/2026-08-19-0828-session.md",
+    "sessions/2026-07-19-0345-session.md"
+   ]
+  },
+  {
+   "query": "inc-546 \"inc-546 [[inc-388]] [[inc-484]]",
+   "paths": [
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-024.md",
+    "runbooks/RUNBOOK-274.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-980.md",
+    "runbooks/RUNBOOK-108.md"
+   ]
+  },
+  {
+   "query": "runbook-404 rendimiento-policy \"runbook-404 rendimiento-policy\"",
+   "paths": [
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-177.md"
+   ]
+  },
+  {
+   "query": "chg-512 \"chg-512",
+   "paths": [
+    "decisions/ADR-830.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-496.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-966.md"
+   ]
+  },
+  {
+   "query": "pm-514 cobertura-rendimiento \"pm-514 cobertura-rendimiento\"",
+   "paths": [
+    "decisions/ADR-290.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-972.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-790.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-952.md",
+    "hu/HU-863.md"
+   ]
+  },
+  {
+   "query": "dec-447 \"dec-447 [[dec-193]]",
+   "paths": [
+    "decisions/ADR-739.md",
+    "runbooks/RUNBOOK-108.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-024.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-290.md",
+    "runbooks/RUNBOOK-966.md",
+    "decisions/ADR-553.md",
+    "runbooks/RUNBOOK-738.md"
+   ]
+  },
+  {
+   "query": "2026-07-14-0140-session vector-verificacion \"2026-07-14-0140-session vector-verificacion\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-830.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-628.md",
+    "sessions/2026-07-09-0184-session.md",
+    "sessions/2026-07-02-0762-session.md",
+    "sessions/2026-07-03-0714-session.md"
+   ]
+  },
+  {
+   "query": "runbook-775 seguridad-spec-cobertura \"runbook-775 seguridad-spec-cobertura\"",
+   "paths": [
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-847.md"
+   ]
+  },
+  {
+   "query": "2026-07-09-0378-session bateria-postmortem-spec \"2026-07-09-0378-session bateria-postmortem-spec\"",
+   "paths": [
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-738.md",
+    "sessions/2026-08-12-0547-session.md",
+    "postmortems/PM-756.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-078.md",
+    "incidents/INC-525.md",
+    "incidents/INC-543.md",
+    "specs/SPEC-806.md"
+   ]
+  },
+  {
+   "query": "spec-870 onnx-checkpoint-governance \"spec-870 onnx-checkpoint-governance\"",
+   "paths": [
+    "sessions/2026-08-02-0908-session.md",
+    "decisions/ADR-746.md",
+    "specs/SPEC-041.md",
+    "specs/SPEC-896.md",
+    "sessions/2026-07-02-0762-session.md",
+    "hu/HU-884.md",
+    "specs/SPEC-650.md",
+    "sessions/2026-08-28-0201-session.md",
+    "decisions/DEC-304.md",
+    "decisions/DEC-835.md"
+   ]
+  },
+  {
+   "query": "hu-836 checkpoint-bm25 \"hu-836 checkpoint-bm25\"",
+   "paths": [
+    "runbooks/RUNBOOK-966.md",
+    "hu/HU-884.md",
+    "hu/HU-572.md",
+    "decisions/ADR-739.md",
+    "hu/HU-222.md",
+    "decisions/ADR-830.md",
+    "hu/HU-88.md",
+    "incidents/INC-375.md",
+    "hu/HU-437.md",
+    "specs/SPEC-692.md"
+   ]
+  },
+  {
+   "query": "dec-721 sesion-despliegue-deploy \"dec-721 sesion-despliegue-deploy\"",
+   "paths": [
+    "decisions/ADR-290.md",
+    "hu/HU-884.md",
+    "sessions/2026-08-09-0440-session.md",
+    "runbooks/RUNBOOK-871.md",
+    "specs/SPEC-766.md",
+    "changelog/CHG-928.md",
+    "decisions/ADR-402.md",
+    "postmortems/PM-377.md",
+    "decisions/ADR-736.md",
+    "decisions/ADR-024.md"
+   ]
+  },
+  {
+   "query": "hu-990 bateria-verificacion \"hu-990 bateria-verificacion\"",
+   "paths": [
+    "runbooks/RUNBOOK-274.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-078.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-024.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-166.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-641.md",
+    "hu/HU-809.md"
+   ]
+  },
+  {
+   "query": "runbook-231 \"runbook-231 [[runbook-339]]",
+   "paths": [
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-643.md"
+   ]
+  },
+  {
+   "query": "glos-580 deploy-throughput-latencia \"glos-580 deploy-throughput-latencia\"",
+   "paths": [
+    "runbooks/RUNBOOK-871.md",
+    "decisions/DEC-860.md",
+    "specs/SPEC-766.md",
+    "runbooks/RUNBOOK-166.md",
+    "postmortems/PM-282.md",
+    "runbooks/RUNBOOK-740.md",
+    "glossary/GLOS-580.md",
+    "postmortems/PM-247.md",
+    "hu/HU-27.md",
+    "decisions/ADR-724.md"
+   ]
+  },
+  {
+   "query": "2026-08-12-0547-session memoria-quantization \"2026-08-12-0547-session memoria-quantization\"",
+   "paths": [
+    "decisions/ADR-641.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "sessions/2026-08-12-0120-session.md",
+    "sessions/2026-08-12-0547-session.md",
+    "sessions/2026-08-05-0155-session.md",
+    "sessions/2026-08-27-0255-session.md",
+    "sessions/2026-08-02-0023-session.md",
+    "sessions/2026-08-15-0687-session.md",
+    "sessions/2026-08-19-0801-session.md"
+   ]
+  },
+  {
+   "query": "spec-041 policy-bm25 \"spec-041 policy-bm25\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "decisions/ADR-087.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-496.md",
+    "runbooks/RUNBOOK-966.md",
+    "decisions/ADR-739.md",
+    "decisions/DEC-731.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-028.md",
+    "decisions/DEC-331.md"
+   ]
+  },
+  {
+   "query": "chg-134 budget-search \"chg-134 budget-search\"",
+   "paths": [
+    "decisions/ADR-972.md",
+    "decisions/ADR-952.md",
+    "hu/HU-777.md",
+    "changelog/CHG-143.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-462.md",
+    "postmortems/PM-576.md",
+    "decisions/ADR-790.md",
+    "decisions/DEC-925.md",
+    "changelog/CHG-965.md"
+   ]
+  },
+  {
+   "query": "2026-07-27-0623-session policy-migracion-despliegue \"2026-07-27-0623-session policy-migracion-despliegue\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "decisions/ADR-402.md",
+    "sessions/2026-08-12-0700-session.md",
+    "sessions/2026-07-16-0060-session.md",
+    "sessions/2026-08-09-0440-session.md",
+    "sessions/2026-07-27-0623-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-07-23-0324-session.md",
+    "sessions/2026-07-13-0030-session.md",
+    "sessions/2026-08-19-0227-session.md"
+   ]
+  },
+  {
+   "query": "2026-08-11-0712-session autenticacion-handoff \"2026-08-11-0712-session autenticacion-handoff\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "sessions/2026-07-13-0044-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-08-17-0632-session.md",
+    "sessions/2026-07-09-0285-session.md",
+    "sessions/2026-07-03-0714-session.md",
+    "sessions/2026-08-02-0908-session.md",
+    "sessions/2026-08-15-0859-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "incidents/INC-058.md"
+   ]
+  },
+  {
+   "query": "dec-083 seguridad-seguridad \"dec-083 seguridad-seguridad\"",
+   "paths": [
+    "decisions/ADR-024.md",
+    "decisions/ADR-844.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-108.md",
+    "specs/SPEC-732.md",
+    "decisions/ADR-290.md",
+    "specs/SPEC-737.md",
+    "changelog/CHG-928.md",
+    "runbooks/RUNBOOK-738.md",
+    "postmortems/PM-576.md"
+   ]
+  },
+  {
+   "query": "2026-07-08-0943-session quantization-adr \"2026-07-08-0943-session quantization-adr\"",
+   "paths": [
+    "decisions/ADR-671.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-830.md"
+   ]
+  },
+  {
+   "query": "spec-831 pipeline-indice \"spec-831 pipeline-indice\"",
+   "paths": [
+    "decisions/ADR-790.md",
+    "decisions/ADR-739.md",
+    "specs/SPEC-831.md",
+    "decisions/ADR-496.md",
+    "decisions/DEC-839.md",
+    "hu/HU-81.md",
+    "specs/SPEC-676.md",
+    "runbooks/RUNBOOK-177.md",
+    "glossary/GLOS-729.md",
+    "specs/SPEC-063.md"
+   ]
+  },
+  {
+   "query": "hu-32 \"hu-32 [[hu-23]] [[hu-120]]",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-553.md",
+    "hu/HU-874.md",
+    "hu/HU-811.md",
+    "hu/HU-81.md"
+   ]
+  },
+  {
+   "query": "spec-723 retrieval-retrieval-autenticacion \"spec-723 retrieval-retrieval-autenticacion\"",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-671.md",
+    "specs/SPEC-124.md",
+    "decisions/DEC-964.md",
+    "specs/SPEC-945.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-724.md",
+    "hu/HU-65.md",
+    "specs/SPEC-676.md"
+   ]
+  },
+  {
+   "query": "dec-042 sesion-runbook \"dec-042 sesion-runbook\"",
+   "paths": [
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-847.md"
+   ]
+  },
+  {
+   "query": "dec-634 adr-rendimiento-memoria \"dec-634 adr-rendimiento-memoria\"",
+   "paths": [
+    "decisions/ADR-641.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-830.md",
+    "runbooks/RUNBOOK-847.md"
+   ]
+  },
+  {
+   "query": "2026-07-28-0157-session autenticacion-vault-cosine \"2026-07-28-0157-session autenticacion-vault-cosine\"",
+   "paths": [
+    "decisions/ADR-952.md",
+    "runbooks/RUNBOOK-643.md",
+    "sessions/2026-08-25-0778-session.md",
+    "decisions/DEC-955.md",
+    "sessions/2026-08-19-0828-session.md",
+    "sessions/2026-08-24-0565-session.md",
+    "sessions/2026-08-10-0457-session.md",
+    "sessions/2026-07-02-0770-session.md",
+    "sessions/2026-07-28-0157-session.md",
+    "sessions/2026-08-13-0049-session.md"
+   ]
+  },
+  {
+   "query": "hu-291 memory-webgraph-rollback \"hu-291 memory-webgraph-rollback\"",
+   "paths": [
+    "decisions/ADR-129.md",
+    "decisions/ADR-087.md",
+    "hu/HU-291.md",
+    "hu/HU-551.md",
+    "hu/HU-833.md",
+    "hu/HU-884.md",
+    "specs/SPEC-692.md",
+    "sessions/2026-07-27-0598-session.md",
+    "hu/HU-510.md",
+    "hu/HU-990.md"
+   ]
+  },
+  {
+   "query": "spec-890 glossary-rollback-cosine \"spec-890 glossary-rollback-cosine\"",
+   "paths": [
+    "glossary/GLOS-486.md",
+    "specs/SPEC-063.md",
+    "specs/SPEC-890.md",
+    "runbooks/RUNBOOK-847.md",
+    "glossary/GLOS-226.md",
+    "glossary/GLOS-173.md",
+    "decisions/ADR-972.md",
+    "glossary/GLOS-786.md",
+    "runbooks/RUNBOOK-738.md",
+    "glossary/GLOS-353.md"
+   ]
+  },
+  {
+   "query": "adr-400 \"adr-400 [[adr-622]] [[adr-484]]",
+   "paths": [
+    "decisions/ADR-496.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-024.md"
+   ]
+  },
+  {
+   "query": "hu-551 quantization-embeddings-memory \"hu-551 quantization-embeddings-memory\"",
+   "paths": [
+    "decisions/ADR-671.md",
+    "decisions/ADR-129.md",
+    "hu/HU-318.md",
+    "hu/HU-493.md",
+    "hu/HU-551.md",
+    "decisions/ADR-295.md",
+    "hu/HU-698.md",
+    "hu/HU-273.md",
+    "hu/HU-382.md",
+    "hu/HU-487.md"
+   ]
+  },
+  {
+   "query": "adr-451 despliegue-spec \"adr-451 despliegue-spec\"",
+   "paths": [
+    "decisions/ADR-972.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-790.md"
+   ]
+  },
+  {
+   "query": "hu-413 \"hu-413",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-972.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-628.md"
+   ]
+  },
+  {
+   "query": "2026-08-23-0121-session auth-budget-scoring \"2026-08-23-0121-session auth-budget-scoring\"",
+   "paths": [
+    "runbooks/RUNBOOK-108.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-952.md",
+    "sessions/2026-08-06-0428-session.md",
+    "runbooks/RUNBOOK-166.md",
+    "sessions/2026-08-09-0069-session.md",
+    "sessions/2026-08-17-0632-session.md",
+    "sessions/2026-08-12-0589-session.md",
+    "sessions/2026-07-26-0237-session.md",
+    "sessions/2026-07-03-0714-session.md"
+   ]
+  },
+  {
+   "query": "hu-342 policy-autenticacion-changelog \"hu-342 policy-autenticacion-changelog\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "decisions/ADR-087.md",
+    "hu/HU-29.md",
+    "hu/HU-342.md",
+    "hu/HU-458.md",
+    "decisions/ADR-290.md",
+    "hu/HU-309.md",
+    "decisions/ADR-952.md",
+    "hu/HU-655.md",
+    "hu/HU-491.md"
+   ]
+  },
+  {
+   "query": "runbook-412 indice-webgraph-scoring \"runbook-412 indice-webgraph-scoring\"",
+   "paths": [
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-643.md"
+   ]
+  },
+  {
+   "query": "glos-246 memory-runbook \"glos-246 memory-runbook\"",
+   "paths": [
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-108.md"
+   ]
+  },
+  {
+   "query": "2026-08-11-0792-session webgraph-throughput \"2026-08-11-0792-session webgraph-throughput\"",
+   "paths": [
+    "sessions/2026-08-12-0589-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "decisions/ADR-087.md",
+    "sessions/2026-08-23-0220-session.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-07-04-0561-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "runbooks/RUNBOOK-028.md",
+    "sessions/2026-07-26-0054-session.md",
+    "sessions/2026-07-11-0619-session.md"
+   ]
+  },
+  {
+   "query": "chg-832 cosine-handoff \"chg-832 cosine-handoff\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "sessions/2026-07-27-0598-session.md",
+    "hu/HU-863.md",
+    "specs/SPEC-534.md",
+    "decisions/DEC-333.md",
+    "decisions/DEC-263.md",
+    "decisions/ADR-641.md",
+    "hu/HU-817.md",
+    "runbooks/RUNBOOK-966.md",
+    "hu/HU-978.md"
+   ]
+  },
+  {
+   "query": "2026-07-18-0949-session deploy-bateria-migracion \"2026-07-18-0949-session deploy-bateria-migracion\"",
+   "paths": [
+    "runbooks/RUNBOOK-274.md",
+    "sessions/2026-07-07-0552-session.md",
+    "sessions/2026-08-22-0982-session.md",
+    "postmortems/PM-756.md",
+    "incidents/INC-543.md",
+    "decisions/ADR-078.md",
+    "sessions/2026-08-15-0687-session.md",
+    "sessions/2026-07-17-0779-session.md",
+    "runbooks/RUNBOOK-871.md",
+    "sessions/2026-08-12-0547-session.md"
+   ]
+  },
+  {
+   "query": "inc-114 deploy-bateria-onnx \"inc-114 deploy-bateria-onnx\"",
+   "paths": [
+    "runbooks/RUNBOOK-871.md",
+    "sessions/2026-07-07-0552-session.md",
+    "sessions/2026-08-28-0201-session.md",
+    "sessions/2026-07-02-0762-session.md",
+    "decisions/DEC-860.md",
+    "incidents/INC-058.md",
+    "runbooks/RUNBOOK-028.md",
+    "sessions/2026-08-08-0371-session.md",
+    "hu/HU-977.md",
+    "sessions/2026-07-16-0017-session.md"
+   ]
+  },
+  {
+   "query": "pm-016 pipeline-vector-sesion \"pm-016 pipeline-vector-sesion\"",
+   "paths": [
+    "decisions/ADR-739.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-790.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-496.md",
+    "specs/SPEC-676.md",
+    "runbooks/RUNBOOK-108.md"
+   ]
+  },
+  {
+   "query": "adr-727 postmortem-schema-cache \"adr-727 postmortem-schema-cache\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-724.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-919.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-078.md"
+   ]
+  },
+  {
+   "query": "hu-521 \"hu-521 [[hu-454]]",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-980.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-628.md",
+    "runbooks/RUNBOOK-274.md"
+   ]
+  },
+  {
+   "query": "adr-266 handoff-governance-deploy \"adr-266 handoff-governance-deploy\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "decisions/ADR-402.md",
+    "decisions/ADR-919.md",
+    "decisions/ADR-972.md",
+    "runbooks/RUNBOOK-485.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-824.md",
+    "decisions/ADR-509.md",
+    "sessions/2026-08-24-0185-session.md",
+    "decisions/ADR-746.md"
+   ]
+  },
+  {
+   "query": "pm-282 deploy-embeddings \"pm-282 deploy-embeddings\"",
+   "paths": [
+    "decisions/ADR-087.md",
+    "runbooks/RUNBOOK-028.md",
+    "specs/SPEC-676.md",
+    "postmortems/PM-282.md",
+    "decisions/ADR-295.md",
+    "decisions/ADR-402.md",
+    "sessions/2026-08-20-0515-session.md",
+    "decisions/ADR-395.md",
+    "postmortems/PM-377.md",
+    "hu/HU-273.md"
+   ]
+  },
+  {
+   "query": "glos-843 cache-scoring-seguridad \"glos-843 cache-scoring-seguridad\"",
+   "paths": [
+    "decisions/ADR-553.md",
+    "runbooks/RUNBOOK-643.md",
+    "sessions/2026-08-14-0476-session.md",
+    "glossary/GLOS-430.md",
+    "decisions/ADR-024.md",
+    "specs/SPEC-873.md",
+    "runbooks/RUNBOOK-108.md",
+    "decisions/ADR-844.md",
+    "specs/SPEC-940.md",
+    "specs/SPEC-935.md"
+   ]
+  },
+  {
+   "query": "2026-08-16-0749-session throughput-despliegue \"2026-08-16-0749-session throughput-despliegue\"",
+   "paths": [
+    "sessions/2026-08-12-0589-session.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-08-23-0220-session.md",
+    "sessions/2026-07-09-0184-session.md",
+    "sessions/2026-07-11-0619-session.md",
+    "sessions/2026-07-09-0285-session.md",
+    "sessions/2026-07-13-0615-session.md",
+    "sessions/2026-07-02-0762-session.md"
+   ]
+  },
+  {
+   "query": "runbook-621 postmortem-memory \"runbook-621 postmortem-memory\"",
+   "paths": [
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-274.md"
+   ]
+  },
+  {
+   "query": "runbook-542 schema-vector-latencia \"runbook-542 schema-vector-latencia\"",
+   "paths": [
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-966.md"
+   ]
+  },
+  {
+   "query": "spec-264 vector-seguridad \"spec-264 vector-seguridad\"",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-671.md",
+    "specs/SPEC-533.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-290.md",
+    "specs/SPEC-663.md"
+   ]
+  },
+  {
+   "query": "2026-08-28-0158-session memoria-webgraph-changelog \"2026-08-28-0158-session memoria-webgraph-changelog\"",
+   "paths": [
+    "sessions/2026-07-17-0901-session.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-08-12-0589-session.md",
+    "sessions/2026-08-18-0856-session.md",
+    "sessions/2026-08-27-0255-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-07-03-0714-session.md",
+    "sessions/2026-08-11-0107-session.md",
+    "sessions/2026-07-04-0561-session.md",
+    "sessions/2026-08-17-0632-session.md"
+   ]
+  },
+  {
+   "query": "hu-441 scoring-runbook \"hu-441 scoring-runbook\"",
+   "paths": [
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-166.md",
+    "hu/HU-572.md"
+   ]
+  },
+  {
+   "query": "runbook-028 latencia-changelog-workspace \"runbook-028 latencia-changelog-workspace\"",
+   "paths": [
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-462.md"
+   ]
+  },
+  {
+   "query": "dec-384 migracion-glossary-indice \"dec-384 migracion-glossary-indice\"",
+   "paths": [
+    "decisions/ADR-972.md",
+    "glossary/GLOS-973.md",
+    "glossary/GLOS-843.md",
+    "postmortems/PM-213.md",
+    "glossary/GLOS-226.md",
+    "specs/SPEC-046.md",
+    "runbooks/RUNBOOK-738.md",
+    "postmortems/PM-084.md",
+    "glossary/GLOS-680.md",
+    "changelog/CHG-697.md"
+   ]
+  },
+  {
+   "query": "2026-07-10-0735-session checkpoint-chunking \"2026-07-10-0735-session checkpoint-chunking\"",
+   "paths": [
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-08-10-0524-session.md",
+    "sessions/2026-08-02-0908-session.md",
+    "sessions/2026-08-11-0591-session.md",
+    "runbooks/RUNBOOK-966.md",
+    "sessions/2026-08-25-0298-session.md",
+    "sessions/2026-07-08-0465-session.md",
+    "sessions/2026-07-08-0125-session.md",
+    "sessions/2026-08-02-0095-session.md",
+    "sessions/2026-07-16-0017-session.md"
+   ]
+  },
+  {
+   "query": "adr-138 \"adr-138 [[adr-992]] [[adr-706]]",
+   "paths": [
+    "decisions/ADR-496.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-129.md",
+    "decisions/ADR-078.md",
+    "decisions/ADR-739.md"
+   ]
+  },
+  {
+   "query": "chg-840 autenticacion-deploy \"chg-840 autenticacion-deploy\"",
+   "paths": [
+    "runbooks/RUNBOOK-871.md",
+    "decisions/ADR-290.md",
+    "changelog/CHG-928.md",
+    "hu/HU-27.md",
+    "specs/SPEC-766.md",
+    "runbooks/RUNBOOK-643.md",
+    "sessions/2026-07-07-0552-session.md",
+    "specs/SPEC-873.md",
+    "postmortems/PM-334.md",
+    "changelog/CHG-993.md"
+   ]
+  },
+  {
+   "query": "runbook-871 search-migracion-embeddings \"runbook-871 search-migracion-embeddings\"",
+   "paths": [
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-028.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-966.md"
+   ]
+  },
+  {
+   "query": "dec-835 bm25-rendimiento-spec \"dec-835 bm25-rendimiento-spec\"",
+   "paths": [
+    "decisions/ADR-830.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-724.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-290.md"
+   ]
+  },
+  {
+   "query": "2026-08-04-0861-session checkpoint-search \"2026-08-04-0861-session checkpoint-search\"",
+   "paths": [
+    "sessions/2026-08-10-0524-session.md",
+    "runbooks/RUNBOOK-966.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-08-25-0298-session.md",
+    "sessions/2026-08-02-0095-session.md",
+    "sessions/2026-08-02-0908-session.md",
+    "sessions/2026-07-08-0125-session.md",
+    "sessions/2026-08-11-0591-session.md",
+    "sessions/2026-08-28-0109-session.md",
+    "hu/HU-884.md"
+   ]
+  },
+  {
+   "query": "glos-776 changelog-cosine-handoff \"glos-776 changelog-cosine-handoff\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "decisions/ADR-952.md",
+    "runbooks/RUNBOOK-966.md",
+    "sessions/2026-07-27-0598-session.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-641.md",
+    "hu/HU-863.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-290.md",
+    "specs/SPEC-534.md"
+   ]
+  },
+  {
+   "query": "adr-278 migracion-verificacion-deploy \"adr-278 migracion-verificacion-deploy\"",
+   "paths": [
+    "decisions/ADR-290.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-790.md",
+    "decisions/ADR-972.md",
+    "decisions/ADR-952.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-628.md"
+   ]
+  },
+  {
+   "query": "2026-08-25-0298-session handoff-workspace \"2026-08-25-0298-session handoff-workspace\"",
+   "paths": [
+    "decisions/ADR-980.md",
+    "runbooks/RUNBOOK-966.md",
+    "sessions/2026-07-02-0762-session.md",
+    "sessions/2026-08-02-0908-session.md",
+    "incidents/INC-058.md",
+    "sessions/2026-07-04-0561-session.md",
+    "sessions/2026-07-27-0598-session.md",
+    "sessions/2026-08-17-0632-session.md",
+    "sessions/2026-08-16-0749-session.md",
+    "sessions/2026-08-28-0596-session.md"
+   ]
+  },
+  {
+   "query": "spec-807 adr-rollback-checkpoint \"spec-807 adr-rollback-checkpoint\"",
+   "paths": [
+    "decisions/ADR-129.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-553.md",
+    "runbooks/RUNBOOK-966.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-078.md",
+    "decisions/ADR-844.md"
+   ]
+  },
+  {
+   "query": "spec-005 vault-budget-runbook \"spec-005 vault-budget-runbook\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-166.md",
+    "specs/SPEC-005.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-501.md",
+    "specs/SPEC-831.md",
+    "decisions/DEC-955.md",
+    "runbooks/RUNBOOK-847.md"
+   ]
+  },
+  {
+   "query": "adr-482 indice-postmortem-schema \"adr-482 indice-postmortem-schema\"",
+   "paths": [
+    "decisions/ADR-496.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-724.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-919.md",
+    "decisions/ADR-739.md",
+    "decisions/ADR-952.md"
+   ]
+  },
+  {
+   "query": "spec-600 \"spec-600 [[spec-682]] [[spec-489]]",
+   "paths": [
+    "decisions/ADR-496.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-844.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-274.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-641.md",
+    "runbooks/RUNBOOK-311.md"
+   ]
+  },
+  {
+   "query": "spec-640 memoria-checkpoint-deploy \"spec-640 memoria-checkpoint-deploy\"",
+   "paths": [
+    "hu/HU-884.md",
+    "sessions/2026-08-25-0298-session.md",
+    "runbooks/RUNBOOK-966.md",
+    "hu/HU-383.md",
+    "sessions/2026-08-10-0524-session.md",
+    "incidents/INC-872.md",
+    "sessions/2026-08-02-0095-session.md",
+    "sessions/2026-07-08-0125-session.md",
+    "specs/SPEC-640.md",
+    "specs/SPEC-692.md"
+   ]
+  },
+  {
+   "query": "inc-040 auth-embeddings \"inc-040 auth-embeddings\"",
+   "paths": [
+    "runbooks/RUNBOOK-028.md",
+    "decisions/ADR-087.md",
+    "decisions/ADR-402.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-724.md",
+    "decisions/ADR-496.md",
+    "runbooks/RUNBOOK-643.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-671.md",
+    "sessions/2026-08-14-0516-session.md"
+   ]
+  },
+  {
+   "query": "runbook-686 throughput-rendimiento-vault \"runbook-686 throughput-rendimiento-vault\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-274.md",
+    "runbooks/RUNBOOK-485.md"
+   ]
+  },
+  {
+   "query": "2026-08-19-0227-session cache-auth-bm25 \"2026-08-19-0227-session cache-auth-bm25\"",
+   "paths": [
+    "runbooks/RUNBOOK-643.md",
+    "decisions/ADR-830.md",
+    "decisions/ADR-553.md",
+    "sessions/2026-07-03-0714-session.md",
+    "sessions/2026-07-17-0901-session.md",
+    "sessions/2026-07-02-0762-session.md",
+    "sessions/2026-08-24-0565-session.md",
+    "sessions/2026-07-23-0075-session.md",
+    "sessions/2026-08-12-0547-session.md",
+    "sessions/2026-08-14-0516-session.md"
+   ]
+  },
+  {
+   "query": "hu-45 adr-spec \"hu-45 adr-spec\"",
+   "paths": [
+    "decisions/ADR-496.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-972.md",
+    "decisions/ADR-844.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-980.md",
+    "decisions/ADR-553.md",
+    "decisions/ADR-671.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-790.md"
+   ]
+  },
+  {
+   "query": "dec-128 despliegue-latencia-governance \"dec-128 despliegue-latencia-governance\"",
+   "paths": [
+    "decisions/ADR-402.md",
+    "hu/HU-29.md",
+    "sessions/2026-07-16-0060-session.md",
+    "hu/HU-491.md",
+    "decisions/ADR-290.md",
+    "sessions/2026-08-11-0702-session.md",
+    "specs/SPEC-617.md",
+    "decisions/DEC-245.md",
+    "runbooks/RUNBOOK-177.md",
+    "sessions/2026-08-09-0440-session.md"
+   ]
+  },
+  {
+   "query": "hu-477 \"hu-477 [[hu-634]]",
+   "paths": [
+    "decisions/ADR-844.md",
+    "decisions/ADR-496.md",
+    "decisions/ADR-628.md",
+    "decisions/ADR-290.md",
+    "decisions/ADR-641.md",
+    "decisions/ADR-553.md",
+    "runbooks/RUNBOOK-311.md",
+    "decisions/ADR-024.md",
+    "decisions/ADR-739.md",
+    "runbooks/RUNBOOK-274.md"
+   ]
+  },
+  {
+   "query": "hu-391 policy-checkpoint-chunking \"hu-391 policy-checkpoint-chunking\"",
+   "paths": [
+    "hu/HU-884.md",
+    "hu/HU-222.md",
+    "hu/HU-572.md",
+    "hu/HU-437.md",
+    "hu/HU-88.md",
+    "hu/HU-460.md",
+    "hu/HU-207.md",
+    "hu/HU-383.md",
+    "hu/HU-391.md",
+    "hu/HU-29.md"
+   ]
+  },
+  {
+   "query": "dec-556 runbook-postmortem-indice \"dec-556 runbook-postmortem-indice\"",
+   "paths": [
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-108.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-966.md",
+    "runbooks/RUNBOOK-643.md",
+    "decisions/ADR-919.md"
+   ]
+  },
+  {
+   "query": "runbook-958 embeddings-workspace \"runbook-958 embeddings-workspace\"",
+   "paths": [
+    "runbooks/RUNBOOK-028.md",
+    "runbooks/RUNBOOK-871.md",
+    "runbooks/RUNBOOK-643.md",
+    "runbooks/RUNBOOK-485.md",
+    "runbooks/RUNBOOK-847.md",
+    "runbooks/RUNBOOK-738.md",
+    "runbooks/RUNBOOK-311.md",
+    "runbooks/RUNBOOK-166.md",
+    "runbooks/RUNBOOK-462.md",
+    "runbooks/RUNBOOK-966.md"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,68 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Install Cortex memory
+        run: pip install cortex-memory
+
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Cortex — Capture Deployment Context
+        run: |
+          cortex remember "Deploy to production: ${{ github.event.head_commit.message }}" \
+            --type deployment \
+            --tag deploy \
+            --tag production \
+            --commit ${{ github.sha }}
+
+      - name: Deploy
+        run: |
+          echo "Deploying to production..."
+          # Add your deployment commands here
+
+      - name: Cortex — Store Deployment Result
+        if: always()
+        run: |
+          cortex remember "Deployment completed: ${{ job.status }}" \
+            --type deployment \
+            --tag deploy \
+            --tag ${{ job.status }}
+
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}

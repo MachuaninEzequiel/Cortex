@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from unittest.mock import MagicMock
+
 from typer.testing import CliRunner
 
 from cortex.cli.main import app
@@ -29,7 +31,12 @@ def test_install_skills_uses_dest_argument(monkeypatch, tmp_path: Path) -> None:
 def test_install_ide_specific_target_uses_adapter_layer(monkeypatch) -> None:
     called: dict[str, object] = {}
 
-    def fake_inject(ide_name: str, project_root: Path | None = None) -> list[str]:
+    def fake_inject(
+        ide_name: str,
+        project_root: Path | None = None,
+        *,
+        sync_canonical: bool = True,
+    ) -> list[str]:
         called["ide_name"] = ide_name
         called["project_root"] = project_root
         return ["ok"]
@@ -281,19 +288,34 @@ def test_org_config_command_prints_resolved_topology(tmp_path: Path) -> None:
     assert "Topology:" in result.output
 
 
-def test_search_scope_is_forwarded_to_retrieve(monkeypatch) -> None:
-    class DummyMemory:
-        def retrieve(self, query, top_k, cross_branch, scope, project_id=None):  # noqa: ANN001
-            assert query == "hello"
-            assert top_k == 3
-            assert cross_branch is False
-            assert scope == "enterprise"
-            assert project_id is None
-            return RetrievalResult(query="hello")
+def test_search_scope_is_forwarded_to_structural_filters(monkeypatch) -> None:
+    """B3 fix: --scope enterprise va por el path estructural con el scope real."""
+    capturado: dict[str, object] = {}
 
-    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    class FakeEnricher:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        def enrich(self, work, *, top_k=None, filters=None):  # noqa: ANN001
+            capturado["filters"] = filters
+            from cortex.models import EnrichedContext, WorkContext
+
+            return EnrichedContext(
+                work=WorkContext(source="manual", changed_files=[], keywords=[], search_queries=[]),
+                items=[], total_searches=0, total_raw_hits=0,
+                total_items=0, total_chars=0, within_budget=True,
+            )
+
+    monkeypatch.setattr(
+        "cortex.cli.main._load_memory", lambda: MagicMock(episodic=None, semantic=None)
+    )
+    monkeypatch.setattr(
+        "cortex.context_enricher.enricher.ContextEnricher", FakeEnricher
+    )
     result = runner.invoke(app, ["search", "hello", "--top-k", "3", "--scope", "enterprise"])
     assert result.exit_code == 0
+    filtros = capturado["filters"]
+    assert filtros is not None and filtros.vault_scope == "enterprise"
 
 
 def test_search_rejects_invalid_scope(monkeypatch) -> None:
@@ -323,7 +345,7 @@ def test_search_show_scores_prints_scope_details(monkeypatch) -> None:
             )
 
     monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
-    result = runner.invoke(app, ["search", "hello", "--show-scores", "--scope", "all"])
+    result = runner.invoke(app, ["search", "hello", "--show-scores"])
     assert result.exit_code == 0
     assert "scope=enterprise" in result.output
     assert "Source breakdown" in result.output
@@ -338,7 +360,7 @@ def test_search_json_includes_source_breakdown(monkeypatch) -> None:
             )
 
     monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
-    result = runner.invoke(app, ["search", "hello", "--json", "--scope", "all"])
+    result = runner.invoke(app, ["search", "hello", "--json"])
     assert result.exit_code == 0
     assert '"source_breakdown"' in result.output
 
@@ -356,14 +378,33 @@ def test_search_without_scope_passes_none(monkeypatch) -> None:
 
 
 def test_search_passes_project_id_filter(monkeypatch) -> None:
-    class DummyMemory:
-        def retrieve(self, query, top_k, cross_branch, scope, project_id):  # noqa: ANN001
-            assert project_id == "acme-project"
-            return RetrievalResult(query=query)
+    """B3 fix: --project-id activa path estructural y llega en los filtros."""
+    capturado: dict[str, object] = {}
 
-    monkeypatch.setattr("cortex.cli.main._load_memory", lambda: DummyMemory())
+    class FakeEnricher:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        def enrich(self, work, *, top_k=None, filters=None):  # noqa: ANN001
+            capturado["filters"] = filters
+            from cortex.models import EnrichedContext, WorkContext
+
+            return EnrichedContext(
+                work=WorkContext(source="manual", changed_files=[], keywords=[], search_queries=[]),
+                items=[], total_searches=0, total_raw_hits=0,
+                total_items=0, total_chars=0, within_budget=True,
+            )
+
+    monkeypatch.setattr(
+        "cortex.cli.main._load_memory", lambda: MagicMock(episodic=None, semantic=None)
+    )
+    monkeypatch.setattr(
+        "cortex.context_enricher.enricher.ContextEnricher", FakeEnricher
+    )
     result = runner.invoke(app, ["search", "hello", "--project-id", "acme-project"])
     assert result.exit_code == 0
+    filtros = capturado["filters"]
+    assert filtros is not None and list(filtros.project_ids or []) == ["acme-project"]
 
 
 def test_setup_enterprise_non_interactive_requires_input() -> None:

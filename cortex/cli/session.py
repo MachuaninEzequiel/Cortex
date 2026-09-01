@@ -190,6 +190,9 @@ def show_command(
 ) -> None:
     """Print the full detail of one Session."""
     if watch:
+        typer.echo(
+            "⚠ Deprecated: el watch en vivo vive en la TUI home (`cortex` sin argumentos).", err=True,
+        )
         if output_json:
             _error_exit("--watch is not compatible with --json.")
         _run_watch_tui(project_root, refresh=refresh, focus_session_id=session_id)

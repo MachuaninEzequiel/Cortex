@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
@@ -32,7 +32,7 @@ def _validate_tz(v: datetime | None) -> datetime | None:
     return v
 
 
-class RunbookFrontmatter(CommonFrontmatter):
+class _RunbookSpecific(BaseModel):
     doc_type: DocType = DocType.RUNBOOK
     runbook_kind: str = "operational"
     applies_to: list[str] = Field(default_factory=list)
@@ -43,12 +43,9 @@ class RunbookFrontmatter(CommonFrontmatter):
     _validate_verified = field_validator("last_verified_at")(_validate_tz)
 
 
-class RunbookFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.RUNBOOK
-    runbook_kind: str = "operational"
-    applies_to: list[str] = Field(default_factory=list)
-    estimated_duration_minutes: int = Field(default=0, ge=0)
-    last_verified_at: datetime | None = None
+class RunbookFrontmatter(_RunbookSpecific, CommonFrontmatter):
+    """Runbook frontmatter — campos específicos vía _RunbookSpecific (V5)."""
 
-    _validate_kind = field_validator("runbook_kind")(_validate_kind)
-    _validate_verified = field_validator("last_verified_at")(_validate_tz)
+
+class RunbookFrontmatterEnterprise(_RunbookSpecific, EnterpriseFrontmatter):
+    """Runbook frontmatter enterprise — hereda _RunbookSpecific + gobernanza."""

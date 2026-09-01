@@ -1,0 +1,30 @@
+session_id: 2026-08-24_add-api
+spec_path: /tmp/tmpndoc_tc3/specs/y.md
+spec_summary: ''
+start_commit: '0000000000000000000000000000000000000000'
+start_branch: ''
+opened_at: '2026-08-24T18:35:29.175009Z'
+status: closed
+mode: managed
+checkpoints:
+- timestamp: '2026-08-24T18:35:29.176127Z'
+  source: cortex-code-implementer
+  verified_claims:
+  - endpoint ok
+  unverified_claims: []
+  artifacts_touched: []
+  note: ''
+- timestamp: '2026-08-24T18:35:29.177408Z'
+  source: cortex-sync
+  verified_claims: []
+  unverified_claims:
+  - perf por medir
+  artifacts_touched: []
+  note: ''
+verification_results: []
+tasks: []
+closed_at: '2026-08-24T18:35:29.179038Z'
+end_commit: '0000000000000000000000000000000000000000'
+documenter_decision: closed
+session_note_path: null
+adrs_created: []

@@ -9,7 +9,6 @@ import pytest
 
 from cortex.session.errors import (
     InvalidStateTransition,
-    NoActiveSession,
     SessionAlreadyExists,
     SessionError,
     SessionNotFound,
@@ -24,7 +23,6 @@ from cortex.session.errors import (
         SessionAlreadyExists,
         InvalidStateTransition,
         SessionStorageCorrupted,
-        NoActiveSession,
     ],
 )
 def test_each_specific_error_is_a_session_error(exc_cls: type[SessionError]) -> None:

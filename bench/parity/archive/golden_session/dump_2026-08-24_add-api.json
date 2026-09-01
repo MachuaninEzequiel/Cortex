@@ -1,0 +1,39 @@
+{
+  "adrs_created": [],
+  "checkpoints": [
+    {
+      "artifacts_touched": [],
+      "note": "",
+      "source": "cortex-code-implementer",
+      "timestamp": "{{TS}}",
+      "unverified_claims": [],
+      "verified_claims": [
+        "endpoint ok"
+      ]
+    },
+    {
+      "artifacts_touched": [],
+      "note": "",
+      "source": "cortex-sync",
+      "timestamp": "{{TS}}",
+      "unverified_claims": [
+        "perf por medir"
+      ],
+      "verified_claims": []
+    }
+  ],
+  "closed_at": "{{TS}}",
+  "documenter_decision": "closed",
+  "end_commit": "0000000000000000000000000000000000000000",
+  "mode": "managed",
+  "opened_at": "{{TS}}",
+  "session_id": "2026-08-24_add-api",
+  "session_note_path": null,
+  "spec_path": "{{ROOT}}/specs/y.md",
+  "spec_summary": "",
+  "start_branch": "",
+  "start_commit": "0000000000000000000000000000000000000000",
+  "status": "closed",
+  "tasks": [],
+  "verification_results": []
+}

@@ -1,0 +1,8 @@
+### E01 autopilot install (Fase 04)
+nativo rc=2 core_msg=yes
+oraculo rc=2 core_msg=yes
+equivalente=PASS
+### E02 autopilot uninstall (Fase 04)
+nativo rc=2 core_msg=yes
+oraculo rc=2 core_msg=yes
+equivalente=PASS

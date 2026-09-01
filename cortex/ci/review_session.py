@@ -57,7 +57,7 @@ def open_review_session(
         start_branch=head_branch,
         opened_at=datetime.now(UTC),
     )
-    service._storage.save_new(record)  # noqa: SLF001 — bypass active pointer
+    service.save_new_record(record)
     return record
 
 

@@ -1,0 +1,114 @@
+name: CI - Gates (Blocking)
+
+# I-1: gate bloqueante (deuda de Obra 01 T0.6, activada junto al arranque Rust
+# según HANDOFF §TAREA-RUST R3). A diferencia de ci-pull-request.yml (modo
+# observabilidad), este workflow FALLA y bloquea merges si algún gate da rojo.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches:
+      - "feature/**"
+  schedule:
+    # Bench nocturno: detección temprana de regresiones de performance.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-gates:
+    name: Python gates (pytest + ruff + vulture)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install vulture
+
+      # Gate 1: suite completa verde (unit + integration, sin cobertura para velocidad).
+      - name: Suite pytest (unit + integration)
+        run: python -m pytest tests/unit tests/integration -q --no-cov -p no:warnings
+
+      # Gate 2: imports muertos, variables muertas y nombres indefinidos = 0.
+      - name: Ruff F401/F841/F821
+        run: ruff check --select F401,F841,F821 cortex
+
+      # Gate 3: código muerto (vulture min-confidence 80) = 0 hallazgos.
+      - name: Vulture min-confidence 80
+        run: vulture cortex --min-confidence 80
+
+  cargo-gates:
+    name: Cargo gates (clippy + test)
+    runs-on: ubuntu-latest
+    # Desde R2 (workspace rust/ existe): clippy -D warnings y cargo test bloquean.
+    if: ${{ hashFiles('rust/Cargo.toml') != '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/index
+            rust/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/**/Cargo.toml', 'rust/**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Cargo fmt --check
+        run: cd rust && cargo fmt --check
+
+      - name: Cargo clippy -D warnings
+        run: cd rust && cargo clippy --all-targets -- -D warnings
+
+      - name: Cargo test
+        run: cd rust && cargo test
+
+  bench-nightly:
+    name: Bench nocturno (regresión p99 >10%)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,webgraph]"
+
+      - name: Run bench harness (all suites)
+        run: python -m bench.bench_harness run --suite all --out bench/results/nightly.json
+
+      # Falla si alguna métrica empeora >10% vs el último resultado commiteado.
+      - name: Compare contra baseline/gate más reciente
+        run: |
+          BASE=$(ls -t bench/results/*.json | grep -v nightly | head -1)
+          echo "Comparando contra $BASE"
+          python -m bench.bench_harness compare "$BASE" bench/results/nightly.json

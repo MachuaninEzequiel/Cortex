@@ -1,0 +1,261 @@
+### S01 search legacy unified
+rc=0
+## Context for: 'login jwt'
+
+- [EPISODIC:session [verified]] Implementamos login con JWT  (files: src/auth.py, src/jwt.py, score: 0.0328)
+- [SEMANTIC] **Auth** (specs/auth.md)
+  > Primera línea de dos…
+### S02 search vacio
+rc=0
+## Context for: 'EMPTY'
+
+### S03 search fallback listas separadas
+rc=0
+## Context for: 'FALLBACK'
+
+### Episodic Memory (past experiences)
+- [session] Sesión previa de auth  (files: src/a.py, score: 0.87)
+
+### Semantic Knowledge (docs / notes)
+- **Auth spec** (specs/auth.md)
+  > Contenido multilínea…
+### S04 search truncado 4000 chars
+rc=0
+## Context for: 'big'
+
+- [SEMANTIC] **X** (x.md)
+  > aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…
+### S05 search_vector embeddings flag
+rc=0
+use_embeddings=True top_k=7
+## Context for: 'login jwt'
+### S06 search structural con filtros
+rc=0
+captured=4|['auth', 'flow']|['auth flow']|scope=local
+🧠 Cortex Context — Found 2 related memories
+### S07 search filtro inválido
+rc=0
+cortex_search: invalid filter — Invalid --scope value: 'galaxy'
+### S08 context task_type budget
+rc=0
+enriched_kwargs=8|release 2 context|['release', 'context']
+🧠 Cortex Context — Found 2 related memories
+
+### [EPISODIC [verified]] [SESSION] Implementamos login
+  2026-08-25 • src/auth.py • auth, jwt
+  Implementamos login con JWT y refresh tokens…
+  Matched by: topic_search, keyword_search
+
+### [SEMANTIC] Auth spec
+  2026-08-01
+  Spec del módulo de autenticación…
+  Matched by: topic_search
+
+Run `cortex context --expand` for full details
+### S09 sync_ticket candidatos inferidos
+rc=0
+scope=auth.py, src/core.py
+keywords=revisar, auth.py, src/core.py, del, flujo, login
+### S10 sync_ticket sin user_request
+rc=0
+Error ejecutando cortex_sync_ticket: user_request es obligatorio para cortex_sync_ticket.
+### S11 proposal card válida
+rc=0
+### 🎯 PROPUESTA — necesito tu confirmación
+
+**Resumen:**
+Migrar el módulo de pagos a pasarela nueva.
+
+**Alternativas consideradas:**
+- ✅ **[A]** Proveedor X, costo bajo
+    - *(esta es la que recomiendo)*
+- ❌ **[B]** Proveedor Y, más features
+    - Descartada porque: costo alto
+
+**Riesgos / supuestos:**
+- migración doble escritura
+
+---
+⏸ **Esperando confirmación.** Respondé `ok` (o silencio) para proceder con **[A]**, o indicame qué cambiar / cuál elegís en su lugar.
+### S12 proposal summary vacío
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+summary
+  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short
+### S13 proposal id patrón inválido
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+alternatives.0.id
+  Value error, Alternative id 'a b' must match ^[A-Z0-9][A-Z0-9_-]{0,15}$ [type=value_error, input_value='a b', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S14 proposal ids duplicados
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+  Value error, Alternative ids must be unique; duplicates: ['A'] [type=value_error, input_value={'summary': 's', 'alterna...n_id': 'A', 'risks': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S15 recommendation inexistente
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+  Value error, recommendation_id 'Z' does not match any alternative id (have: ['A', 'B']) [type=value_error, input_value={'summary': 's', 'alterna...n_id': 'Z', 'risks': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S16 recomendada con rejected_reason
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+  Value error, The recommended alternative ('A') must have an empty rejected_reason; got: 'mal' [type=value_error, input_value={'summary': 's', 'alterna...n_id': 'A', 'risks': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S17 no-recomendada sin reason
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+  Value error, Non-recommended alternative 'B' must include a non-empty rejected_reason. [type=value_error, input_value={'summary': 's', 'alterna...n_id': 'A', 'risks': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S18 campo extra en alternativa
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+alternatives.0.zzz
+  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+### S19 tres errores orden declaración
+rc=0
+❌ cortex_emit_proposal payload invalid: 3 validation errors for Proposal
+summary
+  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short
+alternatives
+  List should have at least 2 items after validation, not 0 [type=too_short, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/too_short
+recommendation_id
+  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short
+### S20 summary no string
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+summary
+  Input should be a valid string [type=string_type, input_value=42, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+### S21 risk demasiado largo
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+risks
+  Value error, Each risk must be <= 300 characters. [type=value_error, input_value=['rrrrrrrrrrrrrrrrrrrrrrr...rrrrrrrrrrrrrrrrrrrrrr'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+### S22 demasiadas alternativas
+rc=0
+❌ cortex_emit_proposal payload invalid: 1 validation error for Proposal
+alternatives
+  List should have at most 5 items after validation, not 6 [type=too_long, input_value=[{'id': 'A', 'description...'rejected_reason': 'r'}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/too_long
+### S23 governance violation tras ping
+rc=0
+❌ **VIOLACIÓN DE GOBERNANZA**: cortex_create_spec fue llamado sin ejecutar primero cortex_sync_ticket.
+
+Según las reglas de Cortex v2.0, cortex-sync DEBE llamar a cortex_sync_ticket como PRIMER paso para inyectar contexto histórico vía ONNX/hybrid retrieval antes de crear cualquier spec.
+
+Por favor, corrige el flujo:
+1. Llama a cortex_sync_ticket con el pedido del usuario
+2. Luego llama a cortex_create_spec
+
+Herramientas llamadas en esta sesión: cortex_create_spec, cortex_ping
+### S24 create_spec happy
+rc=0
+kwargs=[{'name': 'tests', 'command': 'pytest -q', 'required': True, 'success_criteria': 'todo verde', 'timeout_seconds': 300}]|False|optional
+Specification saved -> vault/specs/demo-spec-title.md
+### S25 create_spec gitless degraded
+rc=0
+Specification saved -> vault/specs/demo-spec-title.md
+
+⚠️  No git repository detected. Session opened in degraded mode:
+   • cortex finish-session will skip git diff reconstruction
+   • documenter will rely exclusively on checkpoints
+   • To enable full session capabilities later, run:
+       git init && git add -A && git commit -m "initial"
+### S26 create_spec ValueError
+rc=0
+❌ El título es obligatorio para crear una spec.
+### S27 create_spec duplicada
+rc=0
+ℹ️  Spec ya existe con contenido distinto.
+
+Document already exists with different content: vault/specs/demo-spec-title.md. Pass overwrite=True to replace, or choose a different title.
+
+Opciones:
+  • Cambiá el título para generar un slug distinto.
+  • O abrí sesión sobre la spec existente con cortex_session_open.
+### S28 required sin emit previo
+rc=0
+❌ proposal_mode='required' requires a prior cortex_emit_proposal call. Emit the proposal first, end your turn, and only after the user replies should you call cortex_create_spec with proposal_confirmed=True.
+### S29 gap menor a 2s
+rc=0
+❌ proposal emitted 1.00s ago — too recent to count as user-confirmed. The user has not had time to respond yet. End your turn after cortex_emit_proposal and wait for an explicit reply before calling cortex_create_spec. (minimum gap: 2.0s)
+### S30 gap suficiente pasa
+rc=0
+Specification saved -> vault/specs/demo-spec-title.md
+### S31 placeholder único
+rc=0
+{"warnings": ["Placeholder token detected: 'tbd'"], "passed": false}
+### S32 claim hueco
+rc=0
+{"warnings": ["Hollow claim 'build exitoso' — no verification hook actually passed; either remove the claim or run the test/build that proves it."], "passed": false}
+### S33 limpio pasa
+rc=0
+{"warnings": [], "passed": true}
+### S34 placeholder + claim hueco
+rc=0
+{"warnings": ["Placeholder token detected: 'fixme'", "Hollow claim 'build exitoso' — no verification hook actually passed; either remove the claim or run the test/build that proves it."], "passed": false}
+### S35 write_doc adr success
+rc=0
+{"path": "{{ROOT}}/.cortex/vault/decisions/ADR-001-usar-rust-para-el-nucleo.md", "doc_type": "adr"}
+### S36 changelog falta version
+rc=0
+❌ payload for doc_type='changelog' is missing required field(s): title, version. See the tool description for the full per-type contract.
+### S37 doc_type desconocido
+rc=0
+❌ Unknown doc_type 'zzz'. Must be one of: adr, architecture, changelog, decision, glossary, handoff, hu, incident, postmortem, runbook, session.
+### S38 payload no objeto
+rc=0
+❌ 'payload' must be an object.
+### S39 adr duplicada
+rc=0
+Error ejecutando cortex_write_doc: Document already exists with different content: {{ROOT}}/.cortex/vault/decisions/ADR-001-dup.md. Pass overwrite=True to replace, or choose a different title.
+### S40 handoff local-only
+rc=0
+❌ handoff is local-only; vault_scope must be 'local'
+### S40b adr enterprise sin owner/team
+rc=0
+❌ Enterprise scope requires fields: ['owner', 'team']
+### S41 glossary title fallback
+rc=0
+{"path": "{{ROOT}}/.cortex/vault/glossary/fingerprint.md", "doc_type": "glossary"}
+### S42 design note success
+rc=0
+{"path": "{{ROOT}}/.cortex/vault/designs/2026-08-25_demo.md"}
+### S43 design validaciones
+rc=0
+❌ session_id is required for write_design_note_canonical.
+❌ spec_path is required for write_design_note_canonical.
+### S44 import_hu
+rc=0
+Tracked item imported -> vault/hu/hu-123.md
+### S45 get_hu ok y missing
+rc=0
+Tracked item note -> vault/hu/hu-123.md
+Error ejecutando cortex_get_hu: Tracked item not found in vault: HU-999
+### S46 finish interactive rechazado
+rc=0
+❌ The interactive documenter mode is CLI-only. Run `cortex finish-session --interactive` instead, or omit `interactive` from this tool call.
+### S47 finish validaciones
+rc=0
+❌ Invalid intent 'bogus'. Must be one of: auto, handoff, abandon
+❌ 'reason' is required when intent is 'handoff'.
+❌ No active session. Pass session_id explicitly.
+### S48 finish sesión cerrada
+rc=0
+❌ Session '2026-05-16_demo' is already in status 'closed'; nothing to finish.
+### S49 finish auto happy
+rc=0
+forced=None
+{"session_id": "2026-05-16_demo", "final_status": "handoff", "session_note_path": "vault/sessions/2026-05-16_demo.md", "adrs_created": ["vault/decisions/ADR-001-usar-rust.md"], "summary_text": "Resumen de cierre", "already_closed": false}
+### S51 briefing serialización completa
+rc=0
+captured=False|2026-05-16_demo
+{"session_id": "2026-05-16_demo", "spec": {"path": "vault/specs/demo.md", "title": "Demo", "goal": "Meta demo", "files_in_scope": ["src/a.py"], "constraints": [], "acceptance_criteria": ["Criterio uno"], "verification_hooks": [{"name": "tests", "command": "pytest -q", "required": true, "success_criteria": "verde", "timeout_seconds": 300}]}, "diff_text": "diff --git a/src/a.py\n+b\n", "diff_entries": [{"action": "added", "path": "src/a.py"}], "files_touched": ["src/a.py"], "files_verified_by_git": ["src/a.py"], "files_declared_only": [], "in_scope_files": ["src/a.py"], "out_of_scope_files": [], "unimplemented_files": [], "verification_results": [{"name": "tests", "command": "pytest -q", "passed": true, "exit_code": 0, "output": "1 passed", "duration_ms": 120, "run_at": "2026-08-25T12:00:00", "required": true}], "contradictions": [{"prior_record": "ADR-000 decía X", "current_claim": "ahora es Y", "evidence": ["src/a.py:1"], "severity": "high"}], "suggested_status": "handoff", "suggested_adrs": [{"title": "ADR demo", "rationale": "porque sí", "source_checkpoint_index": 0, "evidence": ["claim"], "confidence": 0.85}], "raw_checkpoints": [{"timestamp": "2026-08-25T11:00:00", "source": "manual", "verified_claims": ["claim"], "unverified_claims": [], "artifacts_touched": ["src/a.py"], "note": "nota"}], "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "gitless": false}

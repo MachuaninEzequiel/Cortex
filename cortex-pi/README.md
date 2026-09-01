@@ -14,8 +14,6 @@ agentes de Cortex coordinarse en tiempo real durante el trabajo.
 cortex-pi/
 ├── AGENTS.md                       # Governance Rules (Release 2.5+net)
 ├── README.md                       # Este archivo
-├── CHANGES.md                      # Diff conceptual respecto a 2.5 pre-net
-├── ADAPTER_CONTRACT.md             # Contrato para el adapter Python
 ├── justfile                        # Recetas (incluye role-* por rol)
 ├── extensions/                     # Premium UI (dashboard, widgets)
 │   ├── cortex-dashboard.ts
@@ -25,8 +23,9 @@ cortex-pi/
 └── .pi/
     ├── system.md                   # Global Governance Prompt
     ├── settings.json               # Config Pi (carga cortex-net por default)
-    ├── mcp.json                    # MCP server config (cortex-memory)
+    ├── mcp.json                    # MCP server config (binario nativo cortex-cli)
     ├── damage-control-rules.yaml   # Reglas de seguridad runtime
+    ├── cortex-model-overrides.json # Overrides de modelo del workspace
     ├── agents/
     │   ├── teams.yaml              # Definición de teams
     │   ├── agent-chain.yaml        # FALLBACK para IDEs sin red
@@ -38,12 +37,20 @@ cortex-pi/
     │   ├── cortex-security-auditor.md # Security (en la red)
     │   ├── cortex-test-verifier.md # Test verifier (en la red)
     │   └── cortex-documenter.md    # ANCHOR FIN + observer (en la red)
-    ├── extensions/
-    │   ├── cortex-tools.ts         # Bridge al CLI de Cortex
-    │   ├── cortex-mcp.ts           # Adaptador MCP para Pi
-    │   ├── cortex-net.ts           # ⭐ NUEVO: protocolo peer-to-peer
+    ├── extensions/                 # 11 extensiones activas
+    │   ├── cortex-net.ts           # ⭐ protocolo peer-to-peer
+    │   ├── cortex-tools.ts         # Bridge al CLI de Cortex (nativo)
+    │   ├── cortex-mcp.ts           # Adaptador MCP (nativo)
+    │   ├── cortex-panel.ts         # Panel de estado
+    │   ├── cortex-cockpit.ts       # Cockpit de sesión
+    │   ├── cortex-autopilot.ts     # Acciones auto-ok del motor
+    │   ├── cortex-team.ts          # Equipos/roles
+    │   ├── cortex-footer.ts        # Footer de estado
+    │   ├── agent-chain.ts          # Cadena de agentes (fallback)
     │   ├── system-select.ts        # Selector de agente activo
     │   └── damage-control.ts       # Auditoría runtime de bash
+    ├── lib/
+    │   └── cortex-state.ts         # Estado compartido del workspace
     ├── skills/                     # Skills Obsidian + Cortex
     └── themes/
         └── cortex-dark.json

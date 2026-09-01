@@ -15,11 +15,15 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from typing import TYPE_CHECKING
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:  # pragma: no cover
+    from cortex.feedback_store import FeedbackStore
 
 
 # ---------------------------------------------------------------------------
@@ -270,11 +274,15 @@ class FeedbackCollector:
     to boost or demote future retrievals.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, store: "FeedbackStore | None" = None) -> None:
         # memory_id -> MemoryFeedback
         self._feedback: dict[str, MemoryFeedback] = defaultdict(
             lambda: MemoryFeedback(memory_id="")
         )
+
+        # Persistencia opcional (Obra 05 Fase A): con store, cada feedback
+        # explícito se anota en .cortex/feedback.jsonl.
+        self._store = store
         
         # Recent feedback for learning
         self._recent: list[tuple[str, ExplicitFeedback]] = []
@@ -313,6 +321,14 @@ class FeedbackCollector:
         self._recent.append((memory_id, feedback))
         
         logger.debug(f"Added feedback for {memory_id}: {feedback.feedback_type}")
+
+        if self._store is not None:
+            self._store.append({
+                "type": "explicit",
+                "memory_id": memory_id,
+                "feedback_type": getattr(feedback, "feedback_type", ""),
+                "source": getattr(feedback, "source", ""),
+            })
 
     def process_implicit(
         self,

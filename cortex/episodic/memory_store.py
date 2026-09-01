@@ -190,22 +190,20 @@ class EpisodicMemoryStore:
             return []
 
         if not use_embeddings:
-            # Bypass: Simple keyword search via ChromaDB 'where_document'
-            # This does NOT trigger the embedder or ONNX loading.
-            results = self._collection.query(
-                where_document={"$contains": query},
-                n_results=min(top_k, self._collection.count()),
-                include=["documents", "metadatas"],
-            )
-            
+            # Bypass: keyword search sin cargar el modelo de embeddings.
+            # FIX (Obra 07 P3): chromadb moderno exige embeddings/texts en
+            # .query(), así que el where_document puro lanzaba ValueError.
+            # Semántica $contains (substring case-sensitive) replicada en
+            # local sobre el dump completo — determinista y portable.
+            all_results = self._collection.get(include=["documents", "metadatas"])
+            documents = all_results.get("documents") or []
+            metadatas = all_results.get("metadatas") or []
             hits: list[EpisodicHit] = []
-            docs = results.get("documents")
-            metas = results.get("metadatas")
-            if docs and metas:
-                for doc, meta in zip(docs[0], metas[0], strict=False):
+            for doc, meta in zip(documents, metadatas, strict=False):
+                if query in doc:
                     entry = self._deserialize_metadata(doc, dict(meta) if meta else {})  # type: ignore[arg-type]
-                    hits.append(EpisodicHit(entry=entry, score=1.0)) # Flat score for keyword match
-            return hits
+                    hits.append(EpisodicHit(entry=entry, score=1.0))
+            return hits[:top_k]
 
         # Vector Search (Normal flow - triggers ONNX load if first call)
         embedding = self.embedder.embed(query)

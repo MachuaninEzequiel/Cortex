@@ -1,0 +1,21 @@
+╭──────────────────────────── 🔄 FLUJO DE TRABAJO — Modelo Tripartito ─────────────────────────────╮
+│                                                                                                  │
+│  FASE 1 → cortex-sync (El Analista)                                                              │
+│    Recupera contexto histórico y crea una especificación técnica.                                │
+│    Comando: cortex create-spec                                                                   │
+│                                                                                                  │
+│  FASE 2 → cortex-SDDwork (El Orquestador)                                                        │
+│    Implementa con Intelligent Routing:                                                           │
+│    Fast Track 🟢 Tareas simples → edita directo + valida.                                        │
+│    Deep Track 🔴 Tareas complejas → delega a subagentes.                                         │
+│      Explorer → Implementer → Security → Test                                                    │
+│                                                                                                  │
+│  FASE 3 → cortex-documenter (El Guardián)                                                        │
+│    Persiste decisiones, cambios y TODOs en el vault.                                             │
+│    Comando: cortex save-session                                                                  │
+│                                                                                                  │
+│  Ninguna tarea se considera terminada sin la Fase 3.                                             │
+│                                                                                                  │
+│  📖 Detalle completo: docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md                            │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

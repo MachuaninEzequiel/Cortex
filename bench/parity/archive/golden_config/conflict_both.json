@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "warnings": [
+    "Deprecated embedding config: both 'embedding:' (new) and 'episodic.embedding_model/embedding_backend' (legacy) are set. The new 'embedding:' block wins; move the legacy values into 'embedding: {model: ..., backend: ...}' to silence this warning."
+  ],
+  "config": {
+    "episodic": {
+      "persist_dir": "memory",
+      "collection_name": "cortex_episodic",
+      "embedding_model": "all-MiniLM-L6-v2",
+      "embedding_backend": "local",
+      "namespace_mode": "project",
+      "namespace_value": ""
+    },
+    "semantic": {
+      "vault_path": "vault"
+    },
+    "retrieval": {
+      "top_k": 5,
+      "episodic_weight": 1.0,
+      "semantic_weight": 1.0
+    },
+    "llm": {
+      "provider": "none",
+      "model": ""
+    },
+    "integrations": {
+      "jira": {
+        "enabled": false,
+        "base_url": "",
+        "email_env": "JIRA_EMAIL",
+        "token_env": "JIRA_API_TOKEN"
+      }
+    },
+    "documenter": {
+      "default_mode": "auto"
+    },
+    "embedding": {
+      "model": "intfloat/multilingual-e5-large",
+      "backend": null,
+      "language_detection": "off",
+      "per_language": {}
+    }
+  },
+  "embedding_block_active": true,
+  "resolved_embedder": {
+    "default": [
+      "intfloat/multilingual-e5-large",
+      "local"
+    ],
+    "es": [
+      "intfloat/multilingual-e5-large",
+      "local"
+    ],
+    "en": [
+      "intfloat/multilingual-e5-large",
+      "local"
+    ],
+    "fr": [
+      "intfloat/multilingual-e5-large",
+      "local"
+    ]
+  }
+}

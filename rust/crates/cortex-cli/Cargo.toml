@@ -1,0 +1,45 @@
+[package]
+name = "cortex-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI nativo de Cortex (fachada de arranque instantáneo sobre el CLI existente)."
+
+[[bin]]
+name = "cortex-cli"
+path = "src/main.rs"
+
+[dependencies]
+unicode-width = "0.2"
+clap = { version = "4", default-features = false, features = [
+    "std",
+    "help",
+    "usage",
+    "derive",
+] }
+cortex-doctor = { path = "../cortex-doctor" }
+cortex-enterprise = { path = "../cortex-enterprise" }
+cortex-tutor = { path = "../cortex-tutor" }
+cortex-autopilot = { path = "../cortex-autopilot" }
+cortex-webgraph-server = { path = "../cortex-webgraph-server" }
+cortex-workspace = { path = "../cortex-workspace" }
+cortex-core = { path = "../cortex-core" }
+sha2 = { workspace = true }
+# Cierre T2: familias memoria/sesiones/acciones/servicios in-process.
+cortex-app = { path = "../cortex-app" }
+cortex-embed = { path = "../cortex-embed" }
+cortex-actions = { path = "../cortex-actions" }
+cortex-services = { path = "../cortex-services" }
+cortex-setup = { path = "../cortex-setup" }
+cortex-mcp = { path = "../cortex-mcp" }
+cortex-config = { path = "../cortex-config" }
+# Cierre T6-b: pantalla ratatui nativa para session watch/tui (ratatui 0.30
+# ya está en el workspace vía cortex-tui; crossterm llega re-exportada).
+cortex-tui = { path = "../cortex-tui" }
+ratatui = "0.30"
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+
+[dev-dependencies]
+tempfile = "3"

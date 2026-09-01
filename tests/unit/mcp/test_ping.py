@@ -35,6 +35,8 @@ def test_ping_returns_valid_json(tmp_path: Path):
     assert set(data.keys()) == {
         "status", "version", "uptime_seconds", "indices_loaded",
         "models_loaded", "last_error_seen",
+        # Added with the bounded error window (incident 2026-05-15 hardening).
+        "recent_errors_count", "error_window_seconds",
     }
     server.shutdown()
 

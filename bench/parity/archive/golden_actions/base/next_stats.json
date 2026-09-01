@@ -1,0 +1,13 @@
+{
+  "total_ejecuciones": 4,
+  "via_auto": 3,
+  "via_usuario": 1,
+  "pct_motor": 75.0,
+  "dias_con_interaccion": 3,
+  "por_accion": {
+    "vault.reindex": 2,
+    "session.close_stale": 1,
+    "memory.prune": 1
+  },
+  "definicion": "pct_motor alto + volumen estable = el motor toma las decisiones rutinarias (target dueño: abrir el menú <1 vez/día activo)"
+}

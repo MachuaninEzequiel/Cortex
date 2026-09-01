@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "Glossary"
+  short_description: "Lenguaje compartido: CONTEXT.md con terminos canonicos y ADRs de nombre."
+policy:
+  allow_implicit_invocation: false
+instructions: |
+  Detectar drift de lenguaje (dos palabras para lo mismo, una para tres cosas). Actualizar
+  CONTEXT.md: nombre canonico, definicion corta, sinonimos prohibidos, ejemplo. Si el termino
+  implica una alternativa descartada, proponer ADR en vault/decisions/. Propagar los terminos
+  en los artefactos vivos (spec, tickets). Mero mantenimiento NO emite checkpoint; si toco la
+  spec activa, emitir cortex_session_checkpoint con source "user-skill", phase "spec" y
+  evidencia >10 chars (diff de CONTEXT.md y de la spec).

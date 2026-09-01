@@ -59,7 +59,7 @@ class GitHubActionsRunner:
         install_cmd: str = "pip install -e '.[dev]'",
         test_cmd: str = "pytest --cov=. --cov-report=term-missing -q",
         lint_cmd: str = "ruff check .",
-        audit_cmd: str = "pip-audit || true",
+        audit_cmd: str = "pip-audit",
         min_coverage: int = 0,
     ) -> str:
         """
@@ -284,7 +284,9 @@ jobs:
       # ── Test Gate ────────────────────────────────────────────────
       - name: Tests
         id: tests
-        run: {test_cmd}
+        run: |
+          {test_cmd} 2>&1 | tee /tmp/test-output.txt
+          exit ${{{{ PIPESTATUS[0] }}}}
         continue-on-error: true
 
       - name: Cortex — Store Test Result

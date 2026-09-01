@@ -1,0 +1,21 @@
+---
+title: Enterprise Memory Vault
+tags: [cortex, enterprise-memory, governance]
+created: 2026-04-26
+---
+
+# Enterprise Memory Vault
+
+This vault stores durable organization-level knowledge for `python`.
+
+## Intended content
+
+- Architecture decisions shared across projects
+- Stable runbooks and operating procedures
+- Business and delivery patterns worth reusing
+- Incidents and lessons with organization-wide impact
+
+## Notes
+
+- Project-local working memory still belongs in each repository's `vault/` and `.memory/`.
+- Promotion into this vault should be deliberate and reviewable.

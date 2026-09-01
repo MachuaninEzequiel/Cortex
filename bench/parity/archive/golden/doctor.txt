@@ -1,0 +1,25 @@
+[OK] project_root: {{ROOT}}
+[OK] layout_mode: legacy (workspace_root={{ROOT}})
+[OK] config_yaml: {{ROOT}}/config.yaml
+[OK] config_validation: config.yaml is valid
+[OK] vault_dir: {{ROOT}}/vault
+[OK] cortex_workspace: {{ROOT}}
+[WARN] agent_guidelines: {{ROOT}}/.cortex/AGENT.md
+[INFO] workspace_yaml: Missing: {{ROOT}}/.cortex/workspace.yaml
+[WARN] git_repository: {{ROOT}}
+[WARN] git_branch: no-git-branch
+[WARN] gitignore:vault/sessions/: vault/sessions/
+[WARN] gitignore:.cortex/session.lock: .cortex/session.lock
+[OK] webgraph_dependencies: ok
+[OK] vault_validation_errors: 0 error(s) across 2 markdown file(s)
+[WARN] vault_validation_warnings: 2 warning(s) across 2 markdown file(s)
+[WARN] sessions_dir: Missing: {{ROOT}}/.cortex/sessions — run `cortex setup agent`.
+[OK] autopilot_policy: mode=assist, budget_profile=fast_code
+[WARN] session_hooks_installed: none installed — run `cortex session hooks install --ide <name>`
+[WARN] pm_workspace_layout_v2: running on legacy layout
+[OK] pm_documenter_module: cortex.documenter imports cleanly
+[OK] pm_documenter_interactive: InteractiveSession constructs OK (`--interactive` mode available)
+[OK] pm_documenter_default_mode: documenter.default_mode = auto
+[OK] pm_verification_runner: VerificationRunner ready
+[OK] pm_mcp_tools_registered: All 6 canonical session MCP tools registered
+[INFO] pm_git_available: no git repository at workspace root — sessions will open in gitless mode (documenter relies on checkpoints only)

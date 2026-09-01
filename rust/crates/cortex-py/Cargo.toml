@@ -1,0 +1,23 @@
+[package]
+name = "cortex-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Fachada PyO3 del núcleo Rust de Cortex (cortex_core._native)."
+
+[lib]
+name = "_native"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# maturin activa este feature automáticamente al compilar el wheel.
+# NO default: así `cargo test` linkea contra libpython y puede testear con GIL.
+extension-module = ["pyo3/extension-module", "onnx"]
+# Habilita el embedder ONNX productivo (G5-integración).
+onnx = ["cortex-embed/onnx"]
+
+[dependencies]
+pyo3 = { version = "0.29", features = ["abi3-py311"] }
+numpy = "0.29"
+cortex-core = { path = "../cortex-core" }
+cortex-embed = { path = "../cortex-embed" }

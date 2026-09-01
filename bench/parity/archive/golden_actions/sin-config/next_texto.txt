@@ -1,0 +1,1 @@
+Cortex no está configurado en {{ROOT}}/.cortex (no encuentro config.yaml) — corré `cortex setup agent` primero.

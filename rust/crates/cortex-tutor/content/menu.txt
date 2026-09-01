@@ -1,0 +1,12 @@
+
+╭─────────────────────────── 🧠 CORTEX TUTOR — Guía Offline Interactiva ───────────────────────────╮
+│                                                                                                  │
+│     1.      🚀     Primeros Pasos           Cómo instalar y empezar a usar Cortex                │
+│     2.      📋     Comandos Esenciales      Cheatsheet rápido de los comandos más usados         │
+│     3.      🔄     Flujo de Trabajo         El modelo tripartito: sync → SDDwork → documenter    │
+│     4.      ⚙️     Pipeline CI/CD           Cómo funciona el pipeline y cómo cambiar módulos     │
+│     5.      📁     Vault y Documentación    Estructura del vault y qué va a Git                  │
+│     6.      🏢     Enterprise Memory        Memoria corporativa, promoción y topologías          │
+│     7.      🔌     Integración IDE          Cómo conectar Cortex con tu IDE via MCP              │
+│                                                                                                  │
+╰──────────────────────────────── q = salir | número = ver tópico ─────────────────────────────────╯

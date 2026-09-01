@@ -185,7 +185,6 @@ def test_write_note_falls_back_when_path_outside_vault(
     # Force the writer to resolve to an unrelated location by monkeypatching
     # the routing target resolver.
     from cortex.documentation import writers as writers_mod
-    real_resolve = writers_mod.resolve_target_path
 
     def stub_resolve(spec, ctx, root, vault_scope="local", project_id=None):
         # Return a path that is not relative to ``vault.path``.

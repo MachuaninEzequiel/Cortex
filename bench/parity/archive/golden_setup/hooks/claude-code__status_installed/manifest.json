@@ -1,0 +1,14 @@
+{
+  "files": {
+    ".claude/settings.json": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"matcher\": \"Edit|Write|MultiEdit\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"cortex session checkpoint --source ide-hook --note 'edit via Claude Code' >/dev/null 2>&1 || true\"\n          }\n        ],\n        \"_cortex_managed\": true\n      }\n    ]\n  }\n}\n"
+  },
+  "ide": "claude-code",
+  "kind": "status",
+  "payload": {
+    "detail": "PostToolUse hook present in {{TARGET}}/.claude/settings.json",
+    "ide": "claude-code",
+    "installed": true,
+    "supported": true
+  },
+  "step": "status_installed"
+}

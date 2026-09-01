@@ -7,6 +7,7 @@ canonical-documentation initiative.
 from __future__ import annotations
 
 import json as _json
+import os
 from pathlib import Path
 
 import typer
@@ -32,6 +33,20 @@ def _resolve_cache(project_root: str | None) -> VectorCache:
     root = Path(project_root).expanduser().resolve() if project_root else Path.cwd().resolve()
     layout = WorkspaceLayout.discover(root)
     cache_dir = Path(layout.workspace_root) / ".cortex" / "vectors"
+    # Ruta nativa Rust (Obra 03, Gate G2): opt-in vía CORTEX_NATIVE=1 con el
+    # módulo compilado; default = cache Python schema v2 (paridad).
+    if os.environ.get("CORTEX_NATIVE") == "1":
+        try:
+            from cortex.semantic.native_vector_cache import NativeVectorCache
+
+            return NativeVectorCache(cache_dir)
+        except ImportError:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                "se usa el VectorCache Python."
+            )
     return VectorCache(cache_dir)
 
 

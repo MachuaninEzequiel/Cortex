@@ -108,10 +108,7 @@ def serve(
     workspace = _resolve_workspace(workspace_file, project_root)
     root = _resolve_project_root(project_root)
     if workspace is None:
-        layout = _discover_layout(root)
         _require_config(root)
-    else:
-        layout = _discover_layout(root)
 
     try:
         run_server(root, host=host, port=port, open_browser=not no_open, workspace_file=workspace)

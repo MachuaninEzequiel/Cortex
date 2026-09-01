@@ -1,0 +1,183 @@
+{
+ "renderers": [
+  "config_yaml",
+  "enterprise_vault_readme",
+  "ci_pull_request",
+  "ci_enterprise_governance",
+  "ci_feature",
+  "cd_deploy",
+  "architecture_md",
+  "decisions_md",
+  "context_md",
+  "runbooks_md",
+  "enterprise_runbook_md",
+  "git_vault_policy_md",
+  "workspace_yaml"
+ ],
+ "cases": [
+  {
+   "case": "python_legacy",
+   "root_name": "python_legacy",
+   "markers": [
+    "pyproject.toml",
+    "tests/"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "python_new_layout",
+   "root_name": "python",
+   "markers": [
+    "pyproject.toml",
+    "tests/"
+   ],
+   "new_layout": true,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "node_npm",
+   "root_name": "node_npm",
+   "markers": [
+    "package.json"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "go_mod",
+   "root_name": "go_mod",
+   "markers": [
+    "go.mod"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "rust_cargo",
+   "root_name": "rust_cargo",
+   "markers": [
+    "Cargo.toml"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "java_maven",
+   "root_name": "java_maven",
+   "markers": [
+    "pom.xml"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  },
+  {
+   "case": "ruby_gemfile",
+   "root_name": "ruby_gemfile",
+   "markers": [
+    "Gemfile",
+    "spec/"
+   ],
+   "new_layout": false,
+   "expected": {
+    "config_yaml": "config_yaml.out",
+    "enterprise_vault_readme": "enterprise_vault_readme.out",
+    "ci_pull_request": "ci_pull_request.out",
+    "ci_enterprise_governance": "ci_enterprise_governance.out",
+    "ci_feature": "ci_feature.out",
+    "cd_deploy": "cd_deploy.out",
+    "architecture_md": "architecture_md.out",
+    "decisions_md": "decisions_md.out",
+    "context_md": "context_md.out",
+    "runbooks_md": "runbooks_md.out",
+    "enterprise_runbook_md": "enterprise_runbook_md.out",
+    "git_vault_policy_md": "git_vault_policy_md.out",
+    "workspace_yaml": "workspace_yaml.out"
+   }
+  }
+ ]
+}

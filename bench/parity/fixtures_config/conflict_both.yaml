@@ -1,0 +1,4 @@
+episodic:
+  embedding_backend: local
+embedding:
+  model: intfloat/multilingual-e5-large

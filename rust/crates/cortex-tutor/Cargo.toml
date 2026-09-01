@@ -1,0 +1,12 @@
+[package]
+name = "cortex-tutor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+
+[dependencies]
+cortex-workspace = { path = "../cortex-workspace" }
+serde_json = { workspace = true, features = ["float_roundtrip"] }

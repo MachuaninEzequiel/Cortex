@@ -1,0 +1,36 @@
+{
+  "fase": "P8e",
+  "fecha": "2026-08-24",
+  "stream": "B",
+  "crate": "rust/crates/cortex-setup (módulo session_hooks)",
+  "fuente": "cortex/session/hooks/ — installer.py (183) + adapters/{claude_code,cursor,opencode,pi}.py (~780 líneas)",
+  "gate": "instalación/desinstalación de session hooks byte-parity sobre fixtures deterministas",
+  "verificacion": {
+    "cargo_test": "cargo test -p cortex-setup → 16 tests verdes en 6 binarios (incluye hooks_parity nuevo)",
+    "clippy": "cargo clippy -p cortex-setup --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-setup --check → limpio",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration --no-cov → 2455 passed, 18 skipped",
+    "golden_p0_regresion": "capture_golden.py --fixture <fixture> --verify → PARIDAD OK"
+  },
+  "paridad_golden": {
+    "script": "bench/parity/p8_hooks_golden.py (captura | --verify)",
+    "goldens": "bench/parity/golden_setup/hooks/<adapter>__<caso>/manifest.json",
+    "adapters": ["claude-code (.claude/settings.json _cortex_managed)", "cursor (.git/hooks/post-commit bloque marcado + exec bit)", "opencode (.opencode/hooks.md bloque marcado)", "pi (justfile recetas)"],
+    "casos_por_adapter": ["install_fresh", "install_idempotent", "install_existing", "uninstall_installed", "uninstall_missing", "uninstall_nomarker", "status_missing", "status_installed", "status_uninstalled"],
+    "extras_cursor": ["install_existing_noshebang (rama prepend shebang)", "install_error_nogit (ValueError espejado: 'not a git repository…')"],
+    "resultado_rust_vs_oraculo": "38/38 manifiestos idénticos (payloads asdict() completos con defaults + árboles byte-a-byte)",
+    "normalizacion": "{{TARGET}} ruta absoluta; pasos deterministas SIN globs ⇒ el orden del arreglo es contrato; sin reloj necesario (no hay timestamps); HOME no interviene",
+    "determinismo": "--verify regenera en temp y compara → VERIFY OK"
+  },
+  "cobertura_del_porteo": {
+    "installer": "InstallResult/UninstallResult/HookStatus (dataclasses espejo), HookAdapter trait, HookInstaller registry+dispatcher (list_available/list_supported/get con KeyError-message/install/uninstall/status/status_all), default_installer con los 4 adapters",
+    "claude_code": "merge JSON de hooks.PostToolUse con marcador _cortex_managed, validaciones de tipo con mensajes espejo (settings.hooks must be an object…), dumps indent=2 ensure_ascii=False + \\n, colapso {} al vaciar, uninstall idempotente",
+    "cursor": "require_git_repo, render con shebang condicional (falta→prepend; vacío→shebang+block), chmod |0o111, strip por líneas exactas, unlink cuando queda solo shebang o vacío",
+    "opencode_pi": "bloques marcados byte-exactos, rstrip+\\n en cleanup, unlink si queda vacío, status detail messages espejo"
+  },
+  "decisiones": [
+    "Casos con JSON inválido FUERA del gate: el detalle embebe el str(json.JSONDecodeError) de Python, no replicable desde serde_json (cosmética de error-path documentada en ambos lados).",
+    "Los payloads se comparan como asdict() COMPLETO de Python (incluye campos default: removed_paths=[], supported=true): el shape del resultado también es contrato.",
+    "El gate atrapó y corrigió 2 drifts reales antes de commit: \\n extra en los bloques marcados (join final \"\" de Python) y exec bit/no-git del capturador."
+  ]
+}

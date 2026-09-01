@@ -1,0 +1,806 @@
+{
+  "seed": 42,
+  "docs": 1000,
+  "queries": [
+    {
+      "query": "CHG-034 spec-despliegue-checkpoint",
+      "source_doc": "changelog/CHG-034.md"
+    },
+    {
+      "query": "CHG-101 search-adr",
+      "source_doc": "changelog/CHG-101.md"
+    },
+    {
+      "query": "CHG-208 search-vector-rendimiento",
+      "source_doc": "changelog/CHG-208.md"
+    },
+    {
+      "query": "CHG-275 chunking-onnx-governance",
+      "source_doc": "changelog/CHG-275.md"
+    },
+    {
+      "query": "CHG-332 changelog-autenticacion-quantization",
+      "source_doc": "changelog/CHG-332.md"
+    },
+    {
+      "query": "CHG-450 governance-cache",
+      "source_doc": "changelog/CHG-450.md"
+    },
+    {
+      "query": "CHG-570 runbook-adr-cache",
+      "source_doc": "changelog/CHG-570.md"
+    },
+    {
+      "query": "CHG-668 despliegue-indice-memoria",
+      "source_doc": "changelog/CHG-668.md"
+    },
+    {
+      "query": "CHG-730 chunking-seguridad",
+      "source_doc": "changelog/CHG-730.md"
+    },
+    {
+      "query": "CHG-837 schema-runbook-throughput",
+      "source_doc": "changelog/CHG-837.md"
+    },
+    {
+      "query": "CHG-928 verificacion-postmortem",
+      "source_doc": "changelog/CHG-928.md"
+    },
+    {
+      "query": "CHG-976 scoring-seguridad-retrieval",
+      "source_doc": "changelog/CHG-976.md"
+    },
+    {
+      "query": "ADR-024 scoring-rendimiento",
+      "source_doc": "decisions/ADR-024.md"
+    },
+    {
+      "query": "ADR-064 handoff-cache-search",
+      "source_doc": "decisions/ADR-064.md"
+    },
+    {
+      "query": "ADR-129 verificacion-budget",
+      "source_doc": "decisions/ADR-129.md"
+    },
+    {
+      "query": "ADR-217 auth-onnx",
+      "source_doc": "decisions/ADR-217.md"
+    },
+    {
+      "query": "ADR-266 handoff-governance-deploy",
+      "source_doc": "decisions/ADR-266.md"
+    },
+    {
+      "query": "ADR-295 embeddings-despliegue",
+      "source_doc": "decisions/ADR-295.md"
+    },
+    {
+      "query": "ADR-379 budget-checkpoint",
+      "source_doc": "decisions/ADR-379.md"
+    },
+    {
+      "query": "ADR-402 changelog-vector-migracion",
+      "source_doc": "decisions/ADR-402.md"
+    },
+    {
+      "query": "ADR-456 cosine-adr-cache",
+      "source_doc": "decisions/ADR-456.md"
+    },
+    {
+      "query": "ADR-509 onnx-workspace",
+      "source_doc": "decisions/ADR-509.md"
+    },
+    {
+      "query": "ADR-568 changelog-spec",
+      "source_doc": "decisions/ADR-568.md"
+    },
+    {
+      "query": "ADR-628 postmortem-embeddings",
+      "source_doc": "decisions/ADR-628.md"
+    },
+    {
+      "query": "ADR-670 pipeline-bateria",
+      "source_doc": "decisions/ADR-670.md"
+    },
+    {
+      "query": "ADR-705 governance-quantization",
+      "source_doc": "decisions/ADR-705.md"
+    },
+    {
+      "query": "ADR-746 cosine-deploy-seguridad",
+      "source_doc": "decisions/ADR-746.md"
+    },
+    {
+      "query": "ADR-791 quantization-governance",
+      "source_doc": "decisions/ADR-791.md"
+    },
+    {
+      "query": "ADR-830 changelog-governance",
+      "source_doc": "decisions/ADR-830.md"
+    },
+    {
+      "query": "ADR-921 latencia-handoff-scoring",
+      "source_doc": "decisions/ADR-921.md"
+    },
+    {
+      "query": "ADR-957 changelog-postmortem-onnx",
+      "source_doc": "decisions/ADR-957.md"
+    },
+    {
+      "query": "DEC-013 budget-vector-memoria",
+      "source_doc": "decisions/DEC-013.md"
+    },
+    {
+      "query": "DEC-048 handoff-retrieval-cache",
+      "source_doc": "decisions/DEC-048.md"
+    },
+    {
+      "query": "DEC-122 search-deploy",
+      "source_doc": "decisions/DEC-122.md"
+    },
+    {
+      "query": "DEC-179 sesion-retrieval-embeddings",
+      "source_doc": "decisions/DEC-179.md"
+    },
+    {
+      "query": "DEC-234 schema-rollback-spec",
+      "source_doc": "decisions/DEC-234.md"
+    },
+    {
+      "query": "DEC-259 budget-chunking-adr",
+      "source_doc": "decisions/DEC-259.md"
+    },
+    {
+      "query": "DEC-302 sesion-sesion",
+      "source_doc": "decisions/DEC-302.md"
+    },
+    {
+      "query": "DEC-326 sesion-verificacion",
+      "source_doc": "decisions/DEC-326.md"
+    },
+    {
+      "query": "DEC-372 cosine-bm25-indice",
+      "source_doc": "decisions/DEC-372.md"
+    },
+    {
+      "query": "DEC-422 despliegue-runbook-migracion",
+      "source_doc": "decisions/DEC-422.md"
+    },
+    {
+      "query": "DEC-475 checkpoint-pipeline",
+      "source_doc": "decisions/DEC-475.md"
+    },
+    {
+      "query": "DEC-541 migracion-bateria",
+      "source_doc": "decisions/DEC-541.md"
+    },
+    {
+      "query": "DEC-566 sesion-changelog",
+      "source_doc": "decisions/DEC-566.md"
+    },
+    {
+      "query": "DEC-634 adr-rendimiento-memoria",
+      "source_doc": "decisions/DEC-634.md"
+    },
+    {
+      "query": "DEC-721 sesion-despliegue-deploy",
+      "source_doc": "decisions/DEC-721.md"
+    },
+    {
+      "query": "DEC-794 bm25-autenticacion",
+      "source_doc": "decisions/DEC-794.md"
+    },
+    {
+      "query": "DEC-841 governance-workspace-cosine",
+      "source_doc": "decisions/DEC-841.md"
+    },
+    {
+      "query": "DEC-868 autenticacion-bm25",
+      "source_doc": "decisions/DEC-868.md"
+    },
+    {
+      "query": "DEC-925 budget-scoring",
+      "source_doc": "decisions/DEC-925.md"
+    },
+    {
+      "query": "DEC-956 sesion-onnx",
+      "source_doc": "decisions/DEC-956.md"
+    },
+    {
+      "query": "DEC-997 glossary-retrieval-workspace",
+      "source_doc": "decisions/DEC-997.md"
+    },
+    {
+      "query": "GLOS-132 indice-onnx-policy",
+      "source_doc": "glossary/GLOS-132.md"
+    },
+    {
+      "query": "GLOS-196 retrieval-despliegue",
+      "source_doc": "glossary/GLOS-196.md"
+    },
+    {
+      "query": "GLOS-246 memory-runbook",
+      "source_doc": "glossary/GLOS-246.md"
+    },
+    {
+      "query": "GLOS-353 cosine-autenticacion-rollback",
+      "source_doc": "glossary/GLOS-353.md"
+    },
+    {
+      "query": "GLOS-486 rendimiento-bateria-cosine",
+      "source_doc": "glossary/GLOS-486.md"
+    },
+    {
+      "query": "GLOS-602 auth-changelog-spec",
+      "source_doc": "glossary/GLOS-602.md"
+    },
+    {
+      "query": "GLOS-664 memoria-seguridad",
+      "source_doc": "glossary/GLOS-664.md"
+    },
+    {
+      "query": "GLOS-764 vector-embeddings",
+      "source_doc": "glossary/GLOS-764.md"
+    },
+    {
+      "query": "GLOS-843 cache-scoring-seguridad",
+      "source_doc": "glossary/GLOS-843.md"
+    },
+    {
+      "query": "GLOS-905 despliegue-cosine-verificacion",
+      "source_doc": "glossary/GLOS-905.md"
+    },
+    {
+      "query": "GLOS-998 verificacion-governance-retrieval",
+      "source_doc": "glossary/GLOS-998.md"
+    },
+    {
+      "query": "HU-117 quantization-embeddings-search",
+      "source_doc": "hu/HU-117.md"
+    },
+    {
+      "query": "HU-153 memoria-memory-handoff",
+      "source_doc": "hu/HU-153.md"
+    },
+    {
+      "query": "HU-186 retrieval-policy-verificacion",
+      "source_doc": "hu/HU-186.md"
+    },
+    {
+      "query": "HU-204 latencia-retrieval-auth",
+      "source_doc": "hu/HU-204.md"
+    },
+    {
+      "query": "HU-221 policy-rendimiento",
+      "source_doc": "hu/HU-221.md"
+    },
+    {
+      "query": "HU-27 handoff-search",
+      "source_doc": "hu/HU-27.md"
+    },
+    {
+      "query": "HU-293 budget-governance",
+      "source_doc": "hu/HU-293.md"
+    },
+    {
+      "query": "HU-340 runbook-postmortem-latencia",
+      "source_doc": "hu/HU-340.md"
+    },
+    {
+      "query": "HU-357 rollback-webgraph",
+      "source_doc": "hu/HU-357.md"
+    },
+    {
+      "query": "HU-383 deploy-postmortem",
+      "source_doc": "hu/HU-383.md"
+    },
+    {
+      "query": "HU-398 budget-rendimiento",
+      "source_doc": "hu/HU-398.md"
+    },
+    {
+      "query": "HU-441 scoring-runbook",
+      "source_doc": "hu/HU-441.md"
+    },
+    {
+      "query": "HU-458 bm25-seguridad-migracion",
+      "source_doc": "hu/HU-458.md"
+    },
+    {
+      "query": "HU-479 cache-pipeline-deploy",
+      "source_doc": "hu/HU-479.md"
+    },
+    {
+      "query": "HU-510 webgraph-migracion-sesion",
+      "source_doc": "hu/HU-510.md"
+    },
+    {
+      "query": "HU-555 governance-cache",
+      "source_doc": "hu/HU-555.md"
+    },
+    {
+      "query": "HU-601 governance-adr",
+      "source_doc": "hu/HU-601.md"
+    },
+    {
+      "query": "HU-62 policy-despliegue-handoff",
+      "source_doc": "hu/HU-62.md"
+    },
+    {
+      "query": "HU-662 memoria-verificacion",
+      "source_doc": "hu/HU-662.md"
+    },
+    {
+      "query": "HU-683 embeddings-glossary",
+      "source_doc": "hu/HU-683.md"
+    },
+    {
+      "query": "HU-734 seguridad-rollback-verificacion",
+      "source_doc": "hu/HU-734.md"
+    },
+    {
+      "query": "HU-809 schema-search-auth",
+      "source_doc": "hu/HU-809.md"
+    },
+    {
+      "query": "HU-822 vault-glossary",
+      "source_doc": "hu/HU-822.md"
+    },
+    {
+      "query": "HU-848 glossary-cache-webgraph",
+      "source_doc": "hu/HU-848.md"
+    },
+    {
+      "query": "HU-869 bm25-throughput",
+      "source_doc": "hu/HU-869.md"
+    },
+    {
+      "query": "HU-885 budget-handoff-bm25",
+      "source_doc": "hu/HU-885.md"
+    },
+    {
+      "query": "HU-90 deploy-sesion-changelog",
+      "source_doc": "hu/HU-90.md"
+    },
+    {
+      "query": "HU-938 glossary-webgraph-deploy",
+      "source_doc": "hu/HU-938.md"
+    },
+    {
+      "query": "HU-977 migracion-chunking",
+      "source_doc": "hu/HU-977.md"
+    },
+    {
+      "query": "HU-991 autenticacion-memory",
+      "source_doc": "hu/HU-991.md"
+    },
+    {
+      "query": "INC-058 bateria-rendimiento-handoff",
+      "source_doc": "incidents/INC-058.md"
+    },
+    {
+      "query": "INC-114 deploy-bateria-onnx",
+      "source_doc": "incidents/INC-114.md"
+    },
+    {
+      "query": "INC-152 runbook-deploy",
+      "source_doc": "incidents/INC-152.md"
+    },
+    {
+      "query": "INC-209 retrieval-embeddings-postmortem",
+      "source_doc": "incidents/INC-209.md"
+    },
+    {
+      "query": "INC-250 adr-retrieval",
+      "source_doc": "incidents/INC-250.md"
+    },
+    {
+      "query": "INC-328 search-bm25-retrieval",
+      "source_doc": "incidents/INC-328.md"
+    },
+    {
+      "query": "INC-369 changelog-cache",
+      "source_doc": "incidents/INC-369.md"
+    },
+    {
+      "query": "INC-416 policy-adr",
+      "source_doc": "incidents/INC-416.md"
+    },
+    {
+      "query": "INC-474 onnx-schema-deploy",
+      "source_doc": "incidents/INC-474.md"
+    },
+    {
+      "query": "INC-513 schema-seguridad-changelog",
+      "source_doc": "incidents/INC-513.md"
+    },
+    {
+      "query": "INC-535 retrieval-scoring",
+      "source_doc": "incidents/INC-535.md"
+    },
+    {
+      "query": "INC-608 bateria-policy",
+      "source_doc": "incidents/INC-608.md"
+    },
+    {
+      "query": "INC-652 bateria-governance",
+      "source_doc": "incidents/INC-652.md"
+    },
+    {
+      "query": "INC-677 indice-checkpoint-vector",
+      "source_doc": "incidents/INC-677.md"
+    },
+    {
+      "query": "INC-782 quantization-postmortem-indice",
+      "source_doc": "incidents/INC-782.md"
+    },
+    {
+      "query": "INC-878 changelog-policy",
+      "source_doc": "incidents/INC-878.md"
+    },
+    {
+      "query": "INC-944 scoring-cosine",
+      "source_doc": "incidents/INC-944.md"
+    },
+    {
+      "query": "PM-026 migracion-bateria-vault",
+      "source_doc": "postmortems/PM-026.md"
+    },
+    {
+      "query": "PM-146 runbook-glossary",
+      "source_doc": "postmortems/PM-146.md"
+    },
+    {
+      "query": "PM-213 handoff-rollback",
+      "source_doc": "postmortems/PM-213.md"
+    },
+    {
+      "query": "PM-282 deploy-embeddings",
+      "source_doc": "postmortems/PM-282.md"
+    },
+    {
+      "query": "PM-387 rendimiento-workspace-despliegue",
+      "source_doc": "postmortems/PM-387.md"
+    },
+    {
+      "query": "PM-517 onnx-search-runbook",
+      "source_doc": "postmortems/PM-517.md"
+    },
+    {
+      "query": "PM-756 budget-budget",
+      "source_doc": "postmortems/PM-756.md"
+    },
+    {
+      "query": "PM-929 chunking-despliegue-rendimiento",
+      "source_doc": "postmortems/PM-929.md"
+    },
+    {
+      "query": "RUNBOOK-004 policy-checkpoint",
+      "source_doc": "runbooks/RUNBOOK-004.md"
+    },
+    {
+      "query": "RUNBOOK-102 policy-memory",
+      "source_doc": "runbooks/RUNBOOK-102.md"
+    },
+    {
+      "query": "RUNBOOK-177 handoff-workspace-vector",
+      "source_doc": "runbooks/RUNBOOK-177.md"
+    },
+    {
+      "query": "RUNBOOK-239 embeddings-onnx",
+      "source_doc": "runbooks/RUNBOOK-239.md"
+    },
+    {
+      "query": "RUNBOOK-271 governance-workspace",
+      "source_doc": "runbooks/RUNBOOK-271.md"
+    },
+    {
+      "query": "RUNBOOK-365 bm25-migracion",
+      "source_doc": "runbooks/RUNBOOK-365.md"
+    },
+    {
+      "query": "RUNBOOK-442 autenticacion-policy-runbook",
+      "source_doc": "runbooks/RUNBOOK-442.md"
+    },
+    {
+      "query": "RUNBOOK-483 chunking-latencia-throughput",
+      "source_doc": "runbooks/RUNBOOK-483.md"
+    },
+    {
+      "query": "RUNBOOK-511 memoria-cosine",
+      "source_doc": "runbooks/RUNBOOK-511.md"
+    },
+    {
+      "query": "RUNBOOK-563 memoria-memoria-budget",
+      "source_doc": "runbooks/RUNBOOK-563.md"
+    },
+    {
+      "query": "RUNBOOK-599 onnx-cobertura",
+      "source_doc": "runbooks/RUNBOOK-599.md"
+    },
+    {
+      "query": "RUNBOOK-643 memoria-throughput-cache",
+      "source_doc": "runbooks/RUNBOOK-643.md"
+    },
+    {
+      "query": "RUNBOOK-686 throughput-rendimiento-vault",
+      "source_doc": "runbooks/RUNBOOK-686.md"
+    },
+    {
+      "query": "RUNBOOK-720 deploy-memoria-throughput",
+      "source_doc": "runbooks/RUNBOOK-720.md"
+    },
+    {
+      "query": "RUNBOOK-741 policy-schema",
+      "source_doc": "runbooks/RUNBOOK-741.md"
+    },
+    {
+      "query": "RUNBOOK-775 seguridad-spec-cobertura",
+      "source_doc": "runbooks/RUNBOOK-775.md"
+    },
+    {
+      "query": "RUNBOOK-812 policy-schema-indice",
+      "source_doc": "runbooks/RUNBOOK-812.md"
+    },
+    {
+      "query": "RUNBOOK-855 bm25-embeddings",
+      "source_doc": "runbooks/RUNBOOK-855.md"
+    },
+    {
+      "query": "RUNBOOK-892 spec-handoff-spec",
+      "source_doc": "runbooks/RUNBOOK-892.md"
+    },
+    {
+      "query": "RUNBOOK-937 cobertura-vault",
+      "source_doc": "runbooks/RUNBOOK-937.md"
+    },
+    {
+      "query": "RUNBOOK-999 memoria-onnx-sesion",
+      "source_doc": "runbooks/RUNBOOK-999.md"
+    },
+    {
+      "query": "2026-07-02-0770-session cosine-webgraph-vault",
+      "source_doc": "sessions/2026-07-02-0770-session.md"
+    },
+    {
+      "query": "2026-07-04-0561-session bm25-workspace",
+      "source_doc": "sessions/2026-07-04-0561-session.md"
+    },
+    {
+      "query": "2026-07-06-0558-session schema-memoria",
+      "source_doc": "sessions/2026-07-06-0558-session.md"
+    },
+    {
+      "query": "2026-07-08-0465-session memory-autenticacion",
+      "source_doc": "sessions/2026-07-08-0465-session.md"
+    },
+    {
+      "query": "2026-07-08-0959-session workspace-despliegue",
+      "source_doc": "sessions/2026-07-08-0959-session.md"
+    },
+    {
+      "query": "2026-07-10-0649-session cobertura-sesion",
+      "source_doc": "sessions/2026-07-10-0649-session.md"
+    },
+    {
+      "query": "2026-07-12-0144-session vault-verificacion-migracion",
+      "source_doc": "sessions/2026-07-12-0144-session.md"
+    },
+    {
+      "query": "2026-07-13-0168-session deploy-memory-checkpoint",
+      "source_doc": "sessions/2026-07-13-0168-session.md"
+    },
+    {
+      "query": "2026-07-15-0074-session memory-pipeline-schema",
+      "source_doc": "sessions/2026-07-15-0074-session.md"
+    },
+    {
+      "query": "2026-07-16-0367-session spec-schema",
+      "source_doc": "sessions/2026-07-16-0367-session.md"
+    },
+    {
+      "query": "2026-07-18-0695-session chunking-cobertura-onnx",
+      "source_doc": "sessions/2026-07-18-0695-session.md"
+    },
+    {
+      "query": "2026-07-19-0345-session policy-checkpoint",
+      "source_doc": "sessions/2026-07-19-0345-session.md"
+    },
+    {
+      "query": "2026-07-19-0941-session indice-cache",
+      "source_doc": "sessions/2026-07-19-0941-session.md"
+    },
+    {
+      "query": "2026-07-23-0075-session pipeline-cobertura",
+      "source_doc": "sessions/2026-07-23-0075-session.md"
+    },
+    {
+      "query": "2026-07-24-0104-session spec-webgraph-verificacion",
+      "source_doc": "sessions/2026-07-24-0104-session.md"
+    },
+    {
+      "query": "2026-07-26-0054-session runbook-bateria-adr",
+      "source_doc": "sessions/2026-07-26-0054-session.md"
+    },
+    {
+      "query": "2026-07-27-0425-session retrieval-budget",
+      "source_doc": "sessions/2026-07-27-0425-session.md"
+    },
+    {
+      "query": "2026-07-28-0059-session webgraph-autenticacion",
+      "source_doc": "sessions/2026-07-28-0059-session.md"
+    },
+    {
+      "query": "2026-08-02-0095-session adr-search",
+      "source_doc": "sessions/2026-08-02-0095-session.md"
+    },
+    {
+      "query": "2026-08-03-0906-session throughput-workspace-changelog",
+      "source_doc": "sessions/2026-08-03-0906-session.md"
+    },
+    {
+      "query": "2026-08-05-0747-session bateria-cosine",
+      "source_doc": "sessions/2026-08-05-0747-session.md"
+    },
+    {
+      "query": "2026-08-07-0587-session indice-deploy",
+      "source_doc": "sessions/2026-08-07-0587-session.md"
+    },
+    {
+      "query": "2026-08-08-0573-session pipeline-runbook-checkpoint",
+      "source_doc": "sessions/2026-08-08-0573-session.md"
+    },
+    {
+      "query": "2026-08-09-0440-session rollback-policy-rendimiento",
+      "source_doc": "sessions/2026-08-09-0440-session.md"
+    },
+    {
+      "query": "2026-08-10-0051-session policy-quantization-budget",
+      "source_doc": "sessions/2026-08-10-0051-session.md"
+    },
+    {
+      "query": "2026-08-11-0085-session rollback-runbook",
+      "source_doc": "sessions/2026-08-11-0085-session.md"
+    },
+    {
+      "query": "2026-08-11-0712-session autenticacion-handoff",
+      "source_doc": "sessions/2026-08-11-0712-session.md"
+    },
+    {
+      "query": "2026-08-12-0700-session postmortem-pipeline-auth",
+      "source_doc": "sessions/2026-08-12-0700-session.md"
+    },
+    {
+      "query": "2026-08-13-0455-session bateria-rollback-scoring",
+      "source_doc": "sessions/2026-08-13-0455-session.md"
+    },
+    {
+      "query": "2026-08-15-0238-session bateria-cache-postmortem",
+      "source_doc": "sessions/2026-08-15-0238-session.md"
+    },
+    {
+      "query": "2026-08-15-0690-session despliegue-vault",
+      "source_doc": "sessions/2026-08-15-0690-session.md"
+    },
+    {
+      "query": "2026-08-17-0308-session bm25-spec",
+      "source_doc": "sessions/2026-08-17-0308-session.md"
+    },
+    {
+      "query": "2026-08-19-0303-session despliegue-adr-webgraph",
+      "source_doc": "sessions/2026-08-19-0303-session.md"
+    },
+    {
+      "query": "2026-08-20-0360-session bm25-webgraph-indice",
+      "source_doc": "sessions/2026-08-20-0360-session.md"
+    },
+    {
+      "query": "2026-08-22-0317-session pipeline-indice-runbook",
+      "source_doc": "sessions/2026-08-22-0317-session.md"
+    },
+    {
+      "query": "2026-08-23-0504-session despliegue-webgraph-budget",
+      "source_doc": "sessions/2026-08-23-0504-session.md"
+    },
+    {
+      "query": "2026-08-25-0298-session handoff-workspace",
+      "source_doc": "sessions/2026-08-25-0298-session.md"
+    },
+    {
+      "query": "2026-08-27-0255-session retrieval-checkpoint",
+      "source_doc": "sessions/2026-08-27-0255-session.md"
+    },
+    {
+      "query": "2026-08-28-0596-session cobertura-embeddings-cache",
+      "source_doc": "sessions/2026-08-28-0596-session.md"
+    },
+    {
+      "query": "SPEC-041 policy-bm25",
+      "source_doc": "specs/SPEC-041.md"
+    },
+    {
+      "query": "SPEC-098 auth-throughput-memoria",
+      "source_doc": "specs/SPEC-098.md"
+    },
+    {
+      "query": "SPEC-142 changelog-embeddings-indice",
+      "source_doc": "specs/SPEC-142.md"
+    },
+    {
+      "query": "SPEC-224 migracion-throughput-vault",
+      "source_doc": "specs/SPEC-224.md"
+    },
+    {
+      "query": "SPEC-297 bm25-deploy",
+      "source_doc": "specs/SPEC-297.md"
+    },
+    {
+      "query": "SPEC-351 spec-cobertura",
+      "source_doc": "specs/SPEC-351.md"
+    },
+    {
+      "query": "SPEC-407 chunking-workspace-memory",
+      "source_doc": "specs/SPEC-407.md"
+    },
+    {
+      "query": "SPEC-434 auth-workspace-memory",
+      "source_doc": "specs/SPEC-434.md"
+    },
+    {
+      "query": "SPEC-481 adr-throughput",
+      "source_doc": "specs/SPEC-481.md"
+    },
+    {
+      "query": "SPEC-531 embeddings-spec",
+      "source_doc": "specs/SPEC-531.md"
+    },
+    {
+      "query": "SPEC-544 governance-cosine",
+      "source_doc": "specs/SPEC-544.md"
+    },
+    {
+      "query": "SPEC-592 throughput-adr-glossary",
+      "source_doc": "specs/SPEC-592.md"
+    },
+    {
+      "query": "SPEC-617 governance-despliegue-webgraph",
+      "source_doc": "specs/SPEC-617.md"
+    },
+    {
+      "query": "SPEC-650 onnx-memoria-checkpoint",
+      "source_doc": "specs/SPEC-650.md"
+    },
+    {
+      "query": "SPEC-679 governance-policy",
+      "source_doc": "specs/SPEC-679.md"
+    },
+    {
+      "query": "SPEC-732 changelog-search-spec",
+      "source_doc": "specs/SPEC-732.md"
+    },
+    {
+      "query": "SPEC-766 vector-migracion",
+      "source_doc": "specs/SPEC-766.md"
+    },
+    {
+      "query": "SPEC-787 handoff-runbook",
+      "source_doc": "specs/SPEC-787.md"
+    },
+    {
+      "query": "SPEC-815 workspace-webgraph",
+      "source_doc": "specs/SPEC-815.md"
+    },
+    {
+      "query": "SPEC-864 throughput-latencia-quantization",
+      "source_doc": "specs/SPEC-864.md"
+    },
+    {
+      "query": "SPEC-890 glossary-rollback-cosine",
+      "source_doc": "specs/SPEC-890.md"
+    },
+    {
+      "query": "SPEC-935 changelog-throughput",
+      "source_doc": "specs/SPEC-935.md"
+    }
+  ]
+}

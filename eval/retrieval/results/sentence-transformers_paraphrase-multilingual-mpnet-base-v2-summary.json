@@ -1,0 +1,19 @@
+{
+  "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+  "backend": "fastembed",
+  "top_k": 10,
+  "languages": {
+    "es": {
+      "mrr10": 0.9167,
+      "recall5": 0.9423,
+      "recall1": 0.8654,
+      "num_queries": 26
+    },
+    "en": {
+      "mrr10": 0.9533,
+      "recall5": 1.0,
+      "recall1": 0.9,
+      "num_queries": 25
+    }
+  }
+}

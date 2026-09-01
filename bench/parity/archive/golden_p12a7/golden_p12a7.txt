@@ -1,0 +1,315 @@
+### S01 filters noop
+rc=0
+none=['item-1', 'item-2']
+empty=['item-1', 'item-2']
+is_list=True
+### S02 doc_types strict
+rc=0
+keep=['item-1', 'item-3']
+strict=['item-1']
+### S03 exclude_doc_types
+rc=0
+out=['item-2']
+### S04 statuses
+rc=0
+allowed=['item-1']
+excluded=['item-1', 'item-3']
+### S05 tags AND/OR/exclude
+rc=0
+required=['item-1']
+any_of=['item-1', 'item-3']
+excluded=['item-3']
+### S06 vault_scope
+rc=0
+local=['item-1']
+ent=['item-2']
+both=['item-1', 'item-2']
+### S07 max_age ventana
+rc=0
+window=['item-2', 'item-3', 'item-4']
+zero_noop=['item-1', 'item-2', 'item-3', 'item-4']
+none_noop=['item-1', 'item-2', 'item-3', 'item-4']
+### S08 project_ids + combined
+rc=0
+proj=['item-1']
+combined=['item-9']
+not_mutated=True
+### S09 markdown
+rc=0
+🧠 Cortex Context — Found 3 related memories
+(3 searches, 9 raw hits → 3 unique)
+
+📝 **1. Nota A** [EPISODIC]
+  2026-05-01 • src/a.py, src/b.py • `rust`, `core`
+  > contenido corto
+  _Matched by: topic_
+
+📖 **2. ADR larga** [SEMANTIC]
+  `decisiones`
+  > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+  _Matched by: topic, files_
+
+📝 **3. Legacy** [EPISODIC]
+  > yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+  _Matched by: keyword_
+
+---
+_Run `cortex context --expand` for full details._
+@@@
+🧠 Cortex Context — No related memories found.
+
+This might be a new area of the codebase.
+### S10 compact
+rc=0
+## 🧠 Cortex Context (3 memories found)
+
+### Nota A [EPISODIC]
+contenido corto
+Files: src/a.py, src/b.py | 2026-05-01 | Matched by: topic
+
+### ADR larga [SEMANTIC]
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Matched by: topic, files
+
+### Legacy [EPISODIC]
+yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+Matched by: keyword
+
+@@@
+🧠 Cortex Context — No related memories found.
+### S11 json
+rc=0
+{
+  "has_context": true,
+  "total_searches": 3,
+  "total_raw_hits": 9,
+  "total_items": 3,
+  "total_chars": 519,
+  "within_budget": true,
+  "work": {
+    "source": "manual",
+    "changed_files": [],
+    "detected_domain": null,
+    "domain_confidence": 0.0,
+    "search_queries": []
+  },
+  "items": [
+    {
+      "source": "episodic",
+      "source_id": "item-1",
+      "title": "Nota A",
+      "content": "contenido corto",
+      "score": 0.5,
+      "enriched_score": 0.6,
+      "matched_by": [
+        "topic_search"
+      ],
+      "files_mentioned": [
+        "src/a.py",
+        "src/b.py"
+      ],
+      "date": "{{TS}}",
+      "tags": [
+        "rust",
+        "core"
+      ],
+      "doc_type": null,
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "source": "semantic",
+      "source_id": "item-2",
+      "title": "ADR larga",
+      "content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx fin",
+      "score": 0.42,
+      "enriched_score": 0.9,
+      "matched_by": [
+        "topic_search",
+        "files_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [
+        "decisiones"
+      ],
+      "doc_type": "adr",
+      "status": "accepted",
+      "vault_scope": "enterprise",
+      "origin_project_id": "proj-x",
+      "matched_chunk_id": "chunk-9",
+      "matched_section_title": "Decisi\u00f3n"
+    },
+    {
+      "source": "episodic",
+      "source_id": "item-3",
+      "title": "Legacy",
+      "content": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "score": 0.5,
+      "enriched_score": 0.75,
+      "matched_by": [
+        "keyword_query"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [],
+      "doc_type": null,
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ]
+}
+@@@
+{
+  "has_context": false,
+  "total_searches": 1,
+  "total_raw_hits": 0,
+  "total_items": 0,
+  "total_chars": 0,
+  "within_budget": false,
+  "work": {
+    "source": "manual",
+    "changed_files": [],
+    "detected_domain": null,
+    "domain_confidence": 0.0,
+    "search_queries": []
+  },
+  "items": []
+}
+### S12 grouped
+rc=0
+# Cortex Context (3 items, 519 chars)
+
+
+## ADR (1 items)
+
+### ADR larga
+score: 0.900 | matched_by: topic_search, files_search | section: Decisión | scope: enterprise
+> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+
+## OTHER (2 items)
+
+### Nota A
+score: 0.600 | matched_by: topic_search
+> contenido corto
+
+### Legacy
+score: 0.750 | matched_by: keyword_query
+> yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+@@@
+## Cortex Context (3 items)
+
+[ADR]
+- ADR larga §Decisión (score=0.90)
+  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+[OTHER]
+- Nota A (score=0.60)
+  contenido corto
+- Legacy (score=0.75)
+  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+
+@@@
+🧠 Cortex Context — No related memories found.
+### S13 dominio auth/db
+rc=0
+['auth.py', 'jwt.ts', 'tests/test_auth.py']|[] -> domain=auth conf=0.6 method=rules mf=['auth.py', 'jwt.ts', 'tests/test_auth.py'] mk=[]
+[]|['token', 'refresh', 'expiry', 'authentication'] -> domain=auth conf=0.524599 method=embedding mf=[] mk=['token', 'authentication']
+['auth.py', 'jwt.ts']|['token', 'refresh', 'login'] -> domain=auth conf=0.866667 method=rules mf=['auth.py', 'jwt.ts'] mk=['token', 'login']
+['migrations/001_initial.sql', 'schema.py']|[] -> domain=database conf=0.6 method=rules mf=['migrations/001_initial.sql', 'schema.py'] mk=[]
+### S14 dominio api/payments/matched
+rc=0
+['routes/api.py', 'controllers/user_controller.ts']|['endpoint', 'handler', 'request', 'response'] -> domain=api conf=1.0 method=rules mf=['routes/api.py', 'controllers/user_controller.ts'] mk=['endpoint', 'handler', 'request', 'response']
+['payments/stripe.py', 'billing/invoice.ts']|['payment', 'charge', 'subscription'] -> domain=payments conf=1.0 method=rules mf=['payments/stripe.py', 'billing/invoice.ts'] mk=['payment', 'charge', 'subscription']
+['auth.py', 'other.py']|[] -> domain=auth conf=0.360362 method=embedding mf=['auth.py'] mk=[]
+[]|['token', 'other'] -> domain=auth conf=0.316439 method=embedding mf=[] mk=['token']
+### S15 umbrales y embedding
+rc=0
+['utils.py', 'helpers.js', 'README.md']|[] -> domain=i18n conf=0.167022 method=embedding mf=[] mk=[]
+[]|['token'] -> domain=auth conf=0.437747 method=embedding mf=[] mk=['token']
+high: domain=auth method=rules
+low: domain=auth conf=1.0
+empty: domain=None conf=0.0 method=rules
+### S16 observe_from_files
+rc=0
+source=manual
+changed=['src/auth.py', 'src/db.py']
+new=[]
+deleted=[]
+domain=auth conf=0.338146
+queries=['auth ', 'auth db']
+pr_title=Add cache layer
+labels=['perf']
+funcs=['get_cache']
+### S17 observe_from_pr
+rc=0
+source=pr
+changed=['services/token_service.py']
+keywords=['fix auth token refresh', 'fix', 'auth', 'token', 'refresh', 'tokens', 'expire', 'early', 'login', 'flow', 'breaks']
+pr_labels=['backend', 'auth']
+queries=['auth fix auth token refresh fix auth token refresh', 'token_service', 'fix auth token refresh fix auth token refresh tokens expire early', 'Fix auth token refresh']
+domain=auth conf=0.745455
+### S18 extractores
+rc=0
+imports=['fs', 'os', 'pathlib']
+functions=['helper_fn', 'loginRequest', 'logoutHandler', 'refresh_token']
+classes=['AuthService', 'Session']
+text_kw=['fixing', 'authentication', 'flow', 'refresh', 'tokens']
+### S19 observe_from_git
+rc=0
+source=git_diff
+changed=['auth_login.py', 'mod_base.py', 'old_feature.py']
+new=['auth_login.py', 'utils_new.py']
+deleted=['old_feature.py']
+imports=[]
+domain=auth conf=0.267013
+n_queries=3
+### S20 observer disabled
+rc=0
+run=''
+exists=False
+### S21 record enrichment+citation
+rc=0
+len_run=12
+e1_keys=['event_type', 'items_offered', 'latency_ms', 'run_id', 'timestamp', 'total_chars', 'total_items', 'total_raw_hits', 'total_searches', 'within_budget']
+e1_offered=[{"enriched_score": 0.6, "files_mentioned": [], "matched_by": ["topic_search"], "score": 0.5, "source": "episodic", "source_id": "item-0", "tags": ["test"]}, {"enriched_score": 0.6, "files_mentioned": [], "matched_by": ["topic_search"], "score": 0.5, "source": "episodic", "source_id": "item-1", "tags": ["test"]}]
+e1_latency=120
+e1_totals=1,2,2,200,True
+e2=citation,item-0,run_match=True
+### S22 citation noop
+rc=0
+no_file=True
+### S23 iter malformed/missing
+rc=0
+missing=[]
+count=2
+### S24 events_for_run
+rc=0
+{"enrichment": {"event_type": "enrichment", "run_id": "runA", "timestamp": "{{TS}}", "latency_ms": 100, "total_searches": 2, "total_raw_hits": 5, "total_items": 2, "total_chars": 200, "within_budget": true, "items_offered": [{"source_id": "i1", "source": "episodic", "score": 0.5, "enriched_score": 0.6, "matched_by": ["topic_search"], "tags": [], "files_mentioned": []}, {"source_id": "i2", "source": "semantic", "score": 0.4, "enriched_score": 0.55, "matched_by": ["files_search"], "tags": [], "files_mentioned": []}]}, "citations": [{"event_type": "citation", "run_id": "runA", "timestamp": "{{TS}}", "source_id": "i2"}]}
+### S25 aggregate
+rc=0
+all={"window_days": null, "enrichments": 5, "citations": 1, "items_offered": 10, "items_used": 1, "hit_rate": 0.1, "by_strategy": {"topic_search": {"offered": 5, "used": 1, "hit_rate": 0.2}, "files_search": {"offered": 5, "used": 1, "hit_rate": 0.2}}, "latency": {"p50_ms": 300.0, "p95_ms": 480.0, "p99_ms": 496.0}}
+win={"window_days": 7, "enrichments": 4, "citations": 1, "items_offered": 8, "items_used": 1, "hit_rate": 0.125, "by_strategy": {"topic_search": {"offered": 4, "used": 1, "hit_rate": 0.25}, "files_search": {"offered": 4, "used": 1, "hit_rate": 0.25}}, "latency": {"p50_ms": 250.0, "p95_ms": 385.0, "p99_ms": 397.0}}
+### S26 detect_citations
+rc=0
+wiki_full=['decisions/ADR-007.md']
+wiki_stem=['decisions/ADR-007.md', 'sessions/2026_note']
+md_link=['glossary/term.md']
+alias=['decisions/ADR-007.md', 'glossary/term.md']
+empty_body=[]
+no_offered=[]
+no_match=[]
+dedup=['decisions/ADR-007.md']
+### S27 make_observer
+rc=0
+default=enrichment-events.jsonl enabled=True
+off_enabled=False
+cfg=custom/events.jsonl enabled=True
+override=enrichment-events.jsonl enabled=True
+layout=ws27/alt/.cortex/enrichment-events.jsonl

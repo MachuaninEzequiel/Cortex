@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "Implement"
+  short_description: "Implementar un ticket con contexto fresco y evidencia verificable."
+instructions: |
+  Tomar UN ticket desbloqueado con contexto fresco (leer solo ticket + spec). Plan chico de
+  2-4 pasos antes de tocar; respetar files_in_scope (drift = PARAR y registrar en
+  unverified_claims, no expandir en silencio). Validar corriendo el Verification del ticket;
+  lo que no se corro no es verified_claim. Logica nueva: usar la skill tdd antes de escribir
+  produccion; bug sin reproduccion: usar la skill diagnose. Cerrar con
+  cortex_session_checkpoint: source "user-skill", phase "implement", artifacts_touched no vacio
+  + al menos un verified_claim con comando y resultado (>10 chars; sin evidencia el gate
+  redelega) y note <=1 linea.

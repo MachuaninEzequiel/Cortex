@@ -24,7 +24,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { existsSync } from "fs";
-import { join } from "path";
+import { delimiter, join } from "path";
 import { homedir } from "os";
 import { execFileSync, spawnSync } from "child_process";
 
@@ -37,6 +37,7 @@ function resolveCortexBin(): string {
 
   const isWin = process.platform === "win32";
   const binName = isWin ? "cortex.exe" : "cortex";
+  const nativeBinName = isWin ? "cortex-cli.exe" : "cortex-cli";
   const scriptDir = isWin ? "Scripts" : "bin";
   const home = homedir();
   const candidates: string[] = [];
@@ -70,8 +71,20 @@ function resolveCortexBin(): string {
     if (existsSync(c)) return c;
   }
 
-  // 4. Fallback al PATH
-  return binName;
+  // 4. Binario NATIVO (cortex-cli) en PATH — el port Rust 100% nativo.
+  const pathDirs = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
+  for (const d of pathDirs) {
+    const c = join(d, nativeBinName);
+    if (existsSync(c)) return c;
+  }
+
+  // 5. Fallback al PATH (legacy `cortex` si existe; si no, el nativo para
+  //    que el mensaje de diagnóstico sea correcto).
+  for (const d of pathDirs) {
+    const c = join(d, binName);
+    if (existsSync(c)) return c;
+  }
+  return nativeBinName;
 }
 
 // ── Runner ────────────────────────────────────────────────────────────────
@@ -151,7 +164,7 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params) {
       const args = ["search", params.query];
-      if (params.limit) args.push("--limit", String(params.limit));
+      if (params.limit) args.push("--top-k", String(params.limit)); // flag nativo
       const r = runCortex(bin, args, cwd, cfg);
       return { content: [{ type: "text" as const, text: fmt(r.stdout, r.stderr, r.ok) }] };
     },
@@ -166,8 +179,10 @@ export default function (pi: ExtensionAPI) {
       ticket: Type.Optional(Type.String({ description: "ID o descripción del ticket actual" })),
     }),
     async execute(_id, params) {
+      // El CLI nativo no expone --ticket (era del pre-flight legacy); el
+      // parámetro se conserva por compat de API pero se ignora.
       const args = ["context"];
-      if (params.ticket) args.push("--ticket", params.ticket);
+      void params.ticket;
       const r = runCortex(bin, args, cwd, cfg);
       return { content: [{ type: "text" as const, text: fmt(r.stdout, r.stderr, r.ok) }] };
     },
@@ -196,7 +211,8 @@ export default function (pi: ExtensionAPI) {
       content: Type.String({ description: "Resumen estructurado de la sesión en Markdown" }),
     }),
     async execute(_id, params) {
-      const r = runCortex(bin, ["save-session", params.content], cwd, cfg);
+      // doc 05 §2.3: save-session quedó deprecado; el nativo guarda con remember.
+      const r = runCortex(bin, ["remember", params.content], cwd, cfg);
       return { content: [{ type: "text" as const, text: fmt(r.stdout, r.stderr, r.ok) }] };
     },
   });
@@ -210,7 +226,10 @@ export default function (pi: ExtensionAPI) {
       content: Type.String({ description: "Contenido completo de la spec en Markdown" }),
     }),
     async execute(_id, params) {
-      const r = runCortex(bin, ["create-spec", params.content], cwd, cfg);
+      // `create-spec` no existe en el CLI nativo: el flujo canónico es la
+      // tool MCP cortex_create_spec del server `cortex` (mcp-serve).
+      void params;
+      return { content: [{ type: "text" as const, text: "create-spec es una tool MCP: usá `cortex_create_spec` (server cortex). El CLI nativo no la expone." }] };
       return { content: [{ type: "text" as const, text: fmt(r.stdout, r.stderr, r.ok) }] };
     },
   });
@@ -272,7 +291,7 @@ export default function (pi: ExtensionAPI) {
     description: "Re-indexa el vault de Markdown en la memoria semántica de Cortex.",
     parameters: Type.Object({}),
     async execute(_id) {
-      const r = runCortex(bin, ["sync-vault"], cwd, cfg);
+      const r = runCortex(bin, ["reindex"], cwd, cfg); // nombre nativo de sync-vault
       return { content: [{ type: "text" as const, text: fmt(r.stdout, r.stderr, r.ok) }] };
     },
   });

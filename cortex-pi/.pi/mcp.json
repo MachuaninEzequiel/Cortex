@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "cortex": {
-      "command": "pipx-bin:cortex-memory:cortex",
+      "command": "cortex-cli",
       "args": ["mcp-server"],
       "cwd": "${cwd}",
       "env": {

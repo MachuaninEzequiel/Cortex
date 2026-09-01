@@ -1,0 +1,31 @@
+{
+  "files": {
+    "home:.codeium/windsurf/mcp_config.json": "{\n  \"mcpServers\": {\n    \"existing\": {\n      \"command\": \"x\"\n    }\n  }\n}\n",
+    "home:.codex/config.toml": "model = \"gpt-5-codex\"\n\n[mcp_servers.other]\ncommand = \"other\"\n",
+    "home:.config/Claude/claude_desktop_config.json": "{\n  \"mcpServers\": {\n    \"global-server\": {\n      \"command\": \"g\"\n    }\n  }\n}",
+    "home:.config/Claude/claude_desktop_config.json.cortex_backup_20260824_123456": "{\n  \"mcpServers\": {\n    \"global-server\": {\n      \"command\": \"g\"\n    },\n    \"cortex\": {\n      \"command\": \"cortex\",\n      \"args\": [\n        \"mcp-server\",\n        \"--stdio\"\n      ],\n      \"env\": {\n        \"PYTHONPATH\": \"{{ROOT}}\",\n        \"PYTHONWARNINGS\": \"ignore\"\n      },\n      \"enabled\": true\n    }\n  }\n}",
+    "home:.config/hermes/config.json": "{\n  \"model\": \"hermes-3\",\n  \"temperature\": 0.7\n}\n",
+    "home:.config/opencode/opencode.json": "{\n  \"theme\": \"dark\"\n}\n",
+    "home:.cursor/mcp.json": "{\n  \"mcpServers\": {\n    \"other-server\": {\n      \"command\": \"other\"\n    }\n  }\n}\n",
+    "home:.gemini/settings.json": "{\n  \"theme\": \"dark\"\n}\n",
+    "home:.zed/agents.json": "{\n  \"existing\": {\n    \"command\": \"z\"\n  }\n}\n",
+    "project:.claude/settings.json": "{\n  \"enabledMcpjsonServers\": [\n    \"other\"\n  ],\n  \"permissions\": {\n    \"allow\": [\n      \"Bash\"\n    ]\n  }\n}\n",
+    "project:.cortex/skills/cortex-SDDwork.md": "---\nname: cortex-SDDwork\ndescription: Implementaci\u00f3n orquestada de la spec persistida.\n---\n\n# Cortex SDDwork\n\nMiddle pluggable. Fast Track para edits directos; Deep Track con\ndelegaci\u00f3n a los subagents can\u00f3nicos (explorer / designer / implementer).\n",
+    "project:.cortex/skills/cortex-documenter.md": "---\nname: cortex-documenter\ndescription: Anchor de cierre con criterio editorial.\n---\n\n# Cortex Documenter\n\nCierra la Session: decide doc types, escribe nota a mano, llama\n`cortex_self_review_note`, persiste v\u00eda `cortex_write_doc` y cierra con\n`cortex_close_session`.\n",
+    "project:.cortex/skills/cortex-sync.md": "---\nname: cortex-sync\ndescription: Cortex PRE-FLIGHT (Spec Creation Only). NO WRITE PERMISSIONS.\n---\n\n# Cortex Sync - Gobernanza de Analisis\n\nAnchor de inicio. Llama a `cortex_sync_ticket` antes que nada.\nAcentos de prueba: \u00e1\u00e9\u00ed\u00f3\u00fa. Emoji: \u26a0\ufe0f.\n",
+    "project:.cortex/subagents/cortex-code-designer.md": "---\nname: cortex-code-designer\ndescription: Produce design doc antes de implementar.\ntools: read_file, cortex_context, cortex_create_spec\n---\n\n# Cortex Code Designer\n\nDise\u00f1a antes de tocar c\u00f3digo. Salida: design note revisable.\n",
+    "project:.cortex/subagents/cortex-code-explorer.md": "---\nname: cortex-code-explorer\ndescription: An\u00e1lisis read-only de arquitectura.\ntools: read_file, execute_command, cortex_search, cortex_ping\n---\n\n# Cortex Code Explorer\n\nExplora el repositorio sin mutar estado. Emite checkpoint al terminar.\n",
+    "project:.cortex/subagents/cortex-code-implementer.md": "---\nname: cortex-code-implementer\ndescription: Implementa siguiendo el design doc.\ntools: read_file, write_file, edit_file, execute_command, cortex_session_checkpoint\n---\n\n# Cortex Code Implementer\n\nDeep Track. Implementa la spec con edits quir\u00fargicos.\n",
+    "project:.cortex/subagents/cortex-documenter.md": "---\nname: cortex-documenter\ndescription: DEPRECATED - usar /cortex-documenter skill.\ntools: read_file, cortex_documenter_briefing, cortex_self_review_note, cortex_write_doc, cortex_close_session\n---\n\n# Cortex Documenter (subagent legacy)\n\nFlujo antiguo de reconstrucci\u00f3n. Mantenido por compatibilidad.\n",
+    "project:.mcp.json": "{\n  \"mcpServers\": {\n    \"local-dev\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"thing\"\n      ]\n    }\n  }\n}\n",
+    "project:AGENTS.md": "# Agentes del proyecto\n\nConvenciones locales.\n",
+    "project:CLAUDE.md": "# Mi proyecto\n\nNotas propias del humano.\n",
+    "project:config.yaml": "semantic:\n  vault_path: vault\nretrieval:\n  top_k: 5\n",
+    "project:vault/nota-a.md": "# Nota A\n\nContenido determinista del fixture.\n"
+  },
+  "ide": "claude_desktop",
+  "reports": [
+    "{{HOME}}/.config/Claude/claude_desktop_config.json (Cortex keys removed)"
+  ],
+  "scenario": "uninstall"
+}

@@ -1,0 +1,115 @@
+### A01 doctor texto completo
+rc=0
+project_root: {{ROOT}}
+ok: True
+checks: [{'name': 'config', 'ok': True, 'detail': 'mode=assist, profile=fast_code', 'action': ''}, {'name': 'sessions_dir', 'ok': True, 'detail': '{{ROOT}}/.cortex/sessions', 'action': ''}, {'name': 'adapters', 'ok': True, 'detail': "Known IDE adapters (cortex.session.hooks): ['claude-code', 'cursor', 'opencode', 'pi']", 'action': ''}, {'name': 'hooks', 'ok': True, 'detail': "Installed adapters: ['claude-code']", 'action': ''}, {'name': 'last_finish', 'ok': True, 'detail': 'Session 2026-08-25_demo still OPEN — finish or abandon when ready', 'action': ''}, {'name': 'service', 'ok': True, 'detail': 'AutopilotService.from_project_root wired OK', 'action': ''}]
+warnings: []
+
+### A02 doctor --json completo
+rc=0
+{
+  "project_root": "{{ROOT}}",
+  "ok": true,
+  "checks": [
+    {
+      "name": "config",
+      "ok": true,
+      "detail": "mode=assist, profile=fast_code",
+      "action": ""
+    },
+    {
+      "name": "sessions_dir",
+      "ok": true,
+      "detail": "{{ROOT}}/.cortex/sessions",
+      "action": ""
+    },
+    {
+      "name": "adapters",
+      "ok": true,
+      "detail": "Known IDE adapters (cortex.session.hooks): ['claude-code', 'cursor', 'opencode', 'pi']",
+      "action": ""
+    },
+    {
+      "name": "hooks",
+      "ok": true,
+      "detail": "Installed adapters: ['claude-code']",
+      "action": ""
+    },
+    {
+      "name": "last_finish",
+      "ok": true,
+      "detail": "Session 2026-08-25_demo still OPEN \u2014 finish or abandon when ready",
+      "action": ""
+    },
+    {
+      "name": "service",
+      "ok": true,
+      "detail": "AutopilotService.from_project_root wired OK",
+      "action": ""
+    }
+  ],
+  "warnings": []
+}
+
+### A03 doctor texto degradado
+rc=0
+project_root: {{ROOT}}
+ok: False
+checks: [{'name': 'config', 'ok': True, 'detail': 'mode=assist, profile=fast_code', 'action': ''}, {'name': 'sessions_dir', 'ok': True, 'detail': '{{ROOT}}/.cortex/sessions', 'action': ''}, {'name': 'adapters', 'ok': True, 'detail': "Known IDE adapters (cortex.session.hooks): ['claude-code', 'cursor', 'opencode', 'pi']", 'action': ''}, {'name': 'hooks', 'ok': False, 'detail': 'No Cortex session hooks detected', 'action': 'Run `cortex session hooks install --ide <name>`.'}, {'name': 'last_finish', 'ok': True, 'detail': 'No sessions on disk yet', 'action': ''}, {'name': 'service', 'ok': True, 'detail': 'AutopilotService.from_project_root wired OK', 'action': ''}]
+warnings: ['No Cortex session hooks detected']
+
+### A04 doctor --json degradado
+rc=0
+{
+  "project_root": "{{ROOT}}",
+  "ok": false,
+  "checks": [
+    {
+      "name": "config",
+      "ok": true,
+      "detail": "mode=assist, profile=fast_code",
+      "action": ""
+    },
+    {
+      "name": "sessions_dir",
+      "ok": true,
+      "detail": "{{ROOT}}/.cortex/sessions",
+      "action": ""
+    },
+    {
+      "name": "adapters",
+      "ok": true,
+      "detail": "Known IDE adapters (cortex.session.hooks): ['claude-code', 'cursor', 'opencode', 'pi']",
+      "action": ""
+    },
+    {
+      "name": "hooks",
+      "ok": false,
+      "detail": "No Cortex session hooks detected",
+      "action": "Run `cortex session hooks install --ide <name>`."
+    },
+    {
+      "name": "last_finish",
+      "ok": true,
+      "detail": "No sessions on disk yet",
+      "action": ""
+    },
+    {
+      "name": "service",
+      "ok": true,
+      "detail": "AutopilotService.from_project_root wired OK",
+      "action": ""
+    }
+  ],
+  "warnings": [
+    "No Cortex session hooks detected"
+  ]
+}
+
+### A05 doctor --project-root explícito (cwd ajeno)
+rc=0
+project_root: {{ROOT}}
+ok: True
+checks: [{'name': 'config', 'ok': True, 'detail': 'mode=assist, profile=fast_code', 'action': ''}, {'name': 'sessions_dir', 'ok': True, 'detail': '{{ROOT}}/.cortex/sessions', 'action': ''}, {'name': 'adapters', 'ok': True, 'detail': "Known IDE adapters (cortex.session.hooks): ['claude-code', 'cursor', 'opencode', 'pi']", 'action': ''}, {'name': 'hooks', 'ok': True, 'detail': "Installed adapters: ['claude-code']", 'action': ''}, {'name': 'last_finish', 'ok': True, 'detail': 'Session 2026-08-25_demo still OPEN — finish or abandon when ready', 'action': ''}, {'name': 'service', 'ok': True, 'detail': 'AutopilotService.from_project_root wired OK', 'action': ''}]
+warnings: []
+

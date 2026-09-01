@@ -75,12 +75,25 @@ def test_render_filename_decision() -> None:
 
 def test_render_filename_session() -> None:
     spec = resolve_route(DocType.SESSION)
+    # session_id already encodes the date (YYYY-MM-DD_<slug>), so the
+    # template is {session_id}_{slug}.md (no separate date prefix).
     assert (
         render_filename(
             spec,
             {"date": "2026-05-14", "session_id": "abc123", "slug": "foo"},
         )
-        == "2026-05-14_abc123_foo.md"
+        == "abc123_foo.md"
+    )
+    assert (
+        render_filename(
+            spec,
+            {
+                "date": "2026-05-14",
+                "session_id": "2026-05-14_fix-login",
+                "slug": "notes",
+            },
+        )
+        == "2026-05-14_fix-login_notes.md"
     )
 
 

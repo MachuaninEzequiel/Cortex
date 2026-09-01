@@ -1,0 +1,236 @@
+[SERVICE]
+### A01 start sin activa
+rc=0
+NoActiveSessionError: No active session. Run `cortex create-spec` first to open one.
+### A02 start adopta assist
+rc=0
+session=2026-05-16_demo
+status=open
+mode=assist
+warnings=[]
+### A03 start warning seguridad
+rc=0
+session=2026-05-16_demo
+status=open
+mode=assist
+warnings=['Spec summary mentions security-sensitive terms — review the diff carefully before closing the session.']
+### A04 preflight question-only
+rc=0
+task_type=question-only
+confidence=0.75
+reason=Pure question without file changes
+suggested_complexity=none
+### A05 checkpoint manual ok
+rc=0
+count=1
+status=open
+warnings=[]
+### A06 checkpoint drift fuera de scope
+rc=0
+count=1
+status=open
+warnings=["Checkpoint touches files outside spec scope: ['src/b.py']"]
+### A07 threshold archivos sin verificar
+rc=0
+count=2
+status=open
+warnings=['6 artifact paths touched without a checkpoint that records verified claims']
+### A08 checkpoint espaciado minutos
+rc=0
+count=2
+status=open
+warnings=['{{MIN}} minutes since the previous checkpoint and the new one already touches files — consider checkpointing more often']
+### A09 finish manual closed + no-op
+rc=0
+status=closed
+documented=False
+blocked=False
+blocked_reason=
+note=
+summary=closed without documenting (closed)
+warnings=[]
+---second---
+status=closed
+documented=False
+blocked=False
+blocked_reason=
+note=
+summary=session already in status closed; no-op
+warnings=[]
+### A10 finish handoff
+rc=0
+status=handoff
+documented=False
+blocked=False
+blocked_reason=
+note=
+summary=closed without documenting (handoff)
+warnings=[]
+### A11 blocked autopilot sin verificación
+rc=0
+status=open
+documented=False
+blocked=True
+blocked_reason=Autopilot mode requires at least one checkpoint with verified claims before closing the session (set pre_commit_verification=False to opt out).
+note=
+summary=
+warnings=[]
+### A12 status activa/nombrada/faltante
+rc=0
+active=True
+session=2026-05-16_demo
+status=open
+mode=assist
+inferred=byo
+count=0
+---named---
+active=True
+session=2026-05-16_demo
+status=open
+mode=assist
+inferred=byo
+count=0
+---missing---
+active=False
+mode=assist
+### A13 checkpoint fuente desconocida
+rc=0
+AutopilotError: unknown checkpoint source 'nope'; valid: cortex-sync, cortex-SDDwork, cortex-code-explorer, cortex-code-implementer, cortex-code-designer, user-skill, ide-hook, manual, ci-bot
+### A14 finish auto sin memory_factory
+rc=0
+Exception: AutopilotError: finish(auto=True) requires a memory_factory to invoke the documenter; either inject one or use finish(auto=False).
+### A15 override a observe apaga warnings
+rc=0
+session=2026-05-16_demo
+status=open
+mode=observe
+warnings=[]
+---after-drift---
+count=1
+status=open
+warnings=[]
+[MCP]
+### B01 mcp start ok
+rc=0
+Session adopted: 2026-05-16_demo
+Mode: assist | Status: open
+### B02 mcp start sin activa
+rc=0
+Error (cortex_autopilot_start): No active session. Run `cortex create-spec` first to open one.
+### B03 mcp start modo inválido
+rc=0
+Error (cortex_autopilot_start): unknown mode 'turbo'; valid: observe, assist, autopilot
+### B04 mcp preflight formato
+rc=0
+Preflight (dry-run): question-only (confidence=0.75, complexity=none)
+Reason: Pure question without file changes
+### B05 mcp checkpoint drift warnings
+rc=0
+Checkpoint recorded for 2026-05-16_demo
+Total checkpoints: 1 | Status: open
+Warnings: Checkpoint touches files outside spec scope: ['src/b.py']
+### B06 mcp checkpoint fuente inválida
+rc=0
+Error (cortex_autopilot_checkpoint): unknown checkpoint source 'nope'; valid: cortex-sync, cortex-SDDwork, cortex-code-explorer, cortex-code-implementer, cortex-code-designer, user-skill, ide-hook, manual, ci-bot
+### B07 mcp finish manual + status
+rc=0
+Finish: 2026-05-16_demo
+Status: closed | Documented: False
+---status---
+No active Autopilot session found.
+### B08 mcp finish bloqueado
+rc=0
+Finish blocked by policy: Autopilot mode requires at least one checkpoint with verified claims before closing the session (set pre_commit_verification=False to opt out).
+### B09 mcp finish doble no-op
+rc=0
+Finish: 2026-05-16_demo
+Status: closed | Documented: False
+### B10 mcp status activa
+rc=0
+Session: 2026-05-16_demo
+Status: open | Mode: assist
+Inferred mode: byo
+Checkpoints: 0 | Branch: 
+### B11 mcp status inactiva
+rc=0
+No active Autopilot session found.
+### B12 mcp finish id inexistente
+rc=0
+Error (cortex_autopilot_finish): session '2026-01-01_x' not found
+### B13 mcp start override observe
+rc=0
+Session adopted: 2026-05-16_demo
+Mode: observe | Status: open
+### B14 mcp preflight coerción de tipos
+rc=0
+Preflight (dry-run): ambiguous (confidence=0.90, complexity=none)
+Reason: No user request provided
+[[CLI-PART]]
+[CLI]
+### C01 status json inactiva
+{
+  "active": false,
+  "policy_mode": "assist"
+}
+rc=0
+### C02 status texto inactiva
+active: False
+policy_mode: assist
+rc=0
+### C03 start sin activa json
+---STDERR---
+{"error": "No active session. Run `cortex create-spec` first to open one."}
+rc=1
+### C04 status json activa
+{
+  "active": true,
+  "session_id": "2026-05-16_demo",
+  "status": "open",
+  "mode": "assist",
+  "inferred_mode": "byo",
+  "checkpoint_count": 0,
+  "start_commit": "000000000000",
+  "start_branch": "",
+  "spec_path": "vault/specs/2026-05-16_demo.md"
+}
+rc=0
+### C05 checkpoint json
+{
+  "session_id": "2026-05-16_demo",
+  "checkpoints_count": 1,
+  "warnings": []
+}
+rc=0
+### C06 checkpoint fuente inválida
+---STDERR---
+✗ unknown checkpoint source 'nope'; valid: cortex-sync, cortex-SDDwork, cortex-code-explorer, cortex-code-implementer, cortex-code-designer, user-skill, ide-hook, manual, ci-bot
+rc=1
+### C07 preflight json
+{
+  "task_type": "question-only",
+  "confidence": 0.75,
+  "reason": "Pure question without file changes",
+  "suggested_complexity": "none"
+}
+rc=0
+### C08 finish handoff json
+{
+  "session_id": "2026-05-16_demo",
+  "status": "handoff",
+  "documented": false,
+  "summary": "closed without documenting (handoff)",
+  "warnings": []
+}
+rc=0
+### C09 finish bloqueado json
+---STDERR---
+{"blocked": true, "reason": "Autopilot mode requires at least one checkpoint with verified claims before closing the session (set pre_commit_verification=False to opt out).", "warnings": []}
+rc=1
+### C10 start observe json
+{
+  "session_id": "2026-05-16_demo",
+  "mode": "observe",
+  "status": "open",
+  "warnings": []
+}
+rc=0

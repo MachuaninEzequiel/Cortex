@@ -1,0 +1,36 @@
+{
+ "queries": [
+  {
+   "query": "gate de paridad del store",
+   "paths": [
+    "specs/2026-06-01_gate.md",
+    "adr/ADR-0009-store-nativo.md",
+    "notas/vault-notes.md"
+   ]
+  },
+  {
+   "query": "reindex incremental",
+   "paths": [
+    "specs/2026-06-01_gate.md",
+    "adr/ADR-0009-store-nativo.md",
+    "glosario-core.md"
+   ]
+  },
+  {
+   "query": "store append-only JSONL",
+   "paths": [
+    "adr/ADR-0009-store-nativo.md",
+    "notas/vault-notes.md",
+    "glosario-core.md"
+   ]
+  },
+  {
+   "query": "chunking por routing",
+   "paths": [
+    "notas/vault-notes.md",
+    "specs/2026-06-01_gate.md",
+    "adr/ADR-0009-store-nativo.md"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+# integrations/herdr/herdr-plugin.toml
+id = "cortex.companion"
+name = "Cortex Companion"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Companion de Cortex: sesiones, acciones, búsqueda y brain en un pane"
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "companion"
+title = "Cortex"
+placement = "overlay"          # sticky sobre los panes del dev
+command = ["cortex-companion"]
+
+[[panes]]
+id = "sidecar"
+title = "Cortex Sidecar"
+placement = "split"
+command = ["cortex-herdr-sidecar"]
+
+[[panes]]
+id = "float"
+title = "Cortex HUD"
+placement = "split"
+command = ["cortex-herdr-float"]
+
+[[panes]]
+id = "copilot"
+title = "Cortex Co-Pilot"
+placement = "split"
+command = ["cortex-herdr-copilot"]
+
+[[actions]]
+id = "sidecar"
+title = "Cortex: open sidecar"
+contexts = ["workspace"]
+command = ["cortex-herdr-sidecar", "--spawn"]
+
+[[actions]]
+id = "float"
+title = "Cortex: open floating HUD"
+contexts = ["workspace"]
+command = ["cortex-herdr-float", "--spawn"]
+
+[[actions]]
+id = "copilot"
+title = "Cortex: open co-pilot"
+contexts = ["workspace"]
+command = ["cortex-herdr-copilot", "--spawn"]
+
+[[actions]]
+id = "open"
+title = "Open Cortex HUD"
+contexts = ["workspace"]
+command = ["herdr", "plugin", "pane", "open", "--plugin", "cortex.companion", "--entrypoint", "float", "--placement", "split"]
+
+[[actions]]
+id = "next"
+title = "Cortex: next actions"
+contexts = ["workspace"]
+command = ["cortex", "next", "--json"]
+
+[[actions]]
+id = "status"
+title = "Cortex: session status"
+contexts = ["workspace"]
+command = ["cortex", "session", "current", "--json"]
+
+[[actions]]
+id = "doctor"
+title = "Cortex: doctor"
+contexts = ["workspace"]
+command = ["cortex", "doctor"]
+
+# NOTA: sin acción "search" en el manifest — herdr invoca acciones sin
+# argumentos y `cortex search` exige query; la búsqueda vive en el panel
+# Search del Companion (con input propio) y en el Menu.

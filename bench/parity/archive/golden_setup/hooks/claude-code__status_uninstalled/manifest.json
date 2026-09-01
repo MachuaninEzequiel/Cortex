@@ -1,0 +1,14 @@
+{
+  "files": {
+    ".claude/settings.json": "{}\n"
+  },
+  "ide": "claude-code",
+  "kind": "status",
+  "payload": {
+    "detail": "no cortex-managed entry in {{TARGET}}/.claude/settings.json",
+    "ide": "claude-code",
+    "installed": false,
+    "supported": true
+  },
+  "step": "status_uninstalled"
+}

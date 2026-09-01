@@ -1,0 +1,15 @@
+[package]
+name = "cortex-workspace"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+# Gate P12B-1: hashes del bundle de skills instalado vs recursos Python.
+sha2 = { workspace = true }

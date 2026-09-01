@@ -1,0 +1,554 @@
+### B01 ide list texto
+rc=0
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ IDE            ┃ DISPLAY NAME         ┃ TIER         ┃ UNINSTALL ┃ VALIDATED ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ antigravity    │ Antigravity (Gemini  │ experimental │     ✓     │     —     │
+│                │ Code Assist)         │              │           │           │
+│ claude_code    │ Claude Code          │ target       │     ✓     │     ✓     │
+│ claude_desktop │ Claude Desktop       │ community    │     ✓     │     —     │
+│ codex          │ Codex                │ target       │     ✓     │     ✓     │
+│ cursor         │ Cursor               │ community    │     ✓     │     ✓     │
+│ hermes         │ Hermes               │ experimental │     ✓     │     —     │
+│ opencode       │ OpenCode             │ target       │     ✓     │     ✓     │
+│ pi             │ Pi Coding Agent      │ target       │     ✓     │     ✓     │
+│ vscode         │ VS Code              │ community    │     ✓     │     —     │
+│ windsurf       │ Windsurf             │ community    │     ✓     │     —     │
+│ zed            │ Zed                  │ experimental │     ✓     │     —     │
+└────────────────┴──────────────────────┴──────────────┴───────────┴───────────┘
+
+### B02 ide list json
+rc=0
+[{"name": "antigravity", "display_name": "Antigravity (Gemini Code Assist)", "tier": "experimental", "uninstall_supported": true, "validated": false}, {"name": "claude_code", "display_name": "Claude Code", "tier": "target", "uninstall_supported": true, "validated": true}, {"name": "claude_desktop", "display_name": "Claude Desktop", "tier": "community", "uninstall_supported": true, "validated": false}, {"name": "codex", "display_name": "Codex", "tier": "target", "uninstall_supported": true, "validated": true}, {"name": "cursor", "display_name": "Cursor", "tier": "community", "uninstall_supported": true, "validated": true}, {"name": "hermes", "display_name": "Hermes", "tier": "experimental", "uninstall_supported": true, "validated": false}, {"name": "opencode", "display_name": "OpenCode", "tier": "target", "uninstall_supported": true, "validated": true}, {"name": "pi", "display_name": "Pi Coding Agent", "tier": "target", "uninstall_supported": true, "validated": true}, {"name": "vscode", "display_name": "VS Code", "tier": "community", "uninstall_supported": true, "validated": false}, {"name": "windsurf", "display_name": "Windsurf", "tier": "community", "uninstall_supported": true, "validated": false}, {"name": "zed", "display_name": "Zed", "tier": "experimental", "uninstall_supported": true, "validated": false}]
+
+### B03 ide setup sin --ide
+rc=2
+
+--stderr--
+Error: --ide is required for `cortex ide setup` (no interactive prompt on this surface). Available IDEs:
+  target:       claude_code, codex, opencode, pi
+  community:    claude_desktop, cursor, vscode, windsurf
+  experimental: antigravity, hermes, zed
+
+### B04 ide status ide desconocido
+rc=2
+
+--stderr--
+Error: "Unknown IDE: 'nope'.\n  Target (officially supported): claude_code, codex, opencode, pi\n  Community (best-effort):       claude_desktop, cursor, vscode, windsurf\n  Experimental:                  antigravity, hermes, zed"
+
+### B05 ide status all texto
+rc=0
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ IDE            ┃ TIER         ┃ CONFIG ┃ MCP ┃ HOOKS ┃ DETAIL                ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━┩
+│ antigravity    │ experimental │   ✗    │  —  │   —   │ n/a                   │
+│ claude_code    │ target       │   ✗    │  ✗  │   ✗   │ {{ROOT}}/.cl… │
+│                │              │        │     │       │ does not exist        │
+│ claude_desktop │ community    │   ✗    │  ✗  │   —   │ n/a                   │
+│ codex          │ target       │   ✗    │  —  │   —   │ n/a                   │
+│ cursor         │ community    │   ✓    │  ✗  │   ✗   │ {{ROOT}}/.gi… │
+│                │              │        │     │       │ does not exist        │
+│ hermes         │ experimental │   ✗    │  —  │   —   │ n/a                   │
+│ opencode       │ target       │   ✓    │  —  │   ✗   │ {{ROOT}}/.op… │
+│                │              │        │     │       │ does not exist        │
+│ pi             │ target       │   ✗    │  —  │   ✗   │ {{ROOT}}/jus… │
+│                │              │        │     │       │ does not exist        │
+│ vscode         │ community    │   ✗    │  ✗  │   —   │ n/a                   │
+│ windsurf       │ community    │   ✗    │  ✗  │   —   │ n/a                   │
+│ zed            │ experimental │   ✗    │  —  │   —   │ n/a                   │
+└────────────────┴──────────────┴────────┴─────┴───────┴───────────────────────┘
+
+### B06 ide status all json
+rc=0
+[{"ide": "antigravity", "display_name": "Antigravity (Gemini Code Assist)", "tier": "experimental", "validated": false, "expected_config_present": false, "config_checks": {"settings": false}, "mcp_configured": null, "mcp_path": null, "hooks_installed": null, "hooks_detail": ""}, {"ide": "claude_code", "display_name": "Claude Code", "tier": "target", "validated": true, "expected_config_present": false, "config_checks": {"claude_md": false, "agents_dir": false, "skills_dir": false, "settings": false, "mcp": false}, "mcp_configured": false, "mcp_path": "{{ROOT}}/.mcp.json", "hooks_installed": false, "hooks_detail": "{{ROOT}}/.claude/settings.json does not exist"}, {"ide": "claude_desktop", "display_name": "Claude Desktop", "tier": "community", "validated": false, "expected_config_present": false, "config_checks": {"mcp": false}, "mcp_configured": false, "mcp_path": "/home/chucho/.config/Claude/claude_desktop_config.json", "hooks_installed": null, "hooks_detail": ""}, {"ide": "codex", "display_name": "Codex", "tier": "target", "validated": true, "expected_config_present": false, "config_checks": {"agents_md": false, "config_toml": false}, "mcp_configured": null, "mcp_path": null, "hooks_installed": null, "hooks_detail": ""}, {"ide": "cursor", "display_name": "Cursor", "tier": "community", "validated": true, "expected_config_present": true, "config_checks": {"mcp": false, "user_agents_dir": true, "project_agents_dir_relative": false}, "mcp_configured": false, "mcp_path": "/home/chucho/.cursor/mcp.json", "hooks_installed": false, "hooks_detail": "{{ROOT}}/.git/hooks/post-commit does not exist"}, {"ide": "hermes", "display_name": "Hermes", "tier": "experimental", "validated": false, "expected_config_present": false, "config_checks": {"config": false}, "mcp_configured": null, "mcp_path": null, "hooks_installed": null, "hooks_detail": ""}, {"ide": "opencode", "display_name": "OpenCode", "tier": "target", "validated": true, "expected_config_present": true, "config_checks": {"main": true, "skills_dir": true, "subagents_dir": true}, "mcp_configured": null, "mcp_path": null, "hooks_installed": false, "hooks_detail": "{{ROOT}}/.opencode/hooks.md does not exist"}, {"ide": "pi", "display_name": "Pi Coding Agent", "tier": "target", "validated": true, "expected_config_present": false, "config_checks": {}, "mcp_configured": null, "mcp_path": null, "hooks_installed": false, "hooks_detail": "{{ROOT}}/justfile does not exist"}, {"ide": "vscode", "display_name": "VS Code", "tier": "community", "validated": false, "expected_config_present": false, "config_checks": {"mcp": false, "agents_dir": false, "claude_agents_dir": false}, "mcp_configured": false, "mcp_path": "{{ROOT}}/.vscode/mcp.json", "hooks_installed": null, "hooks_detail": ""}, {"ide": "windsurf", "display_name": "Windsurf", "tier": "community", "validated": false, "expected_config_present": false, "config_checks": {"mcp": false}, "mcp_configured": false, "mcp_path": "/home/chucho/.codeium/windsurf/mcp_config.json", "hooks_installed": null, "hooks_detail": ""}, {"ide": "zed", "display_name": "Zed", "tier": "experimental", "validated": false, "expected_config_present": false, "config_checks": {"agents": false}, "mcp_configured": null, "mcp_path": null, "hooks_installed": null, "hooks_detail": ""}]
+
+### B07 ide status pi texto
+rc=0
+┏━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ IDE ┃ TIER   ┃ CONFIG ┃ MCP ┃ HOOKS ┃ DETAIL                                 ┃
+┡━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ pi  │ target │   ✗    │  —  │   ✗   │ {{ROOT}}/justfile does not     │
+│     │        │        │     │       │ exist                                  │
+└─────┴────────┴────────┴─────┴───────┴────────────────────────────────────────┘
+
+### B08 ide status pi json
+rc=0
+[{"ide": "pi", "display_name": "Pi Coding Agent", "tier": "target", "validated": true, "expected_config_present": false, "config_checks": {}, "mcp_configured": null, "mcp_path": null, "hooks_installed": false, "hooks_detail": "{{ROOT}}/justfile does not exist"}]
+
+### B09 docs validate texto issues
+rc=0
+Vault: {{ROOT}}/vault
+Total notes: 2
+Valid: 1
+Invalid: 1
+No frontmatter: 0
+
+Issues:
+  - decisions/BROKEN.md: Unknown doc_type: 'weird'
+
+### B10 docs validate json issues
+rc=0
+{
+  "vault_path": "{{ROOT}}/vault",
+  "total": 2,
+  "valid": 1,
+  "invalid": 1,
+  "no_frontmatter": 0,
+  "issues": [
+    {
+      "path": "decisions/BROKEN.md",
+      "error": "Unknown doc_type: 'weird'"
+    }
+  ]
+}
+
+### B11 docs validate texto valido
+rc=0
+Vault: {{ROOT}}/valid-proj/vault
+Total notes: 1
+Valid: 1
+Invalid: 0
+No frontmatter: 0
+
+### B12 docs validate json valido
+rc=0
+{
+  "vault_path": "{{ROOT}}/valid-proj/vault",
+  "total": 1,
+  "valid": 1,
+  "invalid": 0,
+  "no_frontmatter": 0,
+  "issues": []
+}
+
+### B13 docs list-backups vacio
+rc=0
+No backups found in {{ROOT}}/no-backups/.cortex/backups
+
+### B14 docs list-backups con backups
+rc=0
+vault-{{TS}}.tar.gz	420 bytes
+vault-{{TS}}-keep.tar.gz	425 bytes
+
+### B15 docs restore nombre corto
+rc=0
+Restored: {{ROOT}}/rest-a/vault
+
+### B16 docs restore ruta completa
+rc=0
+Restored: {{ROOT}}/rest-b/vault
+
+### B17 docs restore inexistente
+rc=1
+
+--stderr--
+Backup not found: vault-zzz-inexistente
+
+### B18 docs routing-table texto
+rc=0
+DocType        Subfolder      Filename pattern                       Writer                 Indexer  Promote       
+-------------------------------------------------------------------------------------------------------------------
+session        sessions       {session_id}_{slug}.md                 write_session_note_canonical auto     summarize     
+handoff        handoffs       {date}_{slug}.md                       write_handoff_note     auto     no            
+spec           specs          {date}_{slug}.md                       write_spec_note_canonical auto     as-is         
+adr            decisions      ADR-{number:03d}-{slug}.md             write_adr_note         auto     as-is         
+decision       decisions      DEC-{date}-{slug}.md                   write_decision_note    auto     as-is         
+incident       incidents      INC-{number:03d}-{date}-{slug}.md      write_incident_note    auto     as-is         
+postmortem     postmortems    PM-{incident_number:03d}-{slug}.md     write_postmortem_note  auto     as-is         
+runbook        runbooks       RB-{slug}.md                           write_runbook_note     auto     review-required
+architecture   architecture   {slug}.md                              write_architecture_note auto     as-is         
+changelog      changelog      {version}.md                           write_changelog_note   auto     as-is         
+hu             hu             HU-{external_id}.md                    write_hu_note          auto     no            
+glossary       glossary       {term_slug}.md                         write_glossary_entry   auto     as-is         
+design         designs        {session_id}.md                        write_design_note      auto     no            
+
+### B19 docs routing-table adr texto
+rc=0
+DocType        Subfolder      Filename pattern                       Writer                 Indexer  Promote       
+-------------------------------------------------------------------------------------------------------------------
+adr            decisions      ADR-{number:03d}-{slug}.md             write_adr_note         auto     as-is         
+
+### B20 docs routing-table adr json
+rc=0
+{
+  "doc_type": "adr",
+  "subfolder": "decisions",
+  "filename_template": "ADR-{number:03d}-{slug}.md",
+  "template_path": "/home/chucho/Cortex/cortex/documentation/templates/adr.md.j2",
+  "writer": "write_adr_note",
+  "indexer": "auto",
+  "promotable": true,
+  "promotion_mode": "as-is",
+  "enterprise_subfolder": "decisions/{project_id}",
+  "retrieval_boost_per_intent": {
+    "decision": 2.0,
+    "architecture": 1.5,
+    "history": 1.2,
+    "rationale": 1.8
+  },
+  "chunking_enabled": true,
+  "chunking_min_words": 400,
+  "chunking_boundary": "h2",
+  "webgraph_color": "#cc66ff",
+  "webgraph_shape": "hexagon",
+  "requires_review_before_publish": false,
+  "auto_expire_days": 0
+}
+
+### B21 docs routing-table json
+rc=0
+[
+  {
+    "doc_type": "session",
+    "subfolder": "sessions",
+    "filename_template": "{session_id}_{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/session.md.j2",
+    "writer": "write_session_note_canonical",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "summarize",
+    "enterprise_subfolder": "sessions/{project_id}",
+    "retrieval_boost_per_intent": {
+      "history": 1.3,
+      "recent": 1.5,
+      "episodic": 1.4
+    },
+    "chunking_enabled": false,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#88aaff",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "handoff",
+    "subfolder": "handoffs",
+    "filename_template": "{date}_{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/handoff.md.j2",
+    "writer": "write_handoff_note",
+    "indexer": "auto",
+    "promotable": false,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": null,
+    "retrieval_boost_per_intent": {
+      "recent": 2.0,
+      "history": 1.0
+    },
+    "chunking_enabled": false,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#ffaa44",
+    "webgraph_shape": "diamond",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 14
+  },
+  {
+    "doc_type": "spec",
+    "subfolder": "specs",
+    "filename_template": "{date}_{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/spec.md.j2",
+    "writer": "write_spec_note_canonical",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "specs/{project_id}",
+    "retrieval_boost_per_intent": {
+      "spec": 2.0,
+      "requirements": 1.8,
+      "implementation": 1.4
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#88ddaa",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "adr",
+    "subfolder": "decisions",
+    "filename_template": "ADR-{number:03d}-{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/adr.md.j2",
+    "writer": "write_adr_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "decisions/{project_id}",
+    "retrieval_boost_per_intent": {
+      "decision": 2.0,
+      "architecture": 1.5,
+      "history": 1.2,
+      "rationale": 1.8
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 400,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#cc66ff",
+    "webgraph_shape": "hexagon",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "decision",
+    "subfolder": "decisions",
+    "filename_template": "DEC-{date}-{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/decision.md.j2",
+    "writer": "write_decision_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "decisions/{project_id}",
+    "retrieval_boost_per_intent": {
+      "decision": 1.5,
+      "history": 1.2
+    },
+    "chunking_enabled": false,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#aa88cc",
+    "webgraph_shape": "hexagon",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "incident",
+    "subfolder": "incidents",
+    "filename_template": "INC-{number:03d}-{date}-{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/incident.md.j2",
+    "writer": "write_incident_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "incidents/{project_id}",
+    "retrieval_boost_per_intent": {
+      "incident": 2.5,
+      "recent": 2.0,
+      "history": 1.5,
+      "runbook": 1.3
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#ff6666",
+    "webgraph_shape": "diamond",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "postmortem",
+    "subfolder": "postmortems",
+    "filename_template": "PM-{incident_number:03d}-{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/postmortem.md.j2",
+    "writer": "write_postmortem_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "postmortems/{project_id}",
+    "retrieval_boost_per_intent": {
+      "postmortem": 2.5,
+      "incident": 2.0,
+      "root-cause": 2.2,
+      "history": 1.5
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#aa4444",
+    "webgraph_shape": "diamond",
+    "requires_review_before_publish": true,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "runbook",
+    "subfolder": "runbooks",
+    "filename_template": "RB-{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/runbook.md.j2",
+    "writer": "write_runbook_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "review-required",
+    "enterprise_subfolder": "runbooks/{project_id}",
+    "retrieval_boost_per_intent": {
+      "runbook": 2.5,
+      "procedure": 2.0,
+      "deploy": 1.8,
+      "rollback": 1.8,
+      "operations": 1.5
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 400,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#66cccc",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": true,
+    "auto_expire_days": 180
+  },
+  {
+    "doc_type": "architecture",
+    "subfolder": "architecture",
+    "filename_template": "{slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/architecture.md.j2",
+    "writer": "write_architecture_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "architecture/{project_id}",
+    "retrieval_boost_per_intent": {
+      "architecture": 2.5,
+      "design": 2.0,
+      "decision": 1.5,
+      "overview": 1.5
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#6688cc",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "changelog",
+    "subfolder": "changelog",
+    "filename_template": "{version}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/changelog.md.j2",
+    "writer": "write_changelog_note",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "changelog/{project_id}",
+    "retrieval_boost_per_intent": {
+      "changelog": 1.5,
+      "release": 1.5,
+      "version": 1.5
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#999999",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "hu",
+    "subfolder": "hu",
+    "filename_template": "HU-{external_id}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/hu.md.j2",
+    "writer": "write_hu_note",
+    "indexer": "auto",
+    "promotable": false,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": null,
+    "retrieval_boost_per_intent": {
+      "task": 1.3,
+      "requirements": 1.4,
+      "current-work": 1.5
+    },
+    "chunking_enabled": false,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#ccaa66",
+    "webgraph_shape": "ellipse",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "glossary",
+    "subfolder": "glossary",
+    "filename_template": "{term_slug}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/glossary.md.j2",
+    "writer": "write_glossary_entry",
+    "indexer": "auto",
+    "promotable": true,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": "glossary",
+    "retrieval_boost_per_intent": {
+      "glossary": 2.0,
+      "definition": 2.5,
+      "term": 2.5
+    },
+    "chunking_enabled": false,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#cccc66",
+    "webgraph_shape": "ellipse",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  },
+  {
+    "doc_type": "design",
+    "subfolder": "designs",
+    "filename_template": "{session_id}.md",
+    "template_path": "/home/chucho/Cortex/cortex/documentation/templates/design.md.j2",
+    "writer": "write_design_note",
+    "indexer": "auto",
+    "promotable": false,
+    "promotion_mode": "as-is",
+    "enterprise_subfolder": null,
+    "retrieval_boost_per_intent": {
+      "design": 2.5,
+      "architecture": 1.8,
+      "decision": 1.5
+    },
+    "chunking_enabled": true,
+    "chunking_min_words": 500,
+    "chunking_boundary": "h2",
+    "webgraph_color": "#66aaee",
+    "webgraph_shape": "rectangle",
+    "requires_review_before_publish": false,
+    "auto_expire_days": 0
+  }
+]
+
+### B22 docs routing-table doc_type invalido
+rc=2
+
+--stderr--
+Usage: cortex docs routing-table [OPTIONS]
+Try 'cortex docs routing-table --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ Invalid value: Unknown doc_type: 'bogus'. Valid: ['session', 'handoff',      │
+│ 'spec', 'adr', 'decision', 'incident', 'postmortem', 'runbook',              │
+│ 'architecture', 'changelog', 'hu', 'glossary', 'design']                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+### B23 ide setup pi real
+rc=0
+[Cortex IDE] Injecting profiles for Pi Coding Agent...
+  [OK] .pi/
+  [OK] AGENTS.md
+  [OK] README.md
+  [OK] extensions/
+  [OK] justfile
+
+✅ Setup complete for Pi Coding Agent. Setup is idempotent; re-run `cortex ide setup --ide pi` anytime to re-sync.
+
+### B24 ide status pi post-setup json
+rc=0
+[{"ide": "pi", "display_name": "Pi Coding Agent", "tier": "target", "validated": true, "expected_config_present": false, "config_checks": {}, "mcp_configured": null, "mcp_path": null, "hooks_installed": false, "hooks_detail": "{{ROOT}}/justfile exists but no cortex recipes"}]
+
+### B25 ide remove pi real
+rc=0
+[Cortex IDE] Removing Cortex from Pi Coding Agent...
+  [REMOVED] .pi/
+  [REMOVED] AGENTS.md
+  [REMOVED] README.md
+  [REMOVED] justfile
+  [REMOVED] extensions/cortex-dashboard.ts
+  [REMOVED] extensions/cortex-memory-widget.ts
+  [REMOVED] extensions/cortex-spec-tracker.ts
+  [REMOVED] extensions/cortex-subagent-widget.ts
+Remove complete for Pi Coding Agent: 8 entradas procesadas, 0 paths restantes.
+
+### B26 ide remove sin --ide
+rc=2
+
+--stderr--
+Error: --ide is required for `cortex ide remove` (no interactive prompt on this surface). Available IDEs:
+  target:       claude_code, codex, opencode, pi
+  community:    claude_desktop, cursor, vscode, windsurf
+  experimental: antigravity, hermes, zed
+

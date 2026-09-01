@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.schemas.base import CommonFrontmatter, EnterpriseFrontmatter
@@ -24,7 +24,7 @@ def _validate_tz(v: datetime | None) -> datetime | None:
     return v
 
 
-class HUFrontmatter(CommonFrontmatter):
+class _HUSpecific(BaseModel):
     doc_type: DocType = DocType.HU
     external_id: str = Field(min_length=1)
     source: str = Field(min_length=1)
@@ -37,14 +37,9 @@ class HUFrontmatter(CommonFrontmatter):
     _validate_synced = field_validator("synced_at")(_validate_tz)
 
 
-class HUFrontmatterEnterprise(EnterpriseFrontmatter):
-    doc_type: DocType = DocType.HU
-    external_id: str = Field(min_length=1)
-    source: str = Field(min_length=1)
-    kind: str = "story"
-    assignee: str | None = None
-    external_url: str | None = None
-    synced_at: datetime | None = None
+class HUFrontmatter(_HUSpecific, CommonFrontmatter):
+    """HU frontmatter — campos específicos vía _HUSpecific (V5)."""
 
-    _validate_kind = field_validator("kind")(_validate_kind)
-    _validate_synced = field_validator("synced_at")(_validate_tz)
+
+class HUFrontmatterEnterprise(_HUSpecific, EnterpriseFrontmatter):
+    """HU frontmatter enterprise — hereda _HUSpecific + gobernanza."""

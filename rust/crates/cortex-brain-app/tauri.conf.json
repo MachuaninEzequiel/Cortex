@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Cortex Brain",
+  "version": "0.1.0",
+  "identifier": "com.cortex.brain",
+  "build": {
+    "frontendDist": "../../../apps/brain-ui/dist",
+    "beforeBuildCommand": "npm --prefix ../../apps/brain-ui run build || npm --prefix ../apps/brain-ui run build || npm --prefix apps/brain-ui run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Cortex Brain",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 720,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "devtools": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: data: https://huggingface.co; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "nsis", "dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Experto local de IA en tu código con Liquid LFM2.5",
+    "longDescription": "Cortex Brain es la aplicación de escritorio nativa para interactuar con tus repositorios, memoria episódica y herramientas de desarrollo usando modelos locales ultralivianos.",
+    "category": "DeveloperTool",
+    "copyright": "Copyright 2026 Cortex",
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37", "libgtk-3-0", "libappindicator3-1"]
+      }
+    },
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

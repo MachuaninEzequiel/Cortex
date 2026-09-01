@@ -1,0 +1,918 @@
+### s01_hint_l0 [PASS] py_rc=0 rs_rc=0
+
+╭────────────── 🚀 Cortex no está inicializado en este proyecto ───────────────╮
+│                                                                              │
+│  Este directorio no tiene config.yaml.                                       │
+│  Inicializá Cortex para empezar a construir memoria.                         │
+│                                                                              │
+│    $ cortex setup agent                                                      │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+rc=0
+### s02_hint_l1 [PASS] py_rc=0 rs_rc=0
+
+╭───────────────────── 📝 No hay especificaciones creadas ─────────────────────╮
+│                                                                              │
+│  Antes de codear, creá una spec para documentar qué vas a hacer.             │
+│  Esto alimenta el contexto para futuras búsquedas.                           │
+│                                                                              │
+│    $ cortex create-spec --title "Mi Feature" --goal "Descripción del         │
+│  objetivo"                                                                   │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+rc=0
+### s03_hint_l7 [PASS] py_rc=0 rs_rc=0
+
+╭───────────────── ✅ Tu proyecto Cortex está en buena forma ──────────────────╮
+│                                                                              │
+│  Vault: 5 docs | Specs: 3 | Sessions: 2                                      │
+│  Buscá algo en tu memoria para verificar que todo funciona.                  │
+│                                                                              │
+│    $ cortex search "mi query"                                                │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+rc=0
+### s05_doctor_empty [PASS] py_rc=0 rs_rc=0
+[OK] project_root: {{ROOT}}
+[OK] layout_mode: legacy (workspace_root={{ROOT}})
+[OK] config_yaml: {{ROOT}}/config.yaml
+[OK] config_validation: config.yaml is valid
+[OK] vault_dir: {{ROOT}}/vault
+[OK] cortex_workspace: {{ROOT}}
+[WARN] agent_guidelines: {{ROOT}}/.cortex/AGENT.md
+[INFO] workspace_yaml: Missing: {{ROOT}}/.cortex/workspace.yaml
+[WARN] git_repository: {{ROOT}}
+[WARN] git_branch: no-git-branch
+[WARN] gitignore:vault/sessions/: vault/sessions/
+[WARN] gitignore:.cortex/session.lock: .cortex/session.lock
+[WARN] webgraph_dependencies: backend no nativo aún (cortex.webgraph.setup)
+[OK] vault_validation_errors: 0 error(s) across 5 markdown file(s)
+[WARN] vault_validation_warnings: 5 warning(s) across 5 markdown file(s)
+[WARN] sessions_dir: Missing: {{ROOT}}/.cortex/sessions — run `cortex setup agent`.
+[OK] autopilot_policy: mode=assist, budget_profile=fast_code
+[WARN] session_hooks_installed: backend no nativo aún (cortex.session.hooks)
+[WARN] pm_workspace_layout_v2: running on legacy layout
+[WARN] pm_documenter_interactive: backend no nativo aún (cortex.documenter.interactive)
+[OK] pm_documenter_default_mode: documenter.default_mode = auto
+[WARN] pm_verification_runner: backend no nativo aún (cortex.session.verification)
+[WARN] pm_mcp_tools_registered: backend no nativo aún (cortex.mcp.server)
+[INFO] pm_git_available: no git repository at workspace root — sessions will open in gitless mode (documenter relies on checkpoints only)
+---STDERR---
+[FAIL] episodic_store: {{ROOT}}/memory
+[FAIL] gitignore:.memory/: .memory/
+[FAIL] pm_documenter_module: backend no nativo aún (cortex.documenter)
+rc=1
+### s06_doctor_all_org [PASS] py_rc=0 rs_rc=0
+[OK] project_root: {{ROOT}}
+[OK] layout_mode: legacy (workspace_root={{ROOT}})
+[OK] config_yaml: {{ROOT}}/config.yaml
+[OK] config_validation: config.yaml is valid
+[OK] vault_dir: {{ROOT}}/vault
+[OK] cortex_workspace: {{ROOT}}
+[WARN] agent_guidelines: {{ROOT}}/.cortex/AGENT.md
+[INFO] workspace_yaml: Missing: {{ROOT}}/.cortex/workspace.yaml
+[WARN] git_repository: {{ROOT}}
+[WARN] git_branch: no-git-branch
+[WARN] gitignore:vault/sessions/: vault/sessions/
+[WARN] gitignore:.cortex/session.lock: .cortex/session.lock
+[WARN] webgraph_dependencies: backend no nativo aún (cortex.webgraph.setup)
+[OK] vault_validation_errors: 0 error(s) across 5 markdown file(s)
+[WARN] vault_validation_warnings: 5 warning(s) across 5 markdown file(s)
+[WARN] sessions_dir: Missing: {{ROOT}}/.cortex/sessions — run `cortex setup agent`.
+[OK] autopilot_policy: mode=assist, budget_profile=fast_code
+[WARN] session_hooks_installed: backend no nativo aún (cortex.session.hooks)
+[WARN] pm_workspace_layout_v2: running on legacy layout
+[WARN] pm_documenter_interactive: backend no nativo aún (cortex.documenter.interactive)
+[OK] pm_documenter_default_mode: documenter.default_mode = auto
+[WARN] pm_verification_runner: backend no nativo aún (cortex.session.verification)
+[WARN] pm_mcp_tools_registered: backend no nativo aún (cortex.mcp.server)
+[INFO] pm_git_available: no git repository at workspace root — sessions will open in gitless mode (documenter relies on checkpoints only)
+[OK] enterprise_config: {{ROOT}}/.cortex/org.yaml
+[OK] enterprise_config_validation: Enterprise org config is valid
+[OK] enterprise_topology: profile=small-company, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=local, promotion=on, ci=advisory, enterprise_vault={{ROOT}}/vault-enterprise
+[OK] enterprise_vault_dir: {{ROOT}}/vault-enterprise
+[WARN] enterprise_vault_markdown: No markdown files found under vault-enterprise/
+[OK] enterprise_promotion_allowed_doc_types: promotion.allowed_doc_types must be non-empty when promotion is enabled
+[OK] enterprise_promotion_dir: {{ROOT}}/vault-enterprise/.cortex/promotion
+[WARN] enterprise_promotion_records_presence: {{ROOT}}/vault-enterprise/.cortex/promotion/records.jsonl
+[OK] enterprise_branch_isolation_alignment: config.yaml namespace_mode=project, org.yaml branch_isolation_enabled=False
+[OK] enterprise_retrieval_scope: default_scope=local, enterprise_semantic_enabled=True
+---STDERR---
+[FAIL] episodic_store: {{ROOT}}/memory
+[FAIL] gitignore:.memory/: .memory/
+[FAIL] pm_documenter_module: backend no nativo aún (cortex.documenter)
+rc=1
+### s07_doctor_strict [PASS] py_rc=0 rs_rc=0
+[OK] project_root: {{ROOT}}
+[OK] layout_mode: legacy (workspace_root={{ROOT}})
+[OK] config_yaml: {{ROOT}}/config.yaml
+[OK] config_validation: config.yaml is valid
+[OK] vault_dir: {{ROOT}}/vault
+[OK] cortex_workspace: {{ROOT}}
+[WARN] agent_guidelines: {{ROOT}}/.cortex/AGENT.md
+[INFO] workspace_yaml: Missing: {{ROOT}}/.cortex/workspace.yaml
+[WARN] git_repository: {{ROOT}}
+[WARN] git_branch: no-git-branch
+[WARN] gitignore:vault/sessions/: vault/sessions/
+[WARN] gitignore:.cortex/session.lock: .cortex/session.lock
+[WARN] webgraph_dependencies: backend no nativo aún (cortex.webgraph.setup)
+[OK] vault_validation_errors: 0 error(s) across 5 markdown file(s)
+[WARN] vault_validation_warnings: 5 warning(s) across 5 markdown file(s)
+[WARN] sessions_dir: Missing: {{ROOT}}/.cortex/sessions — run `cortex setup agent`.
+[OK] autopilot_policy: mode=assist, budget_profile=fast_code
+[WARN] session_hooks_installed: backend no nativo aún (cortex.session.hooks)
+[WARN] pm_workspace_layout_v2: running on legacy layout
+[WARN] pm_documenter_interactive: backend no nativo aún (cortex.documenter.interactive)
+[OK] pm_documenter_default_mode: documenter.default_mode = auto
+[WARN] pm_verification_runner: backend no nativo aún (cortex.session.verification)
+[WARN] pm_mcp_tools_registered: backend no nativo aún (cortex.mcp.server)
+[INFO] pm_git_available: no git repository at workspace root — sessions will open in gitless mode (documenter relies on checkpoints only)
+---STDERR---
+[FAIL] episodic_store: {{ROOT}}/memory
+[FAIL] gitignore:.memory/: .memory/
+[FAIL] pm_documenter_module: backend no nativo aún (cortex.documenter)
+rc=1
+### s08_orgconfig_text [PASS] py_rc=0 rs_rc=0
+Enterprise config: {{ROOT}}/.cortex/org.yaml
+Organization: Acme Org (small-company)
+Topology: profile=small-company, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=local, promotion=on, ci=advisory, enterprise_vault={{ROOT}}/vault-enterprise
+
+schema_version: 1
+organization:
+  name: Acme Org
+  slug: acme-org
+  profile: small-company
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: local
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.0
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: balanced
+  ci_profile: advisory
+  version_sessions_in_git: false
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0
+
+rc=0
+### s09_orgconfig_json [PASS] py_rc=0 rs_rc=0
+{
+  "schema_version": 1,
+  "organization": {
+    "name": "Acme Org",
+    "slug": "acme-org",
+    "profile": "small-company"
+  },
+  "memory": {
+    "mode": "layered",
+    "enterprise_vault_path": "vault-enterprise",
+    "enterprise_memory_path": "memory/enterprise/chroma",
+    "enterprise_semantic_enabled": true,
+    "enterprise_episodic_enabled": false,
+    "project_memory_mode": "isolated",
+    "branch_isolation_enabled": false,
+    "retrieval_default_scope": "local",
+    "retrieval_local_weight": 1.0,
+    "retrieval_enterprise_weight": 1.0
+  },
+  "promotion": {
+    "enabled": true,
+    "allowed_doc_types": [
+      "spec",
+      "decision",
+      "runbook",
+      "hu",
+      "incident"
+    ],
+    "require_review": true,
+    "default_targets": [
+      "enterprise_vault"
+    ]
+  },
+  "governance": {
+    "git_policy": "balanced",
+    "ci_profile": "advisory",
+    "version_sessions_in_git": false
+  },
+  "integration": {
+    "github_actions_enabled": true,
+    "webgraph_workspace_enabled": true,
+    "ide_profiles": []
+  },
+  "teams": [],
+  "classifications": [
+    "public",
+    "internal",
+    "confidential"
+  ],
+  "policies": {
+    "confidential_visible_to": []
+  },
+  "retention_defaults": {
+    "session": 365,
+    "handoff": 30,
+    "spec": 1095,
+    "adr": 2555,
+    "decision": 365,
+    "incident": 1825,
+    "postmortem": 2555,
+    "runbook": 730,
+    "architecture": 2555,
+    "changelog": 0,
+    "hu": 90,
+    "glossary": 0
+  }
+}
+rc=0
+### s10_orgconfig_missing_required [PASS] py_rc=1 rs_rc=1
+---STDERR---
+Enterprise config not found under {{ROOT}}/.cortex/org.yaml
+rc=1
+### s11_promote_dryrun_empty [PASS] py_rc=0 rs_rc=0
+No reviewed candidates ready for promotion.
+rc=0
+### s12_promote_dryrun_json_reviewed [PASS] py_rc=0 rs_rc=0
+{
+  "project_root": "{{ROOT}}",
+  "enterprise_vault": "{{ROOT}}/vault-enterprise",
+  "dry_run": true,
+  "planned": [
+    {
+      "origin_id": "fix:specs/s0.md",
+      "doc_type": "spec",
+      "local_rel_path": "specs/s0.md",
+      "local_abs_path": "{{ROOT}}/vault/specs/s0.md",
+      "dest_rel_path": "specs/fix/s0.md",
+      "fingerprint": "6d712f78679715ec85b14c40f55729280845b76fffebab3b24dee1770542c6c7",
+      "status": "candidate",
+      "issues": [
+        {
+          "file": "specs/s0.md",
+          "field": "frontmatter",
+          "message": "No YAML frontmatter found (expected --- delimiters)",
+          "severity": "warning"
+        }
+      ],
+      "metadata": {
+        "discovered_at": "{{TS}}"
+      }
+    }
+  ]
+}
+rc=0
+### s13_promote_dryrun_text_reviewed [PASS] py_rc=0 rs_rc=0
+Planned promotions: 1
+  - specs/s0.md -> specs/fix/s0.md  (fix:specs/s0.md)
+rc=0
+### s14_rk_pending [PASS] py_rc=0 rs_rc=0
+Pending review (2):
+  - specs/draft2.md                                              doc_type=runbook    owner=-
+  - specs/draft1.md                                              doc_type=spec       owner=alice
+rc=0
+### s15_rk_pending_json [PASS] py_rc=0 rs_rc=0
+[
+  {
+    "path": "specs/draft2.md",
+    "doc_type": "runbook",
+    "title": "Draft Two",
+    "owner": null,
+    "team": null,
+    "created_at": null
+  },
+  {
+    "path": "specs/draft1.md",
+    "doc_type": "spec",
+    "title": "Draft One",
+    "owner": "alice",
+    "team": null,
+    "created_at": null
+  }
+]
+rc=0
+### s16_rk_approve [PASS] py_rc=0 rs_rc=0
+[OK] specs/draft1.md -> status: accepted (reviewer=tester)
+rc=0
+### s17_rk_reject_move [PASS] py_rc=0 rs_rc=0
+[OK] specs/draft2.md -> specs/rejected/draft2.md (reviewer=tester)
+rc=0
+### s18_rk_escape [PASS] py_rc=1 rs_rc=1
+---STDERR---
+Path escapes enterprise vault: ../escape.md
+rc=1
+### s19_mr_local_text [PASS] py_rc=0 rs_rc=0
+
+Cortex Enterprise Memory Report
+-----------------------------
+Project root: {{ROOT}}
+Enterprise enabled: True
+Scope: local
+
+[local] vault={{ROOT}}/vault
+  markdown_files: 5
+  validation_errors: 0
+  validation_warnings: 5
+
+Promotion
+---------
+enabled: False
+rc=0
+### s20_mr_all_json [PASS] py_rc=0 rs_rc=0
+{
+  "generated_at": "{{TS}}",
+  "project_root": "{{ROOT}}",
+  "enterprise_enabled": true,
+  "sources": [
+    {
+      "scope": "local",
+      "vault_path": "{{ROOT}}/vault",
+      "markdown_files": 5,
+      "validation_errors": 0,
+      "validation_warnings": 5,
+      "notes": []
+    },
+    {
+      "scope": "enterprise",
+      "vault_path": "{{ROOT}}/vault-enterprise",
+      "markdown_files": 0,
+      "validation_errors": 0,
+      "validation_warnings": 0,
+      "notes": []
+    }
+  ],
+  "promotion": {
+    "enabled": true,
+    "require_review": true,
+    "records_path": "{{ROOT}}/vault-enterprise/.cortex/promotion/records.jsonl",
+    "candidates_discovered": 3,
+    "candidates_ready_to_promote": 0,
+    "latest_events": [],
+    "warnings": []
+  },
+  "doctor": {
+    "project_root": "{{ROOT}}",
+    "checks": [
+      {
+        "name": "project_root",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}"
+      },
+      {
+        "name": "layout_mode",
+        "ok": true,
+        "severity": "info",
+        "detail": "legacy (workspace_root={{ROOT}})"
+      },
+      {
+        "name": "config_yaml",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}/config.yaml"
+      },
+      {
+        "name": "config_validation",
+        "ok": true,
+        "severity": "info",
+        "detail": "config.yaml is valid"
+      },
+      {
+        "name": "vault_dir",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}/vault"
+      },
+      {
+        "name": "episodic_store",
+        "ok": false,
+        "severity": "fail",
+        "detail": "{{ROOT}}/memory"
+      },
+      {
+        "name": "cortex_workspace",
+        "ok": true,
+        "severity": "warn",
+        "detail": "{{ROOT}}"
+      },
+      {
+        "name": "agent_guidelines",
+        "ok": false,
+        "severity": "warn",
+        "detail": "{{ROOT}}/.cortex/AGENT.md"
+      },
+      {
+        "name": "workspace_yaml",
+        "ok": false,
+        "severity": "info",
+        "detail": "Missing: {{ROOT}}/.cortex/workspace.yaml"
+      },
+      {
+        "name": "git_repository",
+        "ok": false,
+        "severity": "warn",
+        "detail": "{{ROOT}}"
+      },
+      {
+        "name": "git_branch",
+        "ok": false,
+        "severity": "warn",
+        "detail": "no-git-branch"
+      },
+      {
+        "name": "gitignore:.memory/",
+        "ok": false,
+        "severity": "fail",
+        "detail": ".memory/"
+      },
+      {
+        "name": "gitignore:vault/sessions/",
+        "ok": false,
+        "severity": "warn",
+        "detail": "vault/sessions/"
+      },
+      {
+        "name": "gitignore:.cortex/session.lock",
+        "ok": false,
+        "severity": "warn",
+        "detail": ".cortex/session.lock"
+      },
+      {
+        "name": "webgraph_dependencies",
+        "ok": false,
+        "severity": "warn",
+        "detail": "backend no nativo a\u00fan (cortex.webgraph.setup)"
+      },
+      {
+        "name": "vault_validation_errors",
+        "ok": true,
+        "severity": "fail",
+        "detail": "0 error(s) across 5 markdown file(s)"
+      },
+      {
+        "name": "vault_validation_warnings",
+        "ok": false,
+        "severity": "warn",
+        "detail": "5 warning(s) across 5 markdown file(s)"
+      },
+      {
+        "name": "sessions_dir",
+        "ok": false,
+        "severity": "warn",
+        "detail": "Missing: {{ROOT}}/.cortex/sessions \u2014 run `cortex setup agent`."
+      },
+      {
+        "name": "autopilot_policy",
+        "ok": true,
+        "severity": "info",
+        "detail": "mode=assist, budget_profile=fast_code"
+      },
+      {
+        "name": "session_hooks_installed",
+        "ok": false,
+        "severity": "warn",
+        "detail": "backend no nativo a\u00fan (cortex.session.hooks)"
+      },
+      {
+        "name": "pm_workspace_layout_v2",
+        "ok": false,
+        "severity": "warn",
+        "detail": "running on legacy layout"
+      },
+      {
+        "name": "pm_documenter_module",
+        "ok": false,
+        "severity": "fail",
+        "detail": "backend no nativo a\u00fan (cortex.documenter)"
+      },
+      {
+        "name": "pm_documenter_interactive",
+        "ok": false,
+        "severity": "warn",
+        "detail": "backend no nativo a\u00fan (cortex.documenter.interactive)"
+      },
+      {
+        "name": "pm_documenter_default_mode",
+        "ok": true,
+        "severity": "info",
+        "detail": "documenter.default_mode = auto"
+      },
+      {
+        "name": "pm_verification_runner",
+        "ok": false,
+        "severity": "warn",
+        "detail": "backend no nativo a\u00fan (cortex.session.verification)"
+      },
+      {
+        "name": "pm_mcp_tools_registered",
+        "ok": false,
+        "severity": "warn",
+        "detail": "backend no nativo a\u00fan (cortex.mcp.server)"
+      },
+      {
+        "name": "pm_git_available",
+        "ok": false,
+        "severity": "info",
+        "detail": "no git repository at workspace root \u2014 sessions will open in gitless mode (documenter relies on checkpoints only)"
+      },
+      {
+        "name": "enterprise_config",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}/.cortex/org.yaml"
+      },
+      {
+        "name": "enterprise_config_validation",
+        "ok": true,
+        "severity": "info",
+        "detail": "Enterprise org config is valid"
+      },
+      {
+        "name": "enterprise_topology",
+        "ok": true,
+        "severity": "info",
+        "detail": "profile=small-company, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=local, promotion=on, ci=advisory, enterprise_vault={{ROOT}}/vault-enterprise"
+      },
+      {
+        "name": "enterprise_vault_dir",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}/vault-enterprise"
+      },
+      {
+        "name": "enterprise_vault_markdown",
+        "ok": false,
+        "severity": "warn",
+        "detail": "No markdown files found under vault-enterprise/"
+      },
+      {
+        "name": "enterprise_promotion_allowed_doc_types",
+        "ok": true,
+        "severity": "fail",
+        "detail": "promotion.allowed_doc_types must be non-empty when promotion is enabled"
+      },
+      {
+        "name": "enterprise_promotion_dir",
+        "ok": true,
+        "severity": "fail",
+        "detail": "{{ROOT}}/vault-enterprise/.cortex/promotion"
+      },
+      {
+        "name": "enterprise_promotion_records_presence",
+        "ok": false,
+        "severity": "warn",
+        "detail": "{{ROOT}}/vault-enterprise/.cortex/promotion/records.jsonl"
+      },
+      {
+        "name": "enterprise_branch_isolation_alignment",
+        "ok": true,
+        "severity": "warn",
+        "detail": "config.yaml namespace_mode=project, org.yaml branch_isolation_enabled=False"
+      },
+      {
+        "name": "enterprise_retrieval_scope",
+        "ok": true,
+        "severity": "warn",
+        "detail": "default_scope=local, enterprise_semantic_enabled=True"
+      }
+    ],
+    "has_failures": true,
+    "has_warnings": true
+  }
+}
+### s21_mr_invalid_scope [PASS] py_rc=1 rs_rc=1
+---STDERR---
+Invalid --scope value. Use one of: local, enterprise, all.
+rc=1
+### s22_wg_export_empty [PASS] py_rc=0 rs_rc=0
+Webgraph snapshot exported -> {{ROOT}}/.cortex/webgraph/cache/snapshot-hybrid.json
+---STDERR---
+Vault path does not exist: {{ROOT}}/vault
+rc=0
+---SNAPSHOT---
+{
+  "version": "2.0",
+  "fingerprint": "{{FP}}",
+  "generated_at": "{{TS}}",
+  "mode": "hybrid",
+  "stats": {
+    "node_count": 0,
+    "edge_count": 0,
+    "mode": "hybrid",
+    "truncated": false
+  },
+  "capabilities": {
+    "filters": true,
+    "subgraph": true,
+    "open_file": true,
+    "relation_explanations": true
+  },
+  "nodes": [],
+  "edges": [],
+  "legend": {
+    "doc_types": [
+      {
+        "type": "session",
+        "color": "#88aaff",
+        "shape": "rectangle"
+      },
+      {
+        "type": "handoff",
+        "color": "#ffaa44",
+        "shape": "diamond"
+      },
+      {
+        "type": "spec",
+        "color": "#88ddaa",
+        "shape": "rectangle"
+      },
+      {
+        "type": "adr",
+        "color": "#cc66ff",
+        "shape": "hexagon"
+      },
+      {
+        "type": "decision",
+        "color": "#aa88cc",
+        "shape": "hexagon"
+      },
+      {
+        "type": "incident",
+        "color": "#ff6666",
+        "shape": "diamond"
+      },
+      {
+        "type": "postmortem",
+        "color": "#aa4444",
+        "shape": "diamond"
+      },
+      {
+        "type": "runbook",
+        "color": "#66cccc",
+        "shape": "rectangle"
+      },
+      {
+        "type": "architecture",
+        "color": "#6688cc",
+        "shape": "rectangle"
+      },
+      {
+        "type": "changelog",
+        "color": "#999999",
+        "shape": "rectangle"
+      },
+      {
+        "type": "hu",
+        "color": "#ccaa66",
+        "shape": "ellipse"
+      },
+      {
+        "type": "glossary",
+        "color": "#cccc66",
+        "shape": "ellipse"
+      },
+      {
+        "type": "design",
+        "color": "#66aaee",
+        "shape": "rectangle"
+      },
+      {
+        "type": "episodic",
+        "color": "#9b59b6",
+        "shape": "diamond"
+      }
+    ],
+    "edge_types": [
+      {
+        "type": "wiki_link",
+        "color": "#666666",
+        "style": "solid",
+        "label": "links to"
+      },
+      {
+        "type": "co_occurrence",
+        "color": "#aaaaaa",
+        "style": "dashed",
+        "label": "co-occurs"
+      },
+      {
+        "type": "imports",
+        "color": "#88aaff",
+        "style": "solid",
+        "label": "imports"
+      },
+      {
+        "type": "tested_by",
+        "color": "#88dd88",
+        "style": "dotted",
+        "label": "tested by"
+      },
+      {
+        "type": "supersedes",
+        "color": "#dd6666",
+        "style": "solid",
+        "label": "supersedes"
+      },
+      {
+        "type": "superseded_by",
+        "color": "#9e9e9e",
+        "style": "dotted",
+        "label": "superseded by"
+      },
+      {
+        "type": "promoted_from",
+        "color": "#aa66cc",
+        "style": "dashed",
+        "label": "promoted from"
+      }
+    ]
+  }
+}
+### s23_wg_no_config [PASS] py_rc=1 rs_rc=1
+---STDERR---
+Config not found at {{ROOT}}/.cortex/config.yaml. Run `cortex setup agent` first or pass a valid --project-root.
+rc=1
+### s24_pf_security_json [PASS] py_rc=0 rs_rc=0
+{
+  "task_type": "security",
+  "confidence": 0.7,
+  "reason": "Security keywords in request",
+  "suggested_complexity": "deep"
+}
+rc=0
+### s25_pf_noop_tie [PASS] py_rc=0 rs_rc=0
+task_type: noop
+confidence: 0.0
+reason: Request appears sufficiently specific
+suggested_complexity: none
+rc=0
+### s25b_agent_guidelines [PASS] py_rc=0 rs_rc=0
+# Cortex Agent - Governance Rules
+
+## Mandatory Pre-flight
+
+Use `cortex-sync` first.
+
+1. Run `git fetch` silently.
+2. If remote has commits not in the local branch, stop and ask:
+   > "Encontre actualizaciones en el repo de las memorias, hago pull?"
+3. Use Cortex tools only to gather context:
+   - `cortex_sync_ticket`
+   - `cortex_search`
+   - `cortex_context`
+   - `cortex_create_spec` (con `verification_hooks` recomendados)
+4. Sync abre la Session automaticamente al persistir el spec.
+
+## Ecosystem Isolation
+
+External memory tools are forbidden in a Cortex-governed repository.
+Never use:
+
+- `engram_*`
+- `mem_*`
+- `save_memory`
+- `session_summary`
+
+If a memory tool does not start with `cortex_`, it does not belong to this workspace.
+
+## Execution Model (Pluggable Middle, Fase 02+)
+
+Cortex envuelve el workflow en tres puntos: **sync** (antes), **middle**
+(durante) y **documenter** (despues). El "middle" es **pluggable** — admite
+tres modos:
+
+| Modo | Middle | Cuando usarlo |
+|---|---|---|
+| **Managed** | `cortex-SDDwork` + subagents | Default cuando el usuario no trae tooling propio. |
+| **Observed** | Agente del usuario + IDE hooks | El usuario tiene skills/agentes propios pero quiere que Cortex observe. |
+| **BYO** | Lo que sea (manual, otro agente) | Maxima libertad; Cortex reconstruye desde diff. |
+
+- `cortex-sync` prepara contexto y persiste la spec con verification hooks. **Abre la Session.**
+- **Middle (uno de los tres):**
+  - **Managed**: `cortex-SDDwork` orquesta. Cada paso significativo emite un `cortex_session_checkpoint`. Subagent delegation es nativa del IDE (Task tool en Claude Code, `mode: subagent` en opencode, secuencial single-agent en Codex). El MCP server NO expone tool de delegate — ver `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md` seccion 5.
+  - **Observed**: el agente externo del usuario hace el trabajo; opcionalmente IDE hooks (Fase 03) emiten checkpoints.
+  - **BYO**: el usuario codea sin emitir checkpoints. La reconstruccion se basa 100% en el diff.
+- `cortex-documenter` cierra la Session via `cortex finish-session` (CLI) o `cortex_finish_session` (MCP). NO emite YAML; lee la Session y reconstruye.
+
+## Contrato compartido entre agentes Cortex
+
+A partir de Fase 02, el contrato entre `cortex-sync`, `cortex-SDDwork`,
+`cortex-code-explorer`, `cortex-code-implementer` y `cortex-documenter`
+es la **Session**. NO se usan handoffs YAML inline.
+
+- Emite checkpoints con `cortex_session_checkpoint(source=<agent-id>, ...)`.
+- `cortex_validate_handoff` esta **deprecated** desde Fase 02 (queda para
+  modo Legacy YAML del documenter, usado solo por Codex y compat).
+- El schema `cortex.handoff.AgentHandoff` sigue siendo valido pero ya no
+  es el contrato principal.
+
+## Definition of Done
+
+A task is not complete until:
+
+1. `cortex finish-session` se ejecuto (o `cortex_finish_session` via MCP).
+2. La Session esta en status `CLOSED` (o `HANDOFF` si el trabajo es parcial).
+3. El session note esta persistido en el Vault.
+4. La memoria episodica + semantica esta indexada con la nueva nota.
+
+rc=0
+### s26_install_skills_fresh [PASS] py_rc=0 rs_rc=0
+✅ Installed 5 skills into skills-out/
+   • obsidian-markdown
+   • json-canvas
+   • obsidian-bases
+   • obsidian-cli
+   • defuddle
+rc=0
+### s27_unknown_command [PASS] py_rc=2 rs_rc=2
+---STDERR---
+Usage: cortex [OPTIONS] COMMAND [ARGS]...
+Try 'cortex --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'frobnicate'.                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+rc=2
+### s28_unknown_help_flag [PASS] py_rc=2 rs_rc=2
+---STDERR---
+Usage: cortex [OPTIONS] COMMAND [ARGS]...
+Try 'cortex --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such option: --frobnicate                                                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+rc=2
+### s29_rollback_doctor [PASS] py_rc=1 rs_rc=1
+[OK] project_root: {{ROOT}}
+[OK] layout_mode: legacy (workspace_root={{ROOT}})
+[OK] config_yaml: {{ROOT}}/config.yaml
+[OK] config_validation: config.yaml is valid
+[OK] cortex_workspace: {{ROOT}}
+[WARN] agent_guidelines: {{ROOT}}/.cortex/AGENT.md
+[INFO] workspace_yaml: Missing: {{ROOT}}/.cortex/workspace.yaml
+[WARN] git_repository: {{ROOT}}
+[WARN] git_branch: no-git-branch
+[WARN] gitignore:vault/sessions/: vault/sessions/
+[WARN] gitignore:.cortex/session.lock: .cortex/session.lock
+[OK] webgraph_dependencies: ok
+[WARN] sessions_dir: Missing: {{ROOT}}/.cortex/sessions — run `cortex setup agent`.
+[OK] autopilot_policy: mode=assist, budget_profile=fast_code
+[WARN] session_hooks_installed: none installed — run `cortex session hooks install --ide <name>`
+[WARN] pm_workspace_layout_v2: running on legacy layout
+[OK] pm_documenter_module: cortex.documenter imports cleanly
+[OK] pm_documenter_interactive: InteractiveSession constructs OK (`--interactive` mode available)
+[OK] pm_documenter_default_mode: documenter.default_mode = auto
+[OK] pm_verification_runner: VerificationRunner ready
+[OK] pm_mcp_tools_registered: All 6 canonical session MCP tools registered
+[INFO] pm_git_available: no git repository at workspace root — sessions will open in gitless mode (documenter relies on checkpoints only)
+---STDERR---
+[FAIL] vault_dir: {{ROOT}}/vault
+[FAIL] episodic_store: {{ROOT}}/memory
+[FAIL] gitignore:.memory/: .memory/
+rc=1
+### s30_rollback_unknown [PASS] py_rc=2 rs_rc=2
+---STDERR---
+Usage: cortex [OPTIONS] COMMAND [ARGS]...
+Try 'cortex --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'frobnicate'.                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+rc=2

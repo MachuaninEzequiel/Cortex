@@ -1,0 +1,192 @@
+{
+  "tag": "",
+  "timestamp_utc": "2026-08-23T19:58:38+00:00",
+  "config": {
+    "model": "all-MiniLM-L6-v2",
+    "backend": "onnx",
+    "dataset": "vault-synth-1k"
+  },
+  "machine": {
+    "platform": "Linux-7.2.0-1-cachyos-x86_64-with-glibc2.44",
+    "processor": "x86_64",
+    "python": "3.12.14",
+    "cpu_count": 20,
+    "ram": "11846436 kB",
+    "governor": "powersave"
+  },
+  "git": {
+    "commit": "68c131b65592",
+    "dirty": true
+  },
+  "suites": {
+    "cold_start": {
+      "metrics": {
+        "import": {
+          "n": 3,
+          "mean_ms": 650.516,
+          "p50_ms": 664.81,
+          "p95_ms": 678.004,
+          "p99_ms": 678.004
+        },
+        "sync_warm_cache": {
+          "n": 3,
+          "mean_ms": 504.082,
+          "p50_ms": 509.649,
+          "p95_ms": 517.271,
+          "p99_ms": 517.271
+        },
+        "sync_empty_cache": {
+          "n": 3,
+          "mean_ms": 14674.365,
+          "p50_ms": 516.444,
+          "p95_ms": 43016.068,
+          "p99_ms": 43016.068
+        },
+        "first_query_warm": {
+          "n": 3,
+          "mean_ms": 202.157,
+          "p50_ms": 196.646,
+          "p95_ms": 215.752,
+          "p99_ms": 215.752
+        },
+        "first_query_cold": {
+          "n": 3,
+          "mean_ms": 142.947,
+          "p50_ms": 195.602,
+          "p95_ms": 208.258,
+          "p99_ms": 208.258
+        }
+      },
+      "cpu_seconds": 518.56
+    },
+    "retrieve": {
+      "metrics": {
+        "search_warm": {
+          "n": 200,
+          "mean_ms": 38.005,
+          "p50_ms": 35.857,
+          "p95_ms": 45.637,
+          "p99_ms": 83.097
+        },
+        "first_query_after_sync": {
+          "n": 3,
+          "mean_ms": 57.36,
+          "p50_ms": 55.981,
+          "p95_ms": 60.907,
+          "p99_ms": 60.907
+        }
+      },
+      "cpu_seconds": 2353.341
+    },
+    "index": {
+      "metrics": {
+        "full_sync_1k": {
+          "n": 3,
+          "mean_ms": 41157.23,
+          "p50_ms": 41166.202,
+          "p95_ms": 41256.903,
+          "p99_ms": 41256.903
+        }
+      },
+      "docs_indexados": 1000,
+      "cpu_seconds": 1693.058
+    },
+    "webgraph": {
+      "metrics": {
+        "build_edges_n250": {
+          "n": 3,
+          "mean_ms": 210.549,
+          "p50_ms": 201.553,
+          "p95_ms": 267.736,
+          "p99_ms": 267.736,
+          "edges_generados": 3159
+        },
+        "build_edges_n500": {
+          "n": 3,
+          "mean_ms": 501.906,
+          "p50_ms": 505.493,
+          "p95_ms": 561.185,
+          "p99_ms": 561.185,
+          "edges_generados": 12537
+        },
+        "build_edges_n1000": {
+          "n": 3,
+          "mean_ms": 1874.622,
+          "p50_ms": 1878.807,
+          "p95_ms": 1886.686,
+          "p99_ms": 1886.686,
+          "edges_generados": 49863
+        }
+      },
+      "cpu_seconds": 12.216
+    },
+    "bm25": {
+      "metrics": {
+        "bm25_search": {
+          "n": 200,
+          "mean_ms": 1.221,
+          "p50_ms": 1.188,
+          "p95_ms": 1.64,
+          "p99_ms": 1.853
+        }
+      },
+      "cpu_seconds": 562.927
+    },
+    "vector_store": {
+      "metrics": {
+        "python_ingest_5k": {
+          "n": 1,
+          "mean_ms": 54612.761,
+          "p50_ms": 54612.761,
+          "p95_ms": 54612.761,
+          "p99_ms": 54612.761
+        },
+        "python_cold_load_5k": {
+          "n": 5,
+          "mean_ms": 32.292,
+          "p50_ms": 32.266
+        },
+        "native_ingest_5k": {
+          "n": 1,
+          "mean_ms": 10.161,
+          "p50_ms": 10.161,
+          "p95_ms": 10.161,
+          "p99_ms": 10.161
+        },
+        "native_cold_load_5k": {
+          "n": 5,
+          "mean_ms": 6.352,
+          "p50_ms": 6.557
+        }
+      },
+      "disponible": true,
+      "paridad_hits": "bit-idéntica",
+      "chunks": 5000,
+      "dim": 384,
+      "cpu_seconds": 56.543
+    },
+    "cpu_energy": {
+      "metrics": {
+        "cpu_cold_start": {
+          "mean_s": 518.56
+        },
+        "cpu_retrieve": {
+          "mean_s": 2353.341
+        },
+        "cpu_index": {
+          "mean_s": 1693.058
+        },
+        "cpu_webgraph": {
+          "mean_s": 12.216
+        },
+        "cpu_bm25": {
+          "mean_s": 562.927
+        },
+        "cpu_vector_store": {
+          "mean_s": 56.543
+        }
+      },
+      "nota": "CPU-time como proxy de energía: menos CPU-despierto = menos Wh."
+    }
+  }
+}

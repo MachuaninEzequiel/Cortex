@@ -177,9 +177,22 @@ def _make_chunk(
     tags: tuple[str, ...],
     parent_path: str,
     boundary_level: str,
+    slug_counts: dict[str, int] | None = None,
 ) -> Chunk:
+    """Build a Chunk with a collision-safe ``chunk_id`` (Fix A4).
+
+    Two sections with the same slugged title would produce identical
+    ``{rel}#h2-slug`` ids and silently overwrite each other in index dicts.
+    The first occurrence keeps the stable unsuffixed id; later duplicates get
+    a positional suffix (``-2``, ``-3``, ...) scoped to this document.
+    """
     section_slug = slugify(section_title) or "section"
-    chunk_id = f"{parent_path}#{boundary_level}-{section_slug}"
+    key = f"{boundary_level}-{section_slug}"
+    if slug_counts is None:
+        slug_counts = {}
+    seen = slug_counts.get(key, 0)
+    chunk_id = f"{parent_path}#{key}" if seen == 0 else f"{parent_path}#{key}-{seen + 1}"
+    slug_counts[key] = seen + 1
     return Chunk(
         parent_path=parent_path,
         chunk_id=chunk_id,
@@ -211,6 +224,7 @@ def _split_with_pattern(
 
     chunks: list[Chunk] = []
     boundary_level = "h2"  # all sections collapse under H2 prefix for chunk_id
+    slug_counts: dict[str, int] = {}  # Fix A4: per-doc duplicate detection
 
     # Prefix (text before the first header).
     prefix_text = content[: matches[0].start()].strip()
@@ -219,7 +233,7 @@ def _split_with_pattern(
             _make_chunk(
                 text=prefix_text, section_title="(prefix)", position=0,
                 doc_type=doc_type, tags=tags, parent_path=parent_path,
-                boundary_level=boundary_level,
+                boundary_level=boundary_level, slug_counts=slug_counts,
             )
         )
 
@@ -241,6 +255,7 @@ def _split_with_pattern(
                 text=section_text, section_title=section_title,
                 position=i + 1, doc_type=doc_type, tags=tags,
                 parent_path=parent_path, boundary_level=boundary_level,
+                slug_counts=slug_counts,
             )
         )
 
@@ -264,6 +279,7 @@ def _split_paragraphs(
             )
         ]
     chunks: list[Chunk] = []
+    slug_counts: dict[str, int] = {}  # Fix A4: per-doc duplicate detection
     for i, para in enumerate(paragraphs):
         text = para
         if overlap_words > 0 and chunks:
@@ -275,6 +291,7 @@ def _split_paragraphs(
                 text=text, section_title=f"paragraph-{i + 1}",
                 position=i + 1, doc_type=doc_type, tags=tags,
                 parent_path=parent_path, boundary_level="p",
+                slug_counts=slug_counts,
             )
         )
     return chunks

@@ -19,6 +19,18 @@ git init && git add -A && git commit -m "initial"
 
 {{ spec_summary or "(none)" }}
 
+{% if phase_line %}
+## Fases
+
+{{ phase_line }}
+
+{% if evidence_by_phase %}
+{% for ev in evidence_by_phase %}
+- **{{ ev.phase }}**: {{ ev.claims }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
 {% if task_type not in ["question-only", "docs-only"] %}
 ## Changes Made
 

@@ -1,0 +1,13 @@
+{
+  "files": {},
+  "ide": "opencode",
+  "kind": "result",
+  "payload": {
+    "ide": "opencode",
+    "message": "{{TARGET}}/.opencode/hooks.md does not exist",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_missing"
+}

@@ -1,0 +1,43 @@
+---
+title: Architecture Overview
+tags: [architecture, system-design]
+created: 2026-04-13
+---
+
+# Architecture Overview — java_maven
+
+> High-level system architecture and design decisions.
+
+## Tech Stack
+
+- **Language**: java
+- **Package Manager**: maven
+- **Frameworks**: None detected
+
+## System Diagram
+
+```
+// Add your architecture diagram here
+```
+
+## Key Components
+
+| Component | Responsibility | Notes |
+|-----------|---------------|-------|
+| | | |
+
+## Data Flow
+
+1.
+2.
+3.
+
+## Dependencies
+
+- External services:
+- Third-party APIs:
+- Message queues:
+
+## Design Decisions
+
+See [[decisions]] for a log of architectural decisions.

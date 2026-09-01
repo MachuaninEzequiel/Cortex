@@ -1,0 +1,77 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cortex-core",
+    "crates/cortex-embed",
+    "crates/cortex-py",
+    "crates/cortex-brain",
+    "crates/cortex-cli",
+    # Obra 07 (migración total): docs/transformacion/08-MIGRACION-TOTAL-RUST.md
+    "crates/cortex-config",
+    "crates/cortex-app",
+    # Obra 07 P12A-5 (spec/note services, stream A): doc 09 §3.15/§7
+    "crates/cortex-services",
+    # Obra 07 P10 (branding + TUI): docs/transformacion/10-P10-BRANDING-TUI.md
+    "crates/cortex-branding",
+    "crates/cortex-tui",
+    # Obra 07 P8/P9 (stream B): docs/transformacion/08-MIGRACION-TOTAL-RUST.md §4b
+    "crates/cortex-setup",
+    # Obra 07 P6 (ActionEngine nativo, stream A): docs/transformacion/08 §4b
+    "crates/cortex-actions",
+    # Obra 07 P9 (MCP server rmcp, stream B): docs/transformacion/08 §4b
+    "crates/cortex-mcp",
+    # Obra 07 P12B-1 (workspace/layout+misc, stream B): doc 09 §3.9/§7
+    "crates/cortex-workspace",
+    # Obra 07 P12B-2 (webgraph server axum, stream B): doc 09 §3.3/§7
+    "crates/cortex-webgraph-server",
+    # Obra 07 P12B-3 (enterprise models/config/governance, stream B): doc 09 §3.10/§7
+    "crates/cortex-enterprise",
+    # Obra 07 P12B-4 (doctor, stream B): doc 09 §3.10/§7
+    "crates/cortex-doctor",
+    # Obra 07 P12B-5 (autopilot capa de decisión, stream B): doc 09 §3.6/§7
+    "crates/cortex-autopilot",
+    # Obra 07 P12B-6 (pipeline SDDwork, stream B): doc 09 §3.7/§7
+    "crates/cortex-pipeline",
+    # Obra 07 P12B-7 (tutor, stream B): doc 09 §3.8/§7 — porte fiel aprobado
+    "crates/cortex-tutor",
+    # Obra 08 (stream B): docs/transformacion/14-HERDR-COMPANION.md
+    "crates/cortex-companion",
+    # Obra 20 (G-A1): docs/transformacion/20-CORTEX-BRAIN-APP.md — shell Tauri
+    # de la app standalone (binario unificado `cortex-brain`).
+    "crates/cortex-brain-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+unicode-normalization = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+minijinja = "2"
+sha2 = "0.10"
+
+# Obra 07 P9 (stream B): servidor MCP nativo — deps aprobadas por
+# docs/transformacion/08-MIGRACION-TOTAL-RUST.md §5 (rmcp/tokio).
+rmcp = { version = "0.8", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "time"] }
+
+# Obra 19 (G-L1): cliente HTTP sync para descarga del GGUF. ureq ya
+# está resuelto en el lock transitivamente (lo trae ort-sys para bajar
+# binarios de onnxruntime); cero paquetes nuevos al lock.
+ureq = "3"
+
+# Reglas del workspace (HANDOFF §TAREA-RUST R2 / docs/transformacion/03 §6.2):
+# - cortex-core: dominio PURO. Jamás depende de pyo3. Testeable offline.
+# - cortex-embed: wrapper de inferencia ONNX (ort). dim SIEMPRE paramétrica.
+# - cortex-py: fachada PyO3 GRUESA (APIs batch, nunca loop-per-item).
+#   El feature `extension-module` NO es default para que `cargo test` linkee
+#   contra libpython; maturin lo activa automáticamente al compilar el wheel.
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

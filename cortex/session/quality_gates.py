@@ -39,10 +39,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from cortex.documenter.spec_loader import LoadedSpec
 from cortex.session.models import Checkpoint
+
+if TYPE_CHECKING:  # pragma: no cover - solo hints; rompe acople session→documenter (V9)
+    from cortex.documenter.spec_loader import LoadedSpec
 
 ReviewAction = Literal["accept", "redelegate", "warn"]
 
@@ -145,7 +147,12 @@ def _is_process_artifact(path: str) -> bool:
 
     See ``docs/incidents/2026-05-22_appfutbol-mcp-duplicate-loop/``.
     """
-    p = Path(path).as_posix().lstrip("./")
+    # FIX (Obra 07 P3/P4): lstrip("./") removía CONJUNTO de chars — ".cortex/x"
+    # quedaba como "cortex/x" y ningún artefacto procesal matcheaba su
+    # prefijo. La intención documentada es normalizar un posible "./" inicial.
+    p = Path(path).as_posix()
+    if p.startswith("./"):
+        p = p[2:]
     return any(p.startswith(prefix) for prefix in _PROCESS_ARTIFACT_PREFIXES)
 
 

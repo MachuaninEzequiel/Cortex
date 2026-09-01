@@ -1,0 +1,49 @@
+{
+  "fase": "P7",
+  "fecha": "2026-08-24",
+  "stream": "A",
+  "crate": "módulo context dentro de rust/crates/cortex-app (src/context/, 10 archivos)",
+  "fuente": "cortex/context_enricher/ (~3184 líneas) — spec: tests/unit/context_enricher/",
+  "gate": "bundles --json idénticos vs oráculo Python",
+  "verificacion": {
+    "oraculo_determinista": ".venv/bin/python bench/parity/context_golden_p7.py verify --out bench/parity/golden_context → 3/3 PASS (regenera todo en temp y compara contra lo commiteado)",
+    "paridad_rust": "cargo run -q -p cortex-app --example context_check -- <fixtures> <golden_dir> <model_dir> → 3/3 byte-a-byte",
+    "cargo_test": "cargo test -p cortex-app → 27 passed, 0 failed (16 nuevos de context/budget_resolver/doc_intent/cooccurrence/decay/pyjson + 11 preexistentes intactos)",
+    "clippy": "cargo clippy -p cortex-app --all-targets -- -D warnings → limpio",
+    "fmt": "cargo fmt -p cortex-app --check → limpio",
+    "suite_python_oraculo": ".venv/bin/python -m pytest tests/unit tests/integration --no-cov → 2455 passed, 18 skipped"
+  },
+  "paridad_golden": {
+    "script": "bench/parity/context_golden_p7.py (build | verify)",
+    "goldens": "bench/parity/golden_context/{caso_a_topic,caso_b_multi,caso_c_budget_prtitle}.json",
+    "casos": [
+      "caso_a_topic: 1 query (topic), mezcla episódica+semántica, decay mixto (permanente 1.0 vs floor 0.10)",
+      "caso_b_multi: 4 queries (topic+file+keyword+pr_title) + files que co-ocurren + entidades function/class ⇒ multi-match boost, grafo naive+tipado, entity_search y feedback implícito activos (31 raw hits, 6 items)",
+      "caso_c_budget_prtitle: resolve_budget_profile('deep-code') ⇒ top_k=8, pr_title strategy, DocIntent boost"
+    ],
+    "resultado_rust_vs_oraculo": "3/3 byte-a-byte (context_check)",
+    "normalizacion": "{{ROOT}} ruta absoluta · floats redondeados a 5 decimales EN AMBOS LADOS · matched_by ordenado (el oráculo usa list(set)) · \\n final único; resto byte-parity incl. orden de claves JSON",
+    "porque_floats_5dec": "los vectores ONNX difieren a nivel ulp entre onnxruntime (Python) y ort (Rust) y el multi-match boost (×1.5^3 = 3.375) amplifica ese ruido hasta el borde del 6° decimal ⇒ tolerancia 1e-5 pactada; drift real mayor falla",
+    "determinismo_fixture": "timestamps episódicos fijados en 2026-01 (edad >168h eterna ⇒ recencia entidades −0.1 y decay al floor exacto) · memorias con tag permanente ⇒ factor 1.0 · tipos de vault SIN chunking ⇒ matched_chunk_id null · ids renombrados mem_p7_NN por orden lexicográfico de contenido · sin empates de score"
+  },
+  "cobertura_del_porteo": {
+    "mod.rs": "pipeline completo: Phase 1 estrategias topic/files/keywords/pr_title (orden de inserción del dict Python) sobre search_hybrid RRF nativo + entity_search (fuentes y cotas idénticas: function[:5]×3, class[:3]×2, imports[:5]×2, keywords[:3]×1, dedup mayor-score, sort desc)",
+    "finalize_items": "fuente única sync/async (V3): conversión+merge por source_id (mayor score), multi-match boost ×1.5^(n−1), co-ocurrencia naive (conteo), grafo tipado (×0.5), decay temporal (solo episódicas con fecha, tags permanentes, floor), feedback implícito (keywords[:10]+files+entidades), DocIntent boost (clave ausente ⇒ 1.0), umbral min_score, sort estable desc, presupuesto max_items/max_chars (len chars + 50 overhead)",
+    "budget_resolver.rs": "7 perfiles DATA (question-only/docs-only/fast-code/deep-code/security/ambiguous/noop) + fallback fast-code; complexity aceptado no consultado; tests espejo de test_budget_resolver.py",
+    "models.rs + pyjson.rs": "WorkContext/EnrichedItem/EnrichedBundle + to_json estilo ContextPresenter.to_json: json.dumps(indent=2, ensure_ascii=False) con repr de floats de CPython (py_float) y orden de claves de inserción",
+    "hybrid.rs": "RRF híbrido adaptativo sobre episódica (P3) + semántica (P2b) con embeddings ort",
+    "cooccurrence.rs / decay.rs / feedback.rs / doc_intent.rs / intent.rs": "puertos 1:1 de co_occurrence.py, memory_decay.py, feedback_loop.py (process_implicit), doc_intent.py + routing retrieval_boost",
+    "episodic/mod.rs (edit aditivo)": "entity_search + entity_match_score (frecuencia normalizada +0.1×hasta+0.3, recencia <24h +0.2 / >168h −0.1, techo 1.0) + parse_ts_utc tolerante",
+    "tests_unitarios_rust": "16 tests espejo: multi-match/matched_by, dedup mayor score, umbral+presupuesto, primer item siempre entra, decay floor/permanente, entity hits solo raw, perfiles budget, DocIntent prioridades, pyjson repr floats"
+  },
+  "decisiones": [
+    "Filtros estructurales (filters.py, 'Fase 08' del propio oráculo) FUERA de alcance P7: el parámetro filters es opcional en enrich() y el gate nunca lo pasa; la firma Rust ni los expone.",
+    "Observer/telemetría FUERA de alcance: el oráculo construye ContextEnricher(observer=None) y los bundles del gate no llevan enricher_run_id; observer.py/telemetry.py entran con la integración CLI/MCP (P9/P12).",
+    "async_enricher.py no se porte aparte: desde V3 _finalize_items es FUENTE ÚNICA para sync y async en el oráculo (test_parity_sync_async) ⇒ una sola implementación nativa satisface la spec.",
+    "presenter.py se cubre SOLO en su ruta to_json (vía models::EnrichedBundle::to_json + pyjson): el gate es bundles --json; to_text/presenter agrupado queda para la capa CLI/TUI.",
+    "domain_detector.py no corre dentro de enrich(): detected_domain/domain_confidence son campos de WorkContext que llena el Observer al construirlo (source=manual ⇒ null/0.0 en el gate); la detección activa llega con observer (P12).",
+    "Entity search cuenta hits en total_raw_hits pero NO genera items: en Python los EpisodicHit no son UnifiedHit ni tupla ⇒ _hit_to_enriched_item devuelve None; espejado con dropped=true y test unitario entity_hits_solo_cuentan_raw.",
+    "Floats normalizados a 5 decimales en AMBOS lados (contrato escrito en el oráculo) ante ulp-diff onnxruntime vs ort amplificada por boosts; cualquier drift real mayor rompe el byte-compare.",
+    "Edits a lib.rs (pub mod context) y episodic/mod.rs (entity_search) son ADITIVOS: los 11 tests preexistentes del crate siguen verdes sin cambios."
+  ]
+}

@@ -1,0 +1,30 @@
+session_id: 2026-08-24_fix-login
+spec_path: /tmp/tmpndoc_tc3/specs/x.md
+spec_summary: Arregla login
+start_commit: '0000000000000000000000000000000000000000'
+start_branch: ''
+opened_at: '2026-08-24T18:35:29.169917Z'
+status: open
+mode: unknown
+checkpoints:
+- timestamp: '2026-08-24T18:35:29.171502Z'
+  source: ide-hook
+  verified_claims:
+  - tests corren
+  unverified_claims: []
+  artifacts_touched: []
+  note: hook del IDE
+- timestamp: '2026-08-24T18:35:29.172943Z'
+  source: manual
+  verified_claims: []
+  unverified_claims: []
+  artifacts_touched:
+  - src/auth.py
+  note: ''
+verification_results: []
+tasks: []
+closed_at: null
+end_commit: null
+documenter_decision: null
+session_note_path: null
+adrs_created: []

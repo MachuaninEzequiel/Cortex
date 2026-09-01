@@ -1,0 +1,249 @@
+name: CI - Pull Requests (DevSecDocOps)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  quality-and-security-gate:
+    name: Quality & Security Gate + Cortex Memory
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java environment
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+
+      - name: Install project dependencies
+        run: echo 'install dependencies'
+
+      - name: Install Cortex memory
+        run: pip install cortex-memory
+
+      # ── CORTEX: Restore episodic memory cache (layout-aware) ───────
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Cortex - Doctor
+        run: cortex doctor
+
+      # ── CORTEX: Load Agent Guidelines ──────────────────────────────
+      - name: Cortex — Agent Guidelines
+        if: always()
+        run: |
+          if [ -f ".cortex/AGENT.md" ]; then
+            echo "✅ Agent guidelines found in .cortex/AGENT.md"
+          else
+            echo "⚠ No agent guidelines found"
+            echo "   Run 'cortex setup' to create them"
+          fi
+        continue-on-error: true
+
+      # ── CORTEX: Capture PR Context ──────────────────────────────
+      - name: Cortex — Capture PR Context
+        run: |
+          cortex pr-context capture \
+            --title "${{ github.event.pull_request.title }}" \
+            --body "${{ github.event.pull_request.body || '' }}" \
+            --author "${{ github.event.pull_request.user.login }}" \
+            --branch "${{ github.event.pull_request.head.ref }}" \
+            --commit "${{ github.event.pull_request.head.sha }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --target-branch "${{ github.event.pull_request.base.ref }}" \
+            --labels "${{ join(github.event.pull_request.labels.*.name, ',') }}" \
+            --output .pr-context.json
+
+      # ── LINT ───────────────────────────────────────────────────
+      - name: Run Linting
+        run: mvn checkstyle:check
+        id: lint
+        continue-on-error: true
+
+      - name: Cortex — Store Lint Result
+        if: always()
+        run: |
+          LINT_STATUS="${{ steps.lint.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --lint-result "$LINT_STATUS"
+
+      # ── AUDIT / SCA ────────────────────────────────────────────
+      - name: Audit Dependencies
+        run: echo 'no audit command for this stack'
+        id: audit
+        continue-on-error: true
+
+      - name: Cortex — Store Audit Result
+        if: always()
+        run: |
+          AUDIT_STATUS="${{ steps.audit.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --audit-result "$AUDIT_STATUS"
+
+      # ── SECURITY: Secret Scanning ──────────────────────────────
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # ── TESTS ──────────────────────────────────────────────────
+      - name: Run Tests
+        run: mvn test
+        id: tests
+        continue-on-error: true
+
+      - name: Cortex — Store Test Result
+        if: always()
+        run: |
+          TEST_STATUS="${{ steps.tests.outcome }}"
+          cortex pr-context store \
+            --context-file .pr-context.json \
+            --test-result "$TEST_STATUS"
+
+      # ── CORTEX: Verify Agent Documentation ─────────────────────
+      - name: Cortex — Verify Agent Docs
+        if: always()
+        id: verify_docs
+        run: |
+          HAS_DOCS=$(cortex verify-docs --vault vault --output .doc-status.json)
+          echo "has_agent_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      # ── CORTEX: Index Agent Docs (if found) ─────────────────────
+      - name: Cortex — Index Agent Docs
+        if: always() && steps.verify_docs.outputs.has_agent_docs == 'true'
+        run: |
+          cortex index-docs --vault vault
+          echo "✅ Agent documentation found and indexed"
+        continue-on-error: true
+
+      # ── CORTEX: Generate Fallback (if no agent docs) ────────────
+      - name: Cortex — Generate Fallback Docs
+        if: always() && steps.verify_docs.outputs.has_agent_docs != 'true'
+        run: |
+          cortex pr-context generate \
+            --context-file .pr-context.json \
+            --vault vault
+          echo "⚠️ No agent docs — fallback documentation generated"
+        continue-on-error: true
+
+      # ── CORTEX: Search Past Context ────────────────────────────
+      - name: Cortex — Search Past Context
+        if: always()
+        run: |
+          cortex pr-context search \
+            --context-file .pr-context.json \
+            --output .past-context.json
+        continue-on-error: true
+
+      - name: Cortex - Validate Docs
+        if: always()
+        run: |
+          cortex validate-docs \
+            --vault vault \
+            --output .doc-validation.json
+
+      # ── CORTEX: Enrich Context (Proactive) ─────────────────────
+      - name: Cortex — Enrich Context
+        if: always()
+        id: enrich_context
+        run: |
+          cortex context \
+            --files $(cat .pr-context.json | python -c "import sys,json; print(' '.join(json.load(sys.stdin).get('files_changed',[])))") \
+            --format json \
+            --output .context-enriched.json
+        continue-on-error: true
+
+      # ── CORTEX: Comment PR with Enriched Context ───────────────
+      - name: Cortex — Comment PR with Enriched Context
+        if: always() && steps.enrich_context.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const context = JSON.parse(fs.readFileSync('.context-enriched.json', 'utf8'));
+              if (context.items && context.items.length > 0) {
+                const body = `🧠 **Cortex Context** — Found ${context.items.length} related memories
+
+` +
+                  context.items.map((item, i) => {
+                    const source = item.source === 'episodic' ? '📝' : '📖';
+                    const title = item.display_title || 'Untitled Memory';
+                    return `${source} **${i+1}. ${title}**\n> ${item.content.substring(0, 200)}` +
+                      (item.content.length > 200 ? '…' : '');
+                  }).join('\n\n');
+                github.rest.issues.createComment({
+                  issue_number: context.work.pr_number || process.env.PR_NUMBER,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: body
+                });
+              }
+            } catch (e) {
+              console.log('Could not comment enriched context:', e.message);
+            }
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        continue-on-error: true
+
+      # ── CORTEX: Sync Vault ─────────────────────────────────────
+      - name: Cortex — Sync Vault
+        if: always()
+        run: cortex sync-vault
+
+      # ── CORTEX: Persist episodic memory cache for the next run ───
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+
+      # ── Upload Context Artifact ────────────────────────────────
+      - name: Upload Cortex Context Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cortex-pr-context-${{ github.event.pull_request.number }}
+          path: |
+            .pr-context.json
+            .past-context.json
+            .doc-validation.json
+          retention-days: 7
+
+      # ── Enforce Gates ──────────────────────────────────────────
+      - name: Check Lint Gate
+        if: steps.lint.outcome != 'success'
+        run: |
+          echo "❌ Lint check failed. Fix issues before merging."
+          exit 1
+
+      - name: Check Audit Gate
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo "❌ Audit found vulnerabilities. Fix before merging."
+          exit 1
+
+      - name: Check Test Gate
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "❌ Tests failed. Fix before merging."
+          exit 1

@@ -1,0 +1,119 @@
+{
+  "has_context": true,
+  "total_searches": 4,
+  "total_raw_hits": 30,
+  "total_items": 4,
+  "total_chars": 1026,
+  "within_budget": true,
+  "work": {
+    "source": "manual",
+    "changed_files": [
+      "cortex/feedback_store.py"
+    ],
+    "detected_domain": null,
+    "domain_confidence": 0.0,
+    "search_queries": [
+      "persistencia del feedback",
+      "feedback_store",
+      "FeedbackStore rotación",
+      "FeedbackStore persistente"
+    ]
+  },
+  "items": [
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/sessions/2026-01-05_auth-bug.md",
+      "title": "Sesión bug de autenticación",
+      "content": "# Sesión: bug de autenticación\n\nSe arregló el error ValueError en el parser de tokens del login.\nDecisión: usar RRF con pesos adaptativos para retrieval del vault.\nQuedó documentado el runbook de deploy con rollback seguro.",
+      "score": 0.23052,
+      "enriched_score": 0.77799,
+      "matched_by": [
+        "file_search",
+        "keyword_search",
+        "pr_title_search",
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [],
+      "doc_type": "session",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/glossary/bm25.md",
+      "title": "BM25",
+      "content": "# BM25\n\nBM25 rankea documentos por frecuencia de término con saturación.\nEl índice semántico del vault usa tf por substring sobre título y\ncontenido, idf logarítmica y normalización por longitud del doc.",
+      "score": 0.13864,
+      "enriched_score": 0.4679,
+      "matched_by": [
+        "file_search",
+        "keyword_search",
+        "pr_title_search",
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [
+        "retrieval"
+      ],
+      "doc_type": "glossary",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/handoffs/handoff-auth.md",
+      "title": "Handoff autenticación",
+      "content": "# Handoff\n\nPendiente: revisar el error intermitente de autenticación en producción\ny actualizar el runbook de deploy del servicio de login.",
+      "score": 0.1959,
+      "enriched_score": 0.44078,
+      "matched_by": [
+        "keyword_search",
+        "pr_title_search",
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [],
+      "doc_type": "handoff",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    },
+    {
+      "source": "semantic",
+      "source_id": "{{ROOT}}/vault/glossary/rrf.md",
+      "title": "RRF",
+      "content": "# RRF\n\nReciprocal Rank Fusion combina rankings de búsqueda episódica y\nsemántica con la constante k=60 para fusionar resultados de memoria.\nLa fusión de rankings pondera cada fuente antes del combine final.",
+      "score": 0.16164,
+      "enriched_score": 0.36368,
+      "matched_by": [
+        "file_search",
+        "keyword_search",
+        "topic_search"
+      ],
+      "files_mentioned": [],
+      "date": null,
+      "tags": [
+        "retrieval",
+        "fusion"
+      ],
+      "doc_type": "glossary",
+      "status": null,
+      "vault_scope": "local",
+      "origin_project_id": null,
+      "matched_chunk_id": null,
+      "matched_section_title": null
+    }
+  ]
+}

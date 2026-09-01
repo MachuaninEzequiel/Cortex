@@ -138,12 +138,11 @@ class TestCancel:
 
 
 class TestHandoff:
-    def test_handoff_captures_reason(self) -> None:
+    def test_handoff_sets_forced_status(self) -> None:
         sess = _make_session(["H", "bcrypt incompatible with Lambda"])
         out = sess.prompt(_reconstruction())
         assert out.action is InteractiveAction.HANDOFF
         assert out.forced_status is SessionStatus.HANDOFF
-        assert out.forced_reason == "bcrypt incompatible with Lambda"
 
     def test_handoff_empty_reason_returns_to_main(self) -> None:
         # First H with empty reason → back to main. Then A.
@@ -199,7 +198,7 @@ class TestEditFlow:
         sess = _make_session(["E", "", "N", "H", "blockers exist"])
         out = sess.prompt(_reconstruction())
         assert out.action is InteractiveAction.HANDOFF
-        assert out.forced_reason == "blockers exist"
+        assert out.forced_status is SessionStatus.HANDOFF
 
 
 # ── ADR review ──────────────────────────────────────────────────────

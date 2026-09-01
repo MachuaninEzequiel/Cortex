@@ -35,24 +35,20 @@ class RelationshipType:
     
     IMPORTED_BY = "imported_by"
     TESTED_BY = "tested_by"
-    EXTENDS = "extends"
     IMPLEMENTS = "implements"
     USES = "uses"
     REFERENCES = "references"
     CONFIGURES = "configures"
-    DEFINES = "defines"
 
 
 # Relationship strength (for scoring)
 RELATIONSHIP_WEIGHTS: dict[str, float] = {
     RelationshipType.IMPORTED_BY: 1.0,    # Strongest - explicit dependency
     RelationshipType.TESTED_BY: 0.9,       # Strong - test coverage
-    RelationshipType.EXTENDS: 0.8,         # Class inheritance
     RelationshipType.IMPLEMENTS: 0.8,      # Interface implementation
     RelationshipType.USES: 0.7,          # Function usage
     RelationshipType.REFERENCES: 0.5,        # General reference
     RelationshipType.CONFIGURES: 0.6,       # Configuration
-    RelationshipType.DEFINES: 0.7,          # Defines/contains
 }
 
 
@@ -93,11 +89,7 @@ class TypedCooccurrenceGraph:
     Example:
         graph = TypedCooccurrenceGraph(project_root)
         graph.build_from_memories(memories)
-        
-        # Query relationships
-        relationships = graph.get_related("src/auth.py", min_strength=0.5)
-        for rel in relationships:
-            print(f"{rel.from_file} --{rel.relation_type}--> {rel.to_file}")
+        score = graph.calculate_relationship_score(current, candidate)
     """
 
     def __init__(self, project_root: str | Path | None = None) -> None:
@@ -159,124 +151,9 @@ class TypedCooccurrenceGraph:
             len(self.nodes),
             len(self.relationships)
         )
-
-    def build_from_ast(
-        self,
-        file_paths: list[str],
-        language: str | None = None,
-    ) -> None:
-        """
-        Build relationships by parsing files with AST.
-        
-        Args:
-            file_paths: List of file paths to analyze
-            language: Programming language (for parser selection)
-        """
-        for file_path in file_paths:
-            self._add_node(file_path)
-            relationships = self._extract_relationships(file_path, language)
-            for rel in relationships:
-                self._add_relationship(
-                    rel.from_file,
-                    rel.to_file,
-                    rel.relation_type,
-                    evidence=rel.evidence,
-                    count=rel.count,
-                )
-        
-        logger.info(
-            "Built AST graph with %d relationships from %d files",
-            len(self.relationships),
-            len(file_paths)
-        )
-
     # --------------------------------------------------------------------------
     # Query API
     # --------------------------------------------------------------------------
-
-    def get_related(
-        self,
-        file_path: str,
-        relation_types: list[str] | None = None,
-        min_strength: float = 0.0,
-        direction: str = "both",
-    ) -> list[Relationship]:
-        """
-        Get all files related to the given file.
-        
-        Args:
-            file_path: Source file to query
-            relation_types: Filter by specific relationship types
-            min_strength: Minimum relationship strength
-            direction: "outgoing", "incoming", or "both"
-            
-        Returns:
-            List of relevant Relationships
-        """
-        results: list[Relationship] = []
-        
-        if direction in ("outgoing", "both"):
-            for rel_type, rels in self._outgoing.get(file_path, {}).items():
-                if relation_types and rel_type not in relation_types:
-                    continue
-                results.extend(rels)
-        
-        if direction in ("incoming", "both"):
-            for rel_type, rels in self._incoming.get(file_path, {}).items():
-                if relation_types and rel_type not in relation_types:
-                    continue
-                results.extend(rels)
-        
-        # Filter by strength
-        results = [r for r in results if r.strength >= min_strength]
-        
-        # Sort by strength descending
-        results.sort(key=lambda r: r.strength, reverse=True)
-        
-        return results
-
-    def get_path(
-        self,
-        from_file: str,
-        to_file: str,
-        max_depth: int = 3,
-    ) -> list[Relationship] | None:
-        """
-        Find a path between two files (if it exists).
-        
-        Uses BFS to find the shortest path.
-        
-        Args:
-            from_file: Start file
-            to_file: Target file
-            max_depth: Maximum path length
-            
-        Returns:
-            List of relationships forming the path, or None if no path
-        """
-        from collections import deque
-        
-        queue: deque[tuple[str, list[Relationship]]] = deque([(from_file, [])])
-        visited: set[str] = {from_file}
-        
-        while queue:
-            current, path = queue.popleft()
-            
-            if len(path) >= max_depth:
-                continue
-            
-            if current == to_file:
-                return path
-            
-            # Explore outgoing relationships
-            for rel in self._get_all_outgoing(current):
-                next_file = rel.to_file
-                if next_file not in visited:
-                    visited.add(next_file)
-                    queue.append((next_file, path + [rel]))
-        
-        return None
-
     def get_strongest_relationship(
         self,
         file_a: str,
@@ -291,16 +168,6 @@ class TypedCooccurrenceGraph:
             return None
         
         return max(all_rels, key=lambda r: r.strength)
-
-    def get_files_by_type(self, relation_type: str) -> list[str]:
-        """Get all files involved in a specific relationship type."""
-        rels = self._by_type.get(relation_type, [])
-        files = set()
-        for rel in rels:
-            files.add(rel.from_file)
-            files.add(rel.to_file)
-        return sorted(files)
-
     # --------------------------------------------------------------------------
     # Scoring
     # --------------------------------------------------------------------------
@@ -422,143 +289,6 @@ class TypedCooccurrenceGraph:
             return RelationshipType.USES
         
         return RelationshipType.REFERENCES
-
-    def _extract_relationships(
-        self,
-        file_path: str,
-        language: str | None,
-    ) -> list[Relationship]:
-        """Extract relationships using AST parsing."""
-        relationships: list[Relationship] = []
-        
-        path = Path(file_path)
-        if not path.exists():
-            return relationships
-        
-        try:
-            content = path.read_text(encoding="utf-8")
-        except Exception:
-            return relationships
-        
-        # Language-specific extraction
-        if language == "python" or path.suffix == ".py":
-            relationships.extend(self._extract_python_relationships(file_path, content))
-        elif language in ("javascript", "typescript") or path.suffix in (".js", ".ts", ".jsx", ".tsx"):
-            relationships.extend(self._extract_js_relationships(file_path, content))
-        
-        return relationships
-
-    def _extract_python_relationships(
-        self,
-        file_path: str,
-        content: str,
-    ) -> list[Relationship]:
-        """Extract Python relationships using AST."""
-        import ast
-        
-        relationships: list[Relationship] = []
-        
-        try:
-            tree = ast.parse(content)
-        except SyntaxError:
-            return relationships
-        
-        current_file = file_path
-        
-        # Collect imports
-        imports: set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                imports.add(node.module.split(".")[0])
-        
-        # Collect class definitions and their bases
-        class_bases: dict[str, list[str]] = {}
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                bases = [
-                    base.id if isinstance(base, ast.Name) else base.attr
-                    for base in node.bases
-                    if isinstance(base, ast.Name)
-                ]
-                if bases:
-                    class_bases[node.name] = bases
-        
-        # Generate relationships from imports
-        for imp in imports:
-            # Try to find corresponding file
-            related_file = self._find_related_file(imp, ["models", "services", "utils", "schemas"])
-            if related_file and related_file != current_file:
-                relationships.append(Relationship(
-                    from_file=current_file,
-                    to_file=related_file,
-                    relation_type=RelationshipType.IMPORTED_BY,
-                    evidence=f"import {imp}",
-                ))
-        
-        # Generate extends relationships
-        for class_name, bases in class_bases.items():
-            for base in bases:
-                related_file = self._find_related_file(base, ["models", "schemas"])
-                if related_file and related_file != current_file:
-                    relationships.append(Relationship(
-                        from_file=current_file,
-                        to_file=related_file,
-                        relation_type=RelationshipType.EXTENDS,
-                        evidence=f"class {class_name}({base})",
-                    ))
-        
-        return relationships
-
-    def _extract_js_relationships(
-        self,
-        file_path: str,
-        content: str,
-    ) -> list[Relationship]:
-        """Extract JavaScript/TypeScript relationships."""
-        import re
-        
-        relationships: list[Relationship] = []
-        current_file = file_path
-        
-        # Extract imports
-        import_pattern = re.compile(
-            r"import\s+(?:{[^}]+}|\w+)\s+from\s+['\"]([^'\"]+)['\"]"
-        )
-        re.compile(
-            r"const\s+{?\s*([^}=]+) }?\s*=\s*require\(['\"]([^'\"]+)['\"]\)"
-        )
-        
-        for match in import_pattern.finditer(content):
-            module = match.group(1)
-            related = self._find_related_file(module, ["components", "hooks", "services", "utils"])
-            if related:
-                relationships.append(Relationship(
-                    from_file=current_file,
-                    to_file=related,
-                    relation_type=RelationshipType.IMPORTED_BY,
-                    evidence=f"import from {module}",
-                ))
-        
-        return relationships
-
-    def _find_related_file(
-        self,
-        module: str,
-        search_dirs: list[str],
-    ) -> str | None:
-        """Find a related file given a module name."""
-        # Try common extensions
-        for ext in [".py", ".ts", ".tsx", ".js", ".jsx"]:
-            for search_dir in search_dirs:
-                candidate = self.project_root / search_dir / f"{module}{ext}"
-                if candidate.exists():
-                    return str(candidate.relative_to(self.project_root))
-        
-        return None
-
     def _detect_language(self, file_path: str) -> str | None:
         """Detect programming language from file extension."""
         ext_map = {
@@ -574,14 +304,6 @@ class TypedCooccurrenceGraph:
         }
         ext = Path(file_path).suffix
         return ext_map.get(ext)
-
-    def _get_all_outgoing(self, file_path: str) -> list[Relationship]:
-        """Get all outgoing relationships from a file."""
-        return [
-            rel for rels in self._outgoing.get(file_path, {}).values()
-            for rel in rels
-        ]
-
     def clear(self) -> None:
         """Clear all graph data."""
         self.nodes.clear()
@@ -589,18 +311,6 @@ class TypedCooccurrenceGraph:
         self._outgoing.clear()
         self._incoming.clear()
         self._by_type.clear()
-
-    # --------------------------------------------------------------------------
-    # Properties
-    # --------------------------------------------------------------------------
-
-    @property
-    def node_count(self) -> int:
-        return len(self.nodes)
-
-    @property
-    def relationship_count(self) -> int:
-        return len(self.relationships)
 
     def __len__(self) -> int:
         return len(self.nodes)

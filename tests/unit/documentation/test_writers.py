@@ -118,11 +118,21 @@ def test_adr_indexes_file(vault: FakeVault) -> None:
     assert any("ADR-001" in p for p in vault.indexed)
 
 
-def test_adr_duplicate_raises(vault: FakeVault) -> None:
+def test_adr_duplicate_identical_body_is_idempotent(vault: FakeVault) -> None:
+    """Same body (same fingerprint) → no-op success, per incident 2026-05-22."""
     data = ADRData(title="X", context="c", decision="d", consequences="cs", adr_number=5)
-    write_adr_note(data, vault=vault)
+    first = write_adr_note(data, vault=vault)
+    second = write_adr_note(data, vault=vault)  # No raise.
+    assert second == first
+
+
+def test_adr_duplicate_different_body_raises(vault: FakeVault) -> None:
+    """Same slot, different content → DuplicateDocumentError."""
+    data1 = ADRData(title="X", context="c", decision="d", consequences="cs", adr_number=5)
+    data2 = ADRData(title="X", context="CHANGED", decision="d", consequences="cs", adr_number=5)
+    write_adr_note(data1, vault=vault)
     with pytest.raises(DuplicateDocumentError):
-        write_adr_note(data, vault=vault)
+        write_adr_note(data2, vault=vault)
 
 
 def test_adr_overwrite_allowed(vault: FakeVault) -> None:

@@ -1,0 +1,10 @@
+{
+  "status": "starting",
+  "version": "2.2",
+  "uptime_seconds": {{UPTIME}},
+  "indices_loaded": false,
+  "models_loaded": [],
+  "last_error_seen": null,
+  "recent_errors_count": 0,
+  "error_window_seconds": 300.0
+}

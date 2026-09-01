@@ -1,0 +1,16 @@
+[package]
+name = "cortex-actions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
+cortex-app = { path = "../cortex-app" }
+cortex-enterprise = { path = "../cortex-enterprise" }
+cortex-setup = { path = "../cortex-setup" }
+
+[dev-dependencies]

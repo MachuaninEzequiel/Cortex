@@ -4,10 +4,21 @@ import math
 import re
 from collections import defaultdict
 
+from pydantic import TypeAdapter
+
 from cortex.webgraph.config import WebGraphConfig
 from cortex.webgraph.contracts import EpisodicRecord, SemanticRecord, WebGraphEdge
 
 _GENERIC_TAGS = {"general", "memory", "setup"}
+
+# Gate G4: el escaneo cross-source nativo sólo compensa a partir de esta
+# cantidad de pares episódico×semántico (debajo, el coste fijo de marshaling
+# FFI supera al escaneo Python memoizado; medido en COMPARE.md).
+_CROSS_SOURCE_NATIVE_MIN_PAIRS = 100_000
+
+# Validación batch de edges (pydantic v2 compila el schema una sola vez):
+# ~2× más rápido que 50k llamadas a model_construct en builds grandes.
+_EDGE_LIST_ADAPTER = TypeAdapter(list[WebGraphEdge])
 
 
 def _slug(text: str) -> str:
@@ -77,7 +88,10 @@ class RelationBuilder:
         )
         existing = edges.get(key)
         if existing is None:
-            edges[key] = WebGraphEdge(
+            # model_construct: campos siempre válidos (strings/floats/lista) —
+            # instancia idéntica sin el coste de validación por edge (G4:
+            # ~50k construcciones por build en n=1000).
+            edges[key] = WebGraphEdge.model_construct(
                 id=f"{edge_type}:{source}:{target}",
                 source=source,
                 target=target,
@@ -121,12 +135,17 @@ class RelationBuilder:
         semantic_records: list[SemanticRecord],
     ) -> None:
         specs = [record for record in semantic_records if record.node_type == "semantic_spec"]
+        # Pre-cómputo por spec (Obra 03 G4): los tokens dependen sólo del spec;
+        # recalcularlos por par era O(sesiones × specs) regex. Mismos valores.
+        spec_tokens_by_id = {
+            spec.node_id: _tokenize(spec.title) | _tokenize(spec.summary)
+            for spec in specs
+        }
         sessions = [record for record in semantic_records if record.node_type == "semantic_session"]
         for session in sessions:
             session_tokens = _tokenize(session.content)
             for spec in specs:
-                spec_tokens = _tokenize(spec.title) | _tokenize(spec.summary)
-                overlap = session_tokens & spec_tokens
+                overlap = session_tokens & spec_tokens_by_id[spec.node_id]
                 if len(overlap) >= 3:
                     self._add_edge(
                         edges,
@@ -208,6 +227,62 @@ class RelationBuilder:
         semantic_by_path = {record.rel_path.lower(): record for record in semantic_records}
         ignored_tags = {tag.lower() for tag in self.config.ignored_tags} | _GENERIC_TAGS
 
+        # Pre-cómputo por registro semántico (Obra 03 G4): tags/entidades/tokens
+        # dependen sólo del semántico; recalcularlos dentro del loop episódico
+        # era O(episódicos × semánticos) regex sobre el contenido completo.
+        # Mismos valores ⇒ salida idéntica.
+        sem_tags: list[set[str]] = []
+        sem_entities: list[set[str]] = []
+        sem_tokens: list[frozenset[str]] = []
+        for record in semantic_records:
+            sem_tags.append({t.lower() for t in record.tags if t.lower() not in ignored_tags})
+            sem_entities.append(_identifier_tokens(f"{record.title} {record.content}"))
+            sem_tokens.append(_tokenize(record.title) | _tokenize(record.summary))
+
+        # Escaneo + merge en Rust (CORTEX_NATIVE=1, Gate G4): los edges llegan
+        # finales y en el mismo orden de inserción que produciría la ruta
+        # Python; sólo se materializan los modelos pydantic.
+        # El marshaling FFI tiene coste fijo ~20 ms: debajo de este umbral de
+        # pares, la ruta Python memoizada gana (medido; ver COMPARE.md G4).
+        finales: list[tuple[str, str, str, str, float, list[str]]] | None = None
+        if (
+            len(episodic_records)
+            * max(len(semantic_records), 1)
+            >= _CROSS_SOURCE_NATIVE_MIN_PAIRS
+        ):
+            finales = self._native_cross_source_edges(
+                sem_tags,
+                sem_entities,
+                sem_tokens,
+                semantic_records,
+                episodic_records,
+                ignored_tags,
+                semantic_by_path,
+            )
+        if finales is not None:
+            # Validación BATCH (una llamada pydantic-core para los N edges).
+            modelos = _EDGE_LIST_ADAPTER.validate_python(
+                [
+                    {
+                        "id": eid,
+                        "source": src,
+                        "target": tgt,
+                        "edge_type": etype,
+                        "weight": weight,
+                        "evidence": evidence,
+                    }
+                    for eid, src, tgt, etype, weight, evidence in finales
+                ]
+            )
+            for edge in modelos:
+                lo, hi = (
+                    (edge.source, edge.target)
+                    if edge.source <= edge.target
+                    else (edge.target, edge.source)
+                )
+                edges[(edge.edge_type, lo, hi)] = edge
+            return
+
         for episodic in episodic_records:
             episodic_tags = {tag.lower() for tag in episodic.tags if tag.lower() not in ignored_tags}
             episodic_entities = self._entities_from_metadata(episodic)
@@ -225,9 +300,8 @@ class RelationBuilder:
                         weight=1.3,
                     )
 
-            for semantic in semantic_records:
-                semantic_tags = {tag.lower() for tag in semantic.tags if tag.lower() not in ignored_tags}
-                shared_tags = sorted(episodic_tags & semantic_tags)
+            for s_idx, semantic in enumerate(semantic_records):
+                shared_tags = sorted(episodic_tags & sem_tags[s_idx])
                 if shared_tags:
                     self._add_edge(
                         edges,
@@ -237,8 +311,7 @@ class RelationBuilder:
                         evidence=shared_tags[:3],
                     )
 
-                semantic_entities = _identifier_tokens(f"{semantic.title} {semantic.content}")
-                shared_entities = sorted(episodic_entities & semantic_entities)
+                shared_entities = sorted(episodic_entities & sem_entities[s_idx])
                 if shared_entities:
                     self._add_edge(
                         edges,
@@ -249,8 +322,7 @@ class RelationBuilder:
                         weight=1.1,
                     )
 
-                spec_tokens = _tokenize(semantic.title) | _tokenize(semantic.summary)
-                overlap = episodic_tokens & spec_tokens
+                overlap = episodic_tokens & sem_tokens[s_idx]
                 if semantic.node_type == "semantic_spec" and len(overlap) >= 3:
                     self._add_edge(
                         edges,
@@ -269,6 +341,23 @@ class RelationBuilder:
     ) -> None:
         hybrid_records = semantic_records + episodic_records
         if len(hybrid_records) > self.config.semantic_neighbor_max_nodes:
+            return
+
+        # Ruta nativa Rust (Obra 03, Gate G4): los pares salen en el MISMO orden
+        # de emisión que los loops anidados de abajo, con scores bit-idénticos.
+        # None ⇒ ruta Python pura (default, paridad).
+        pares_nativos = self._native_neighbor_pairs(hybrid_records)
+        if pares_nativos is not None:
+            for i, j, score in pares_nativos:
+                left, right = hybrid_records[i], hybrid_records[j]
+                self._add_edge(
+                    edges,
+                    source=left.node_id,
+                    target=right.node_id,
+                    edge_type="semantic_neighbor",
+                    evidence=[f"cosine={score:.3f}"],
+                    weight=score,
+                )
             return
 
         neighbors_by_node: dict[str, list[tuple[float, str]]] = defaultdict(list)
@@ -304,6 +393,83 @@ class RelationBuilder:
                     evidence=[f"cosine={score:.3f}"],
                     weight=score,
                 )
+
+    def _native_neighbor_pairs(
+        self, hybrid_records: list[SemanticRecord | EpisodicRecord]
+    ) -> list[tuple[int, int, float]] | None:
+        """Pares de vecinos semánticos vía Rust (o ``None`` → ruta Python).
+
+        Réplica exacta del algoritmo original: coseno Neumaier, ranking
+        (score DESC, id DESC) por nodo, allowed_pairs canónicos por string y
+        orden de emisión de los loops anidados. Ver cortex-core::webgraph.
+        """
+        import os
+
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return None
+        try:
+            from cortex_core import _native
+        except ImportError:
+            return None
+        embeddings = [r.embedding for r in hybrid_records]
+        ids = [r.node_id for r in hybrid_records]
+        return _native.semantic_neighbor_pairs(
+            ids,
+            embeddings,
+            float(self.config.semantic_neighbor_threshold),
+            int(self.config.semantic_neighbor_max_edges_per_node),
+        )
+
+    def _native_cross_source_edges(
+        self,
+        sem_tags: list[set[str]],
+        sem_entities: list[set[str]],
+        sem_tokens: list[frozenset[str]],
+        semantic_records: list[SemanticRecord],
+        episodic_records: list[EpisodicRecord],
+        ignored_tags: set[str],
+        semantic_by_path: dict[str, SemanticRecord],
+    ) -> (
+        list[tuple[str, str, str, str, float, list[str]]]
+        | None
+    ):
+        """Edges cross-source FINALES desde Rust (o ``None`` → ruta Python).
+
+        El núcleo replica el escaneo + merge/dedupe de `_add_edge` y devuelve
+        las tuplas (id, source, target, edge_type, weight, evidence) en el
+        orden exacto de inserción del dict Python. La tokenización/normalización
+        (regex) queda en esta capa por paridad Unicode.
+        """
+        import os
+
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return None
+        try:
+            from cortex_core import _native
+        except ImportError:
+            return None
+
+        epi_files_targets: list[list[tuple[str, str]]] = []
+        for episodic in episodic_records:
+            pares: list[tuple[str, str]] = []
+            for file_ref in episodic.files:
+                semantic = semantic_by_path.get(file_ref.lower())
+                if semantic:
+                    pares.append((file_ref, semantic.node_id))
+            epi_files_targets.append(pares)
+
+        return _native.cross_source_build(
+            [r.node_id for r in episodic_records],
+            epi_files_targets,
+            [sorted({t.lower() for t in e.tags if t.lower() not in ignored_tags}) for e in episodic_records],
+            [sorted(self._entities_from_metadata(e)) for e in episodic_records],
+            [sorted(_tokenize(e.content)) for e in episodic_records],
+            [r.node_id for r in semantic_records],
+            [sorted(t) for t in sem_tags],
+            [sorted(t) for t in sem_entities],
+            [sorted(t) for t in sem_tokens],
+            [r.node_type == "semantic_spec" for r in semantic_records],
+        )
 
     @staticmethod
     def _entities_from_metadata(record: EpisodicRecord) -> set[str]:

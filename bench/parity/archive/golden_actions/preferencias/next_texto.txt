@@ -1,0 +1,20 @@
+🧠 Cortex · 4 acción(es) sugeridas:
+
+ [1] Revisar memorias con feedback negativo
+     id: memory.prune · costo: instant [auto-ok] · score: 8.0
+     efecto: lista memorias candidatas a forget según feedback persistido (no borra)
+
+ [2] Cerrar sesiones OPEN de más de 7 días sin checkpoints
+     id: session.close_stale · costo: instant [auto-ok] · score: 6.0
+     efecto: muestra guía de finish/abandon para sesiones OPEN >7 días
+
+ [3] Re-indexar el vault semántico
+     id: vault.reindex · costo: seconds · score: 3.5
+     efecto: parse+chunk+embed de vault/ via AgentMemory.sync_vault()
+
+ [4] Aprender un tópico del tutor hoy
+     id: learn.topic · costo: instant [auto-ok] · score: 1.2
+     efecto: sugiere un tópico del tutor (rotación diaria) con deep-link a su guía
+
+
+[dim]{{MS}}ms · ejecutá `cortex next --json` para salida machine-readable[/dim]

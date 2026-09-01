@@ -1,0 +1,1078 @@
+"""Definiciones (schemas) de las tools MCP — fuente única.
+
+Extraído del monolito ``server.py`` (deuda V1, Obra 01 fase P3). El
+contrato completo está congelado por
+``tests/unit/mcp/test_golden_contract.py`` contra
+``golden/list_tools.json``: cualquier cambio acá en nombres,
+descriptions o inputSchema DEBE reflejarse en ese snapshot y estar
+documentado en docs/transformacion/.
+"""
+
+from __future__ import annotations
+
+import mcp.types as types
+
+from cortex.session.models import CheckpointSource
+
+# Single source of truth for the checkpoint ``source`` enum exposed to clients.
+# Derived from :class:`CheckpointSource` so adding a new value in the canonical
+# enum flows automatically into the JSON schema of ``cortex_session_checkpoint``.
+_CHECKPOINT_SOURCE_VALUES: tuple[str, ...] = tuple(s.value for s in CheckpointSource)
+
+
+def build_tool_definitions() -> list[types.Tool]:
+    """Definiciones exactas de las 32 tools anunciadas por list_tools."""
+    return [
+        types.Tool(
+            name="cortex_ping",
+            description=(
+                "Health check rapido del MCP server. Devuelve JSON con "
+                "{status, version, uptime_seconds, indices_loaded, "
+                "models_loaded, last_error_seen}. Latencia objetivo <50ms. "
+                "Pensado para que los agentes verifiquen disponibilidad "
+                "ANTES de gastar tiempo y contexto en operaciones costosas. "
+                "Si status != 'ok', abortar la operacion con error claro al usuario; "
+                "NO degradar features, NO hacer fallback manual."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        types.Tool(
+            name="cortex_search_vector",
+            description="Búsqueda semántica profunda en el vault (Requiere carga de modelo ONNX). Úsala para análisis inicial y contexto histórico complejo.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Consulta semántica."},
+                    "limit": {"type": "integer", "default": 5},
+                },
+                "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="cortex_search",
+            description=(
+                "Búsqueda rápida de palabras clave (Bypass IA - Instantánea). "
+                "Úsala para encontrar archivos, funciones o términos específicos sin carga de modelos. "
+                "Acepta filtros estructurales opcionales (doc_type, scope, status, tags, max_age_days, "
+                "strict): si alguno es informado, el resultado se construye con ContextEnricher en lugar "
+                "del RRF crudo (mismo backend que `cortex docs search`)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Términos de búsqueda."},
+                    "limit": {"type": "integer", "default": 5},
+                    "doc_type": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filtrar por DocType slug (adr, runbook, ...).",
+                    },
+                    "exclude_doc_type": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Excluir DocTypes.",
+                    },
+                    "status": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filtrar por frontmatter status (accepted, draft, ...).",
+                    },
+                    "tag": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Items deben contener TODOS los tags.",
+                    },
+                    "tag_any": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Items deben contener al menos uno de estos tags.",
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": ["local", "enterprise", "all"],
+                        "default": "local",
+                    },
+                    "max_age_days": {
+                        "type": "integer",
+                        "description": "Descartar items más antiguos que N días.",
+                    },
+                    "project_id": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filtro multi-tenant por origin_project_id.",
+                    },
+                    "strict": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Descartar items sin doc_type cuando doc_type filtra.",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="cortex_context",
+            description="Recuperar contexto enriquecido del proyecto y grafos de dependencia.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Consulta de contexto."},
+                    "changed_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Archivos modificados para enriquecer el contexto.",
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Palabras clave opcionales para complementar la consulta.",
+                    },
+                    "pr_title": {
+                        "type": "string",
+                        "description": "Titulo opcional del PR o tarea actual.",
+                    },
+                    "task_type": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Detected task type (question-only | docs-only | "
+                            "fast-code | deep-code | security | ambiguous | "
+                            "noop). When supplied, the server sizes the "
+                            "retrieval envelope via "
+                            "cortex.context_enricher.budget_resolver. "
+                            "Unknown values fall back to fast-code defaults."
+                        ),
+                        "default": None,
+                    },
+                    "complexity": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Reserved for Phase 09 complexity tuning. "
+                            "Currently accepted but unused."
+                        ),
+                        "default": None,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="cortex_sync_ticket",
+            description="Paso obligatorio de cortex-sync. Inyecta el pedido actual del usuario junto con contexto historico similar recuperado por ONNX/hybrid retrieval para preparar una spec.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "user_request": {
+                        "type": "string",
+                        "description": "Pedido textual actual del usuario en la terminal.",
+                    },
+                    "changed_files": {
+                        # Tolerant input: accept either a JSON array of
+                        # strings or a single comma-separated string.
+                        # LLM clients sometimes serialize lists as CSV;
+                        # the server splits and trims internally.
+                        "oneOf": [
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "string"},
+                        ],
+                        "description": (
+                            "Archivos ya identificados para el ticket actual. "
+                            "Acepta array de strings o un string CSV (\"a.py,b.py\")."
+                        ),
+                    },
+                    "keywords": {
+                        "oneOf": [
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "string"},
+                        ],
+                        "description": (
+                            "Palabras clave opcionales para reforzar la recuperacion. "
+                            "Acepta array de strings o un string CSV (\"fase,roadmap\")."
+                        ),
+                    },
+                    "title_hint": {
+                        "type": "string",
+                        "description": "Titulo corto opcional para orientar la spec.",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "default": 5,
+                    },
+                },
+                "required": ["user_request"],
+            },
+        ),
+        types.Tool(
+            name="cortex_create_spec",
+            description="Persistir una especificacion técnica (Spec) en el vault.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "requirements": {"type": "array", "items": {"type": "string"}},
+                    "files_in_scope": {"type": "array", "items": {"type": "string"}},
+                    "constraints": {"type": "array", "items": {"type": "string"}},
+                    "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "verification_hooks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "command": {"type": "string"},
+                                "required": {"type": "boolean", "default": True},
+                                "success_criteria": {
+                                    "type": "string",
+                                    "default": "exit code 0",
+                                },
+                                "timeout_seconds": {
+                                    "type": "integer",
+                                    "default": 300,
+                                },
+                            },
+                            "required": ["name", "command"],
+                        },
+                        "description": (
+                            "Executable commands that prove the work is "
+                            "done (Pluggable Middle, Phase 01). Optional "
+                            "for legacy compatibility; new specs should "
+                            "declare at least one."
+                        ),
+                    },
+                    "no_sync": {"type": "boolean", "default": False},
+                    "proposal_mode": {
+                        "type": "string",
+                        "enum": ["optional", "required", "skip"],
+                        "default": "optional",
+                        "description": (
+                            "Phase 09.A: gate on the cortex-sync proposal "
+                            "step. 'required' rejects the call unless "
+                            "proposal_confirmed is True."
+                        ),
+                    },
+                    "proposal_confirmed": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": (
+                            "Phase 09.A: signal that the cortex-sync "
+                            "proposal has been acknowledged by the user."
+                        ),
+                    },
+                },
+                "required": ["title", "goal"],
+            },
+        ),
+        types.Tool(
+            name="cortex_emit_proposal",
+            description=(
+                "Phase 09.A+: emit a structured proposal as a Markdown "
+                "card visible to the user. After calling this tool, the "
+                "agent MUST end its turn — do NOT chain "
+                "cortex_create_spec in the same response. The server "
+                "enforces a minimum gap between emit_proposal and a "
+                "follow-up create_spec with proposal_confirmed=true, "
+                "rejecting fake same-turn confirmations."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": (
+                            "Executive summary in 2-3 lines describing "
+                            "what is being proposed."
+                        ),
+                    },
+                    "alternatives": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 5,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": (
+                                        "Short token (A, B, C, ...) the "
+                                        "user can reference."
+                                    ),
+                                },
+                                "description": {"type": "string"},
+                                "rejected_reason": {
+                                    "type": "string",
+                                    "default": "",
+                                    "description": (
+                                        "Empty for the recommended "
+                                        "alternative; non-empty "
+                                        "explanation for the rest."
+                                    ),
+                                },
+                            },
+                            "required": ["id", "description"],
+                        },
+                    },
+                    "recommendation_id": {
+                        "type": "string",
+                        "description": (
+                            "Id of the alternative the agent recommends. "
+                            "Must match an entry in 'alternatives'."
+                        ),
+                    },
+                    "risks": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                        "description": (
+                            "Optional list of risks/assumptions the "
+                            "user is implicitly accepting."
+                        ),
+                    },
+                },
+                "required": ["summary", "alternatives", "recommendation_id"],
+            },
+        ),
+        types.Tool(
+            name="cortex_save_session",
+            description="Documentar una sesion de trabajo y sus cambios en el vault.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "spec_summary": {"type": "string"},
+                    "changes_made": {"type": "array", "items": {"type": "string"}},
+                    "files_touched": {"type": "array", "items": {"type": "string"}},
+                    "key_decisions": {"type": "array", "items": {"type": "string"}},
+                    "next_steps": {"type": "array", "items": {"type": "string"}},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "no_sync": {"type": "boolean", "default": False},
+                    "handoff": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Marca la sesion como handoff cross-session (Tripartita Refinada).",
+                    },
+                    "blockers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Bloqueos abiertos que el siguiente agente debe resolver.",
+                    },
+                    "verified_state": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Hechos verificados contra el diff o tests reales.",
+                    },
+                    "unverified_claims": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Afirmaciones sin verificar que el siguiente agente debe re-chequear.",
+                    },
+                    "suggested_skills": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Skills/subagents recomendados para retomar el trabajo.",
+                    },
+                },
+                "required": ["title", "spec_summary"],
+            },
+        ),
+        # ----------------------------------------------------------
+        # Tripartita Refinada — Handoff & Verification tools
+        # Plan 02 §1-§2. MCP-only (sin contraparte CLI por diseno).
+        # ----------------------------------------------------------
+        types.Tool(
+            name="cortex_validate_handoff",
+            description=(
+                "Validate a structured agent handoff (YAML). Use this between "
+                "subagents to enforce the cortex.handoff.AgentHandoff schema. "
+                "Returns OK with normalized fields or an error message detailing "
+                "the schema violations."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "handoff_yaml": {
+                        "type": "string",
+                        "description": "YAML text matching AgentHandoff schema.",
+                    },
+                    "expected_agent": {
+                        "type": "string",
+                        "description": "(Optional) Assert the handoff's agent field matches this value.",
+                    },
+                },
+                "required": ["handoff_yaml"],
+            },
+        ),
+        types.Tool(
+            name="cortex_verify_session_claims",
+            description=(
+                "Verify session claims against the actual git diff. Returns a "
+                "structured breakdown of verified / asserted / contradicted "
+                "claims that the documenter can use to fill the confidence field."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "claims": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of claims to verify.",
+                    },
+                    "base_branch": {
+                        "type": "string",
+                        "description": "Branch to diff against (default: main).",
+                    },
+                    "files_to_check": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional file allowlist to scope verification.",
+                    },
+                },
+                "required": ["claims"],
+            },
+        ),
+        types.Tool(
+            name="cortex_import_hu",
+            description="Importar una historia o work item externo en modo read-only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "external_id": {
+                        "type": "string",
+                        "description": "Clave del item externo, por ejemplo PROJ-123.",
+                    },
+                    "provider": {"type": "string", "default": "jira"},
+                    "no_remember": {"type": "boolean", "default": False},
+                },
+                "required": ["external_id"],
+            },
+        ),
+        types.Tool(
+            name="cortex_get_hu",
+            description="Obtener la nota local ya importada de una HU o work item.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_id": {
+                        "type": "string",
+                        "description": "ID local o externo, por ejemplo PROJ-123.",
+                    },
+                },
+                "required": ["item_id"],
+            },
+        ),
+        types.Tool(
+            name="cortex_sync_vault",
+            description="Sincronizar el vault y re-indexar documentos semanticamente.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
+            name="cortex_autopilot_start",
+            description="Start a new Autopilot session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_root": {"type": "string"},
+                    "workspace_root": {"type": "string"},
+                    "mode": {"type": "string", "default": "assist"},
+                    "user_request": {"type": "string"},
+                    "title_hint": {"type": "string"},
+                },
+                "required": ["project_root", "workspace_root"],
+            },
+        ),
+        types.Tool(
+            name="cortex_autopilot_preflight",
+            description="Run Autopilot preflight detection for a session.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "user_request": {"type": "string"},
+                    "changed_files": {"type": "array", "items": {"type": "string"}},
+                    "git_diff_stat": {"type": "string"},
+                },
+                "required": ["session_id"],
+            },
+        ),
+        types.Tool(
+            name="cortex_autopilot_checkpoint",
+            description="Record an Autopilot checkpoint.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "files_at_checkpoint": {"type": "array", "items": {"type": "string"}},
+                    "verified": {"type": "boolean", "default": False},
+                },
+                "required": ["session_id", "summary"],
+            },
+        ),
+        types.Tool(
+            name="cortex_autopilot_finish",
+            description="Finish an Autopilot session and optionally persist a draft.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "auto": {"type": "boolean", "default": False},
+                },
+                "required": ["session_id"],
+            },
+        ),
+        types.Tool(
+            name="cortex_autopilot_status",
+            description="Get the current Autopilot status.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                },
+            },
+        ),
+        # NOTA (Fase 5 plan multi-IDE & MCP hardening, 2026-05-15):
+        # Los tools experimentales `cortex_delegate_task`,
+        # `cortex_delegate_batch` y `cortex_get_task_result` fueron
+        # ELIMINADOS. Razon: estaban hardcoded a `opencode run` via
+        # subprocess y devolvian no-op silencioso en cualquier otro
+        # IDE — el bug exacto del incidente del 2026-05-15.
+        #
+        # La delegacion a subagentes ahora es responsabilidad NATIVA
+        # del IDE (Task tool en Claude Code, mode: subagent en
+        # opencode, secuencial single-agent en codex). Ver
+        # `docs/multi-ide-mcp-hardening/MATRIZ-NATIVA-IDES.md`
+        # seccion 1 para detalles por IDE.
+        #
+        # ── Pluggable Middle — Session primitive (Fase 00 / T0.7) ──
+        types.Tool(
+            name="cortex_session_open",
+            description=(
+                "Open a new Session anchored on a spec. Normally invoked "
+                "automatically by cortex_create_spec; exposed here for "
+                "testing and for callers that manage Sessions manually. "
+                "Returns JSON with session_id, opened_at, start_commit, start_branch."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "spec_id": {
+                        "type": "string",
+                        "description": "Stem of the spec file (YYYY-MM-DD_<slug>).",
+                    },
+                    "spec_path": {
+                        "type": "string",
+                        "description": "Path to the persisted spec file.",
+                    },
+                    "spec_summary": {"type": "string", "default": ""},
+                },
+                "required": ["spec_id", "spec_path"],
+            },
+        ),
+        types.Tool(
+            name="cortex_session_checkpoint",
+            description=(
+                "Append a checkpoint to an OPEN Session. Used by the middle "
+                "(SDDwork, code-explorer, code-implementer) and by IDE hooks "
+                "to enrich the Session with verified/unverified claims, "
+                "artifacts touched and a short context note."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "source": {
+                        "type": "string",
+                        "enum": list(_CHECKPOINT_SOURCE_VALUES),
+                    },
+                    "verified_claims": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "unverified_claims": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "artifacts_touched": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "note": {"type": "string", "default": ""},
+                },
+                "required": ["session_id", "source"],
+            },
+        ),
+        types.Tool(
+            name="cortex_session_close",
+            description=(
+                "Close an OPEN Session into a terminal status. Captures HEAD "
+                "as end_commit and infers the mode (managed / observed / byo) "
+                "from the existing checkpoints. Returns JSON with session_id, "
+                "closed_at, end_commit, mode_inferred."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["closed", "handoff", "abandoned"],
+                    },
+                    "documenter_decision": {
+                        "type": "string",
+                        "enum": ["closed", "handoff", "abandoned"],
+                    },
+                    "session_note_path": {"type": ["string", "null"], "default": None},
+                    "adrs_created": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                },
+                "required": ["session_id", "status", "documenter_decision"],
+            },
+        ),
+        types.Tool(
+            name="cortex_session_status",
+            description=(
+                "Return the full SessionRecord for a session_id (or the "
+                "active session if session_id is omitted)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": ["string", "null"], "default": None},
+                },
+            },
+        ),
+        types.Tool(
+            name="cortex_finish_session",
+            description=(
+                "Close a Session: reconstruct context from the spec + diff "
+                "+ checkpoints, run the verification hooks declared in the "
+                "spec, persist the session note (and any ADR candidates), "
+                "and mark the underlying Session as CLOSED / HANDOFF / "
+                "ABANDONED. Returns JSON with session_note_path, "
+                "adrs_created, final_status, summary_text."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id to finish (default: active session).",
+                        "default": None,
+                    },
+                    "intent": {
+                        "type": "string",
+                        "enum": ["auto", "handoff", "abandon"],
+                        "default": "auto",
+                        "description": (
+                            "Override the auto-suggested status. "
+                            "'auto' uses the reconstructor's verdict; "
+                            "'handoff' / 'abandon' force the closure."
+                        ),
+                    },
+                    "reason": {
+                        "type": ["string", "null"],
+                        "default": None,
+                        "description": "Required when intent != 'auto'.",
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="cortex_documenter_briefing",
+            description=(
+                "Phase 09.A+ / May 2026 — READ-ONLY reconstruction "
+                "of a Session for the /cortex-documenter skill. "
+                "Runs the 8-step Reconstructor (sin persistir nada "
+                "ni cerrar la sesion). Returns ReconstructionOutput "
+                "JSON: spec, diff_text, diff_entries, "
+                "files_verified_by_git, files_declared_only, "
+                "files_touched (union), in_scope / out_of_scope / "
+                "unimplemented, verification_results, contradictions, "
+                "suggested_status, suggested_adrs, raw_checkpoints, "
+                "end_commit, gitless.\n\n"
+                "By default ``run_hooks=false`` — verification hooks "
+                "(``npm ci && build``, integration tests, etc.) NO se "
+                "ejecutan dentro del briefing porque pueden tardar "
+                "minutos y reventar el timeout del MCP. SDDwork "
+                "tipicamente ya los corrio antes de cerrar; si "
+                "necesitas verificarlos otra vez, pasá ``run_hooks=true`` "
+                "explicitamente y considera subir el timeout client-side."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id (default: active session).",
+                        "default": None,
+                    },
+                    "run_hooks": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": (
+                            "If true, execute the spec's "
+                            "verification_hooks during the "
+                            "reconstruction. Default false to keep "
+                            "the briefing fast and avoid MCP timeouts "
+                            "on heavy hooks (npm build, tests, etc.)."
+                        ),
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="cortex_close_session",
+            description=(
+                "Phase 09.A+ / May 2026 — close an OPEN Session "
+                "without re-running the reconstructor. Intended "
+                "as the FINAL step of the /cortex-documenter skill "
+                "after it has called cortex_documenter_briefing "
+                "and persisted the session note + ADRs (via the "
+                "write_*_note_canonical tools). Records final "
+                "status, an optional note_path, and any ADR paths "
+                "the skill created. Returns JSON with the closed "
+                "SessionRecord summary."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id (default: active session).",
+                        "default": None,
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["closed", "handoff", "abandoned"],
+                        "description": (
+                            "Terminal status the documenter decided. "
+                            "Use 'handoff' when the work is incomplete "
+                            "or verification hooks failed; 'abandoned' "
+                            "when the work was discarded; 'closed' "
+                            "otherwise."
+                        ),
+                    },
+                    "session_note_path": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Optional absolute path to the persisted "
+                            "session note (returned by "
+                            "write_session_note_canonical)."
+                        ),
+                        "default": None,
+                    },
+                    "adrs_created": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                        "description": (
+                            "Paths of ADR notes the skill created "
+                            "during this close (if any)."
+                        ),
+                    },
+                },
+                "required": ["status"],
+            },
+        ),
+        types.Tool(
+            name="cortex_session_list",
+            description=(
+                "List Sessions, optionally filtered by status. Returns a "
+                "JSON array of summarized SessionRecord objects (without "
+                "full checkpoint arrays — use cortex_session_status for that)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": ["string", "null"],
+                        "enum": ["open", "closed", "handoff", "abandoned", None],
+                        "default": None,
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="cortex_self_review_note",
+            description=(
+                "Phase 09.A+ / May 2026 — pure inspection of a "
+                "draft note body written by the /cortex-documenter "
+                "skill. Scans for placeholder tokens (TBD, TODO, "
+                "FIXME, ???, ...), hollow success claims (\"tests "
+                "pass\" without a corresponding verification hook "
+                "result), and other low-signal smells. Returns "
+                "JSON {warnings: [str], passed: bool}. INFORMATIONAL "
+                "only — never blocks persistence. The skill decides "
+                "whether to revise and re-call, or accept the "
+                "warnings and proceed."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": (
+                            "The Markdown body the skill drafted. "
+                            "Scanned case-insensitively."
+                        ),
+                    },
+                    "verification_hooks_passed": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": (
+                            "Whether at least one verification "
+                            "hook in the spec actually passed. "
+                            "Drives the hollow-claim detector — "
+                            "claiming \"tests pass\" is hollow if "
+                            "no hook reported success."
+                        ),
+                    },
+                },
+                "required": ["body"],
+            },
+        ),
+        types.Tool(
+            name="cortex_write_doc",
+            description=(
+                "Phase 09.A+ / May 2026 — generic canonical writer "
+                "dispatched by ``doc_type``. Used by the "
+                "``/cortex-documenter`` skill to persist any of the "
+                "11 supported doc types under their canonical vault "
+                "folder. The ``payload`` shape varies per doc_type; "
+                "minimum required fields per type:\n\n"
+                "• ``session``     → title, spec_summary, session_id\n"
+                "• ``handoff``     → title, parent_session_id\n"
+                "• ``adr``         → title, context, decision\n"
+                "• ``decision``    → title, context, decision\n"
+                "• ``incident``    → title, short_description, severity\n"
+                "• ``postmortem``  → title, incident_path, incident_number, root_cause\n"
+                "• ``runbook``     → title, runbook_kind, procedure\n"
+                "• ``architecture``→ title, summary\n"
+                "• ``changelog``   → title, version\n"
+                "• ``glossary``    → title, term, definition\n"
+                "• ``hu``          → title, external_id, source\n\n"
+                "Every payload accepts the common fields ``tags`` "
+                "(list[str]), ``links`` (list[str]), ``status`` (str). "
+                "Returns JSON {path, doc_type}.\n\n"
+                "NOTE: ``spec`` and ``design`` doc types are NOT "
+                "exposed here — use ``cortex_create_spec`` and "
+                "``write_design_note_canonical`` respectively."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "doc_type": {
+                        "type": "string",
+                        "enum": [
+                            "session",
+                            "handoff",
+                            "adr",
+                            "decision",
+                            "incident",
+                            "postmortem",
+                            "runbook",
+                            "architecture",
+                            "changelog",
+                            "glossary",
+                            "hu",
+                        ],
+                    },
+                    "payload": {
+                        "type": "object",
+                        "description": (
+                            "Fields for the chosen doc_type. See "
+                            "the description above for the minimum "
+                            "required fields per type."
+                        ),
+                    },
+                    "vault_scope": {
+                        "type": "string",
+                        "enum": ["local", "enterprise"],
+                        "default": "local",
+                    },
+                    "overwrite": {
+                        "type": "boolean",
+                        "default": False,
+                    },
+                },
+                "required": ["doc_type", "payload"],
+            },
+        ),
+        types.Tool(
+            name="write_design_note_canonical",
+            description=(
+                "Persist a design document under vault/designs/ "
+                "(Pluggable Middle Phase 09.B). Used by "
+                "cortex-code-designer between explorer and "
+                "implementer in Deep Track. Returns the absolute "
+                "path of the persisted note."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "session_id": {"type": "string"},
+                    "spec_path": {"type": "string"},
+                    "architecture_decision": {"type": "string"},
+                    "data_model_changes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "api_contracts": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "test_plan": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "risks": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["draft", "approved", "superseded"],
+                        "default": "draft",
+                    },
+                },
+                "required": ["title", "session_id", "spec_path"],
+            },
+        ),
+        types.Tool(
+            name="cortex_session_task_list",
+            description=(
+                "List the granular tasks attached to a Session "
+                "(Pluggable Middle Phase 09.C). Optionally filter "
+                "by status. Returns a JSON array of Task objects "
+                "in declaration order."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id (default: active).",
+                        "default": None,
+                    },
+                    "status": {
+                        "type": ["string", "null"],
+                        "enum": [
+                            "pending",
+                            "in-progress",
+                            "done",
+                            "skipped",
+                            "blocked",
+                            None,
+                        ],
+                        "default": None,
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="cortex_session_task_update",
+            description=(
+                "Mutate one task's status (Pluggable Middle Phase 09.C). "
+                "If the task doesn't exist yet, it is created on the "
+                "fly when ``description`` is supplied — that is how "
+                "SDDwork emits a task decomposition in one pass. "
+                "Setting ``status='done'`` stamps ``completed_at`` "
+                "automatically. Returns JSON with task_id and new status."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id (default: active).",
+                        "default": None,
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task id matching the pattern 'T\\\\d+(\\\\.\\\\d+)*'.",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "in-progress",
+                            "done",
+                            "skipped",
+                            "blocked",
+                        ],
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": (
+                            "Required when the task does not exist "
+                            "yet (auto-creates a new task with the "
+                            "given description + initial status)."
+                        ),
+                        "default": "",
+                    },
+                    "files_in_scope": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": [],
+                    },
+                    "note": {"type": "string", "default": ""},
+                    "checkpoint_index": {
+                        "type": ["integer", "null"],
+                        "default": None,
+                    },
+                },
+                "required": ["task_id", "status"],
+            },
+        ),
+        types.Tool(
+            name="cortex_review_checkpoint",
+            description=(
+                "Run the two-stage quality review on a checkpoint of an "
+                "OPEN Session. Stage 1 verifies spec compliance "
+                "(artifacts in scope; checkpoint reports progress); "
+                "stage 2 verifies quality (no placeholder tokens in "
+                "note; non-trivial test/build claims). Returns JSON "
+                "with accepted, stage_1_passed, stage_2_passed, "
+                "reason, action (one of accept|redelegate|warn)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": ["string", "null"],
+                        "description": "Session id (default: active).",
+                        "default": None,
+                    },
+                    "checkpoint_index": {
+                        "type": "integer",
+                        "description": (
+                            "Index into session.checkpoints. Negative "
+                            "indexing is supported (default: -1, most "
+                            "recent)."
+                        ),
+                        "default": -1,
+                    },
+                },
+            },
+        ),
+    ]

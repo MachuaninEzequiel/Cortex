@@ -1,0 +1,17 @@
+{
+  "files": {
+    ".claude/settings.json": "{}\n"
+  },
+  "ide": "claude-code",
+  "kind": "result",
+  "payload": {
+    "ide": "claude-code",
+    "message": "removed cortex-managed entry from {{TARGET}}/.claude/settings.json",
+    "modified_paths": [],
+    "removed_paths": [
+      "{{TARGET}}/.claude/settings.json"
+    ],
+    "uninstalled": true
+  },
+  "step": "uninstall_installed"
+}

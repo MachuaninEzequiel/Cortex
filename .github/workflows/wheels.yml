@@ -1,0 +1,73 @@
+name: Wheels (cortex_core nativo)
+
+# Criterio de salida Obra 03: wheels binarios por plataforma publicados por CI.
+# El extension-module se compila desde rust/crates/cortex-py (maturin).
+# Se dispara en tags de release y manualmente; también en PRs que tocan rust/
+# para validar temprano (sin publicar).
+
+on:
+  push:
+    tags: ["v*"]
+    branches: ["feature/**"]
+    paths: ["rust/**", ".github/workflows/wheels.yml"]
+  pull_request:
+    paths: ["rust/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-wheels:
+    name: Wheel ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64
+          - os: ubuntu-latest
+            target: aarch64
+          - os: macos-latest
+            target: aarch64
+          - os: macos-latest
+            target: x86_64
+          - os: windows-latest
+            target: x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: rust/crates/cortex-py
+          target: ${{ matrix.target }}
+          args: --release --out ../dist --find-interpreter
+          manylinux: auto
+          sccache: true
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          path: rust/dist
+
+  # Publicación a GitHub Releases sólo en tags (requiere permisos de release;
+  # PyPI queda como decisión de dueño/distribución futura).
+  release:
+    needs: build-wheels
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: Attach wheels to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

@@ -71,9 +71,12 @@ class EmbedderFactory:
     # Registry maps backend name → module.ClassName (lazy import strings
     # to avoid importing heavy dependencies at module load time).
     _REGISTRY: dict[str, tuple[str, str]] = {
-        "onnx":   ("cortex.embedders.onnx",   "OnnxEmbedder"),
-        "local":  ("cortex.embedders.local",  "LocalEmbedder"),
-        "openai": ("cortex.embedders.openai", "OpenAIEmbedder"),
+        "onnx":      ("cortex.embedders.onnx",        "OnnxEmbedder"),
+        "local":     ("cortex.embedders.local",       "LocalEmbedder"),
+        "openai":    ("cortex.embedders.openai",      "OpenAIEmbedder"),
+        # Obra 04: generic ONNX backend (fastembed) for non-MiniLM models
+        # (multilingual-e5, paraphrase-multilingual-*, ...).
+        "fastembed": ("cortex.embedders.fastembedder", "FastEmbedder"),
     }
 
     @classmethod

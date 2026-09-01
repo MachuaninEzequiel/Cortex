@@ -1,0 +1,64 @@
+{
+ "queries": [
+  {
+   "query": "bug de autenticación",
+   "ids": [
+    "mem_385ea080",
+    "mem_01d6edf3",
+    "mem_0bf57d5a",
+    "mem_5f462853",
+    "mem_77875604"
+   ]
+  },
+  {
+   "query": "chunking de documentos largos",
+   "ids": [
+    "mem_114365ca",
+    "mem_01d6edf3",
+    "mem_b1f2fdba",
+    "mem_f62cf4fb",
+    "mem_0bf57d5a"
+   ]
+  },
+  {
+   "query": "fusión de rankings de búsqueda",
+   "ids": [
+    "mem_aeffb278",
+    "mem_114365ca",
+    "mem_77875604",
+    "mem_0bf57d5a",
+    "mem_824c189b"
+   ]
+  },
+  {
+   "query": "error parseando configuración",
+   "ids": [
+    "mem_5f462853",
+    "mem_f62cf4fb",
+    "mem_0bf57d5a",
+    "mem_f6331d4e",
+    "mem_77875604"
+   ]
+  },
+  {
+   "query": "API de memorias",
+   "ids": [
+    "mem_01d6edf3",
+    "mem_824c189b",
+    "mem_546349f7",
+    "mem_b1f2fdba",
+    "mem_f62cf4fb"
+   ]
+  },
+  {
+   "query": "visualizador de grafo rendimiento",
+   "ids": [
+    "mem_114365ca",
+    "mem_01d6edf3",
+    "mem_aeffb278",
+    "mem_f62cf4fb",
+    "mem_77875604"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+[package]
+name = "cortex-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+minijinja = { workspace = true }
+unicode-normalization = { workspace = true }
+chrono = { workspace = true }
+cortex-embed = { path = "../cortex-embed", features = ["onnx"] }
+uuid = { version = "1", default-features = false, features = ["v4"] }
+cortex-setup = { path = "../cortex-setup" }
+regex = "1"
+cortex-config = { path = "../cortex-config" }
+cortex-core = { path = "../cortex-core" }
+sha2 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

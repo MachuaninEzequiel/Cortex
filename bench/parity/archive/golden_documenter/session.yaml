@@ -1,0 +1,32 @@
+session_id: 2026-08-24_demo
+spec_path: /tmp/tmpo5eomrzt/specs/2026-08-24_demo.md
+spec_summary: Demo P5
+start_commit: '0000000000000000000000000000000000000000'
+start_branch: ''
+opened_at: '2026-08-24T19:03:58.078320Z'
+status: open
+mode: unknown
+checkpoints:
+- timestamp: '2026-08-24T19:03:58.080894Z'
+  source: cortex-code-implementer
+  verified_claims:
+  - auth refactorizada
+  unverified_claims: []
+  artifacts_touched:
+  - src/auth.py
+  - src/nuevo.py
+  note: Decidimos usar tokens vs sesiones por trade-off de latencia.
+- timestamp: '2026-08-24T19:03:58.082410Z'
+  source: manual
+  verified_claims: []
+  unverified_claims: []
+  artifacts_touched:
+  - .cortex/session.lock
+  note: ''
+verification_results: []
+tasks: []
+closed_at: null
+end_commit: null
+documenter_decision: null
+session_note_path: null
+adrs_created: []

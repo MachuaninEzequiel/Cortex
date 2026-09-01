@@ -1,0 +1,131 @@
+### S01 dry-run
+rc=0
+applied=False
+migrated=1
+doc_type=adr
+reason=
+file_unchanged=True
+---
+schema_version: 1
+doc_type: adr
+title: ADR-007
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- legacy
+status: accepted
+links:
+- a
+- b
+vault_scope: local
+fingerprint: dc64988afca9d2b62f499a3133e5e3a904220e6d55d0367c12e3981c56787ca5
+adr_number: 7
+supersedes: []
+superseded_by: null
+alternatives_considered: []
+acceptance_criteria_met: false
+legacy_author: alice
+
+adr_number=7
+links=['a', 'b']
+fingerprint_len=64
+vault_scope=local
+created=2026-04-01T00:00:00+00:00
+### S02 apply
+rc=0
+applied=True
+migrated=1
+backup=None
+---
+---
+schema_version: 1
+doc_type: adr
+title: ADR-009
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags: []
+status: proposed
+links: []
+vault_scope: local
+fingerprint: 230d8358dc8e8890b4c58deeb62912ee2f20357ae92a5cc861b98e68fe31acb5
+adr_number: 9
+supersedes: []
+superseded_by: null
+alternatives_considered: []
+acceptance_criteria_met: false
+---
+
+body
+### S03 idempotencia
+rc=0
+migrated=0
+already=1
+skip_reason=schema_version=1 already present
+idempotent=True
+### S04 force
+rc=0
+remigrated=1
+### S05 inferencia
+rc=0
+sessions/2026-04-14_abc123_foo: doc_type=session extras={'session_id': 'abc123'}
+runbooks/RB-deploy: doc_type=runbook extras={'runbook_kind': 'operational', 'estimated_duration_minutes': 0}
+hu/PROJ-1: doc_type=hu extras={'external_id': 'PROJ-1', 'source': 'linear', 'kind': 'story'}
+glossary/api-gateway: doc_type=glossary extras={'term': 'Api Gateway'}
+changelog/v1.0.0: doc_type=changelog extras={'version': 'v1.0.0'}
+incidents/INC-003-db: doc_type=incident extras={'incident_number': 3, 'severity': 'medium'}
+postmortems/PM-003-db: doc_type=postmortem extras={'incident_number': 3, 'severity': 'medium'}
+architecture/overview: doc_type=architecture extras={'related_adrs': []}
+handoffs/H1: doc_type=handoff extras={'parent_session_id': 'unknown'}
+decisions/DEC-20260401-cache: doc_type=decision extras={'reversible_within_days': 0}
+decisions/ADR-002-y: doc_type=adr extras={'adr_number': 2}
+designs/design-alpha: doc_type=design extras={}
+### S06 unclassifiable+report
+rc=0
+unclassifiable=1
+reason=unable to infer doc_type from path 'random/unknown.md'
+---
+# Migration Report (DRY-RUN)
+
+- Total scanned: 1
+- Migrated: 0
+- Already migrated (skipped): 0
+- Unclassifiable: 1
+- Errors: 0
+
+## Unclassifiable notes
+- {{ROOT}}/s06/random/unknown.md (unable to infer doc_type from path 'random/unknown.md')
+### S07 legacy preserve/drop
+rc=0
+keys_keep=['schema_version', 'doc_type', 'title', 'created_at', 'updated_at', 'tags', 'status', 'links', 'vault_scope', 'fingerprint', 'adr_number', 'supersedes', 'superseded_by', 'alternatives_considered', 'acceptance_criteria_met', 'legacy_author', 'legacy_priority', 'legacy_custom_field']
+keys_drop=['schema_version', 'doc_type', 'title', 'created_at', 'updated_at', 'tags', 'status', 'links', 'vault_scope', 'fingerprint', 'adr_number', 'supersedes', 'superseded_by', 'alternatives_considered', 'acceptance_criteria_met']
+### S08 backups+exclusiones
+rc=0
+total_scanned=1
+backup_exists=True
+suffix=.gz
+name=vault-{{STAMP}}.tar.gz
+no_backup=True
+### S09 status mapping
+rc=0
+session_status=completed
+hu_status=backlog
+decision_status=active
+adr_status=proposed
+### S10 validate_vault
+rc=0
+{"vault_path": "{{ROOT}}/s10", "total": 2, "valid": 2, "invalid": 0, "no_frontmatter": 0, "issues": []}||{"vault_path": "{{ROOT}}/s10b", "total": 1, "valid": 0, "invalid": 1, "no_frontmatter": 0, "issues": [{"path": "decisions/ADR-060-raw.md", "error": "doc_type field is required in frontmatter"}]}||{"vault_path": "{{ROOT}}/missing", "total": 0, "valid": 0, "invalid": 0, "no_frontmatter": 0, "issues": []}||{"vault_path": "{{ROOT}}/s10c", "total": 5, "valid": 0, "invalid": 5, "no_frontmatter": 0, "issues": [{"path": "decisions/n4.md", "error": "{{SCHEMA_ERR}}"}, {"path": "random/n1.md", "error": "doc_type must be a string, got int"}, {"path": "random/n2.md", "error": "Unknown doc_type: 'nonsense'"}, {"path": "random/n3.md", "error": "vault_scope must be 'local' or 'enterprise', got 'cloud'"}, {"path": "random/n5.md", "error": "{{YAML_ERR}}"}]}
+### S11 títulos/derives
+rc=0
+title_empty_fallback=My Cool Note
+sid_slug=session-no-i
+sid_short=zzz
+term=Multi Word Term
+ext_id=ext-fallback
+version=2.0.0
+### S12 datetimes
+rc=0
+created_aware=2026-03-01T10:30:00+02:00
+updated_clamped=2026-03-01T10:30:00+02:00
+date_only=2026-04-01T00:00:00+00:00
+mtime_created={{TS}}
+mtime_updated={{TS}}

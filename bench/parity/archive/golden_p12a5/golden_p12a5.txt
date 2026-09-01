@@ -1,0 +1,287 @@
+### S01 spec básica
+rc=0
+path={{ROOT}}/s01/specs/{{DATE}}_auth-jwt.md
+session=None
+indexed=['specs/{{DATE}}_auth-jwt.md']
+episodic_content="Specification: Auth JWT\nGoal: Refresh tokens\nRequirements: rotar; revocar"
+episodic_type=spec
+episodic_tags=['spec', 'backend']
+episodic_files=['src/auth.py']
+episodic_meta={"workspace":"obra07"}
+---
+---
+schema_version: 1
+doc_type: spec
+title: Auth JWT
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- spec
+- backend
+status: draft
+links: []
+vault_scope: local
+fingerprint: {{FP}}
+verification_hooks: []
+goal: Refresh tokens
+files_in_scope:
+- src/auth.py
+constraints: []
+acceptance_criteria: []
+---
+
+## Goal
+
+Refresh tokens
+
+## Requirements
+
+- rotar
+- revocar
+
+## Files in Scope
+
+- `src/auth.py`
+
+## Constraints
+
+(none)
+
+## Acceptance Criteria
+
+(none)
+
+## Verification Hooks
+
+Commands that objectively prove the work is done. Run by
+`cortex finish-session` (Pluggable Middle, Phase 01).
+
+*(none declared — legacy spec; finish-session will skip verification)*
+### S02 proposal
+rc=0
+required=ValueError: proposal_mode is 'required' but proposal was not confirmed; re-run cortex-sync to emit and confirm the proposal before creating the spec.
+invalid-mode=ValueError: proposal_mode must be one of ['optional', 'required', 'skip']; got 'invalid-mode'
+confirmed_exists=True### S03 hooks tasks
+rc=0
+path={{ROOT}}/s03/specs/{{DATE}}_hooks.md
+indexed=['specs/{{DATE}}_hooks.md']
+---
+---
+schema_version: 1
+doc_type: spec
+title: Hooks
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- spec
+- tasks-required
+status: draft
+links: []
+vault_scope: local
+fingerprint: {{FP}}
+verification_hooks:
+- name: tests
+  command: pytest
+  required: true
+  success_criteria: exit code 0
+  timeout_seconds: 300
+- name: lint
+  command: ruff check .
+  required: false
+  success_criteria: exit code 0
+  timeout_seconds: 300
+goal: Probar
+files_in_scope: []
+constraints: []
+acceptance_criteria: []
+---
+
+## Goal
+
+Probar
+
+## Requirements
+
+(none)
+
+## Files in Scope
+
+(none)
+
+## Constraints
+
+(none)
+
+## Acceptance Criteria
+
+(none)
+
+## Verification Hooks
+
+Commands that objectively prove the work is done. Run by
+`cortex finish-session` (Pluggable Middle, Phase 01).
+
+### tests
+```bash
+pytest
+```
+
+Success: exit code 0 · Timeout: 300s
+### lint *(optional)*
+```bash
+ruff check .
+```
+
+Success: exit code 0 · Timeout: 300s
+### S04 session order
+rc=0
+events=['index', 'sync', 'session', 'episodic']
+session_id={{DATE}}_ordered
+open_summary=Goal
+fail_events=['index', 'session', 'episodic']
+fail_session=None
+fail_exists=True### S05 hooks errors
+rc=0
+dup=ValueError: verification_hooks contains duplicate name(s): ['tests']
+invalid=ValidationError: {{HOOK_ERR}}### S06 note básica
+rc=0
+path={{ROOT}}/n06/sessions/{{SID}}_happy.md
+indexed=['sessions/{{SID}}_happy.md']
+episodic_content="Session: Happy\nSpecification: Survive\nChanges: uno; dos\nDecisions: usar Rust"
+episodic_type=session
+episodic_tags=['session', 'backend']
+episodic_files=['src/a.py']
+episodic_meta={"workspace":"obra07"}
+---
+---
+schema_version: 1
+doc_type: session
+title: Happy
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- session
+- backend
+status: completed
+links: []
+vault_scope: local
+fingerprint: {{FP}}
+session_id: {{SID}}
+pr: null
+branch: null
+commit: null
+cortex_telemetry: null
+---
+
+## Original Specification
+
+Survive
+
+## Changes Made
+
+- uno
+- dos
+
+## Files Touched
+
+- `src/a.py`
+
+## Key Decisions
+
+- usar Rust
+
+## Next Steps
+
+(none)
+
+### S07 note handoff
+rc=0
+path={{ROOT}}/n07/sessions/{{SID}}_handoff.md
+indexed=['sessions/{{SID}}_handoff.md']
+---
+---
+schema_version: 1
+doc_type: session
+title: Handoff
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags:
+- session
+- x
+- handoff
+status: handoff
+links: []
+vault_scope: local
+fingerprint: {{FP}}
+session_id: {{SID}}
+pr: null
+branch: null
+commit: null
+cortex_telemetry: null
+---
+
+## ⚠ Gitless Session
+
+This session was opened in a workspace without a usable git repository.
+The documenter was unable to compute a git diff at close time, so the
+"Changes Made" and "Files Touched" sections below are reconstructed
+**exclusively from agent checkpoints**. A checkpoint can claim a touch
+the agent did not actually perform — there's no objective ground truth
+to cross-check.
+
+To restore full documenter fidelity in future sessions, run:
+
+```
+git init && git add -A && git commit -m "initial"
+```
+
+## Original Specification
+
+seguir
+
+## Changes Made
+
+(none)
+
+## Files Touched
+
+(none)
+
+## Key Decisions
+
+(none)
+
+## Next Steps
+
+(none)
+
+## Verified State
+
+- tests
+
+## Unverified Claims
+
+- perf
+
+## Blockers
+
+- B1
+
+## Tasks (1/1 completed)
+
+- T1 —  `[done]`
+
+## Suggested Skills for Next Session
+
+- rust
+### S08 rollback semantic
+rc=0
+error=RuntimeError: semantic indexing failed
+files=[]### S09 rollback episodic
+rc=0
+error=RuntimeError: episodic add failed
+files=[]### S10 note no-remember sync
+rc=0
+events=['index', 'sync']
+episodic=[]
+exists=True

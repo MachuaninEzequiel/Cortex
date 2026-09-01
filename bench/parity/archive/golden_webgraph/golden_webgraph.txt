@@ -1,0 +1,984 @@
+### CFG rc=200 ct=application/json
+{"auto_open_browser":true,"default_mode":"hybrid","enable_semantic_neighbors":true,"ignored_tags":["general"],"max_subgraph_depth":2,"semantic_neighbor_max_edges_per_node":2,"semantic_neighbor_max_nodes":220,"semantic_neighbor_threshold":0.82,"server_host":"127.0.0.1","server_port":8765}
+
+### S00_sin_header rc=403 STATUS_ONLY
+### S01_snapshot_hybrid_default rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[{"edge_type":"wikilink","evidence":["RB-deploy"],"id":"wikilink:semantic:specs/2026-05-01_auth-spec.md:semantic:runbooks/RB-deploy.md","source":"semantic:specs/2026-05-01_auth-spec.md","target":"semantic:runbooks/RB-deploy.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, login, spec"],"id":"same_spec_reference:semantic:sessions/2026-05-03_login-session.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:sessions/2026-05-03_login-session.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"superseded_by","evidence":["superseded_by: ADR-001"],"id":"superseded_by:semantic:decisions/ADR-000-legacy.md:semantic:decisions/ADR-001-tokens.md","source":"semantic:decisions/ADR-000-legacy.md","target":"semantic:decisions/ADR-001-tokens.md","weight":1.4},{"edge_type":"same_file_reference","evidence":["specs/2026-05-01_auth-spec.md"],"id":"same_file_reference:episodic:mem_01:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_01","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.3},{"edge_type":"shared_tag","evidence":["session"],"id":"shared_tag:episodic:mem_01:semantic:sessions/2026-05-03_login-session.md","source":"episodic:mem_01","target":"semantic:sessions/2026-05-03_login-session.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, spec, tokens"],"id":"same_spec_reference:episodic:mem_02:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_02","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"same_file_reference","evidence":["runbooks/RB-deploy.md"],"id":"same_file_reference:episodic:mem_03:semantic:runbooks/RB-deploy.md","source":"episodic:mem_03","target":"semantic:runbooks/RB-deploy.md","weight":1.3},{"edge_type":"semantic_neighbor","evidence":["cosine=0.942"],"id":"semantic_neighbor:semantic:decisions/ADR-000-legacy.md:semantic:decisions/DEC-2026-05-02-cache.md","source":"semantic:decisions/ADR-000-legacy.md","target":"semantic:decisions/DEC-2026-05-02-cache.md","weight":0.942225751980454},{"edge_type":"semantic_neighbor","evidence":["cosine=0.860"],"id":"semantic_neighbor:semantic:decisions/ADR-000-legacy.md:semantic:glossary/rrf.md","source":"semantic:decisions/ADR-000-legacy.md","target":"semantic:glossary/rrf.md","weight":0.859716758015826},{"edge_type":"semantic_neighbor","evidence":["cosine=0.922"],"id":"semantic_neighbor:semantic:decisions/ADR-001-tokens.md:semantic:notes/ideas.md","source":"semantic:decisions/ADR-001-tokens.md","target":"semantic:notes/ideas.md","weight":0.9220028505131977},{"edge_type":"semantic_neighbor","evidence":["cosine=0.901"],"id":"semantic_neighbor:semantic:decisions/ADR-001-tokens.md:semantic:sessions/2026-05-03_login-session.md","source":"semantic:decisions/ADR-001-tokens.md","target":"semantic:sessions/2026-05-03_login-session.md","weight":0.9008491893519102},{"edge_type":"semantic_neighbor","evidence":["cosine=0.904"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:runbooks/RB-deploy.md","source":"semantic:notes/ideas.md","target":"semantic:runbooks/RB-deploy.md","weight":0.9040599922209588},{"edge_type":"semantic_neighbor","evidence":["cosine=0.897"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:sessions/2026-05-03_login-session.md","source":"semantic:notes/ideas.md","target":"semantic:sessions/2026-05-03_login-session.md","weight":0.8967123527966059},{"edge_type":"semantic_neighbor","evidence":["cosine=0.821"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:notes/ideas.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8213659514621316},{"edge_type":"semantic_neighbor","evidence":["cosine=0.896"],"id":"semantic_neighbor:episodic:mem_02:semantic:decisions/ADR-001-tokens.md","source":"episodic:mem_02","target":"semantic:decisions/ADR-001-tokens.md","weight":0.8964557369496794},{"edge_type":"semantic_neighbor","evidence":["cosine=0.980"],"id":"semantic_neighbor:episodic:mem_02:semantic:notes/ideas.md","source":"episodic:mem_02","target":"semantic:notes/ideas.md","weight":0.9801702348972142},{"edge_type":"semantic_neighbor","evidence":["cosine=0.878"],"id":"semantic_neighbor:episodic:mem_02:semantic:runbooks/RB-deploy.md","source":"episodic:mem_02","target":"semantic:runbooks/RB-deploy.md","weight":0.8780762560302183},{"edge_type":"semantic_neighbor","evidence":["cosine=0.960"],"id":"semantic_neighbor:episodic:mem_03:semantic:decisions/ADR-000-legacy.md","source":"episodic:mem_03","target":"semantic:decisions/ADR-000-legacy.md","weight":0.9596494957240437},{"edge_type":"semantic_neighbor","evidence":["cosine=0.856"],"id":"semantic_neighbor:episodic:mem_03:semantic:decisions/DEC-2026-05-02-cache.md","source":"episodic:mem_03","target":"semantic:decisions/DEC-2026-05-02-cache.md","weight":0.8562274240279794},{"edge_type":"semantic_neighbor","evidence":["cosine=0.892"],"id":"semantic_neighbor:episodic:mem_03:semantic:glossary/rrf.md","source":"episodic:mem_03","target":"semantic:glossary/rrf.md","weight":0.8919490850549564},{"edge_type":"semantic_neighbor","evidence":["cosine=0.953"],"id":"semantic_neighbor:episodic:mem_03:semantic:notes/ideas.md","source":"episodic:mem_03","target":"semantic:notes/ideas.md","weight":0.9526919036834995},{"edge_type":"semantic_neighbor","evidence":["cosine=0.838"],"id":"semantic_neighbor:episodic:mem_03:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_03","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8377501190201989}],"fingerprint":"{{FP}}","generated_at":"{{TS}}","legend":{"doc_types":[{"color":"#88aaff","shape":"rectangle","type":"session"},{"color":"#ffaa44","shape":"diamond","type":"handoff"},{"color":"#88ddaa","shape":"rectangle","type":"spec"},{"color":"#cc66ff","shape":"hexagon","type":"adr"},{"color":"#aa88cc","shape":"hexagon","type":"decision"},{"color":"#ff6666","shape":"diamond","type":"incident"},{"color":"#aa4444","shape":"diamond","type":"postmortem"},{"color":"#66cccc","shape":"rectangle","type":"runbook"},{"color":"#6688cc","shape":"rectangle","type":"architecture"},{"color":"#999999","shape":"rectangle","type":"changelog"},{"color":"#ccaa66","shape":"ellipse","type":"hu"},{"color":"#cccc66","shape":"ellipse","type":"glossary"},{"color":"#66aaee","shape":"rectangle","type":"design"},{"color":"#9b59b6","shape":"diamond","type":"episodic"}],"edge_types":[{"color":"#666666","label":"links to","style":"solid","type":"wiki_link"},{"color":"#aaaaaa","label":"co-occurs","style":"dashed","type":"co_occurrence"},{"color":"#88aaff","label":"imports","style":"solid","type":"imports"},{"color":"#88dd88","label":"tested by","style":"dotted","type":"tested_by"},{"color":"#dd6666","label":"supersedes","style":"solid","type":"supersedes"},{"color":"#9e9e9e","label":"superseded by","style":"dotted","type":"superseded_by"},{"color":"#aa66cc","label":"promoted from","style":"dashed","type":"promoted_from"}]},"mode":"hybrid","nodes":[{"degree":6,"files":["runbooks/RB-deploy.md"],"id":"episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":2,"files":["specs/2026-05-01_auth-spec.md"],"id":"episodic:mem_01","label":"Se arregl\u00f3 el bug del parser de tokens del login.","memory_id":"mem_01","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_session","rel_path":null,"source":"episodic","summary":"Se arregl\u00f3 el bug del parser de tokens del login.","tags":["session"],"timestamp":"2026-05-03T09:00:00+00:00"},{"degree":4,"files":[],"id":"episodic:mem_02","label":"Spec promoted: autenticaci\u00f3n con tokens y cache.","memory_id":"mem_02","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_spec","rel_path":null,"source":"episodic","summary":"Spec promoted: autenticaci\u00f3n con tokens y cache.","tags":["spec"],"timestamp":"2026-05-02T08:00:00+00:00"},{"degree":4,"files":[],"id":"semantic:decisions/ADR-000-legacy.md","label":"ADR-000 legacy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-000-legacy.md","adr_number":0,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-000-legacy.md","project_id":"alpha","scope":"local","shape":"hexagon","superseded_by":"ADR-001","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-000-legacy.md","source":"semantic","summary":"# ADR-000 Sistema viejo de sesiones cookie.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:decisions/ADR-001-tokens.md","label":"ADR-001 tokens JWT","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-001-tokens.md","adr_number":1,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-001-tokens.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-001-tokens.md","source":"semantic","summary":"# ADR-001: tokens JWT Decidimos usar tokens JWT cortos.","tags":[],"timestamp":null},{"degree":2,"files":[],"id":"semantic:decisions/DEC-2026-05-02-cache.md","label":"DEC cache h\u00edbrido","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/DEC-2026-05-02-cache.md","color":"#aa88cc","doc_type":"decision","path":"decisions/DEC-2026-05-02-cache.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/DEC-2026-05-02-cache.md","source":"semantic","summary":"# Decisi\u00f3n cache Cache h\u00edbrido para retrieval del spec.","tags":[],"timestamp":null},{"degree":6,"files":[],"id":"semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:runbooks/RB-deploy.md","label":"RB deploy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/runbooks/RB-deploy.md","color":"#66cccc","doc_type":"runbook","path":"runbooks/RB-deploy.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"runbooks/RB-deploy.md","source":"semantic","summary":"# Runbook deploy Deploy con rollback seguro.","tags":[],"timestamp":null},{"degree":2,"files":[],"id":"semantic:glossary/rrf.md","label":"RRF","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/glossary/rrf.md","color":"#cccc66","doc_type":"glossary","path":"glossary/rrf.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"glossary/rrf.md","source":"semantic","summary":"# RRF Reciprocal Rank Fusion combina rankings de retrieval.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:sessions/2026-05-03_login-session.md","label":"Sesi\u00f3n login","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/sessions/2026-05-03_login-session.md","color":"#88aaff","doc_type":"session","path":"sessions/2026-05-03_login-session.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_session","rel_path":"sessions/2026-05-03_login-session.md","source":"semantic","summary":"# Sesi\u00f3n: login Se implement\u00f3 el spec de autenticaci\u00f3n con tokens jwt y cache retrieval.","tags":["session"],"timestamp":null},{"degree":6,"files":[],"id":"semantic:specs/2026-05-01_auth-spec.md","label":"Spec de autenticaci\u00f3n","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/specs/2026-05-01_auth-spec.md","color":"#88ddaa","doc_type":"spec","path":"specs/2026-05-01_auth-spec.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_spec","rel_path":"specs/2026-05-01_auth-spec.md","source":"semantic","summary":"# Spec: autenticaci\u00f3n Login con tokens [[ADR-001]] y fusion [[glossary/rrf]]. Runbook asociado: [[RB-deploy]].","tags":[],"timestamp":null}],"stats":{"edge_count":22,"mode":"hybrid","node_count":11,"truncated":false},"version":"2.0"}
+
+### S02_snapshot_semantic rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[{"edge_type":"wikilink","evidence":["RB-deploy"],"id":"wikilink:semantic:specs/2026-05-01_auth-spec.md:semantic:runbooks/RB-deploy.md","source":"semantic:specs/2026-05-01_auth-spec.md","target":"semantic:runbooks/RB-deploy.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, login, spec"],"id":"same_spec_reference:semantic:sessions/2026-05-03_login-session.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:sessions/2026-05-03_login-session.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"superseded_by","evidence":["superseded_by: ADR-001"],"id":"superseded_by:semantic:decisions/ADR-000-legacy.md:semantic:decisions/ADR-001-tokens.md","source":"semantic:decisions/ADR-000-legacy.md","target":"semantic:decisions/ADR-001-tokens.md","weight":1.4}],"fingerprint":"{{FP}}","generated_at":"{{TS}}","legend":{"doc_types":[{"color":"#88aaff","shape":"rectangle","type":"session"},{"color":"#ffaa44","shape":"diamond","type":"handoff"},{"color":"#88ddaa","shape":"rectangle","type":"spec"},{"color":"#cc66ff","shape":"hexagon","type":"adr"},{"color":"#aa88cc","shape":"hexagon","type":"decision"},{"color":"#ff6666","shape":"diamond","type":"incident"},{"color":"#aa4444","shape":"diamond","type":"postmortem"},{"color":"#66cccc","shape":"rectangle","type":"runbook"},{"color":"#6688cc","shape":"rectangle","type":"architecture"},{"color":"#999999","shape":"rectangle","type":"changelog"},{"color":"#ccaa66","shape":"ellipse","type":"hu"},{"color":"#cccc66","shape":"ellipse","type":"glossary"},{"color":"#66aaee","shape":"rectangle","type":"design"},{"color":"#9b59b6","shape":"diamond","type":"episodic"}],"edge_types":[{"color":"#666666","label":"links to","style":"solid","type":"wiki_link"},{"color":"#aaaaaa","label":"co-occurs","style":"dashed","type":"co_occurrence"},{"color":"#88aaff","label":"imports","style":"solid","type":"imports"},{"color":"#88dd88","label":"tested by","style":"dotted","type":"tested_by"},{"color":"#dd6666","label":"supersedes","style":"solid","type":"supersedes"},{"color":"#9e9e9e","label":"superseded by","style":"dotted","type":"superseded_by"},{"color":"#aa66cc","label":"promoted from","style":"dashed","type":"promoted_from"}]},"mode":"semantic","nodes":[{"degree":1,"files":[],"id":"semantic:decisions/ADR-000-legacy.md","label":"ADR-000 legacy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-000-legacy.md","adr_number":0,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-000-legacy.md","project_id":"alpha","scope":"local","shape":"hexagon","superseded_by":"ADR-001","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-000-legacy.md","source":"semantic","summary":"# ADR-000 Sistema viejo de sesiones cookie.","tags":[],"timestamp":null},{"degree":1,"files":[],"id":"semantic:decisions/ADR-001-tokens.md","label":"ADR-001 tokens JWT","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-001-tokens.md","adr_number":1,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-001-tokens.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-001-tokens.md","source":"semantic","summary":"# ADR-001: tokens JWT Decidimos usar tokens JWT cortos.","tags":[],"timestamp":null},{"degree":0,"files":[],"id":"semantic:decisions/DEC-2026-05-02-cache.md","label":"DEC cache h\u00edbrido","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/DEC-2026-05-02-cache.md","color":"#aa88cc","doc_type":"decision","path":"decisions/DEC-2026-05-02-cache.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/DEC-2026-05-02-cache.md","source":"semantic","summary":"# Decisi\u00f3n cache Cache h\u00edbrido para retrieval del spec.","tags":[],"timestamp":null},{"degree":0,"files":[],"id":"semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null},{"degree":1,"files":[],"id":"semantic:runbooks/RB-deploy.md","label":"RB deploy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/runbooks/RB-deploy.md","color":"#66cccc","doc_type":"runbook","path":"runbooks/RB-deploy.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"runbooks/RB-deploy.md","source":"semantic","summary":"# Runbook deploy Deploy con rollback seguro.","tags":[],"timestamp":null},{"degree":0,"files":[],"id":"semantic:glossary/rrf.md","label":"RRF","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/glossary/rrf.md","color":"#cccc66","doc_type":"glossary","path":"glossary/rrf.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"glossary/rrf.md","source":"semantic","summary":"# RRF Reciprocal Rank Fusion combina rankings de retrieval.","tags":[],"timestamp":null},{"degree":1,"files":[],"id":"semantic:sessions/2026-05-03_login-session.md","label":"Sesi\u00f3n login","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/sessions/2026-05-03_login-session.md","color":"#88aaff","doc_type":"session","path":"sessions/2026-05-03_login-session.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_session","rel_path":"sessions/2026-05-03_login-session.md","source":"semantic","summary":"# Sesi\u00f3n: login Se implement\u00f3 el spec de autenticaci\u00f3n con tokens jwt y cache retrieval.","tags":["session"],"timestamp":null},{"degree":2,"files":[],"id":"semantic:specs/2026-05-01_auth-spec.md","label":"Spec de autenticaci\u00f3n","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/specs/2026-05-01_auth-spec.md","color":"#88ddaa","doc_type":"spec","path":"specs/2026-05-01_auth-spec.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_spec","rel_path":"specs/2026-05-01_auth-spec.md","source":"semantic","summary":"# Spec: autenticaci\u00f3n Login con tokens [[ADR-001]] y fusion [[glossary/rrf]]. Runbook asociado: [[RB-deploy]].","tags":[],"timestamp":null}],"stats":{"edge_count":3,"mode":"semantic","node_count":8,"truncated":false},"version":"2.0"}
+
+### S03_snapshot_episodic rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[],"fingerprint":"{{FP}}","generated_at":"{{TS}}","legend":{"doc_types":[{"color":"#88aaff","shape":"rectangle","type":"session"},{"color":"#ffaa44","shape":"diamond","type":"handoff"},{"color":"#88ddaa","shape":"rectangle","type":"spec"},{"color":"#cc66ff","shape":"hexagon","type":"adr"},{"color":"#aa88cc","shape":"hexagon","type":"decision"},{"color":"#ff6666","shape":"diamond","type":"incident"},{"color":"#aa4444","shape":"diamond","type":"postmortem"},{"color":"#66cccc","shape":"rectangle","type":"runbook"},{"color":"#6688cc","shape":"rectangle","type":"architecture"},{"color":"#999999","shape":"rectangle","type":"changelog"},{"color":"#ccaa66","shape":"ellipse","type":"hu"},{"color":"#cccc66","shape":"ellipse","type":"glossary"},{"color":"#66aaee","shape":"rectangle","type":"design"},{"color":"#9b59b6","shape":"diamond","type":"episodic"}],"edge_types":[{"color":"#666666","label":"links to","style":"solid","type":"wiki_link"},{"color":"#aaaaaa","label":"co-occurs","style":"dashed","type":"co_occurrence"},{"color":"#88aaff","label":"imports","style":"solid","type":"imports"},{"color":"#88dd88","label":"tested by","style":"dotted","type":"tested_by"},{"color":"#dd6666","label":"supersedes","style":"solid","type":"supersedes"},{"color":"#9e9e9e","label":"superseded by","style":"dotted","type":"superseded_by"},{"color":"#aa66cc","label":"promoted from","style":"dashed","type":"promoted_from"}]},"mode":"episodic","nodes":[{"degree":0,"files":["runbooks/RB-deploy.md"],"id":"episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":0,"files":["specs/2026-05-01_auth-spec.md"],"id":"episodic:mem_01","label":"Se arregl\u00f3 el bug del parser de tokens del login.","memory_id":"mem_01","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_session","rel_path":null,"source":"episodic","summary":"Se arregl\u00f3 el bug del parser de tokens del login.","tags":["session"],"timestamp":"2026-05-03T09:00:00+00:00"},{"degree":0,"files":[],"id":"episodic:mem_02","label":"Spec promoted: autenticaci\u00f3n con tokens y cache.","memory_id":"mem_02","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_spec","rel_path":null,"source":"episodic","summary":"Spec promoted: autenticaci\u00f3n con tokens y cache.","tags":["spec"],"timestamp":"2026-05-02T08:00:00+00:00"}],"stats":{"edge_count":0,"mode":"episodic","node_count":3,"truncated":false},"version":"2.0"}
+
+### S04_mode_invalido rc=400 ct=application/json
+{"error":"Invalid mode 'bogus'. Expected one of: ['episodic', 'hybrid', 'semantic']"}
+
+### S05_node_detail_spec rc=200 ct=application/json
+{"neighbors":[{"degree":2,"files":["specs/2026-05-01_auth-spec.md"],"id":"episodic:mem_01","label":"Se arregl\u00f3 el bug del parser de tokens del login.","memory_id":"mem_01","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_session","rel_path":null,"source":"episodic","summary":"Se arregl\u00f3 el bug del parser de tokens del login.","tags":["session"],"timestamp":"2026-05-03T09:00:00+00:00"},{"degree":4,"files":[],"id":"episodic:mem_02","label":"Spec promoted: autenticaci\u00f3n con tokens y cache.","memory_id":"mem_02","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_spec","rel_path":null,"source":"episodic","summary":"Spec promoted: autenticaci\u00f3n con tokens y cache.","tags":["spec"],"timestamp":"2026-05-02T08:00:00+00:00"},{"degree":6,"files":["runbooks/RB-deploy.md"],"id":"episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":6,"files":[],"id":"semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:runbooks/RB-deploy.md","label":"RB deploy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/runbooks/RB-deploy.md","color":"#66cccc","doc_type":"runbook","path":"runbooks/RB-deploy.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"runbooks/RB-deploy.md","source":"semantic","summary":"# Runbook deploy Deploy con rollback seguro.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:sessions/2026-05-03_login-session.md","label":"Sesi\u00f3n login","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/sessions/2026-05-03_login-session.md","color":"#88aaff","doc_type":"session","path":"sessions/2026-05-03_login-session.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_session","rel_path":"sessions/2026-05-03_login-session.md","source":"semantic","summary":"# Sesi\u00f3n: login Se implement\u00f3 el spec de autenticaci\u00f3n con tokens jwt y cache retrieval.","tags":["session"],"timestamp":null}],"node":{"degree":6,"files":[],"id":"semantic:specs/2026-05-01_auth-spec.md","label":"Spec de autenticaci\u00f3n","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/specs/2026-05-01_auth-spec.md","color":"#88ddaa","doc_type":"spec","path":"specs/2026-05-01_auth-spec.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_spec","rel_path":"specs/2026-05-01_auth-spec.md","source":"semantic","summary":"# Spec: autenticaci\u00f3n Login con tokens [[ADR-001]] y fusion [[glossary/rrf]]. Runbook asociado: [[RB-deploy]].","tags":[],"timestamp":null},"relations":[{"edge_type":"wikilink","evidence":["RB-deploy"],"id":"wikilink:semantic:specs/2026-05-01_auth-spec.md:semantic:runbooks/RB-deploy.md","source":"semantic:specs/2026-05-01_auth-spec.md","target":"semantic:runbooks/RB-deploy.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, login, spec"],"id":"same_spec_reference:semantic:sessions/2026-05-03_login-session.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:sessions/2026-05-03_login-session.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"same_file_reference","evidence":["specs/2026-05-01_auth-spec.md"],"id":"same_file_reference:episodic:mem_01:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_01","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.3},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, spec, tokens"],"id":"same_spec_reference:episodic:mem_02:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_02","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"semantic_neighbor","evidence":["cosine=0.821"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:notes/ideas.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8213659514621316},{"edge_type":"semantic_neighbor","evidence":["cosine=0.838"],"id":"semantic_neighbor:episodic:mem_03:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_03","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8377501190201989}]}
+
+### S06_node_missing rc=404 ct=application/json
+{"error":"Unknown node: missing-node"}
+
+### S07_subgraph_depth1 rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[{"edge_type":"wikilink","evidence":["RB-deploy"],"id":"wikilink:semantic:specs/2026-05-01_auth-spec.md:semantic:runbooks/RB-deploy.md","source":"semantic:specs/2026-05-01_auth-spec.md","target":"semantic:runbooks/RB-deploy.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, login, spec"],"id":"same_spec_reference:semantic:sessions/2026-05-03_login-session.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:sessions/2026-05-03_login-session.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"same_file_reference","evidence":["specs/2026-05-01_auth-spec.md"],"id":"same_file_reference:episodic:mem_01:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_01","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.3},{"edge_type":"shared_tag","evidence":["session"],"id":"shared_tag:episodic:mem_01:semantic:sessions/2026-05-03_login-session.md","source":"episodic:mem_01","target":"semantic:sessions/2026-05-03_login-session.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, spec, tokens"],"id":"same_spec_reference:episodic:mem_02:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_02","target":"semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"same_file_reference","evidence":["runbooks/RB-deploy.md"],"id":"same_file_reference:episodic:mem_03:semantic:runbooks/RB-deploy.md","source":"episodic:mem_03","target":"semantic:runbooks/RB-deploy.md","weight":1.3},{"edge_type":"semantic_neighbor","evidence":["cosine=0.904"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:runbooks/RB-deploy.md","source":"semantic:notes/ideas.md","target":"semantic:runbooks/RB-deploy.md","weight":0.9040599922209588},{"edge_type":"semantic_neighbor","evidence":["cosine=0.897"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:sessions/2026-05-03_login-session.md","source":"semantic:notes/ideas.md","target":"semantic:sessions/2026-05-03_login-session.md","weight":0.8967123527966059},{"edge_type":"semantic_neighbor","evidence":["cosine=0.821"],"id":"semantic_neighbor:semantic:notes/ideas.md:semantic:specs/2026-05-01_auth-spec.md","source":"semantic:notes/ideas.md","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8213659514621316},{"edge_type":"semantic_neighbor","evidence":["cosine=0.980"],"id":"semantic_neighbor:episodic:mem_02:semantic:notes/ideas.md","source":"episodic:mem_02","target":"semantic:notes/ideas.md","weight":0.9801702348972142},{"edge_type":"semantic_neighbor","evidence":["cosine=0.878"],"id":"semantic_neighbor:episodic:mem_02:semantic:runbooks/RB-deploy.md","source":"episodic:mem_02","target":"semantic:runbooks/RB-deploy.md","weight":0.8780762560302183},{"edge_type":"semantic_neighbor","evidence":["cosine=0.953"],"id":"semantic_neighbor:episodic:mem_03:semantic:notes/ideas.md","source":"episodic:mem_03","target":"semantic:notes/ideas.md","weight":0.9526919036834995},{"edge_type":"semantic_neighbor","evidence":["cosine=0.838"],"id":"semantic_neighbor:episodic:mem_03:semantic:specs/2026-05-01_auth-spec.md","source":"episodic:mem_03","target":"semantic:specs/2026-05-01_auth-spec.md","weight":0.8377501190201989}],"fingerprint":"{{FP}}","generated_at":"{{TS}}","mode":"hybrid","nodes":[{"degree":6,"files":["runbooks/RB-deploy.md"],"id":"episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":2,"files":["specs/2026-05-01_auth-spec.md"],"id":"episodic:mem_01","label":"Se arregl\u00f3 el bug del parser de tokens del login.","memory_id":"mem_01","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_session","rel_path":null,"source":"episodic","summary":"Se arregl\u00f3 el bug del parser de tokens del login.","tags":["session"],"timestamp":"2026-05-03T09:00:00+00:00"},{"degree":4,"files":[],"id":"episodic:mem_02","label":"Spec promoted: autenticaci\u00f3n con tokens y cache.","memory_id":"mem_02","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_spec","rel_path":null,"source":"episodic","summary":"Spec promoted: autenticaci\u00f3n con tokens y cache.","tags":["spec"],"timestamp":"2026-05-02T08:00:00+00:00"},{"degree":6,"files":[],"id":"semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:runbooks/RB-deploy.md","label":"RB deploy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/runbooks/RB-deploy.md","color":"#66cccc","doc_type":"runbook","path":"runbooks/RB-deploy.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"runbooks/RB-deploy.md","source":"semantic","summary":"# Runbook deploy Deploy con rollback seguro.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"semantic:sessions/2026-05-03_login-session.md","label":"Sesi\u00f3n login","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/sessions/2026-05-03_login-session.md","color":"#88aaff","doc_type":"session","path":"sessions/2026-05-03_login-session.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_session","rel_path":"sessions/2026-05-03_login-session.md","source":"semantic","summary":"# Sesi\u00f3n: login Se implement\u00f3 el spec de autenticaci\u00f3n con tokens jwt y cache retrieval.","tags":["session"],"timestamp":null},{"degree":6,"files":[],"id":"semantic:specs/2026-05-01_auth-spec.md","label":"Spec de autenticaci\u00f3n","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/specs/2026-05-01_auth-spec.md","color":"#88ddaa","doc_type":"spec","path":"specs/2026-05-01_auth-spec.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_spec","rel_path":"specs/2026-05-01_auth-spec.md","source":"semantic","summary":"# Spec: autenticaci\u00f3n Login con tokens [[ADR-001]] y fusion [[glossary/rrf]]. Runbook asociado: [[RB-deploy]].","tags":[],"timestamp":null}],"stats":{"edge_count":13,"mode":"hybrid","node_count":7,"truncated":false},"version":"2.0"}
+
+### S08_subgraph_edge_types rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[],"fingerprint":"{{FP}}","generated_at":"{{TS}}","mode":"hybrid","nodes":[{"degree":6,"files":[],"id":"semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null}],"stats":{"edge_count":0,"mode":"hybrid","node_count":1,"truncated":false},"version":"2.0"}
+
+### S09_open_unknown rc=404 ct=application/json
+{"error":"Unknown node: missing"}
+
+### S10_open_body_invalido rc=400 ct=application/json
+{"error":"Missing node_id"}
+
+### S11_open_sin_doc_local rc=400 ct=application/json
+{"error":"Selected node has no local document"}
+
+### S12_open_ok rc=200 ct=application/json
+{"path":"{{ROOT}}/alpha/vault/glossary/rrf.md","status":"ok"}
+
+### S13_static_css rc=200 ct=text/css; charset=utf-8
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(255, 190, 92, 0.22), transparent 28%),
+        radial-gradient(circle at top right, rgba(42, 143, 255, 0.18), transparent 34%),
+        linear-gradient(180deg, #edf3f8, #dce6ee);
+    color: #183045;
+}
+
+.shell {
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 28px 20px 44px;
+}
+
+.hero h1 {
+    margin: 0 0 8px;
+    font-size: clamp(2rem, 2.8vw, 3.1rem);
+}
+
+.hero p {
+    margin: 0 0 24px;
+    max-width: 760px;
+    color: #37536a;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.95fr);
+    gap: 18px;
+}
+
+.canvas-panel,
+.detail-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(24, 48, 69, 0.12);
+    border-radius: 18px;
+    box-shadow: 0 14px 34px rgba(24, 48, 69, 0.08);
+}
+
+.canvas-panel {
+    padding: 16px;
+    min-height: 720px;
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.toolbar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 132px;
+}
+
+.toolbar-actions {
+    margin-left: auto;
+    flex-direction: row;
+    align-items: center;
+}
+
+.search-row {
+    display: flex;
+    gap: 8px;
+    min-width: 280px;
+}
+
+label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #446279;
+}
+
+select,
+button,
+input {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(24, 48, 69, 0.2);
+    background: #fff;
+    color: #183045;
+}
+
+button {
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+button:hover:enabled {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(24, 48, 69, 0.12);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.statusbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.status-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(16, 34, 51, 0.06);
+    color: #233d51;
+    font-size: 0.92rem;
+}
+
+.status-label,
+.eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #607b90;
+    font-weight: 700;
+}
+
+.network-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 580px;
+    border-radius: 16px;
+    border: 1px solid rgba(24, 48, 69, 0.1);
+    background:
+        radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.7), transparent 26%),
+        linear-gradient(180deg, rgba(245, 249, 252, 0.95), rgba(228, 237, 245, 0.96));
+    overflow: hidden;
+}
+
+.network-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-card {
+    padding: 16px;
+}
+
+.detail-card h2 {
+    margin: 6px 0 10px;
+    font-size: 1.25rem;
+}
+
+.detail-summary {
+    margin: 0 0 14px;
+    color: #39556c;
+    line-height: 1.45;
+}
+
+.detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(16, 34, 51, 0.06);
+    color: #223c50;
+    font-size: 0.9rem;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.detail-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.detail-list li {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(16, 34, 51, 0.045);
+    line-height: 1.35;
+}
+
+.detail-list button {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+    transform: none;
+    color: inherit;
+}
+
+.detail-empty {
+    color: #6c879c;
+}
+
+.relation-type {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #59758a;
+}
+
+.neighbor-label {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.neighbor-meta {
+    color: #5b788d;
+    font-size: 0.92rem;
+}
+
+.toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #102233;
+    color: #edf5ff;
+    box-shadow: 0 14px 34px rgba(24, 48, 69, 0.18);
+    z-index: 999;
+}
+
+@media (max-width: 1080px) {
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .canvas-panel {
+        min-height: 640px;
+    }
+}
+
+@media (max-width: 720px) {
+    .shell {
+        padding-inline: 14px;
+    }
+
+    .toolbar-actions {
+        margin-left: 0;
+    }
+
+    .search-row {
+        min-width: 0;
+    }
+
+    .network-canvas {
+        min-height: 480px;
+    }
+}
+
+### S14_static_js rc=200 ct=text/javascript; charset=utf-8
+const modeSelect = document.getElementById("mode");
+const projectFilter = document.getElementById("project-filter");
+const typeFilter = document.getElementById("type-filter");
+const timeFilter = document.getElementById("time-filter");
+const depthSelect = document.getElementById("depth");
+const searchInput = document.getElementById("search");
+const searchButton = document.getElementById("search-button");
+const reloadButton = document.getElementById("reload");
+const resetButton = document.getElementById("reset-view");
+const openNodeButton = document.getElementById("open-node");
+const loadSubgraphButton = document.getElementById("load-subgraph");
+
+const detailTitle = document.getElementById("detail-title");
+const detailSummary = document.getElementById("detail-summary");
+const detailMeta = document.getElementById("detail-meta");
+const relationList = document.getElementById("relation-list");
+const neighborList = document.getElementById("neighbor-list");
+
+const statusScope = document.getElementById("status-scope");
+const statusMode = document.getElementById("status-mode");
+const statusNodes = document.getElementById("status-nodes");
+const statusEdges = document.getElementById("status-edges");
+const statusFingerprint = document.getElementById("status-fingerprint");
+
+const networkContainer = document.getElementById("network");
+
+let network = null;
+let rootSnapshot = null;
+let currentBaseSnapshot = null;
+let currentSnapshot = null;
+let selectedNode = null;
+
+const nodePalette = {
+  semantic_spec: { color: "#ff9f43", shape: "hexagon" },
+  semantic_session: { color: "#10ac84", shape: "box" },
+  semantic_doc: { color: "#2e86de", shape: "dot" },
+  episodic_spec: { color: "#ee5253", shape: "diamond" },
+  episodic_session: { color: "#5f27cd", shape: "star" },
+  episodic_general: { color: "#576574", shape: "triangle" },
+};
+
+const edgePalette = {
+  wikilink: "#1f78b4",
+  same_spec_reference: "#d97706",
+  same_file_reference: "#16a34a",
+  shared_entity: "#9333ea",
+  shared_tag: "#0f766e",
+  semantic_neighbor: "#64748b",
+};
+
+function toast(message) {
+  const node = document.createElement("div");
+  node.className = "toast";
+  node.textContent = message;
+  document.body.appendChild(node);
+  setTimeout(() => node.remove(), 2800);
+}
+
+function labelForNode(node) {
+  return node.label || node.memory_id || node.rel_path || node.id;
+}
+
+function formatSource(node) {
+  return `${node.source}:${node.node_type}`;
+}
+
+function makeMetaPill(label, value) {
+  const pill = document.createElement("span");
+  pill.className = "meta-pill";
+  pill.innerHTML = `<strong>${label}</strong> ${value}`;
+  return pill;
+}
+
+function updateStatus(snapshot, baseSnapshot) {
+  statusScope.textContent = baseSnapshot && snapshot.fingerprint === baseSnapshot.fingerprint &&
+    snapshot.stats.node_count === baseSnapshot.stats.node_count &&
+    snapshot.stats.edge_count === baseSnapshot.stats.edge_count
+    ? "full"
+    : "filtered";
+  statusMode.textContent = snapshot.mode;
+  statusNodes.textContent = snapshot.stats.node_count;
+  statusEdges.textContent = snapshot.stats.edge_count;
+  statusFingerprint.textContent = snapshot.fingerprint.slice(0, 12);
+}
+
+function renderRelations(relations) {
+  relationList.innerHTML = "";
+  if (!relations.length) {
+    relationList.innerHTML = '<li class="detail-empty">No explicit relationships for this node in the current view.</li>';
+    return;
+  }
+  relations.forEach((relation) => {
+    const item = document.createElement("li");
+    const evidence = relation.evidence?.length ? relation.evidence.join(", ") : "No evidence";
+    item.innerHTML = `
+      <span class="relation-type">${relation.edge_type}</span>
+      <div>${relation.source} -> ${relation.target}</div>
+      <div class="neighbor-meta">${evidence}</div>
+    `;
+    relationList.appendChild(item);
+  });
+}
+
+function renderNeighbors(neighbors) {
+  neighborList.innerHTML = "";
+  if (!neighbors.length) {
+    neighborList.innerHTML = '<li class="detail-empty">No neighbors in the current graph slice.</li>';
+    return;
+  }
+  neighbors.forEach((neighbor) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.innerHTML = `
+      <div class="neighbor-label">${labelForNode(neighbor)}</div>
+      <div class="neighbor-meta">${formatSource(neighbor)}</div>
+    `;
+    button.addEventListener("click", () => focusNode(neighbor.id));
+    item.appendChild(button);
+    neighborList.appendChild(item);
+  });
+}
+
+function renderDetail(detail) {
+  selectedNode = detail.node;
+  detailTitle.textContent = labelForNode(detail.node);
+  detailSummary.textContent = detail.node.summary || "No summary available for this node.";
+  detailMeta.innerHTML = "";
+  detailMeta.appendChild(makeMetaPill("Type", detail.node.node_type));
+  detailMeta.appendChild(makeMetaPill("Source", detail.node.source));
+  detailMeta.appendChild(makeMetaPill("Degree", String(detail.node.degree ?? 0)));
+
+  const projectId = detail.node.metadata?.project_id;
+  if (projectId) {
+    detailMeta.appendChild(makeMetaPill("Project", projectId));
+  }
+  if (detail.node.rel_path) {
+    detailMeta.appendChild(makeMetaPill("Path", detail.node.rel_path));
+  }
+  if (detail.node.memory_id) {
+    detailMeta.appendChild(makeMetaPill("Memory", detail.node.memory_id));
+  }
+  if (detail.node.tags?.length) {
+    detailMeta.appendChild(makeMetaPill("Tags", detail.node.tags.join(", ")));
+  }
+  if (detail.node.timestamp) {
+    detailMeta.appendChild(makeMetaPill("Time", new Date(detail.node.timestamp).toLocaleString()));
+  }
+
+  openNodeButton.disabled = !detail.node.rel_path;
+  loadSubgraphButton.disabled = false;
+  renderRelations(detail.relations || []);
+  renderNeighbors(detail.neighbors || []);
+}
+
+function resetDetail() {
+  selectedNode = null;
+  detailTitle.textContent = "No node selected";
+  detailSummary.textContent = "Click a node to inspect its memory details, related artifacts, and available actions.";
+  detailMeta.innerHTML = "";
+  relationList.innerHTML = '<li class="detail-empty">No relationships yet.</li>';
+  neighborList.innerHTML = '<li class="detail-empty">Select a node to inspect its local neighborhood.</li>';
+  openNodeButton.disabled = true;
+  loadSubgraphButton.disabled = true;
+}
+
+function networkOptions(snapshot) {
+  const largerGraph = snapshot.stats.node_count > 120;
+  return {
+    autoResize: true,
+    physics: largerGraph
+      ? { enabled: false }
+      : {
+          enabled: true,
+          stabilization: { iterations: 160, fit: true },
+          barnesHut: { springLength: 140, gravitationalConstant: -3800 },
+        },
+    interaction: {
+      hover: true,
+      navigationButtons: true,
+      keyboard: true,
+      tooltipDelay: 120,
+    },
+    nodes: {
+      borderWidth: 2,
+      font: {
+        color: "#163246",
+        face: "Segoe UI",
+        size: 14,
+      },
+      shadow: {
+        enabled: true,
+        color: "rgba(24, 48, 69, 0.12)",
+        size: 10,
+      },
+    },
+    edges: {
+      smooth: { type: "dynamic" },
+      width: 2,
+      color: { inherit: false, opacity: 0.72 },
+    },
+  };
+}
+
+function normalizeNodes(nodes) {
+  return nodes.map((node) => {
+    const palette = nodePalette[node.node_type] || { color: "#3c6382", shape: "dot" };
+    const projectId = node.metadata?.project_id ? `Project: ${node.metadata.project_id}` : "";
+    const title = [
+      `<strong>${labelForNode(node)}</strong>`,
+      `${formatSource(node)}`,
+      projectId,
+      node.summary || "",
+    ]
+      .filter(Boolean)
+      .join("<br>");
+
+    return {
+      id: node.id,
+      label: labelForNode(node),
+      title,
+      shape: palette.shape,
+      color: {
+        background: palette.color,
+        border: "#173144",
+        highlight: { background: palette.color, border: "#0b1520" },
+      },
+      size: Math.max(18, 18 + Math.min(node.degree || 0, 10) * 1.8),
+      font: { color: "#132839" },
+    };
+  });
+}
+
+function normalizeEdges(edges) {
+  return edges.map((edge) => ({
+    id: edge.id,
+    from: edge.source,
+    to: edge.target,
+    label: edge.edge_type === "semantic_neighbor" ? "" : edge.edge_type,
+    title: edge.evidence?.length ? edge.evidence.join(", ") : edge.edge_type,
+    color: { color: edgePalette[edge.edge_type] || "#718096" },
+    dashes: edge.edge_type === "semantic_neighbor",
+    width: Math.max(1.5, edge.weight || 1.0),
+  }));
+}
+
+function buildNetwork(snapshot) {
+  const data = {
+    nodes: new vis.DataSet(normalizeNodes(snapshot.nodes)),
+    edges: new vis.DataSet(normalizeEdges(snapshot.edges)),
+  };
+
+  if (network) {
+    network.destroy();
+  }
+
+  network = new vis.Network(networkContainer, data, networkOptions(snapshot));
+
+  network.on("click", async (params) => {
+    if (!params.nodes.length) {
+      resetDetail();
+      return;
+    }
+    const nodeId = params.nodes[0];
+    await selectNode(nodeId);
+  });
+
+  network.on("doubleClick", async (params) => {
+    if (!params.nodes.length) {
+      return;
+    }
+    const nodeId = params.nodes[0];
+    await openNode(nodeId);
+  });
+}
+
+function syncFilterOptions(select, values, labelFactory) {
+  const previous = select.value;
+  const existing = Array.from(select.options)
+    .slice(1)
+    .map((option) => option.value);
+
+  if (JSON.stringify(existing) === JSON.stringify(values)) {
+    if (values.includes(previous) || previous === "all") {
+      select.value = previous;
+    }
+    return;
+  }
+
+  while (select.options.length > 1) {
+    select.remove(1);
+  }
+
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = labelFactory(value);
+    select.appendChild(option);
+  });
+
+  select.value = values.includes(previous) ? previous : "all";
+}
+
+function populateFilterOptions(snapshot) {
+  const projects = Array.from(
+    new Set(
+      snapshot.nodes
+        .map((node) => node.metadata?.project_id)
+        .filter(Boolean)
+    )
+  ).sort();
+  const nodeTypes = Array.from(new Set(snapshot.nodes.map((node) => node.node_type))).sort();
+
+  syncFilterOptions(projectFilter, projects, (value) => value);
+  syncFilterOptions(typeFilter, nodeTypes, (value) => value.replaceAll("_", " "));
+}
+
+function timeWindowToMs(value) {
+  if (value === "7d") {
+    return 7 * 24 * 60 * 60 * 1000;
+  }
+  if (value === "30d") {
+    return 30 * 24 * 60 * 60 * 1000;
+  }
+  if (value === "90d") {
+    return 90 * 24 * 60 * 60 * 1000;
+  }
+  return null;
+}
+
+function nodeMatchesFilters(node) {
+  if (projectFilter.value !== "all" && node.metadata?.project_id !== projectFilter.value) {
+    return false;
+  }
+  if (typeFilter.value !== "all" && node.node_type !== typeFilter.value) {
+    return false;
+  }
+
+  const timeWindowMs = timeWindowToMs(timeFilter.value);
+  if (timeWindowMs !== null && node.timestamp) {
+    const age = Date.now() - new Date(node.timestamp).getTime();
+    if (Number.isFinite(age) && age > timeWindowMs) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function filteredSnapshot(snapshot) {
+  const visibleNodes = snapshot.nodes.filter((node) => nodeMatchesFilters(node));
+  const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleEdges = snapshot.edges.filter(
+    (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+  );
+
+  return {
+    ...snapshot,
+    nodes: visibleNodes,
+    edges: visibleEdges,
+    stats: {
+      ...snapshot.stats,
+      node_count: visibleNodes.length,
+      edge_count: visibleEdges.length,
+    },
+  };
+}
+
+function refreshView({ preserveSelection = true } = {}) {
+  if (!currentBaseSnapshot) {
+    return;
+  }
+
+  currentSnapshot = filteredSnapshot(currentBaseSnapshot);
+  buildNetwork(currentSnapshot);
+  updateStatus(currentSnapshot, currentBaseSnapshot);
+  resetButton.disabled = currentBaseSnapshot === rootSnapshot;
+
+  if (preserveSelection && selectedNode) {
+    const exists = currentSnapshot.nodes.some((node) => node.id === selectedNode.id);
+    if (exists) {
+      focusNode(selectedNode.id);
+      return;
+    }
+  }
+  resetDetail();
+}
+
+async function loadSnapshot(mode = modeSelect.value) {
+  const response = await fetch(`/api/snapshot?mode=${encodeURIComponent(mode)}`, {
+    headers: { "X-Cortex-WebGraph": "1" },
+  });
+  if (!response.ok) {
+    throw new Error(`Snapshot request failed with ${response.status}`);
+  }
+  const snapshot = await response.json();
+  rootSnapshot = snapshot;
+  currentBaseSnapshot = snapshot;
+  populateFilterOptions(snapshot);
+  refreshView({ preserveSelection: false });
+}
+
+async function selectNode(nodeId) {
+  const response = await fetch(`/api/node/${encodeURIComponent(nodeId)}?mode=${encodeURIComponent(modeSelect.value)}`, {
+    headers: { "X-Cortex-WebGraph": "1" },
+  });
+  if (!response.ok) {
+    throw new Error(`Node detail request failed with ${response.status}`);
+  }
+  const detail = await response.json();
+  renderDetail(detail);
+}
+
+function focusNode(nodeId) {
+  if (!network) {
+    return;
+  }
+  network.selectNodes([nodeId]);
+  network.focus(nodeId, {
+    scale: 1.12,
+    animation: { duration: 500, easingFunction: "easeInOutQuad" },
+  });
+  selectNode(nodeId).catch((error) => toast(`Failed to load node detail: ${error.message}`));
+}
+
+async function openNode(nodeId = selectedNode?.id) {
+  if (!nodeId) {
+    return;
+  }
+  const response = await fetch("/api/open", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Cortex-WebGraph": "1",
+    },
+    body: JSON.stringify({ node_id: nodeId }),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    toast(payload.error || "Unable to open this node");
+    return;
+  }
+  toast("Document opened from Cortex WebGraph");
+}
+
+async function loadSubgraph(nodeId = selectedNode?.id) {
+  if (!nodeId) {
+    return;
+  }
+  const params = new URLSearchParams({
+    node_id: nodeId,
+    depth: depthSelect.value,
+    mode: modeSelect.value,
+  });
+  const response = await fetch(`/api/subgraph?${params.toString()}`, {
+    headers: { "X-Cortex-WebGraph": "1" },
+  });
+  if (!response.ok) {
+    throw new Error(`Subgraph request failed with ${response.status}`);
+  }
+  currentBaseSnapshot = await response.json();
+  refreshView();
+  await selectNode(nodeId);
+}
+
+function findNode() {
+  const term = searchInput.value.trim().toLowerCase();
+  if (!term || !currentSnapshot?.nodes?.length) {
+    return;
+  }
+  const match = currentSnapshot.nodes.find((node) => labelForNode(node).toLowerCase().includes(term));
+  if (!match) {
+    toast(`No node found for "${searchInput.value}"`);
+    return;
+  }
+  focusNode(match.id);
+}
+
+reloadButton.addEventListener("click", () => {
+  loadSnapshot().catch((error) => toast(`Failed to reload graph: ${error.message}`));
+});
+
+modeSelect.addEventListener("change", () => {
+  loadSnapshot(modeSelect.value).catch((error) => toast(`Failed to switch mode: ${error.message}`));
+});
+
+[projectFilter, typeFilter, timeFilter].forEach((element) => {
+  element.addEventListener("change", () => refreshView());
+});
+
+searchButton.addEventListener("click", findNode);
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    findNode();
+  }
+});
+
+openNodeButton.addEventListener("click", () => {
+  openNode().catch((error) => toast(`Failed to open node: ${error.message}`));
+});
+
+loadSubgraphButton.addEventListener("click", () => {
+  loadSubgraph().catch((error) => toast(`Failed to load subgraph: ${error.message}`));
+});
+
+resetButton.addEventListener("click", () => {
+  if (!rootSnapshot) {
+    return;
+  }
+  currentBaseSnapshot = rootSnapshot;
+  refreshView();
+});
+
+loadSnapshot().catch((error) => {
+  toast(`Failed to load snapshot: ${error.message}`);
+  networkContainer.innerHTML = `<p style="padding:16px;color:#7a1f1f;">Failed to load Cortex graph: ${error.message}</p>`;
+});
+
+### S15_index_html rc=200 ct=text/html; charset=utf-8
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cortex WebGraph</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="shell">
+        <header class="hero">
+            <h1>Cortex WebGraph</h1>
+            <p>Explore the visible brain of Cortex across semantic notes, episodic memories, and the explainable links between them.</p>
+        </header>
+
+        <section class="workspace">
+            <section class="canvas-panel">
+                <div class="toolbar">
+                    <div class="toolbar-group">
+                        <label for="mode">Mode</label>
+                        <select id="mode">
+                            <option value="hybrid" selected>Hybrid</option>
+                            <option value="semantic" >Semantic</option>
+                            <option value="episodic" >Episodic</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="project-filter">Project</label>
+                        <select id="project-filter">
+                            <option value="all">All projects</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="type-filter">Node Type</label>
+                        <select id="type-filter">
+                            <option value="all">All node types</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="time-filter">Time Window</label>
+                        <select id="time-filter">
+                            <option value="all">All time</option>
+                            <option value="7d">Last 7 days</option>
+                            <option value="30d">Last 30 days</option>
+                            <option value="90d">Last 90 days</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="search">Search</label>
+                        <div class="search-row">
+                            <input id="search" type="search" placeholder="Find a node by label">
+                            <button id="search-button">Find</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label for="depth">Depth</label>
+                        <select id="depth">
+                            <option value="1" selected>1 hop</option>
+                            <option value="2">2 hops</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group toolbar-actions">
+                        <button id="reload">Reload</button>
+                        <button id="reset-view" disabled>Reset View</button>
+                    </div>
+                </div>
+
+                <div class="statusbar">
+                    <div class="status-item"><span class="status-label">Scope</span><span id="status-scope">full</span></div>
+                    <div class="status-item"><span class="status-label">Mode</span><span id="status-mode">-</span></div>
+                    <div class="status-item"><span class="status-label">Nodes</span><span id="status-nodes">0</span></div>
+                    <div class="status-item"><span class="status-label">Edges</span><span id="status-edges">0</span></div>
+                    <div class="status-item"><span class="status-label">Fingerprint</span><span id="status-fingerprint">-</span></div>
+                </div>
+
+                <div class="network-wrapper">
+                    <div id="network" class="network-canvas" aria-label="Cortex graph canvas"></div>
+                </div>
+            </section>
+
+            <aside class="detail-panel">
+                <section class="detail-card">
+                    <p class="eyebrow">Selection</p>
+                    <h2 id="detail-title">No node selected</h2>
+                    <p id="detail-summary" class="detail-summary">
+                        Click a node to inspect its memory details, related artifacts, and available actions.
+                    </p>
+                    <div id="detail-meta" class="detail-meta"></div>
+                    <div class="detail-actions">
+                        <button id="open-node" disabled>Open Document</button>
+                        <button id="load-subgraph" disabled>Load Subgraph</button>
+                    </div>
+                </section>
+
+                <section class="detail-card">
+                    <p class="eyebrow">Relations</p>
+                    <ul id="relation-list" class="detail-list">
+                        <li class="detail-empty">No relationships yet.</li>
+                    </ul>
+                </section>
+
+                <section class="detail-card">
+                    <p class="eyebrow">Neighbors</p>
+                    <ul id="neighbor-list" class="detail-list">
+                        <li class="detail-empty">Select a node to inspect its local neighborhood.</li>
+                    </ul>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
+### F01_snapshot_federated rc=200 ct=application/json
+{"capabilities":{"filters":true,"open_file":true,"relation_explanations":true,"subgraph":true},"edges":[{"edge_type":"wikilink","evidence":["RB-deploy"],"id":"alpha::wikilink:semantic:specs/2026-05-01_auth-spec.md:semantic:runbooks/RB-deploy.md","source":"alpha::semantic:specs/2026-05-01_auth-spec.md","target":"alpha::semantic:runbooks/RB-deploy.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, login, spec"],"id":"alpha::same_spec_reference:semantic:sessions/2026-05-03_login-session.md:semantic:specs/2026-05-01_auth-spec.md","source":"alpha::semantic:sessions/2026-05-03_login-session.md","target":"alpha::semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"superseded_by","evidence":["superseded_by: ADR-001"],"id":"alpha::superseded_by:semantic:decisions/ADR-000-legacy.md:semantic:decisions/ADR-001-tokens.md","source":"alpha::semantic:decisions/ADR-000-legacy.md","target":"alpha::semantic:decisions/ADR-001-tokens.md","weight":1.4},{"edge_type":"same_file_reference","evidence":["specs/2026-05-01_auth-spec.md"],"id":"alpha::same_file_reference:episodic:mem_01:semantic:specs/2026-05-01_auth-spec.md","source":"alpha::episodic:mem_01","target":"alpha::semantic:specs/2026-05-01_auth-spec.md","weight":1.3},{"edge_type":"shared_tag","evidence":["session"],"id":"alpha::shared_tag:episodic:mem_01:semantic:sessions/2026-05-03_login-session.md","source":"alpha::episodic:mem_01","target":"alpha::semantic:sessions/2026-05-03_login-session.md","weight":1.0},{"edge_type":"same_spec_reference","evidence":["shared tokens: autenticaci, con, spec, tokens"],"id":"alpha::same_spec_reference:episodic:mem_02:semantic:specs/2026-05-01_auth-spec.md","source":"alpha::episodic:mem_02","target":"alpha::semantic:specs/2026-05-01_auth-spec.md","weight":1.2},{"edge_type":"same_file_reference","evidence":["runbooks/RB-deploy.md"],"id":"alpha::same_file_reference:episodic:mem_03:semantic:runbooks/RB-deploy.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:runbooks/RB-deploy.md","weight":1.3},{"edge_type":"semantic_neighbor","evidence":["cosine=0.942"],"id":"alpha::semantic_neighbor:semantic:decisions/ADR-000-legacy.md:semantic:decisions/DEC-2026-05-02-cache.md","source":"alpha::semantic:decisions/ADR-000-legacy.md","target":"alpha::semantic:decisions/DEC-2026-05-02-cache.md","weight":0.942225751980454},{"edge_type":"semantic_neighbor","evidence":["cosine=0.860"],"id":"alpha::semantic_neighbor:semantic:decisions/ADR-000-legacy.md:semantic:glossary/rrf.md","source":"alpha::semantic:decisions/ADR-000-legacy.md","target":"alpha::semantic:glossary/rrf.md","weight":0.859716758015826},{"edge_type":"semantic_neighbor","evidence":["cosine=0.922"],"id":"alpha::semantic_neighbor:semantic:decisions/ADR-001-tokens.md:semantic:notes/ideas.md","source":"alpha::semantic:decisions/ADR-001-tokens.md","target":"alpha::semantic:notes/ideas.md","weight":0.9220028505131977},{"edge_type":"semantic_neighbor","evidence":["cosine=0.901"],"id":"alpha::semantic_neighbor:semantic:decisions/ADR-001-tokens.md:semantic:sessions/2026-05-03_login-session.md","source":"alpha::semantic:decisions/ADR-001-tokens.md","target":"alpha::semantic:sessions/2026-05-03_login-session.md","weight":0.9008491893519102},{"edge_type":"semantic_neighbor","evidence":["cosine=0.904"],"id":"alpha::semantic_neighbor:semantic:notes/ideas.md:semantic:runbooks/RB-deploy.md","source":"alpha::semantic:notes/ideas.md","target":"alpha::semantic:runbooks/RB-deploy.md","weight":0.9040599922209588},{"edge_type":"semantic_neighbor","evidence":["cosine=0.897"],"id":"alpha::semantic_neighbor:semantic:notes/ideas.md:semantic:sessions/2026-05-03_login-session.md","source":"alpha::semantic:notes/ideas.md","target":"alpha::semantic:sessions/2026-05-03_login-session.md","weight":0.8967123527966059},{"edge_type":"semantic_neighbor","evidence":["cosine=0.821"],"id":"alpha::semantic_neighbor:semantic:notes/ideas.md:semantic:specs/2026-05-01_auth-spec.md","source":"alpha::semantic:notes/ideas.md","target":"alpha::semantic:specs/2026-05-01_auth-spec.md","weight":0.8213659514621316},{"edge_type":"semantic_neighbor","evidence":["cosine=0.896"],"id":"alpha::semantic_neighbor:episodic:mem_02:semantic:decisions/ADR-001-tokens.md","source":"alpha::episodic:mem_02","target":"alpha::semantic:decisions/ADR-001-tokens.md","weight":0.8964557369496794},{"edge_type":"semantic_neighbor","evidence":["cosine=0.980"],"id":"alpha::semantic_neighbor:episodic:mem_02:semantic:notes/ideas.md","source":"alpha::episodic:mem_02","target":"alpha::semantic:notes/ideas.md","weight":0.9801702348972142},{"edge_type":"semantic_neighbor","evidence":["cosine=0.878"],"id":"alpha::semantic_neighbor:episodic:mem_02:semantic:runbooks/RB-deploy.md","source":"alpha::episodic:mem_02","target":"alpha::semantic:runbooks/RB-deploy.md","weight":0.8780762560302183},{"edge_type":"semantic_neighbor","evidence":["cosine=0.960"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:decisions/ADR-000-legacy.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:decisions/ADR-000-legacy.md","weight":0.9596494957240437},{"edge_type":"semantic_neighbor","evidence":["cosine=0.856"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:decisions/DEC-2026-05-02-cache.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:decisions/DEC-2026-05-02-cache.md","weight":0.8562274240279794},{"edge_type":"semantic_neighbor","evidence":["cosine=0.892"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:glossary/rrf.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:glossary/rrf.md","weight":0.8919490850549564},{"edge_type":"semantic_neighbor","evidence":["cosine=0.953"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:notes/ideas.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:notes/ideas.md","weight":0.9526919036834995},{"edge_type":"semantic_neighbor","evidence":["cosine=0.838"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:specs/2026-05-01_auth-spec.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:specs/2026-05-01_auth-spec.md","weight":0.8377501190201989}],"fingerprint":"{{FP}}","generated_at":"{{TS}}","legend":{"doc_types":[{"color":"#88aaff","shape":"rectangle","type":"session"},{"color":"#ffaa44","shape":"diamond","type":"handoff"},{"color":"#88ddaa","shape":"rectangle","type":"spec"},{"color":"#cc66ff","shape":"hexagon","type":"adr"},{"color":"#aa88cc","shape":"hexagon","type":"decision"},{"color":"#ff6666","shape":"diamond","type":"incident"},{"color":"#aa4444","shape":"diamond","type":"postmortem"},{"color":"#66cccc","shape":"rectangle","type":"runbook"},{"color":"#6688cc","shape":"rectangle","type":"architecture"},{"color":"#999999","shape":"rectangle","type":"changelog"},{"color":"#ccaa66","shape":"ellipse","type":"hu"},{"color":"#cccc66","shape":"ellipse","type":"glossary"},{"color":"#66aaee","shape":"rectangle","type":"design"},{"color":"#9b59b6","shape":"diamond","type":"episodic"}],"edge_types":[{"color":"#666666","label":"links to","style":"solid","type":"wiki_link"},{"color":"#aaaaaa","label":"co-occurs","style":"dashed","type":"co_occurrence"},{"color":"#88aaff","label":"imports","style":"solid","type":"imports"},{"color":"#88dd88","label":"tested by","style":"dotted","type":"tested_by"},{"color":"#dd6666","label":"supersedes","style":"solid","type":"supersedes"},{"color":"#9e9e9e","label":"superseded by","style":"dotted","type":"superseded_by"},{"color":"#aa66cc","label":"promoted from","style":"dashed","type":"promoted_from"}]},"mode":"hybrid","nodes":[{"degree":6,"files":["runbooks/RB-deploy.md"],"id":"alpha::episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":2,"files":["specs/2026-05-01_auth-spec.md"],"id":"alpha::episodic:mem_01","label":"Se arregl\u00f3 el bug del parser de tokens del login.","memory_id":"mem_01","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_session","rel_path":null,"source":"episodic","summary":"Se arregl\u00f3 el bug del parser de tokens del login.","tags":["session"],"timestamp":"2026-05-03T09:00:00+00:00"},{"degree":4,"files":[],"id":"alpha::episodic:mem_02","label":"Spec promoted: autenticaci\u00f3n con tokens y cache.","memory_id":"mem_02","metadata":{"doc_type":"episodic","project_id":"alpha","scope":"local"},"node_type":"episodic_spec","rel_path":null,"source":"episodic","summary":"Spec promoted: autenticaci\u00f3n con tokens y cache.","tags":["spec"],"timestamp":"2026-05-02T08:00:00+00:00"},{"degree":4,"files":[],"id":"alpha::semantic:decisions/ADR-000-legacy.md","label":"ADR-000 legacy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-000-legacy.md","adr_number":0,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-000-legacy.md","project_id":"alpha","scope":"local","shape":"hexagon","superseded_by":"ADR-001","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-000-legacy.md","source":"semantic","summary":"# ADR-000 Sistema viejo de sesiones cookie.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"alpha::semantic:decisions/ADR-001-tokens.md","label":"ADR-001 tokens JWT","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-001-tokens.md","adr_number":1,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-001-tokens.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-001-tokens.md","source":"semantic","summary":"# ADR-001: tokens JWT Decidimos usar tokens JWT cortos.","tags":[],"timestamp":null},{"degree":2,"files":[],"id":"alpha::semantic:decisions/DEC-2026-05-02-cache.md","label":"DEC cache h\u00edbrido","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/DEC-2026-05-02-cache.md","color":"#aa88cc","doc_type":"decision","path":"decisions/DEC-2026-05-02-cache.md","project_id":"alpha","scope":"local","shape":"hexagon","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/DEC-2026-05-02-cache.md","source":"semantic","summary":"# Decisi\u00f3n cache Cache h\u00edbrido para retrieval del spec.","tags":[],"timestamp":null},{"degree":6,"files":[],"id":"alpha::semantic:notes/ideas.md","label":"Ideas varias","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/notes/ideas.md","color":"#cccccc","doc_type":null,"path":"notes/ideas.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"notes/ideas.md","source":"semantic","summary":"Ideas sin clasificar todav\u00eda.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"alpha::semantic:runbooks/RB-deploy.md","label":"RB deploy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/runbooks/RB-deploy.md","color":"#66cccc","doc_type":"runbook","path":"runbooks/RB-deploy.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"runbooks/RB-deploy.md","source":"semantic","summary":"# Runbook deploy Deploy con rollback seguro.","tags":[],"timestamp":null},{"degree":2,"files":[],"id":"alpha::semantic:glossary/rrf.md","label":"RRF","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/glossary/rrf.md","color":"#cccc66","doc_type":"glossary","path":"glossary/rrf.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"glossary/rrf.md","source":"semantic","summary":"# RRF Reciprocal Rank Fusion combina rankings de retrieval.","tags":[],"timestamp":null},{"degree":4,"files":[],"id":"alpha::semantic:sessions/2026-05-03_login-session.md","label":"Sesi\u00f3n login","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/sessions/2026-05-03_login-session.md","color":"#88aaff","doc_type":"session","path":"sessions/2026-05-03_login-session.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_session","rel_path":"sessions/2026-05-03_login-session.md","source":"semantic","summary":"# Sesi\u00f3n: login Se implement\u00f3 el spec de autenticaci\u00f3n con tokens jwt y cache retrieval.","tags":["session"],"timestamp":null},{"degree":6,"files":[],"id":"alpha::semantic:specs/2026-05-01_auth-spec.md","label":"Spec de autenticaci\u00f3n","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/specs/2026-05-01_auth-spec.md","color":"#88ddaa","doc_type":"spec","path":"specs/2026-05-01_auth-spec.md","project_id":"alpha","scope":"local","shape":"rectangle","vault_scope":"local"},"node_type":"semantic_spec","rel_path":"specs/2026-05-01_auth-spec.md","source":"semantic","summary":"# Spec: autenticaci\u00f3n Login con tokens [[ADR-001]] y fusion [[glossary/rrf]]. Runbook asociado: [[RB-deploy]].","tags":[],"timestamp":null},{"degree":0,"files":[],"id":"beta::semantic:glossary/bm25.md","label":"BM25 beta","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/beta/vault/glossary/bm25.md","color":"#cccc66","doc_type":"glossary","path":"glossary/bm25.md","project_id":"beta","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"glossary/bm25.md","source":"semantic","summary":"BM25 rankea documentos del proyecto beta.","tags":[],"timestamp":null}],"stats":{"edge_count":22,"mode":"hybrid","node_count":12,"truncated":false},"version":"2.0"}
+
+### F02_node_prefijado rc=200 ct=application/json
+{"neighbors":[{"degree":6,"files":["runbooks/RB-deploy.md"],"id":"alpha::episodic:mem_03","label":"Incidente: outage de login durante el deploy del servicio.","memory_id":"mem_03","metadata":{"doc_type":"episodic","entities":{"person":["ada"]},"project_id":"alpha","scope":"local"},"node_type":"episodic_general","rel_path":null,"source":"episodic","summary":"Incidente: outage de login durante el deploy del servicio.","tags":[],"timestamp":"2026-05-04T10:00:00+00:00"},{"degree":4,"files":[],"id":"alpha::semantic:decisions/ADR-000-legacy.md","label":"ADR-000 legacy","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/decisions/ADR-000-legacy.md","adr_number":0,"color":"#cc66ff","doc_type":"adr","path":"decisions/ADR-000-legacy.md","project_id":"alpha","scope":"local","shape":"hexagon","superseded_by":"ADR-001","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"decisions/ADR-000-legacy.md","source":"semantic","summary":"# ADR-000 Sistema viejo de sesiones cookie.","tags":[],"timestamp":null}],"node":{"degree":2,"files":[],"id":"alpha::semantic:glossary/rrf.md","label":"RRF","memory_id":null,"metadata":{"abs_path":"{{ROOT}}/alpha/vault/glossary/rrf.md","color":"#cccc66","doc_type":"glossary","path":"glossary/rrf.md","project_id":"alpha","scope":"local","shape":"ellipse","vault_scope":"local"},"node_type":"semantic_doc","rel_path":"glossary/rrf.md","source":"semantic","summary":"# RRF Reciprocal Rank Fusion combina rankings de retrieval.","tags":[],"timestamp":null},"relations":[{"edge_type":"semantic_neighbor","evidence":["cosine=0.860"],"id":"alpha::semantic_neighbor:semantic:decisions/ADR-000-legacy.md:semantic:glossary/rrf.md","source":"alpha::semantic:decisions/ADR-000-legacy.md","target":"alpha::semantic:glossary/rrf.md","weight":0.859716758015826},{"edge_type":"semantic_neighbor","evidence":["cosine=0.892"],"id":"alpha::semantic_neighbor:episodic:mem_03:semantic:glossary/rrf.md","source":"alpha::episodic:mem_03","target":"alpha::semantic:glossary/rrf.md","weight":0.8919490850549564}]}
+
+### F03_node_missing_federated rc=404 ct=application/json
+{"error":"Unknown node: no-existe"}
+

@@ -19,6 +19,12 @@ env/
 vault/sessions/
 .cortex/logs/
 .cortex/*.log
+.cortex/*.jsonl
+.cortex/*.sh
+.cortex_index.json
+*.cache/
+.directory
+*.tmp
 
 # Config with secrets
 .env

@@ -1,0 +1,17 @@
+{
+  "files": {
+    ".opencode/hooks.md": "<!-- >>> cortex-session-hook (managed by 'cortex session hooks') >>> -->\n## Cortex session checkpoint\n\nEmits a checkpoint to the active Cortex session after each\nsignificant edit. The ``|| true`` guard prevents Cortex failures\nfrom interrupting opencode.\n\n```sh\ncortex session checkpoint --source ide-hook --note \"edit via opencode\" >/dev/null 2>&1 || true\n```\n<!-- <<< cortex-session-hook <<< -->\n"
+  },
+  "ide": "opencode",
+  "kind": "result",
+  "payload": {
+    "ide": "opencode",
+    "installed": true,
+    "message": "installed opencode hooks entry in {{TARGET}}/.opencode/hooks.md",
+    "modified_paths": [
+      "{{TARGET}}/.opencode/hooks.md"
+    ],
+    "removed_paths": []
+  },
+  "step": "install_fresh"
+}

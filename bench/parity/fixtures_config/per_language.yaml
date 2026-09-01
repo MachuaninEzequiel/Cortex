@@ -1,0 +1,8 @@
+embedding:
+  language_detection: heuristic
+  per_language:
+    es:
+      model: intfloat/multilingual-e5-large
+      backend: fastembed
+    en:
+      model: all-MiniLM-L6-v2

@@ -1,0 +1,88 @@
+### S01 open happy
+rc=0
+{"session_id": "2026-05-16_demo", "opened_at": "2026-05-16T10:00:00+00:00", "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "start_branch": "feature/demo"}
+### S02 open faltan campos
+rc=0
+❌ spec_id and spec_path are required for cortex_session_open.
+### S03 checkpoint happy
+rc=0
+{"session_id": "2026-05-16_demo", "checkpoint_count": 2, "last_checkpoint_at": "2026-05-16T11:00:00+00:00"}
+### S04 checkpoint faltan campos
+rc=0
+❌ session_id and source are required for cortex_session_checkpoint.
+### S05 checkpoint source inválida
+rc=0
+❌ Invalid source 'nope'. Must be one of: cortex-sync, cortex-SDDwork, cortex-code-explorer, cortex-code-implementer, cortex-code-designer, user-skill, ide-hook, manual, ci-bot
+### S06 close happy
+rc=0
+{"session_id": "2026-05-16_demo", "closed_at": "2026-05-16T12:00:00+00:00", "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "mode_inferred": "byo"}
+### S07 close errores
+rc=0
+❌ session_id, status and documenter_decision are required for cortex_session_close.
+❌ Invalid status 'open'. Must be one of: closed, handoff, abandoned
+❌ Invalid documenter_decision 'open'. Must be one of: closed, handoff, abandoned
+### S08 status dump completo
+rc=0
+{"session_id": "2026-05-16_demo", "spec_path": "vault/specs/demo.md", "spec_summary": "resumen", "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "start_branch": "feature/demo", "opened_at": "2026-05-16T10:00:00+00:00", "status": "open", "mode": "unknown", "checkpoints": [], "verification_results": [], "tasks": [], "closed_at": null, "end_commit": null, "documenter_decision": null, "session_note_path": null, "adrs_created": []}
+### S09 status activa
+rc=0
+{"session_id": "2026-05-16_demo", "spec_path": "vault/specs/demo.md", "spec_summary": "", "start_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "start_branch": "feature/demo", "opened_at": "2026-05-16T10:00:00+00:00", "status": "open", "mode": "unknown", "checkpoints": [], "verification_results": [], "tasks": [], "closed_at": null, "end_commit": null, "documenter_decision": null, "session_note_path": null, "adrs_created": []}
+### S10 sin activa
+rc=0
+❌ No active session. Pass session_id or open one first.
+### S11 list
+rc=0
+[{"session_id": "2026-05-15_aaa", "status": "handoff", "mode": "byo", "opened_at": "2026-05-16T10:00:00+00:00", "closed_at": "2026-05-16T12:00:00+00:00", "checkpoint_count": 0, "spec_summary": "uno"}, {"session_id": "2026-05-16_bbb", "status": "open", "mode": "unknown", "opened_at": "2026-05-16T10:00:00+00:00", "closed_at": null, "checkpoint_count": 0, "spec_summary": "dos"}]
+### S12 task_list vacío
+rc=0
+[]
+### S13 task_update done
+rc=0
+{"id": "T1", "description": "hacer", "files_in_scope": [], "depends_on": [], "status": "done", "completed_at": "2026-05-16T11:30:00+00:00", "checkpoint_index": 0, "note": "ok"}
+### S14 auto-crear
+rc=0
+{"id": "T9", "description": "nueva", "files_in_scope": [], "depends_on": [], "status": "in-progress", "completed_at": null, "checkpoint_index": null, "note": ""}
+### S15 auto-crear sin descripción
+rc=0
+❌ Task 'TX' does not exist; pass `description` to create it on the fly.
+### S16 review veredictos
+rc=0
+{"accepted": true, "stage_1_passed": true, "stage_2_passed": true, "reason": "checkpoint passed both gates", "action": "accept"}
+{"accepted": false, "stage_1_passed": false, "stage_2_passed": false, "reason": "files touched outside spec scope: src/fuera.py", "action": "redelegate"}
+{"accepted": false, "stage_1_passed": true, "stage_2_passed": false, "reason": "placeholders in note: fixme", "action": "warn"}
+### S17 review sin checkpoints
+rc=0
+❌ Session has no checkpoints to review.
+### S18 cortex_close_session happy
+rc=0
+{"session_id": "2026-05-16_demo", "final_status": "handoff", "mode": "observed", "closed_at": "2026-05-16T12:00:00+00:00", "end_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "session_note_path": "notes/x.md", "adrs_created": ["decisions/ADR-001.md"]}
+### S19 save_session
+rc=0
+Session note saved -> /tmp/fake/session-note.md
+### S20 validate_handoff happy
+rc=0
+✅ Handoff validated for cortex-documenter (status: partial)
+  verified_claims: 1
+  unverified_claims: 1
+  artifacts: 1
+  context_for_next: 1
+  ⚠ suggested ADR: decision no trivial
+  📚 CONTEXT.md terms: token
+### S21 validate_handoff errores
+rc=0
+❌ handoff_yaml is required and must not be empty.
+❌ Agent mismatch: handoff says 'cortex-documenter' but expected 'otro'.
+### S22 verify_session_claims
+rc=0
+Verification of 3 claims against branch main:
+  ✅ verified: 2
+  ⚠ asserted: 1
+  ❌ contradicted: 0
+
+Verified:
+  - auth login token refresh
+  - bcrypt hash added
+
+Asserted (no diff evidence):
+  - completamente ajeno
+❌ Base branch 'nope' does not exist in this repo. Pass a valid branch via `base_branch` argument.

@@ -1,0 +1,156 @@
+{
+  "tag": "",
+  "timestamp_utc": "2026-08-23T17:48:53+00:00",
+  "config": {
+    "model": "all-MiniLM-L6-v2",
+    "backend": "onnx",
+    "dataset": "vault-synth-1k"
+  },
+  "machine": {
+    "platform": "Linux-7.2.0-1-cachyos-x86_64-with-glibc2.44",
+    "processor": "x86_64",
+    "python": "3.12.14",
+    "cpu_count": 20,
+    "ram": "11846436 kB",
+    "governor": "powersave"
+  },
+  "git": {
+    "commit": "995ad7b4970c",
+    "dirty": true
+  },
+  "suites": {
+    "cold_start": {
+      "metrics": {
+        "import": {
+          "n": 3,
+          "mean_ms": 872.914,
+          "p50_ms": 870.961,
+          "p95_ms": 882.529,
+          "p99_ms": 882.529
+        },
+        "sync_warm_cache": {
+          "n": 3,
+          "mean_ms": 769.151,
+          "p50_ms": 771.53,
+          "p95_ms": 772.117,
+          "p99_ms": 772.117
+        },
+        "sync_empty_cache": {
+          "n": 3,
+          "mean_ms": 13491.371,
+          "p50_ms": 775.176,
+          "p95_ms": 38928.367,
+          "p99_ms": 38928.367
+        },
+        "first_query_warm": {
+          "n": 3,
+          "mean_ms": 353.007,
+          "p50_ms": 354.539,
+          "p95_ms": 450.515,
+          "p99_ms": 450.515
+        },
+        "first_query_cold": {
+          "n": 3,
+          "mean_ms": 223.421,
+          "p50_ms": 279.882,
+          "p95_ms": 351.069,
+          "p99_ms": 351.069
+        }
+      },
+      "cpu_seconds": 597.667
+    },
+    "retrieve": {
+      "metrics": {
+        "search_warm": {
+          "n": 200,
+          "mean_ms": 36.012,
+          "p50_ms": 35.176,
+          "p95_ms": 36.273,
+          "p99_ms": 79.057
+        },
+        "first_query_after_sync": {
+          "n": 3,
+          "mean_ms": 51.329,
+          "p50_ms": 51.153,
+          "p95_ms": 56.21,
+          "p99_ms": 56.21
+        }
+      },
+      "cpu_seconds": 2624.73
+    },
+    "index": {
+      "metrics": {
+        "full_sync_1k": {
+          "n": 3,
+          "mean_ms": 46302.433,
+          "p50_ms": 46238.166,
+          "p95_ms": 46458.943,
+          "p99_ms": 46458.943
+        }
+      },
+      "docs_indexados": 1000,
+      "cpu_seconds": 1907.734
+    },
+    "webgraph": {
+      "metrics": {
+        "build_edges_n250": {
+          "n": 3,
+          "mean_ms": 193.904,
+          "p50_ms": 193.051,
+          "p95_ms": 209.525,
+          "p99_ms": 209.525,
+          "edges_generados": 3159
+        },
+        "build_edges_n500": {
+          "n": 3,
+          "mean_ms": 742.288,
+          "p50_ms": 744.435,
+          "p95_ms": 769.203,
+          "p99_ms": 769.203,
+          "edges_generados": 12537
+        },
+        "build_edges_n1000": {
+          "n": 3,
+          "mean_ms": 3127.556,
+          "p50_ms": 3142.453,
+          "p95_ms": 3157.848,
+          "p99_ms": 3157.848,
+          "edges_generados": 49863
+        }
+      },
+      "cpu_seconds": 17.284
+    },
+    "bm25": {
+      "metrics": {
+        "bm25_search": {
+          "n": 200,
+          "mean_ms": 5.892,
+          "p50_ms": 5.542,
+          "p95_ms": 8.122,
+          "p99_ms": 9.559
+        }
+      },
+      "cpu_seconds": 611.518
+    },
+    "cpu_energy": {
+      "metrics": {
+        "cpu_cold_start": {
+          "mean_s": 597.667
+        },
+        "cpu_retrieve": {
+          "mean_s": 2624.73
+        },
+        "cpu_index": {
+          "mean_s": 1907.734
+        },
+        "cpu_webgraph": {
+          "mean_s": 17.284
+        },
+        "cpu_bm25": {
+          "mean_s": 611.518
+        }
+      },
+      "nota": "CPU-time como proxy de energía: menos CPU-despierto = menos Wh."
+    }
+  }
+}

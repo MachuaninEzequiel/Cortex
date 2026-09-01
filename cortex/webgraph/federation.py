@@ -125,13 +125,14 @@ class FederatedWebGraphService:
         use_cache: bool = True,
         scope: str | None = None,
     ) -> WebGraphSnapshot:
-        del use_cache
         nodes: list[WebGraphNode] = []
         edges: list[WebGraphEdge] = []
         fingerprints: list[str] = []
 
         for project_id, service in self._services.items():
-            snapshot = service.build_snapshot(mode=mode, use_cache=True, scope=scope)
+            # Bug fix (review 9 #6): use_cache ahora SÍ se propaga — antes
+            # se descartaba y cada request reconstruía el snapshot completo.
+            snapshot = service.build_snapshot(mode=mode, use_cache=use_cache, scope=scope)
             fingerprints.append(f"{project_id}:{snapshot.fingerprint}")
 
             for node in snapshot.nodes:
@@ -186,10 +187,12 @@ class FederatedWebGraphService:
         path.write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
         return path
 
-    def get_node_detail(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> WebGraphNodeDetail:
+    def get_node_detail(self, node_id: str, *, mode: WebGraphMode = "hybrid") -> WebGraphNodeDetail | None:
         snapshot = self.build_snapshot(mode=mode, use_cache=True)
         nodes_by_id = {node.id: node for node in snapshot.nodes}
-        node = nodes_by_id[node_id]
+        node = nodes_by_id.get(node_id)
+        if node is None:
+            return None
         relations = [edge for edge in snapshot.edges if edge.source == node_id or edge.target == node_id]
         neighbor_ids = {
             edge.target if edge.source == node_id else edge.source

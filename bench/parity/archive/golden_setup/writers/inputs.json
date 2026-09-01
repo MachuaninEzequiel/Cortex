@@ -1,0 +1,488 @@
+{
+ "now": "2026-08-24T12:34:56.789012Z",
+ "cases": [
+  {
+   "case": "adr",
+   "doc_type": "adr",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/decisions/ADR-007-usar-tokens-vs-sesiones-para-auth.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Usar tokens vs sesiones para auth",
+    "tags": [
+     "auth",
+     "latencia"
+    ],
+    "status": "accepted",
+    "links": [
+     "spec-2026-08-01"
+    ],
+    "context": "El servicio necesita recordar al usuario entre despliegues: la sesión en memoria no sobrevive restarts y la latencia p99 de regenerar sesión es inaceptable para el SLA acordado.",
+    "decision": "Emitimos tokens opacos firmados con rotación cada 24h.",
+    "alternatives_considered": [
+     "sesiones httpOnly con store compartido",
+     "JWT stateless con revocación vía blacklist"
+    ],
+    "consequences": "Requiere cache Redis; simplifica el escalamiento horizontal.",
+    "adr_number": 7,
+    "supersedes": [],
+    "superseded_by": null,
+    "acceptance_criteria_met": true
+   }
+  },
+  {
+   "case": "adr_auto_number",
+   "doc_type": "adr",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/decisions/ADR-002-migrar-colas-a-redis-streams.md",
+   "pre_files": {
+    "decisions/ADR-001-previo.md": "---\nprevia\n---\n"
+   },
+   "fields": {
+    "title": "Migrar colas a Redis Streams",
+    "status": "proposed",
+    "context": "La cola actual pierde mensajes.",
+    "decision": "Redis Streams con consumer groups.",
+    "consequences": "Requiere redis >= 6.2."
+   }
+  },
+  {
+   "case": "adr_enterprise",
+   "doc_type": "adr",
+   "scope": "enterprise",
+   "project_id": "appfutbol",
+   "actor": "lead@empresa.co",
+   "expected_rel": "vault/decisions/appfutbol/ADR-012-politica-de-retencion-de-datos-personales.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Política de retención de datos personales",
+    "tags": [
+     "governance"
+    ],
+    "status": "accepted",
+    "owner": "dpo@empresa.co",
+    "team": "platform",
+    "classification": "confidential",
+    "retention_days": 365,
+    "context": "Cumplimiento normativo.",
+    "decision": "Borrado automático a los 365 días.",
+    "consequences": "Jobs nocturnos de purga.",
+    "adr_number": 12
+   }
+  },
+  {
+   "case": "session_full",
+   "doc_type": "session",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/sessions/2026-08-24_refactor-auth_refactor-autenticacion-tests-verdes.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Refactor autenticación + tests verdes",
+    "tags": [
+     "backend"
+    ],
+    "status": "auto-draft",
+    "session_id": "2026-08-24_refactor-auth",
+    "spec_summary": "Mejorar la autenticación del servicio sin cortar consumidores.",
+    "changes_made": [
+     "src/auth.py refactorizado a tokens",
+     "tests/auth_test.py cubre rotación",
+     "Café & Sueño: decisión ✓ tomada"
+    ],
+    "files_touched": [
+     "src/auth.py",
+     "tests/auth_test.py",
+     ".env.example"
+    ],
+    "key_decisions": [
+     "tokens opacos sobre JWT"
+    ],
+    "next_steps": [
+     "rotación en worker",
+     "documentar endpoint /logout"
+    ],
+    "pr": "#142",
+    "branch": "feature/auth-tokens",
+    "commit": "abc1234",
+    "verified_state": [
+     "pytest verde local"
+    ],
+    "unverified_claims": [
+     "rendimiento igual en staging"
+    ],
+    "blockers": [],
+    "suggested_skills": [
+     "cortex-sync"
+    ],
+    "cortex_telemetry": {
+     "enricher_run_id": "run-2026-08-24-01",
+     "context_items_offered": 12,
+     "context_items_used": 5,
+     "context_hit_rate": 0.416667,
+     "context_by_type": {
+      "spec": 3,
+      "adr": 2
+     },
+     "context_by_strategy": {
+      "bm25": 4,
+      "vector": 1
+     },
+     "context_by_scope": {
+      "local": 5
+     },
+     "enriched_score_p50": 0.62,
+     "enriched_score_p95": 0.88,
+     "enricher_latency_ms": 41,
+     "filters_applied": null
+    },
+    "task_type": "",
+    "tasks": [
+     {
+      "id": "1",
+      "description": "refactor auth",
+      "status": "done"
+     },
+     {
+      "id": "2",
+      "description": "tests",
+      "status": "done"
+     }
+    ],
+    "tasks_total": 2,
+    "tasks_done": 2,
+    "tasks_skipped": 0,
+    "gitless": false
+   }
+  },
+  {
+   "case": "session_gitless_security",
+   "doc_type": "session",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/sessions/2026-08-24_secret-scan_auditoria-rapida-de-secretos.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Auditoría rápida de secretos",
+    "status": "",
+    "session_id": "2026-08-24_secret-scan",
+    "task_type": "security",
+    "verified_state": [
+     "gitleaks sin hallazgos"
+    ],
+    "unverified_claims": [
+     "no revisé variables CI"
+    ],
+    "gitless": true,
+    "spec_summary": "",
+    "changes_made": [],
+    "files_touched": [],
+    "key_decisions": [],
+    "next_steps": []
+   }
+  },
+  {
+   "case": "handoff_open",
+   "doc_type": "handoff",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/handoffs/2026-08-24_handoff-migracion-colas.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Handoff migración colas",
+    "status": "open",
+    "parent_session_id": "2026-08-24_refactor-auth",
+    "next_session_needs": [
+     "revisar consumer groups",
+     "medir lag"
+    ],
+    "blockers": [
+     "acceso staging pendiente"
+    ],
+    "verified_state": [
+     "build ok"
+    ],
+    "unverified_claims": [],
+    "suggested_skills": [],
+    "context_required": "Contexto del ADR-007 de tokens."
+   }
+  },
+  {
+   "case": "spec_hooks",
+   "doc_type": "spec",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/specs/2026-08-24_spec-endpoint-sessions.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Spec: endpoint /sessions",
+    "tags": [
+     "api"
+    ],
+    "status": "approved",
+    "goal": "Exponer /sessions con paginación.",
+    "requirements": [
+     "GET lista sesiones",
+     "filtro por fecha"
+    ],
+    "files_in_scope": [
+     "src/api/sessions.py"
+    ],
+    "constraints": [
+     "p95 < 200ms"
+    ],
+    "acceptance_criteria": [
+     "curl devuelve 200",
+     "tests integración verdes"
+    ],
+    "verification_hooks": [
+     {
+      "name": "build",
+      "command": "cargo build --release",
+      "required": true,
+      "success_criteria": "exit code 0",
+      "timeout_seconds": 600
+     },
+     {
+      "name": "lint",
+      "command": "ruff check . || true",
+      "required": false,
+      "success_criteria": "sin errores bloqueantes",
+      "timeout_seconds": 120
+     }
+    ]
+   }
+  },
+  {
+   "case": "design_default_title",
+   "doc_type": "design",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/designs/2026-08-24_refactor-auth.md",
+   "pre_files": {},
+   "fields": {
+    "status": "draft",
+    "session_id": "2026-08-24_refactor-auth",
+    "spec_path": "vault/specs/2026-08-24_endpoint.md",
+    "architecture_decision": "Capa servicio delgada sobre repositorio.",
+    "data_model_changes": [
+     "tabla sessions nueva"
+    ],
+    "api_contracts": [
+     "GET /v1/sessions"
+    ],
+    "test_plan": [
+     "unit service",
+     "integration api"
+    ],
+    "risks": [
+     "migración de datos existentes"
+    ]
+   }
+  },
+  {
+   "case": "decision_reversible",
+   "doc_type": "decision",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/decisions/DEC-2026-08-24-flag-cortex-py-activo-durante-transicion.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Flag CORTEX_PY activo durante transición",
+    "status": "active",
+    "context": "Doble vía CLI.",
+    "decision": "Env var fuerza CLI viejo.",
+    "alternative_rejected": "Feature flags por comando",
+    "reason": "Simplicidad operativa.",
+    "reversible_within_days": 14
+   }
+  },
+  {
+   "case": "incident_open",
+   "doc_type": "incident",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/incidents/INC-003-2026-08-24-mcp-server-colgado-14-minutos.md",
+   "pre_files": {},
+   "fields": {
+    "title": "MCP server colgado 14 minutos",
+    "status": "mitigated",
+    "incident_number": 3,
+    "severity": "high",
+    "opened_at": "2026-05-15T09:30:00.000000Z",
+    "closed_at": null,
+    "affected_services": [
+     "mcp-server",
+     "opencode"
+    ],
+    "timeline": [
+     "09:30 primer reporte",
+     "10:12 mitigado reiniciando pipe stderr"
+    ],
+    "impact": "subagente bloqueado, contexto perdido",
+    "short_description": "stderr sin drenar bloqueó el event loop",
+    "root_cause_postmortem": null
+   }
+  },
+  {
+   "case": "postmortem_pm003",
+   "doc_type": "postmortem",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/postmortems/PM-003-pm-mcp-server-colgado.md",
+   "pre_files": {},
+   "fields": {
+    "title": "PM: MCP server colgado",
+    "status": "published",
+    "incident_number": 3,
+    "incident_path": "INC-003-2026-05-15-mcp-colgado.md",
+    "root_cause": "contrapresión del pipe stderr",
+    "contributing_factors": [
+     "logging a stderr",
+     "cliente lento"
+    ],
+    "what_went_well": [
+     "diagnóstico rápido"
+    ],
+    "what_went_wrong": [
+     "alerta tardía"
+    ],
+    "action_items": [
+     "logs sólo a archivo",
+     "drain background"
+    ],
+    "timeline": [
+     "2026-05-15 incidente",
+     "2026-05-16 fix"
+    ],
+    "severity": "high"
+   }
+  },
+  {
+   "case": "runbook_deploy",
+   "doc_type": "runbook",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/runbooks/RB-runbook-deploy-produccion.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Runbook deploy producción",
+    "tags": [
+     "ops"
+    ],
+    "status": "verified",
+    "runbook_kind": "deploy",
+    "description": "Pasos para desplegar cortex-memory.",
+    "prerequisites": [
+     "green CI",
+     "backup store"
+    ],
+    "procedure": [
+     "taggear release",
+     "correr wheels workflow",
+     "actualizar pipx"
+    ],
+    "rollback_procedure": [
+     "reinstalar versión previa",
+     "restaurar store"
+    ],
+    "verification": [
+     "cortex doctor --strict"
+    ],
+    "applies_to": [
+     "producción"
+    ],
+    "estimated_duration_minutes": 45,
+    "last_verified_at": "2026-08-01T00:00:00.000000Z"
+   }
+  },
+  {
+   "case": "changelog_070",
+   "doc_type": "changelog",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/changelog/0.7.0.md",
+   "pre_files": {},
+   "fields": {
+    "title": "Changelog 0.7.0",
+    "status": "released",
+    "version": "0.7.0",
+    "release_date": "2026-08-20T18:00:00.000000Z",
+    "added": [
+     "brain nativo",
+     "TUI splash"
+    ],
+    "changed": [
+     "store v3 append-only"
+    ],
+    "deprecated": [
+     "chromadb episódico"
+    ],
+    "removed": [],
+    "fixed": [
+     "drain stderr MCP"
+    ],
+    "security": []
+   }
+  },
+  {
+   "case": "hu_jira",
+   "doc_type": "hu",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/hu/HU-COR-482.md",
+   "pre_files": {},
+   "fields": {
+    "title": "HU COR-482 búsqueda semántica",
+    "status": "in-progress",
+    "external_id": "COR-482",
+    "source": "jira",
+    "kind": "story",
+    "description": "Como usuario quiero buscar en mi bóveda semánticamente.",
+    "acceptance_criteria": [
+     "búsqueda híbrida responde <1s"
+    ],
+    "assignee": "chucho",
+    "external_url": "https://empresa.atlassian.net/browse/COR-482",
+    "synced_at": "2026-08-22T14:03:00.000000Z"
+   }
+  },
+  {
+   "case": "glossary_term_as_title",
+   "doc_type": "glossary",
+   "scope": "local",
+   "project_id": null,
+   "actor": null,
+   "expected_rel": "vault/glossary/sesion.md",
+   "pre_files": {},
+   "fields": {
+    "status": "canonical",
+    "term": "Sesión",
+    "definition": "Unidad de trabajo con checkpoints verificables.",
+    "examples": [
+     "sesión de refactor auth"
+    ],
+    "related_terms": [
+     "checkpoint",
+     "spec"
+    ],
+    "domain": "memoria cognitiva"
+   }
+  }
+ ]
+}

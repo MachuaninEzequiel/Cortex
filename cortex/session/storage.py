@@ -34,6 +34,7 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -51,21 +52,25 @@ logger = logging.getLogger(__name__)
 SESSION_FILE_SUFFIX = ".yaml"
 ACTIVE_POINTER_FILENAME = "active.txt"
 _TMP_SUFFIX = ".yaml.tmp"
+# Edad máxima de un tmp antes de considerarlo huérfano de un crash (V12).
+_TMP_MAX_AGE_SECONDS = 3600.0
 
 # Per-final-path locks. Granularity is the destination file (not the
 # session_id), so two different sessions can write in parallel; only the
 # same session serializes. The map itself is guarded by ``_PATH_LOCKS_MUTEX``.
-_PATH_LOCKS: dict[str, threading.Lock] = {}
+# ``RLock`` because :meth:`SessionStorage.mutate` holds the lock across
+# ``load + fn + save`` and ``save`` re-acquires it on the same thread.
+_PATH_LOCKS: dict[str, threading.RLock] = {}
 _PATH_LOCKS_MUTEX = threading.Lock()
 
 
-def _path_lock(path: Path) -> threading.Lock:
-    """Return the process-wide lock that guards writes to ``path``."""
+def _path_lock(path: Path) -> threading.RLock:
+    """Return the process-wide reentrant lock that guards writes to ``path``."""
     key = str(path)
     with _PATH_LOCKS_MUTEX:
         lock = _PATH_LOCKS.get(key)
         if lock is None:
-            lock = threading.Lock()
+            lock = threading.RLock()
             _PATH_LOCKS[key] = lock
         return lock
 
@@ -141,8 +146,38 @@ class SessionStorage:
     def _file_for(self, session_id: str) -> Path:
         return self._dir / f"{session_id}{SESSION_FILE_SUFFIX}"
 
+    # ── Superficie pública (consumida fuera del paquete session) ──
+
+    def file_path(self, session_id: str) -> Path:
+        """Ruta canónica del YAML de una sesión (lectura/watchers)."""
+        return self._file_for(session_id)
+
+    def active_pointer_path(self) -> Path:
+        """Ruta del puntero de sesión activa (``active.txt``)."""
+        return self._active_pointer()
+
     def _tmp_file_for(self, session_id: str) -> Path:
         return self._dir / f"{session_id}{_TMP_SUFFIX}"
+
+    def _gc_orphan_tmps(self) -> None:
+        """Eliminar ``*.yaml.tmp`` con más de ``_TMP_MAX_AGE_SECONDS``.
+
+        Un crash entre ``open(tmp)`` y ``os.replace`` deja un tmp huérfano
+        que vivía para siempre (deuda V12). Los recientes se conservan:
+        puede haber un writer activo a mitad de su ventana de escritura.
+        """
+        ahora = time.time()
+        try:
+            huerfanos = list(self._dir.glob(f"*{_TMP_SUFFIX}"))
+        except OSError:
+            return
+        for tmp_path in huerfanos:
+            try:
+                if ahora - tmp_path.stat().st_mtime > _TMP_MAX_AGE_SECONDS:
+                    tmp_path.unlink()
+                    logger.debug("GC: tmp huérfano eliminado: %s", tmp_path.name)
+            except OSError:  # carrera benigna con otro worker
+                continue
 
     def _active_pointer(self) -> Path:
         return self._dir / ACTIVE_POINTER_FILENAME
@@ -155,6 +190,7 @@ class SessionStorage:
         Returns the final file path.
         """
         self._ensure_dir()
+        self._gc_orphan_tmps()
         final = self._file_for(record.session_id)
         tmp = self._tmp_file_for(record.session_id)
 
@@ -178,6 +214,31 @@ class SessionStorage:
             _atomic_replace(tmp, final)
         logger.debug("Saved session %s to %s", record.session_id, final)
         return final
+
+    def mutate(
+        self,
+        session_id: str,
+        fn: Callable[[SessionRecord], SessionRecord | None],
+    ) -> SessionRecord:
+        """Transactional load→mutate→save under the per-path lock.
+
+        Loads the record, applies ``fn`` to it (``fn`` may mutate in place
+        or return a replacement; returning ``None`` keeps the mutated
+        record), then saves — all while holding the same per-final-path
+        lock used by :meth:`save`. This closes the lost-update window that
+        exists when callers do an unlocked ``load`` followed by ``save``:
+        two concurrent MCP workers mutating the same session can no longer
+        overwrite each other's changes.
+
+        Exceptions raised by ``fn`` propagate and nothing is saved.
+        """
+        with _path_lock(self._file_for(session_id)):
+            record = self.load(session_id)
+            result = fn(record)
+            if result is not None:
+                record = result
+            self.save(record)
+        return record
 
     def save_new(self, record: SessionRecord) -> Path:
         """Persist ``record`` and refuse to overwrite an existing file.

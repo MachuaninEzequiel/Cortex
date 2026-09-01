@@ -1,0 +1,25 @@
+╭────────────────────────── 🔌 INTEGRACIÓN IDE — Model Context Protocol ───────────────────────────╮
+│                                                                                                  │
+│  Cortex se conecta a tu IDE via MCP Server.                                                      │
+│                                                                                                  │
+│  IDEs soportados:                                                                                │
+│    ⭐ Pi Coding Agent  (recomendado)                                                             │
+│    • Cursor  • VSCode (Cline/Roo)  • Claude Code                                                 │
+│    • Claude Desktop  • Windsurf  • Zed  • Antigravity                                            │
+│                                                                                                  │
+│  Setup rápido:                                                                                   │
+│    cortex inject --ide cursor        → Cursor                                                    │
+│    cortex inject --ide claude-code   → Claude Code                                               │
+│    cortex inject                     → Menú interactivo                                          │
+│                                                                                                  │
+│  ¿Qué hace inject?                                                                               │
+│    • Configura el servidor MCP en tu IDE                                                         │
+│    • Inyecta perfiles de agente Cortex                                                           │
+│    • Hace merge seguro (no sobreescribe tu config)                                               │
+│    • Crea backup automático antes de modificar                                                   │
+│                                                                                                  │
+│  Manual: cortex mcp-server --project-root /ruta/al/proyecto                                      │
+│                                                                                                  │
+│  📖 Configuración detallada: ver README.md sección MCP                                           │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

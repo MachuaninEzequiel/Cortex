@@ -10,6 +10,9 @@ from cortex.ide.base import (
     _backup_file,
     _deep_merge_dict,
     _generate_autogen_header,
+    has_marker_block,
+    is_content_identical_to_bundle,
+    strip_marker_blocks,
 )
 from cortex.ide.canonical_tools import translate_list
 from cortex.ide.prompts import (
@@ -42,6 +45,70 @@ def _parse_canonical_tools(frontmatter_text: str | None) -> list[str]:
             value = stripped.split(":", 1)[1].strip()
             return [t.strip() for t in value.split(",") if t.strip()]
     return []
+
+
+def _claude_workflow_doc(header: str) -> str:
+    """Contenido EXACTO que ``inject_profiles`` escribe en ``CLAUDE.md``.
+
+    Único punto de verdad para install y uninstall: uninstall compara el
+    contenido on-disk contra esta plantilla (normalizando el timestamp del
+    header) para decidir si el archivo es 100% Cortex y puede eliminarse.
+    """
+    return (
+        "\n".join(
+            [
+                "<!--",
+                header.strip(),
+                "-->",
+                "",
+                "# Cortex Workflow — Triadic Anchors (Phase 09.A+ / May 2026)",
+                "",
+                "Cortex se ejecuta con TRES skills invocables con `/`. El medio es",
+                "pluggable; los anchors de inicio y cierre son **obligatorios**.",
+                "",
+                "1. **`/cortex-sync`** (anchor inicio, obligatorio) — carga contexto",
+                "   histórico via ONNX/RRF, emite propuesta interactiva, persiste la",
+                "   spec en el vault, abre la Session.",
+                "2. **Middle (pluggable)** — uno de los siguientes:",
+                "   - **`/cortex-SDDwork`** (Managed): Fast Track edits directos o Deep",
+                "     Track con delegación a los subagents canónicos.",
+                "   - Subagents directos via Task tool: `cortex-code-explorer`,",
+                "     `cortex-code-designer`, `cortex-code-implementer` (Deep Track).",
+                "   - **BYO**: trabajás manualmente o con cualquier otro agente. Cortex",
+                "     reconstruye desde el diff al cierre.",
+                "3. **`/cortex-documenter`** (anchor cierre, obligatorio) — invoca",
+                "   `cortex_documenter_briefing`, decide qué doc types persistir",
+                "   (session / handoff / adr / decision / runbook / etc.), escribe la",
+                "   nota a mano con criterio editorial, llama `cortex_self_review_note`,",
+                "   persiste vía `cortex_write_doc` y cierra con `cortex_close_session`.",
+                "",
+                "## Hard rules",
+                "",
+                "- NUNCA llames `cortex_create_spec` antes de `cortex_sync_ticket` (el MCP",
+                "  server rechaza con violación de gobernanza).",
+                "- NUNCA omitas `/cortex-documenter` al final — sin el cierre con criterio",
+                "  editorial, la sesión queda con documentación de baja señal y la memoria",
+                "  organizacional se erosiona.",
+                "- El status `handoff` es un outcome de primera clase. Si los verification",
+                "  hooks fallan o quedan archivos unimplemented, cerrar como `handoff`",
+                "  (NO `closed`) para que el próximo `/cortex-sync` lo priorice.",
+                "- Si `CONTEXT.md` existe, los términos del dominio son canónicos.",
+                "  `/cortex-documenter` puede agregar nuevos términos vía `cortex_write_doc`",
+                "  con `doc_type=glossary`.",
+                "",
+                "## Subagents canónicos (Task tool)",
+                "",
+                "Disponibles para que `/cortex-SDDwork` delegue trabajo en Deep Track:",
+                "",
+                "- `cortex-code-explorer` — análisis de arquitectura read-only.",
+                "- `cortex-code-designer` — produce design doc antes de implementar.",
+                "- `cortex-code-implementer` — implementa siguiendo el design doc.",
+                "- `cortex-documenter` (DEPRECATED) — solo para compatibilidad con flujos",
+                "  antiguos; el flujo canónico de cierre es `/cortex-documenter`.",
+            ]
+        )
+        + "\n"
+    )
 
 
 class ClaudeCodeAdapter(IDEAdapter):
@@ -86,62 +153,7 @@ class ClaudeCodeAdapter(IDEAdapter):
         files_written: list[str] = []
 
         _backup_file(claude_md_path)
-        claude_md_path.write_text(
-            "\n".join(
-                [
-                    "<!--",
-                    header.strip(),
-                    "-->",
-                    "",
-                    "# Cortex Workflow — Triadic Anchors (Phase 09.A+ / May 2026)",
-                    "",
-                    "Cortex se ejecuta con TRES skills invocables con `/`. El medio es",
-                    "pluggable; los anchors de inicio y cierre son **obligatorios**.",
-                    "",
-                    "1. **`/cortex-sync`** (anchor inicio, obligatorio) — carga contexto",
-                    "   histórico via ONNX/RRF, emite propuesta interactiva, persiste la",
-                    "   spec en el vault, abre la Session.",
-                    "2. **Middle (pluggable)** — uno de los siguientes:",
-                    "   - **`/cortex-SDDwork`** (Managed): Fast Track edits directos o Deep",
-                    "     Track con delegación a los subagents canónicos.",
-                    "   - Subagents directos via Task tool: `cortex-code-explorer`,",
-                    "     `cortex-code-designer`, `cortex-code-implementer` (Deep Track).",
-                    "   - **BYO**: trabajás manualmente o con cualquier otro agente. Cortex",
-                    "     reconstruye desde el diff al cierre.",
-                    "3. **`/cortex-documenter`** (anchor cierre, obligatorio) — invoca",
-                    "   `cortex_documenter_briefing`, decide qué doc types persistir",
-                    "   (session / handoff / adr / decision / runbook / etc.), escribe la",
-                    "   nota a mano con criterio editorial, llama `cortex_self_review_note`,",
-                    "   persiste vía `cortex_write_doc` y cierra con `cortex_close_session`.",
-                    "",
-                    "## Hard rules",
-                    "",
-                    "- NUNCA llames `cortex_create_spec` antes de `cortex_sync_ticket` (el MCP",
-                    "  server rechaza con violación de gobernanza).",
-                    "- NUNCA omitas `/cortex-documenter` al final — sin el cierre con criterio",
-                    "  editorial, la sesión queda con documentación de baja señal y la memoria",
-                    "  organizacional se erosiona.",
-                    "- El status `handoff` es un outcome de primera clase. Si los verification",
-                    "  hooks fallan o quedan archivos unimplemented, cerrar como `handoff`",
-                    "  (NO `closed`) para que el próximo `/cortex-sync` lo priorice.",
-                    "- Si `CONTEXT.md` existe, los términos del dominio son canónicos.",
-                    "  `/cortex-documenter` puede agregar nuevos términos vía `cortex_write_doc`",
-                    "  con `doc_type=glossary`.",
-                    "",
-                    "## Subagents canónicos (Task tool)",
-                    "",
-                    "Disponibles para que `/cortex-SDDwork` delegue trabajo en Deep Track:",
-                    "",
-                    "- `cortex-code-explorer` — análisis de arquitectura read-only.",
-                    "- `cortex-code-designer` — produce design doc antes de implementar.",
-                    "- `cortex-code-implementer` — implementa siguiendo el design doc.",
-                    "- `cortex-documenter` (DEPRECATED) — solo para compatibilidad con flujos",
-                    "  antiguos; el flujo canónico de cierre es `/cortex-documenter`.",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        claude_md_path.write_text(_claude_workflow_doc(header), encoding="utf-8")
         files_written.append(str(claude_md_path))
 
         # Phase 09.A+ / May 2026: the three triadic anchors are installed
@@ -291,3 +303,174 @@ class ClaudeCodeAdapter(IDEAdapter):
         settings_path.write_text(json.dumps(settings_data, indent=2), encoding="utf-8")
         mcp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return [str(settings_path), str(mcp_file)]
+
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
+        """Remove Cortex artifacts from the Claude Code project (Fase 2).
+
+        Regla de oro: SOLO se borra lo que Cortex creó.
+
+        - ``CLAUDE.md`` fue SOBRESCRITO por install → se restaura del
+          backup ``*.cortex_backup_*`` más reciente; sin backup, si el
+          contenido es puro header autogenerado de Cortex → unlink; si es
+          mixto con marcadores → se extraen los bloques; mixto desconocido
+          → skip (intacto).
+        - ``.claude/skills/cortex-*/`` y ``.claude/agents/cortex-*.md``
+          creados por Cortex → se remueven.
+        - ``enabledMcpjsonServers: ["cortex", ...]`` en settings.json y
+          ``mcpServers.cortex`` en .mcp.json → remoción por clave,
+          preservando lo ajeno. Archivos que quedan vacíos → unlink.
+
+        Idempotente: segunda pasada devuelve ``[]``.
+        """
+        report: list[str] = []
+        if project_root is None:
+            # Sin project_root explícito no hay forma segura de ubicar los
+            # paths relativos del proyecto (nunca Path.cwd()).
+            return report
+        root = Path(project_root).resolve()
+        paths = self.get_config_paths()
+
+        # ── 1. CLAUDE.md ─────────────────────────────────────────────
+        claude_md = root / paths["claude_md"]
+        if claude_md.exists():
+            backups = sorted(root.glob("CLAUDE.md.cortex_backup_*"))
+            if backups:
+                latest = backups[-1]
+                claude_md.write_text(
+                    latest.read_text(encoding="utf-8"), encoding="utf-8"
+                )
+                for backup in backups:
+                    backup.unlink()
+                report.append(f"{claude_md} (restored from {latest.name})")
+            else:
+                content = claude_md.read_text(encoding="utf-8")
+                header = _generate_autogen_header(
+                    sources=[
+                        ".cortex/skills/cortex-sync.md",
+                        ".cortex/skills/cortex-SDDwork.md",
+                        ".cortex/skills/cortex-documenter.md",
+                        ".cortex/subagents/cortex-code-explorer.md",
+                        ".cortex/subagents/cortex-code-implementer.md",
+                        ".cortex/subagents/cortex-code-designer.md",
+                        ".cortex/subagents/cortex-documenter.md",
+                    ],
+                    ide_name="claude_code",
+                )
+                if has_marker_block(content):
+                    cleaned = strip_marker_blocks(content)
+                    if cleaned.strip():
+                        claude_md.write_text(cleaned, encoding="utf-8")
+                        report.append(f"{claude_md} (Cortex sections removed)")
+                    else:
+                        claude_md.unlink()
+                        report.append(str(claude_md))
+                elif is_content_identical_to_bundle(
+                    content, _claude_workflow_doc(header)
+                ):
+                    # Contenido 100% Cortex (solo difiere el timestamp).
+                    claude_md.unlink()
+                    report.append(str(claude_md))
+                else:
+                    report.append(
+                        f"{claude_md} (skipped: mixed content without "
+                        "Cortex markers or backup)"
+                    )
+
+        # ── 2. Skills (.claude/skills/cortex-*/) ────────────────────
+        skills_dir = root / paths["skills_dir"]
+        if skills_dir.exists():
+            for skill_dir in sorted(skills_dir.glob("cortex-*")):
+                if not skill_dir.is_dir():
+                    continue
+                # Solo borrar archivos creados por Cortex; si queda algo
+                # ajeno dentro, el directorio se preserva.
+                for f in list(skill_dir.iterdir()):
+                    if f.is_file() and (
+                        f.name == "SKILL.md" or ".cortex_backup_" in f.name
+                    ):
+                        f.unlink()
+                if not any(skill_dir.iterdir()):
+                    skill_dir.rmdir()
+                    report.append(str(skill_dir / "SKILL.md"))
+                else:
+                    report.append(f"{skill_dir} (skipped: foreign files inside)")
+
+        # ── 3. Agents (.claude/agents/cortex-*.md) ──────────────────
+        agents_dir = root / paths["agents_dir"]
+        cortex_agents = (
+            "cortex-code-explorer",
+            "cortex-code-implementer",
+            "cortex-documenter",
+        )
+        for agent_name in cortex_agents:
+            agent_path = agents_dir / f"{agent_name}.md"
+            if agent_path.is_file():
+                agent_path.unlink()
+                report.append(str(agent_path))
+
+        # ── 4. settings.json: enabledMcpjsonServers 'cortex' ────────
+        settings_path = root / paths["settings"]
+        if settings_path.exists():
+            try:
+                settings_data: dict[str, Any] = json.loads(
+                    settings_path.read_text(encoding="utf-8")
+                )
+            except Exception:
+                report.append(
+                    f"{settings_path} (skipped: invalid JSON, not touched)"
+                )
+            else:
+                if isinstance(settings_data, dict):
+                    changed = False
+                    enabled = settings_data.get("enabledMcpjsonServers")
+                    if isinstance(enabled, list) and "cortex" in enabled:
+                        enabled = [s for s in enabled if s != "cortex"]
+                        changed = True
+                        if enabled:
+                            settings_data["enabledMcpjsonServers"] = enabled
+                        else:
+                            del settings_data["enabledMcpjsonServers"]
+                    if changed:
+                        if not settings_data:
+                            settings_path.unlink()
+                            report.append(str(settings_path))
+                        else:
+                            _backup_file(settings_path)
+                            settings_path.write_text(
+                                json.dumps(settings_data, indent=2),
+                                encoding="utf-8",
+                            )
+                            report.append(
+                                f"{settings_path} (Cortex keys removed)"
+                            )
+
+        # ── 5. .mcp.json: mcpServers.cortex ─────────────────────────
+        mcp_file = root / paths["mcp"]
+        if mcp_file.exists():
+            try:
+                data: dict[str, Any] = json.loads(
+                    mcp_file.read_text(encoding="utf-8")
+                )
+            except Exception:
+                report.append(f"{mcp_file} (skipped: invalid JSON, not touched)")
+            else:
+                if isinstance(data, dict):
+                    changed = False
+                    servers = data.get("mcpServers")
+                    if isinstance(servers, dict) and "cortex" in servers:
+                        del servers["cortex"]
+                        changed = True
+                        if not servers and "mcpServers" in data:
+                            del data["mcpServers"]
+                    if changed:
+                        if not data:
+                            mcp_file.unlink()
+                            report.append(str(mcp_file))
+                        else:
+                            _backup_file(mcp_file)
+                            mcp_file.write_text(
+                                json.dumps(data, indent=2), encoding="utf-8"
+                            )
+                            report.append(f"{mcp_file} (Cortex keys removed)")
+
+        return report

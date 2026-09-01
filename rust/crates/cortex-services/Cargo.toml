@@ -1,0 +1,15 @@
+[package]
+name = "cortex-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+cortex-app = { path = "../cortex-app" }
+cortex-setup = { path = "../cortex-setup" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+regex = "1"
+uuid = { version = "1", default-features = false, features = ["v4"] }

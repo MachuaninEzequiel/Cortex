@@ -1,0 +1,15 @@
+{
+  "files": {
+    ".claude/settings.json": "{\n  \"theme\": \"dark\"\n}\n"
+  },
+  "ide": "claude-code",
+  "kind": "result",
+  "payload": {
+    "ide": "claude-code",
+    "message": "no cortex-managed entry in {{TARGET}}/.claude/settings.json",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_nomarker"
+}

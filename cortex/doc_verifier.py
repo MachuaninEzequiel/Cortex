@@ -176,15 +176,6 @@ class DocVerifier:
         except ValueError:
             return None
 
-    def _git_diff_files(self, base_branch: str) -> list[str]:
-        """Return list of files changed vs *base_branch*."""
-        out = subprocess.check_output(
-            ["git", "diff", "--name-only", base_branch, "--"],
-            cwd=self.root,
-            text=True,
-        )
-        return [f for f in out.strip().splitlines() if f]
-
     def _git_diff_status(
         self, base_branch: str
     ) -> tuple[list[str], list[str], list[str]]:

@@ -1,0 +1,44 @@
+[
+ {
+  "content": "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.",
+  "memory_type": "workitem",
+  "tags": [
+   "hu",
+   "jira"
+  ],
+  "files": [
+   "vault/hu/HU-123.md"
+  ],
+  "extra_metadata": {
+   "origen": "jira",
+   "workitem_id": "HU-123"
+  }
+ },
+ {
+  "content": "class WorkItemService delega la escritura en writers.build_note con frontmatter estable.",
+  "memory_type": "decision",
+  "tags": [
+   "rust"
+  ],
+  "files": [],
+  "extra_metadata": null
+ },
+ {
+  "content": "docs-migrate migró la bóveda legacy a estructura canónica specs/ y adr/.",
+  "memory_type": "ops",
+  "tags": [
+   "migracion"
+  ],
+  "files": [],
+  "extra_metadata": {
+   "herramienta": "docs-migrate"
+  }
+ },
+ {
+  "content": "Error KeyError: workitem_id faltante al importar HU sin key externa.",
+  "memory_type": "incident",
+  "tags": [],
+  "files": [],
+  "extra_metadata": null
+ }
+]

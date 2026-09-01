@@ -1,0 +1,13 @@
+{
+  "files": {},
+  "ide": "pi",
+  "kind": "result",
+  "payload": {
+    "ide": "pi",
+    "message": "{{TARGET}}/justfile does not exist",
+    "modified_paths": [],
+    "removed_paths": [],
+    "uninstalled": false
+  },
+  "step": "uninstall_missing"
+}

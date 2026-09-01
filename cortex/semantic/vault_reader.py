@@ -14,12 +14,13 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from cortex.documentation.common import compute_fingerprint
+from cortex.documentation.common import yaml_dump_safe
 from cortex.documentation.doc_type import DocType
 from cortex.documentation.inventory import classify_path
 from cortex.episodic.embedder import Embedder
@@ -27,12 +28,16 @@ from cortex.models import SemanticDocument
 from cortex.security.paths import resolve_safe, validate_under_root
 from cortex.semantic.chunker import Chunk, chunk_document
 from cortex.semantic.markdown_parser import MarkdownParser
-from cortex.semantic.vector_cache import VectorCache
+from cortex.semantic.vector_cache import DEFAULT_MODEL_NAME, VectorCache, cache_fingerprint
 
 logger = logging.getLogger(__name__)
 
 # Index file persisted alongside the vault
 _INDEX_FILE = ".cortex_index.json"
+
+# Fallback model identity used to salt cache fingerprints when the embedder
+# object does not expose ``model_name`` (Fix A2/A3 wiring).
+DEFAULT_EMBEDDING_MODEL = DEFAULT_MODEL_NAME
 
 
 class VaultReader:
@@ -78,6 +83,18 @@ class VaultReader:
         # metadata for the corresponding entry in ``_embeddings``.
         # ``chunk_id`` falls back to ``rel_path`` for single-chunk docs.
         self._chunks: dict[str, Chunk] = {}
+        # Ruta nativa Rust (Obra 03, Gate G1). Activa SOLO con CORTEX_NATIVE=1
+        # y el módulo compilado; el default es la ruta Python pura (paridad).
+        # ``_native_matrix`` es la matriz f64 C-contigua (n_chunks × dim)
+        # empacada UNA vez por estado del índice — jamás por query (regla de
+        # APIs batch/gruesas). Se invalida en cada mutación de _embeddings.
+        self._native_matrix: Any = None  # np.ndarray | None (import diferido)
+        self._native_warned = False
+        # Índice BM25 nativo (G3): corpus + snapshot IDF en Rust. Se reconstruye
+        # completo cuando ``_native_bm25_dirty`` (cualquier mutación del vault).
+        self._native_bm25_index: Any = None
+        self._native_bm25_paths: list[str] = []  # alineado con el índice Rust
+        self._native_bm25_dirty = True
 
     # ------------------------------------------------------------------
     # Index management
@@ -96,6 +113,7 @@ class VaultReader:
         self._chunks.clear()
         self._doc_lengths.clear()
         self._idf.clear()
+        self._invalidate_native_caches()
 
         if not self.vault_path.exists():
             logger.warning("Vault path does not exist: %s", self.vault_path)
@@ -129,6 +147,7 @@ class VaultReader:
                 self._embeddings[cid] = vec
 
         # Pre-compute BM25 IDF
+        self._invalidate_native_caches()
         self._compute_idf()
         docs = list(self._doc_lengths.values())
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
@@ -169,10 +188,20 @@ class VaultReader:
             return self._bm25_search(query, top_k)
 
         query_vec = self._embedder.embed(query)
+        # Fuente de scores: nativa Rust (CORTEX_NATIVE=1) o Python pura.
+        # AMBAS producen los mismos bits; la agregación max-por-doc es UNA sola
+        # ruta → paridad estructural del top-k.
+        native_scores = self._native_scores(query_vec)
+        if native_scores is not None:
+            score_source: Iterable[float] = native_scores
+        else:
+            score_source = (
+                self._cosine_similarity(query_vec, vec)
+                for vec in self._embeddings.values()
+            )
         # Aggregate chunks -> parent doc with max score.
         best_per_doc: dict[str, tuple[float, str]] = {}
-        for chunk_id, vec in self._embeddings.items():
-            score = self._cosine_similarity(query_vec, vec)
+        for chunk_id, score in zip(self._embeddings.keys(), score_source, strict=True):
             if score <= 0:
                 continue
             chunk = self._chunks.get(chunk_id)
@@ -207,6 +236,20 @@ class VaultReader:
             return []
 
         max(len(self._index), 1)
+
+        # Ruta nativa Rust (Obra 03, Gate G3): top-k directo desde Rust con
+        # scores bit-idénticos y desempate estable replicado (a igual score
+        # gana el menor índice de inserción); model_copy diferido al top-k.
+        # None ⇒ ruta Python pura (default, paridad).
+        pares = self._native_bm25_topk(terms, k1, b, top_k)
+        if pares is not None:
+            return [
+                self._index[self._native_bm25_paths[i]].model_copy(
+                    update={"score": score}
+                )
+                for score, i in pares
+            ]
+
         scored: list[tuple[float, SemanticDocument]] = []
 
         for rel_path, doc in self._index.items():
@@ -255,8 +298,158 @@ class VaultReader:
         return dot / (norm_a * norm_b)
 
     # ------------------------------------------------------------------
+    # Native Rust scoring (Obra 03, Gate G1) — opt-in vía CORTEX_NATIVE=1
+    # ------------------------------------------------------------------
+
+    def _invalidate_native_caches(self) -> None:
+        """Marca los cachés nativos como obsoletos (llamar tras mutar el índice).
+
+        Cubre la matriz empacada del scoring (G1) y el índice BM25 nativo (G3).
+        Ambos se reconstruyen lazy: una sola vez por estado del índice, en la
+        próxima query nativa.
+        """
+        self._native_matrix = None
+        self._native_bm25_dirty = True
+
+    def _native_scores(self, query_vec: list[float]) -> list[float] | None:
+        """Scores cosine batch vía Rust para TODOS los chunks (o ``None``).
+        Devuelve ``None`` cuando la ruta nativa no aplica (flag apagado,
+        módulo ausente o índice vacío) y la llamante usa la ruta Python pura —
+        comportamiento idéntico al default (regla R5.6 del HANDOFF).
+
+        Paridad bit-a-bit: el núcleo Rust replica la suma compensada de Neumaier
+        del builtin ``sum()`` de CPython ≥3.12 (ver cortex-core::scoring).
+        La matriz se empaca preservando el orden de inserción de ``_embeddings``
+        y se cachea hasta la próxima mutación del índice.
+        """
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return None
+        try:
+            from cortex_core import _native
+            import numpy as np
+        except ImportError:
+            if not self._native_warned:
+                logger.warning(
+                    "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                    "se usa la ruta Python pura. Compilá con: .venv/bin/python -m "
+                    "maturin develop --release -m rust/crates/cortex-py/Cargo.toml"
+                )
+                self._native_warned = True
+            return None
+
+        if not self._embeddings:
+            return None
+
+        dim = len(query_vec)
+        if self._native_matrix is None or self._native_matrix.shape != (
+            len(self._embeddings),
+            dim,
+        ):
+            # Empacado UNA vez por estado de índice (orden de inserción del dict,
+            # determinista desde sync()). C-contigua float64 → vista zero-copy en Rust.
+            self._native_matrix = np.asarray(
+                list(self._embeddings.values()), dtype=np.float64
+            ).reshape(len(self._embeddings), -1)
+        # El query es chico (dim floats): conversión explícita; la matriz grande
+        # pasa como vista sin copia.
+        return _native.cosine_scores(
+            np.asarray(query_vec, dtype=np.float64), self._native_matrix
+        ).tolist()
+
+    def _native_bm25_ready(self) -> bool:
+        """Garantiza índice BM25 nativo sincronizado; False sin módulo/flag.
+
+        Reconstrucción completa y lazy ante cualquier mutación del vault
+        (dirty flag). Devuelve True sólo con CORTEX_NATIVE=1 y módulo presente.
+        """
+        if os.environ.get("CORTEX_NATIVE") != "1":
+            return False
+        try:
+            from cortex_core import _native
+        except ImportError:
+            if not self._native_warned:
+                logger.warning(
+                    "CORTEX_NATIVE=1 pero cortex_core._native no está compilado; "
+                    "se usa la ruta Python pura. Compilá con: .venv/bin/python -m "
+                    "maturin develop --release -m rust/crates/cortex-py/Cargo.toml"
+                )
+                self._native_warned = True
+            return False
+
+        if not self._index:
+            return False
+
+        if (
+            self._native_bm25_dirty
+            or self._native_bm25_index is None
+            or len(self._native_bm25_index) != len(self._index)
+        ):
+            ix = _native.NativeBm25Index()
+            paths = list(self._index.keys())
+            batch = 500  # API gruesa: lotes grandes, jamás llamada-por-doc
+            for i in range(0, len(paths), batch):
+                lote = paths[i : i + batch]
+                textos = [
+                    f"{self._index[p].title} {self._index[p].content}".lower()
+                    for p in lote
+                ]
+                lens = [self._doc_lengths.get(p, 1) for p in lote]
+                ix.add_batch(lote, textos, lens)
+            ix.set_stats(list(self._idf.keys()), list(self._idf.values()), float(self._avgdl))
+            # Calentar el pool de threads de rayon FUERA de cualquier medición:
+            # si no, la primera query paga el spawn (~ms) y contamina el p99.
+            ix.search([], 0.0, 0.0)
+            self._native_bm25_index = ix
+            # Snapshot de rutas alineado con el orden interno del índice Rust:
+            # top_k devuelve índices de documento, no rutas.
+            self._native_bm25_paths = paths
+            self._native_bm25_dirty = False
+        return True
+
+    def _native_bm25_scores(
+        self, terms: list[str], k1: float, b: float
+    ) -> list[float] | None:
+        """Scores BM25 de TODO el corpus vía Rust (o ``None`` → ruta Python).
+
+        Réplica bit a bit del bucle de ``_bm25_search`` (tf por substring,
+        skip de idf==0, acumulación f64 secuencial). Usado por los tests de
+        paridad; la ruta de búsqueda usa `_native_bm25_topk`.
+        """
+        if not self._native_bm25_ready():
+            return None
+        return self._native_bm25_index.search(terms, k1, b).tolist()
+
+    def _native_bm25_topk(
+        self, terms: list[str], k1: float, b: float, top_k: int
+    ) -> list[tuple[float, int]] | None:
+        """Top-K BM25 directo desde Rust (o ``None`` → ruta Python pura).
+
+        Desempate replicado exactamente: a igual score gana el menor índice
+        de inserción (equivale al sort estable descendente de Python sobre el
+        orden de ``_index`` en el momento del rebuild).
+        """
+        if not self._native_bm25_ready():
+            return None
+        return [
+            (score, int(i))
+            for score, i in self._native_bm25_index.top_k(terms, k1, b, max(top_k, 1))
+        ]
+
+    # ------------------------------------------------------------------
     # Cache-aware embedding helpers (Fase 06)
     # ------------------------------------------------------------------
+
+    def _drop_vector_cache(self, reason: str) -> None:
+        """Degrade to direct embedding after a cache failure (Fix A2).
+
+        Loudly visible (WARNING): a broken cache must slow things down or
+        cost re-embeddings, but it must never corrupt results silently.
+        """
+        logger.warning(
+            "Vector cache unusable (%s); continuing WITHOUT cache "
+            "(vectors will be recomputed on next run)", reason,
+        )
+        self._vector_cache = None
 
     def _embed_single_with_cache(
         self, rel_path: str, search_text: str
@@ -265,7 +458,8 @@ class VaultReader:
         if self._vector_cache is None:
             return self._embedder.embed(search_text)
 
-        fp = compute_fingerprint(search_text)
+        model_name = getattr(self._embedder, "model_name", DEFAULT_EMBEDDING_MODEL)
+        fp = cache_fingerprint(model_name, search_text)
         cached = self._vector_cache.get(fp)
         if cached is not None:
             return cached.tolist()
@@ -275,8 +469,10 @@ class VaultReader:
             import numpy as _np
             arr = _np.asarray(vec, dtype=_np.float32)
             self._vector_cache.put(fp, rel_path, arr)
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.debug("Vector cache put failed for %s: %s", rel_path, exc)
+        except Exception as exc:
+            # Fix A2: cache write failures are degraded loudly to no-cache;
+            # the freshly computed vector is still returned.
+            self._drop_vector_cache(f"put failed for {rel_path}: {exc}")
         return vec
 
     def _embed_batch_with_cache(
@@ -284,12 +480,23 @@ class VaultReader:
     ) -> list[list[float]]:
         """Batch embed, hitting the cache for known fingerprints first.
 
-        Returns vectors in the same order as ``rel_paths``/``search_texts``.
+        Fix A2 semantics:
+        - An embedder error is infrastructure failure → propagate wrapped
+          ``RuntimeError`` with chunk context. Never return partial vectors.
+        - A cache-write error is degradation → WARNING + continue without
+          cache. Every result slot is still filled with a real vector.
         """
         if self._vector_cache is None:
-            return list(self._embedder.embed_batch(list(search_texts)))
+            try:
+                return list(self._embedder.embed_batch(list(search_texts)))
+            except Exception as exc:
+                raise RuntimeError(
+                    f"embedding failed for {len(search_texts)} chunks "
+                    f"(first: {rel_paths[0] if rel_paths else '?'})"
+                ) from exc
 
-        fingerprints = [compute_fingerprint(text) for text in search_texts]
+        model_name = getattr(self._embedder, "model_name", DEFAULT_EMBEDDING_MODEL)
+        fingerprints = [cache_fingerprint(model_name, text) for text in search_texts]
 
         # Resolve cache hits.
         results: list[list[float] | None] = [None] * len(rel_paths)
@@ -304,19 +511,44 @@ class VaultReader:
         # Batch embed the misses.
         if miss_indices:
             miss_texts = [search_texts[i] for i in miss_indices]
-            miss_vectors = self._embedder.embed_batch(miss_texts)
+            first_miss_rel = rel_paths[miss_indices[0]]
+            try:
+                miss_vectors = self._embedder.embed_batch(miss_texts)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"embedding failed for chunk {first_miss_rel}"
+                    f" (+{len(miss_texts) - 1} more)"
+                ) from exc
+            if len(miss_vectors) != len(miss_texts):
+                raise RuntimeError(
+                    f"embedder returned {len(miss_vectors)} vectors for "
+                    f"{len(miss_texts)} chunks (first missing: {first_miss_rel})"
+                )
+
+            # Transactional cache write (all-or-nothing via batch_put).
             try:
                 import numpy as _np
-                for idx, vec in zip(miss_indices, miss_vectors, strict=False):
-                    arr = _np.asarray(vec, dtype=_np.float32)
-                    self._vector_cache.put(fingerprints[idx], rel_paths[idx], arr)
+                items = [
+                    (fingerprints[idx], rel_paths[idx],
+                     _np.asarray(vec, dtype=_np.float32))
+                    for idx, vec in zip(miss_indices, miss_vectors)
+                ]
+                self._vector_cache.batch_put(items)
+                for idx, vec in zip(miss_indices, miss_vectors):
                     results[idx] = vec
-            except Exception as exc:  # pragma: no cover - defensive
-                logger.debug("Vector cache batch put failed: %s", exc)
-                for idx, vec in zip(miss_indices, miss_vectors, strict=False):
-                    results[idx] = vec
+            except Exception as exc:
+                # Degrade loudly: keep going without cache, but every slot
+                # still gets its freshly computed vector below.
+                self._drop_vector_cache(f"batch_put failed at {first_miss_rel}: {exc}")
+                for idx, vec in zip(miss_indices, miss_vectors):
+                    results[idx] = list(vec)
 
-        return [v if v is not None else [] for v in results]
+        # Fail-fast guard: an incomplete result can never leave this method.
+        if any(v is None for v in results):
+            missing = [rel_paths[i] for i, v in enumerate(results) if v is None]
+            raise RuntimeError(f"internal error: vectors missing for {missing[:3]}")
+
+        return [v for v in results if v is not None]
 
     # ------------------------------------------------------------------
     # Chunking helpers (Fase 07)
@@ -379,6 +611,7 @@ class VaultReader:
         for cid in stale:
             self._chunks.pop(cid, None)
             self._embeddings.pop(cid, None)
+        self._invalidate_native_caches()
 
     @staticmethod
     def _resolve_doc_type(rel_path: str) -> DocType | None:
@@ -451,19 +684,13 @@ class VaultReader:
         except OSError:
             logger.debug("Could not persist index meta to %s", meta_path)
 
-    def _load_index_meta(self) -> bool:
-        """Load BM25 index metadata if available. Returns True on success."""
-        meta_path = self.vault_path / _INDEX_FILE
-        if not meta_path.exists():
-            return False
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            self._doc_lengths = meta.get("doc_lengths", {})
-            self._avgdl = meta.get("avgdl", 1.0)
-            self._idf = meta.get("idf", {})
-            return True
-        except (json.JSONDecodeError, OSError):
-            return False
+    # Decision (Fix A5): ``_load_index_meta`` was REMOVED, not wired.
+    # Rationale: ``sync()`` recomputes BM25 stats from already-parsed docs on
+    # every cold start, and embeddings are never restored from disk either,
+    # so a meta-only restore would produce an inconsistent half-index while
+    # saving nothing measurable. The saved meta stays useful as a diagnostic
+    # artifact and for future Fase C/E consumers; it is written through
+    # :meth:`_persist_after_write` after every vault write.
 
     # ------------------------------------------------------------------
     # Read / search (public)
@@ -542,6 +769,7 @@ class VaultReader:
                 vectors = self._embed_batch_with_cache(chunk_ids, texts)
                 for cid, vec in zip(chunk_ids, vectors, strict=False):
                     self._embeddings[cid] = vec
+            self._invalidate_native_caches()
 
             # Update BM25 metadata for this file
             search_text = f"{doc.title} {doc.content}"
@@ -556,7 +784,7 @@ class VaultReader:
             self._compute_idf()
             
             # Save lightweight meta (without full sync)
-            self._save_index_meta()
+            self._persist_after_write()
             return True
         except Exception as e:
             logger.error("Failed to index file %s: %s", relative_path, e)
@@ -610,6 +838,7 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
+        self._invalidate_native_caches()
         search_text = f"{title} {content}"
         word_count = len(search_text.split())
         self._doc_lengths[rel] = word_count
@@ -618,16 +847,48 @@ class VaultReader:
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
         # Update IDF
         self._compute_idf()
+        self._persist_after_write()
 
         logger.info("Note created: %s", path)
         return path
 
+    @staticmethod
+    def _merge_frontmatter(existing_text: str, new_content: str) -> str:
+        """Merge ``new_content`` into ``existing_text`` keeping frontmatter (A5).
+
+        The existing YAML frontmatter block (title, tags, custom keys) is
+        preserved verbatim; only the body is replaced. If ``new_content``
+        already carries its own frontmatter it is treated as a complete
+        document and written as-is.
+        """
+        if new_content.lstrip("﻿").startswith("---"):
+            return new_content
+        match = re.match(r"\A---\s*\n(.*?)\n---\s*\n", existing_text, re.DOTALL)
+        if not match:
+            return new_content
+        return f"---\n{match.group(1)}\n---\n\n{new_content}"
+
+    def _persist_after_write(self) -> None:
+        """Persist index metadata after ANY vault write (Fix A5).
+
+        Single funnel so a new write path cannot forget to sync BM25 meta.
+        """
+        self._save_index_meta()
+
     def update_note(self, relative_path: str, new_content: str) -> bool:
-        """Overwrite the body of an existing note. Returns True on success."""
+        """Overwrite the body of an existing note, preserving frontmatter.
+
+        Fix A5: previously this wrote ``new_content`` raw over the whole
+        file, destroying the original title/tags frontmatter.
+        Returns True on success.
+        """
         path = resolve_safe(self.vault_path, relative_path)
         if not path.exists():
             return False
-        path.write_text(new_content, encoding="utf-8")
+        existing = path.read_text(encoding="utf-8")
+        path.write_text(
+            self._merge_frontmatter(existing, new_content), encoding="utf-8"
+        )
         self._index[relative_path] = self._parser.parse(path)
 
         # Re-embed (chunk-aware + cache-aware).
@@ -642,16 +903,14 @@ class VaultReader:
             vectors = self._embed_batch_with_cache(chunk_ids, texts)
             for cid, vec in zip(chunk_ids, vectors, strict=False):
                 self._embeddings[cid] = vec
+        self._invalidate_native_caches()
         search_text = f"{doc.title} {doc.content}"
         self._doc_lengths[relative_path] = len(search_text.split())
         docs = list(self._doc_lengths.values())
         self._avgdl = sum(docs) / len(docs) if docs else 1.0
         self._compute_idf()
+        self._persist_after_write()
 
         return True
 
 
-def yaml_dump_safe(data: dict) -> str:
-    """Dump a dict to YAML string safely (handles special characters)."""
-    import yaml
-    return yaml.dump(data, default_flow_style=False, allow_unicode=True)

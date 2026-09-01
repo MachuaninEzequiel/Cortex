@@ -1,0 +1,10 @@
+[package]
+name = "cortex-branding"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Intencionalmente vacío: identidad visual PURA (paleta + máscaras + gradiente
+# + render ANSI). Cero dependencias pesadas para que cualquier binario (brain,
+# cli, tui) pueda usarla sin arrastrar ratatui.

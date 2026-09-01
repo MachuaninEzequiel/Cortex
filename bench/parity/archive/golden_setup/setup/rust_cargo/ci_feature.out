@@ -1,0 +1,89 @@
+name: CI - Feature Branch
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
+      - '!main'
+
+jobs:
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+
+      - name: Install project dependencies
+        run: cargo build
+
+      - name: Install Cortex memory
+        run: pip install cortex-memory
+
+      - name: Restore Cortex Memory Cache
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+          restore-keys: |
+            cortex-memory-
+
+      - name: Cortex - Doctor
+        run: cortex doctor
+
+      - name: Run Linting
+        run: cargo clippy
+        id: lint
+        continue-on-error: true
+
+      - name: Cortex — Store Lint Result
+        if: always()
+        run: |
+          cortex remember "CI lint result: ${{ steps.lint.outcome }}" \
+            --type ci \
+            --tag lint \
+            --tag ${{ steps.lint.outcome }} \
+            --branch ${{ github.ref_name }}
+
+      - name: Run Tests
+        run: cargo test
+        id: tests
+        continue-on-error: true
+
+      - name: Cortex — Store Test Result
+        if: always()
+        run: |
+          cortex remember "CI test result: ${{ steps.tests.outcome }}" \
+            --type ci \
+            --tag tests \
+            --tag ${{ steps.tests.outcome }} \
+            --branch ${{ github.ref_name }}
+
+      - name: Cortex - Validate Docs
+        if: always()
+        run: cortex validate-docs --vault vault --output .doc-validation.json
+
+      - name: Save Cortex Memory Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .memory/chroma
+          key: cortex-memory-${{ github.run_id }}
+
+      - name: Check Lint
+        if: steps.lint.outcome != 'success'
+        run: |
+          echo "❌ Lint failed on feature branch."
+          exit 1
+
+      - name: Check Tests
+        if: steps.tests.outcome != 'success'
+        run: |
+          echo "❌ Tests failed on feature branch."
+          exit 1

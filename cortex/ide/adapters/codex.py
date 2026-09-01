@@ -522,7 +522,7 @@ class CodexAdapter(IDEAdapter):
 
         return _shutil.which("codex") is not None
 
-    def uninstall(self) -> list[str]:
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
         """Remove Cortex sections from AGENTS.md and config.toml. Idempotent.
 
         Conservador: solo elimina los BLOQUES marcados como Cortex (entre
@@ -536,7 +536,9 @@ class CodexAdapter(IDEAdapter):
         creaba pero Codex nunca leia.
         """
         removed: list[str] = []
-        cwd = Path.cwd()
+        # project_root SIEMPRE tiene prioridad; el fallback a cwd mantiene
+        # compatibilidad con llamadores legacy que invocan uninstall() a pelo.
+        cwd = Path(project_root).resolve() if project_root is not None else Path.cwd()
 
         # 1. Limpiar bloque Cortex de AGENTS.md en project root
         agents_md = cwd / "AGENTS.md"

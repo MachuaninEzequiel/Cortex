@@ -1,0 +1,69 @@
+{
+  "elapsed_ms": {{MS}},
+  "acciones": [
+    {
+      "id": "vault.validate_docs",
+      "title": "Validar los documentos del vault",
+      "category": "quality",
+      "effect": "corre DocValidator sobre hasta 200 .md del vault e informa errores",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "quality.run_gates",
+      "title": "Correr quality gates sobre el último checkpoint",
+      "category": "quality",
+      "effect": "review_checkpoint(checkpoint, spec) de la primera sesión OPEN con checkpoints",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "memory.prune",
+      "title": "Revisar memorias con feedback negativo",
+      "category": "quality",
+      "effect": "lista memorias candidatas a forget según feedback persistido (no borra)",
+      "cost": "instant",
+      "reversible": true,
+      "auto_ok": true,
+      "score": 8.0
+    },
+    {
+      "id": "session.checkpoint_now",
+      "title": "Registrar checkpoint de los archivos cambiados",
+      "category": "maintenance",
+      "effect": "agrega un checkpoint manual a la sesión activa",
+      "cost": "seconds",
+      "reversible": false,
+      "auto_ok": false,
+      "score": 5.0
+    },
+    {
+      "id": "vault.reindex",
+      "title": "Re-indexar el vault semántico",
+      "category": "maintenance",
+      "effect": "parse+chunk+embed de vault/ via AgentMemory.sync_vault()",
+      "cost": "seconds",
+      "reversible": true,
+      "auto_ok": false,
+      "score": 5.0
+    }
+  ],
+  "why_not": {
+    "setup.finish_bootstrap": [
+      "config.yaml inexistente"
+    ],
+    "session.close_stale": [
+      "hay sesiones OPEN >7d sin checkpoints"
+    ],
+    "knowledge.promote": [
+      "workspace enterprise presente"
+    ],
+    "ide.resync": [
+      ".cortex/workspace.yaml presente"
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+ "entries": {
+  "Se arregló el bug de login en la función authenticate_user del módulo auth.": {
+   "id": "mem_f0bf66fc",
+   "memory_type": "bugfix",
+   "tags": [
+    "auth",
+    "login"
+   ],
+   "files": [
+    "src/auth.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Refactor de VaultReader para soportar frontmatter multilingüe.": {
+   "id": "mem_44408bac",
+   "memory_type": "refactor",
+   "tags": [
+    "vault"
+   ],
+   "files": [
+    "cortex/semantic/vault_reader.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Decisión de arquitectura: usar RRF con k=60 para fusionar retrieval.": {
+   "id": "mem_660093e0",
+   "memory_type": "decision",
+   "tags": [
+    "architecture"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Error ValueError: invalid literal for int en el parser de config.": {
+   "id": "mem_8c22f9a8",
+   "memory_type": "incident",
+   "tags": [],
+   "files": [
+    "parser.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "error": [
+      "invalid literal for int en el parser de config."
+     ]
+    }
+   },
+   "confidence": null
+  },
+  "Se agregó endpoint POST /api/memories al servicio REST.": {
+   "id": "mem_4d46b3ca",
+   "memory_type": "feature",
+   "tags": [
+    "api"
+   ],
+   "files": [
+    "server.py"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Clase FeedbackStore persiste feedback en feedback.jsonl con rotación.": {
+   "id": "mem_b50254bd",
+   "memory_type": "feature",
+   "tags": [
+    "feedback"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Runbook: si chromadb falla al abrir, borrar .memory/chroma y reindexar.": {
+   "id": "mem_4aeafd8f",
+   "memory_type": "runbook",
+   "tags": [
+    "ops"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "La clase NativeVectorCache escribe store v3 append-only.": {
+   "id": "mem_1baebdea",
+   "memory_type": "note",
+   "tags": [
+    "rust"
+   ],
+   "files": [
+    "rust/cortex-core"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "config.get('embedding_model') devuelve el modelo activo por idioma.": {
+   "id": "mem_a36aec5d",
+   "memory_type": "note",
+   "tags": [
+    "config"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "config_key": [
+      "embedding_model"
+     ],
+     "endpoint": [
+      "embedding_model"
+     ]
+    }
+   },
+   "confidence": null
+  },
+  "Incidente 2026-05-15: subagente colgado 14 minutos + MCP desconectado.": {
+   "id": "mem_8b587fab",
+   "memory_type": "incident",
+   "tags": [
+    "mcp"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Memoria genérica sin entidades ni archivos adjuntos.": {
+   "id": "mem_2e5ac941",
+   "memory_type": "general",
+   "tags": [],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Se optimizó el webgraph con rayon: vecinos n1000 en 345ms.": {
+   "id": "mem_65b49e0d",
+   "memory_type": "perf",
+   "tags": [
+    "webgraph",
+    "rust"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {},
+   "confidence": null
+  },
+  "Workitem HU-123 importado desde Jira: naming canónico HU-123.md con fallback slug legacy.": {
+   "id": "mem_0b565e00",
+   "memory_type": "workitem",
+   "tags": [
+    "hu",
+    "jira"
+   ],
+   "files": [
+    "vault/hu/HU-123.md"
+   ],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "origen": "jira",
+    "workitem_id": "HU-123"
+   },
+   "confidence": null
+  },
+  "class WorkItemService delega la escritura en writers.build_note con frontmatter estable.": {
+   "id": "mem_78e0cb69",
+   "memory_type": "decision",
+   "tags": [
+    "rust"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "class": [
+      "WorkItemService"
+     ]
+    }
+   },
+   "confidence": null
+  },
+  "docs-migrate migró la bóveda legacy a estructura canónica specs/ y adr/.": {
+   "id": "mem_66c29270",
+   "memory_type": "ops",
+   "tags": [
+    "migracion"
+   ],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "herramienta": "docs-migrate"
+   },
+   "confidence": null
+  },
+  "Error KeyError: workitem_id faltante al importar HU sin key externa.": {
+   "id": "mem_614c8910",
+   "memory_type": "incident",
+   "tags": [],
+   "files": [],
+   "timestamp": "{{TS}}",
+   "metadata": {
+    "entities": {
+     "error": [
+      "workitem_id faltante al importar HU sin key externa."
+     ]
+    }
+   },
+   "confidence": null
+  }
+ }
+}

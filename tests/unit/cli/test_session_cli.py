@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -137,12 +138,18 @@ class TestList:
 
 
 class TestShow:
+    @staticmethod
+    def _plain(text: str) -> str:
+        """Strip ANSI escapes so assertions match the rendered text."""
+        return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
     def test_show_active(self, project_root: Path, service: SessionService) -> None:
         service.open(spec_id="2026-05-16_demo", spec_path=Path("specs/demo.md"))
         result = runner.invoke(session_app, ["show", "--project-root", str(project_root)])
         assert result.exit_code == 0
-        assert "2026-05-16_demo" in result.stdout
-        assert "status:" in result.stdout
+        plain = self._plain(result.stdout)
+        assert "2026-05-16_demo" in plain
+        assert "status:" in plain
 
     def test_show_explicit_id(self, project_root: Path, service: SessionService) -> None:
         service.open(spec_id="2026-05-16_demo", spec_path=Path("specs/demo.md"))
@@ -151,7 +158,7 @@ class TestShow:
             ["show", "2026-05-16_demo", "--project-root", str(project_root)],
         )
         assert result.exit_code == 0
-        assert "2026-05-16_demo" in result.stdout
+        assert "2026-05-16_demo" in self._plain(result.stdout)
 
     def test_show_missing_id_errors(self, project_root: Path) -> None:
         result = runner.invoke(

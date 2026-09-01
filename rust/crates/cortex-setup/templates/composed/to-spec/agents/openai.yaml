@@ -1,0 +1,13 @@
+# agents/openai.yaml — doble harness (Codex). Espejo de SKILL.md (familia COMPOSED, Obra 08 stream A).
+interface:
+  display_name: "To Spec"
+  short_description: "Convertir requisitos aclarados en una spec con criterios verificables y hooks."
+policy:
+  allow_implicit_invocation: false
+instructions: |
+  Materializar el requisito aclarado en una spec persistida (cortex_write_doc, doc_type spec):
+  Goal medible, Non-goals, Acceptance criteria binarios (SI/NO mirando el artefacto),
+  files_in_scope, Verification hooks ejecutables (exit 0 = paso) y Constraints. Usar terminos
+  canonicos de CONTEXT.md si existe. Abrir spec+sesion desde cero es trabajo de cortex-sync
+  (pre-flight). Cerrar con cortex_session_checkpoint: source "user-skill", phase "spec",
+  verified_claims con evidencia >10 chars (spec escrita + criterios confirmados) y note <=1 linea.

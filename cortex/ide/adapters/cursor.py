@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,8 @@ from cortex.ide.prompts import (
     get_subagent_prompt,
     strip_markdown_frontmatter,
 )
+
+logger = logging.getLogger(__name__)
 
 # Subagents canonicos de Cortex que se inyectan en Cursor. Coincide con la
 # lista en claude_code y otros adapters validados — el mismo flujo
@@ -288,30 +291,68 @@ class CursorAdapter(IDEAdapter):
         mcp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return [str(mcp_file)]
 
-    def uninstall(self) -> list[str]:
-        """Eliminar los subagents inyectados en ``.cursor/agents/`` y
-        limpiar la entrada Cortex de ``~/.cursor/mcp.json``.
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
+        """Eliminar lo inyectado por Cortex en Cursor:
 
-        Conservador: solo elimina archivos que el adapter Cortex genera,
-        no toca el directorio entero ni otros agents/MCP servers que el
-        adopter pueda tener.
+        - ``.cursor/agents/<canonico>.md`` (subagents canonicos).
+        - ``.cursor/skills/{cortex-sync,cortex-sddwork,cortex-documenter}/``
+          (slash skills triadicos, incluidos sus directorios).
+        - Entrada ``mcpServers.cortex`` de ``~/.cursor/mcp.json``.
+
+        Regla de oro del uninstall: SOLO se borra lo que Cortex creo. Los
+        agents/skills se borran por nombre canonico (paths namespaced por
+        Cortex); cualquier otro archivo del adopter queda intacto y los
+        directorios solo se eliminan si quedan vacios.
+
+        ``project_root`` es obligatorio para la parte project-level; si es
+        ``None`` se limpia solo la config user-level y se emite un warning
+        explicito (NUNCA se hace fallback a ``Path.cwd()``).
         """
         removed: list[str] = []
-        cwd = Path.cwd()
 
-        # 1. Project-level subagents
-        project_agents_dir = cwd / ".cursor" / "agents"
-        for agent_name in _CORTEX_SUBAGENTS:
-            agent_path = project_agents_dir / f"{agent_name}.md"
-            if agent_path.exists():
-                agent_path.unlink()
-                removed.append(str(agent_path))
-        # Drop empty .cursor/agents/ directory
-        if project_agents_dir.exists() and not any(project_agents_dir.iterdir()):
-            project_agents_dir.rmdir()
-            removed.append(str(project_agents_dir))
+        if project_root is None:
+            logger.warning(
+                "[Cortex][Cursor] uninstall() llamado sin project_root: "
+                "solo se limpia ~/.cursor/mcp.json. Pasa el project root "
+                "explicito para desinstalar .cursor/."
+            )
+        else:
+            root = Path(project_root).resolve()
 
-        # 2. Limpiar entrada Cortex de MCP config (user-level)
+            # 1. Project-level subagents
+            project_agents_dir = root / ".cursor" / "agents"
+            for agent_name in _CORTEX_SUBAGENTS:
+                agent_path = project_agents_dir / f"{agent_name}.md"
+                if agent_path.exists():
+                    agent_path.unlink()
+                    removed.append(str(agent_path))
+            # Drop empty .cursor/agents/ directory
+            if project_agents_dir.exists() and not any(project_agents_dir.iterdir()):
+                project_agents_dir.rmdir()
+                removed.append(str(project_agents_dir))
+
+            # 2. Project-level slash skills (Phase 09.A+)
+            skills_dir = root / ".cursor" / "skills"
+            for spec in _CORTEX_SLASH_SKILLS.values():
+                skill_subdir = skills_dir / spec["skill_name"]
+                skill_path = skill_subdir / "SKILL.md"
+                if skill_path.exists():
+                    skill_path.unlink()
+                    removed.append(str(skill_path))
+                if skill_subdir.exists() and not any(skill_subdir.iterdir()):
+                    skill_subdir.rmdir()
+                    removed.append(str(skill_subdir))
+            if skills_dir.exists() and not any(skills_dir.iterdir()):
+                skills_dir.rmdir()
+                removed.append(str(skills_dir))
+
+            # Drop .cursor/ itself si quedo completamente vacio.
+            cursor_dir = root / ".cursor"
+            if cursor_dir.exists() and not any(cursor_dir.iterdir()):
+                cursor_dir.rmdir()
+                removed.append(str(cursor_dir))
+
+        # 3. Limpiar entrada Cortex de MCP config (user-level)
         mcp_file = self.get_config_paths()["mcp"]
         if mcp_file.exists():
             with contextlib.suppress(Exception):

@@ -18,16 +18,11 @@ It does NOT know about:
 from __future__ import annotations
 
 import logging
-import time
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 from cortex.pipeline.domain.context import PipelineContext
 from cortex.pipeline.domain.protocols import PipelineStage
 from cortex.pipeline.domain.types import PipelineReport, StageResult, StageStatus
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +82,6 @@ class PipelineOrchestrator:
                 continue
 
             logger.info("▶  Running stage: %s", stage.name)
-            time.monotonic()
 
             result = stage.execute(ctx)
             results.append(result)

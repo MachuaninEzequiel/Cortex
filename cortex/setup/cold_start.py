@@ -262,11 +262,6 @@ def _get_git_commits(project: Path, max_count: int) -> list[dict[str, Any]]:
                     files_list = current_commit["files"]
                     if isinstance(files_list, list):
                         files_list.append(line)
-            elif line.startswith("commit "):
-                # New commit starting, save previous
-                if current_commit and current_commit.get("files"):
-                    commits.append(current_commit)
-                current_commit = None
         
         # Add last commit
         if current_commit and current_commit.get("files"):

@@ -579,10 +579,8 @@ def _snapshot_session_mtimes(service: SessionService) -> dict[str, float]:
         records = service.list()
     except Exception:  # noqa: BLE001
         return out
-    storage = service._storage  # noqa: SLF001 — read-only, intentional access
     for r in records:
-        path = storage._file_for(r.session_id)  # noqa: SLF001
-        mt = _safe_mtime(path)
+        mt = _safe_mtime(service.path_for(r.session_id))
         if mt is not None:
             out[r.session_id] = mt
     return out
@@ -593,11 +591,21 @@ def _detect_changes(
     *,
     prev_active_mtime: float | None,
     prev_session_mtimes: dict[str, float],
+    deep: bool = False,
 ) -> tuple[bool, float | None, dict[str, float]]:
-    """Return ``(changed, new_active_mtime, new_session_mtimes)``."""
-    storage = service._storage  # noqa: SLF001 — read-only
-    active_path = storage._active_pointer()  # noqa: SLF001
-    new_active = _safe_mtime(active_path)
+    """Return ``(changed, new_active_mtime, new_session_mtimes)``.
+
+    B5 fix: el snapshot O(n) de mtimes SOLO corre en ticks deep (los que
+    refrescan el sidebar). Entre ticks se hace únicamente un stat barato
+    del puntero activo y se reusa el snapshot previo.
+    """
+    new_active = _safe_mtime(service.active_pointer_path())
+    if not deep:
+        return (
+            new_active != prev_active_mtime,
+            new_active,
+            prev_session_mtimes,
+        )
     new_mtimes = _snapshot_session_mtimes(service)
     changed = new_active != prev_active_mtime or new_mtimes != prev_session_mtimes
     return changed, new_active, new_mtimes
@@ -661,8 +669,7 @@ def run_tui(
 
     documenter_mode = _resolve_documenter_mode(project_root)
 
-    storage = service._storage  # noqa: SLF001
-    prev_active_mtime = _safe_mtime(storage._active_pointer())  # noqa: SLF001
+    prev_active_mtime = _safe_mtime(service.active_pointer_path())
     prev_session_mtimes = _snapshot_session_mtimes(service)
 
     state = _build_state(
@@ -695,6 +702,7 @@ def run_tui(
                     service,
                     prev_active_mtime=prev_active_mtime,
                     prev_session_mtimes=prev_session_mtimes,
+                    deep=(tick % _SIDEBAR_REFRESH_EVERY == 0),
                 )
                 if changed or tick % _SIDEBAR_REFRESH_EVERY == 0:
                     state = _build_state(

@@ -1,0 +1,9 @@
+[package]
+name = "cortex-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dominio puro de Cortex en Rust: scoring, store vectorial, BM25, webgraph."
+
+[dependencies]
+rayon = "1"

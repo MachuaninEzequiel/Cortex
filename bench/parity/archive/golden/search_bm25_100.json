@@ -1,0 +1,652 @@
+{
+ "modo": "bm25",
+ "queries": [
+  {
+   "query": "runbook-719 memory-cache \"runbook-719 memory-cache\"",
+   "paths": [
+    "runbooks/RUNBOOK-719.md"
+   ]
+  },
+  {
+   "query": "adr-584 cache-retrieval-verificacion \"adr-584 cache-retrieval-verificacion\"",
+   "paths": [
+    "decisions/ADR-584.md",
+    "decisions/ADR-957.md"
+   ]
+  },
+  {
+   "query": "chg-450 \"chg-450 [[chg-679]]",
+   "paths": [
+    "changelog/CHG-450.md"
+   ]
+  },
+  {
+   "query": "2026-07-23-0031-session retrieval-postmortem \"2026-07-23-0031-session retrieval-postmortem\"",
+   "paths": [
+    "sessions/2026-07-23-0031-session.md"
+   ]
+  },
+  {
+   "query": "glos-495 spec-deploy-embeddings \"glos-495 spec-deploy-embeddings\"",
+   "paths": [
+    "glossary/GLOS-495.md"
+   ]
+  },
+  {
+   "query": "dec-956 sesion-onnx \"dec-956 sesion-onnx\"",
+   "paths": [
+    "decisions/DEC-956.md"
+   ]
+  },
+  {
+   "query": "dec-789 memory-embeddings-indice \"dec-789 memory-embeddings-indice\"",
+   "paths": [
+    "decisions/DEC-789.md"
+   ]
+  },
+  {
+   "query": "adr-865 cosine-budget \"adr-865 cosine-budget\"",
+   "paths": [
+    "decisions/ADR-865.md"
+   ]
+  },
+  {
+   "query": "2026-07-19-0796-session indice-runbook-latencia \"2026-07-19-0796-session indice-runbook-latencia\"",
+   "paths": [
+    "sessions/2026-07-19-0796-session.md"
+   ]
+  },
+  {
+   "query": "adr-496 retrieval-policy-deploy \"adr-496 retrieval-policy-deploy\"",
+   "paths": [
+    "decisions/ADR-496.md"
+   ]
+  },
+  {
+   "query": "2026-07-01-0765-session cosine-memory \"2026-07-01-0765-session cosine-memory\"",
+   "paths": [
+    "sessions/2026-07-01-0765-session.md"
+   ]
+  },
+  {
+   "query": "2026-07-22-0346-session vector-cobertura-latencia \"2026-07-22-0346-session vector-cobertura-latencia\"",
+   "paths": [
+    "sessions/2026-07-22-0346-session.md"
+   ]
+  },
+  {
+   "query": "spec-348 workspace-bateria \"spec-348 workspace-bateria\"",
+   "paths": [
+    "specs/SPEC-348.md",
+    "specs/SPEC-424.md"
+   ]
+  },
+  {
+   "query": "pm-192 cache-memoria \"pm-192 cache-memoria\"",
+   "paths": [
+    "postmortems/PM-192.md"
+   ]
+  },
+  {
+   "query": "adr-350 governance-checkpoint-quantization \"adr-350 governance-checkpoint-quantization\"",
+   "paths": [
+    "decisions/ADR-350.md"
+   ]
+  },
+  {
+   "query": "runbook-235 cache-throughput-schema \"runbook-235 cache-throughput-schema\"",
+   "paths": [
+    "runbooks/RUNBOOK-235.md"
+   ]
+  },
+  {
+   "query": "hu-86 retrieval-glossary-cosine \"hu-86 retrieval-glossary-cosine\"",
+   "paths": [
+    "hu/HU-86.md",
+    "hu/HU-866.md",
+    "hu/HU-869.md",
+    "hu/HU-863.md",
+    "hu/HU-572.md",
+    "hu/HU-996.md",
+    "hu/HU-111.md",
+    "hu/HU-50.md",
+    "hu/HU-175.md"
+   ]
+  },
+  {
+   "query": "chg-594 migracion-indice-workspace \"chg-594 migracion-indice-workspace\"",
+   "paths": [
+    "changelog/CHG-594.md"
+   ]
+  },
+  {
+   "query": "chg-570 runbook-adr-cache \"chg-570 runbook-adr-cache\"",
+   "paths": [
+    "changelog/CHG-570.md"
+   ]
+  },
+  {
+   "query": "adr-402 changelog-vector-migracion \"adr-402 changelog-vector-migracion\"",
+   "paths": [
+    "decisions/ADR-402.md"
+   ]
+  },
+  {
+   "query": "dec-706 migracion-latencia \"dec-706 migracion-latencia\"",
+   "paths": [
+    "decisions/DEC-706.md"
+   ]
+  },
+  {
+   "query": "dec-858 vault-cache \"dec-858 vault-cache\"",
+   "paths": [
+    "decisions/DEC-858.md"
+   ]
+  },
+  {
+   "query": "inc-546 \"inc-546 [[inc-388]] [[inc-484]]",
+   "paths": [
+    "incidents/INC-546.md",
+    "incidents/INC-654.md"
+   ]
+  },
+  {
+   "query": "runbook-404 rendimiento-policy \"runbook-404 rendimiento-policy\"",
+   "paths": [
+    "runbooks/RUNBOOK-404.md"
+   ]
+  },
+  {
+   "query": "chg-512 \"chg-512",
+   "paths": [
+    "changelog/CHG-512.md"
+   ]
+  },
+  {
+   "query": "pm-514 cobertura-rendimiento \"pm-514 cobertura-rendimiento\"",
+   "paths": [
+    "postmortems/PM-514.md"
+   ]
+  },
+  {
+   "query": "dec-447 \"dec-447 [[dec-193]]",
+   "paths": [
+    "decisions/DEC-447.md"
+   ]
+  },
+  {
+   "query": "2026-07-14-0140-session vector-verificacion \"2026-07-14-0140-session vector-verificacion\"",
+   "paths": [
+    "sessions/2026-07-14-0140-session.md",
+    "glossary/GLOS-430.md",
+    "decisions/DEC-627.md"
+   ]
+  },
+  {
+   "query": "runbook-775 seguridad-spec-cobertura \"runbook-775 seguridad-spec-cobertura\"",
+   "paths": [
+    "runbooks/RUNBOOK-775.md"
+   ]
+  },
+  {
+   "query": "2026-07-09-0378-session bateria-postmortem-spec \"2026-07-09-0378-session bateria-postmortem-spec\"",
+   "paths": [
+    "sessions/2026-07-09-0378-session.md"
+   ]
+  },
+  {
+   "query": "spec-870 onnx-checkpoint-governance \"spec-870 onnx-checkpoint-governance\"",
+   "paths": [
+    "specs/SPEC-870.md"
+   ]
+  },
+  {
+   "query": "hu-836 checkpoint-bm25 \"hu-836 checkpoint-bm25\"",
+   "paths": [
+    "hu/HU-836.md"
+   ]
+  },
+  {
+   "query": "dec-721 sesion-despliegue-deploy \"dec-721 sesion-despliegue-deploy\"",
+   "paths": [
+    "decisions/DEC-721.md",
+    "decisions/DEC-289.md"
+   ]
+  },
+  {
+   "query": "hu-990 bateria-verificacion \"hu-990 bateria-verificacion\"",
+   "paths": [
+    "hu/HU-990.md",
+    "hu/HU-1.md"
+   ]
+  },
+  {
+   "query": "runbook-231 \"runbook-231 [[runbook-339]]",
+   "paths": [
+    "runbooks/RUNBOOK-231.md"
+   ]
+  },
+  {
+   "query": "glos-580 deploy-throughput-latencia \"glos-580 deploy-throughput-latencia\"",
+   "paths": [
+    "glossary/GLOS-580.md"
+   ]
+  },
+  {
+   "query": "2026-08-12-0547-session memoria-quantization \"2026-08-12-0547-session memoria-quantization\"",
+   "paths": [
+    "sessions/2026-08-12-0547-session.md"
+   ]
+  },
+  {
+   "query": "spec-041 policy-bm25 \"spec-041 policy-bm25\"",
+   "paths": [
+    "specs/SPEC-041.md"
+   ]
+  },
+  {
+   "query": "chg-134 budget-search \"chg-134 budget-search\"",
+   "paths": [
+    "changelog/CHG-134.md"
+   ]
+  },
+  {
+   "query": "2026-07-27-0623-session policy-migracion-despliegue \"2026-07-27-0623-session policy-migracion-despliegue\"",
+   "paths": [
+    "sessions/2026-07-27-0623-session.md"
+   ]
+  },
+  {
+   "query": "2026-08-11-0712-session autenticacion-handoff \"2026-08-11-0712-session autenticacion-handoff\"",
+   "paths": [
+    "sessions/2026-08-11-0712-session.md",
+    "glossary/GLOS-199.md"
+   ]
+  },
+  {
+   "query": "dec-083 seguridad-seguridad \"dec-083 seguridad-seguridad\"",
+   "paths": [
+    "decisions/DEC-083.md",
+    "incidents/INC-654.md",
+    "sessions/2026-07-27-0214-session.md"
+   ]
+  },
+  {
+   "query": "2026-07-08-0943-session quantization-adr \"2026-07-08-0943-session quantization-adr\"",
+   "paths": [
+    "sessions/2026-07-08-0943-session.md"
+   ]
+  },
+  {
+   "query": "spec-831 pipeline-indice \"spec-831 pipeline-indice\"",
+   "paths": [
+    "specs/SPEC-831.md",
+    "changelog/CHG-498.md",
+    "sessions/2026-08-22-0317-session.md"
+   ]
+  },
+  {
+   "query": "hu-32 \"hu-32 [[hu-23]] [[hu-120]]",
+   "paths": [
+    "hu/HU-32.md",
+    "hu/HU-987.md",
+    "hu/HU-683.md"
+   ]
+  },
+  {
+   "query": "spec-723 retrieval-retrieval-autenticacion \"spec-723 retrieval-retrieval-autenticacion\"",
+   "paths": [
+    "specs/SPEC-723.md"
+   ]
+  },
+  {
+   "query": "dec-042 sesion-runbook \"dec-042 sesion-runbook\"",
+   "paths": [
+    "decisions/DEC-042.md"
+   ]
+  },
+  {
+   "query": "dec-634 adr-rendimiento-memoria \"dec-634 adr-rendimiento-memoria\"",
+   "paths": [
+    "decisions/DEC-634.md"
+   ]
+  },
+  {
+   "query": "2026-07-28-0157-session autenticacion-vault-cosine \"2026-07-28-0157-session autenticacion-vault-cosine\"",
+   "paths": [
+    "sessions/2026-07-28-0157-session.md"
+   ]
+  },
+  {
+   "query": "hu-291 memory-webgraph-rollback \"hu-291 memory-webgraph-rollback\"",
+   "paths": [
+    "hu/HU-291.md"
+   ]
+  },
+  {
+   "query": "spec-890 glossary-rollback-cosine \"spec-890 glossary-rollback-cosine\"",
+   "paths": [
+    "specs/SPEC-890.md"
+   ]
+  },
+  {
+   "query": "adr-400 \"adr-400 [[adr-622]] [[adr-484]]",
+   "paths": [
+    "decisions/ADR-400.md"
+   ]
+  },
+  {
+   "query": "hu-551 quantization-embeddings-memory \"hu-551 quantization-embeddings-memory\"",
+   "paths": [
+    "hu/HU-551.md"
+   ]
+  },
+  {
+   "query": "adr-451 despliegue-spec \"adr-451 despliegue-spec\"",
+   "paths": [
+    "decisions/ADR-451.md"
+   ]
+  },
+  {
+   "query": "hu-413 \"hu-413",
+   "paths": [
+    "hu/HU-413.md"
+   ]
+  },
+  {
+   "query": "2026-08-23-0121-session auth-budget-scoring \"2026-08-23-0121-session auth-budget-scoring\"",
+   "paths": [
+    "sessions/2026-08-23-0121-session.md"
+   ]
+  },
+  {
+   "query": "hu-342 policy-autenticacion-changelog \"hu-342 policy-autenticacion-changelog\"",
+   "paths": [
+    "hu/HU-342.md"
+   ]
+  },
+  {
+   "query": "runbook-412 indice-webgraph-scoring \"runbook-412 indice-webgraph-scoring\"",
+   "paths": [
+    "runbooks/RUNBOOK-412.md"
+   ]
+  },
+  {
+   "query": "glos-246 memory-runbook \"glos-246 memory-runbook\"",
+   "paths": [
+    "glossary/GLOS-246.md"
+   ]
+  },
+  {
+   "query": "2026-08-11-0792-session webgraph-throughput \"2026-08-11-0792-session webgraph-throughput\"",
+   "paths": [
+    "sessions/2026-08-11-0792-session.md",
+    "postmortems/PM-920.md"
+   ]
+  },
+  {
+   "query": "chg-832 cosine-handoff \"chg-832 cosine-handoff\"",
+   "paths": [
+    "changelog/CHG-832.md",
+    "glossary/GLOS-776.md"
+   ]
+  },
+  {
+   "query": "2026-07-18-0949-session deploy-bateria-migracion \"2026-07-18-0949-session deploy-bateria-migracion\"",
+   "paths": [
+    "sessions/2026-07-18-0949-session.md"
+   ]
+  },
+  {
+   "query": "inc-114 deploy-bateria-onnx \"inc-114 deploy-bateria-onnx\"",
+   "paths": [
+    "incidents/INC-114.md"
+   ]
+  },
+  {
+   "query": "pm-016 pipeline-vector-sesion \"pm-016 pipeline-vector-sesion\"",
+   "paths": [
+    "postmortems/PM-016.md"
+   ]
+  },
+  {
+   "query": "adr-727 postmortem-schema-cache \"adr-727 postmortem-schema-cache\"",
+   "paths": [
+    "decisions/ADR-727.md"
+   ]
+  },
+  {
+   "query": "hu-521 \"hu-521 [[hu-454]]",
+   "paths": [
+    "hu/HU-521.md",
+    "hu/HU-186.md",
+    "hu/HU-370.md"
+   ]
+  },
+  {
+   "query": "adr-266 handoff-governance-deploy \"adr-266 handoff-governance-deploy\"",
+   "paths": [
+    "decisions/ADR-266.md",
+    "decisions/ADR-038.md",
+    "decisions/ADR-402.md"
+   ]
+  },
+  {
+   "query": "pm-282 deploy-embeddings \"pm-282 deploy-embeddings\"",
+   "paths": [
+    "postmortems/PM-282.md",
+    "glossary/GLOS-495.md"
+   ]
+  },
+  {
+   "query": "glos-843 cache-scoring-seguridad \"glos-843 cache-scoring-seguridad\"",
+   "paths": [
+    "glossary/GLOS-843.md"
+   ]
+  },
+  {
+   "query": "2026-08-16-0749-session throughput-despliegue \"2026-08-16-0749-session throughput-despliegue\"",
+   "paths": [
+    "sessions/2026-08-16-0749-session.md",
+    "hu/HU-81.md"
+   ]
+  },
+  {
+   "query": "runbook-621 postmortem-memory \"runbook-621 postmortem-memory\"",
+   "paths": [
+    "runbooks/RUNBOOK-621.md"
+   ]
+  },
+  {
+   "query": "runbook-542 schema-vector-latencia \"runbook-542 schema-vector-latencia\"",
+   "paths": [
+    "runbooks/RUNBOOK-542.md"
+   ]
+  },
+  {
+   "query": "spec-264 vector-seguridad \"spec-264 vector-seguridad\"",
+   "paths": [
+    "specs/SPEC-264.md"
+   ]
+  },
+  {
+   "query": "2026-08-28-0158-session memoria-webgraph-changelog \"2026-08-28-0158-session memoria-webgraph-changelog\"",
+   "paths": [
+    "sessions/2026-08-28-0158-session.md"
+   ]
+  },
+  {
+   "query": "hu-441 scoring-runbook \"hu-441 scoring-runbook\"",
+   "paths": [
+    "hu/HU-441.md",
+    "hu/HU-342.md",
+    "hu/HU-29.md"
+   ]
+  },
+  {
+   "query": "runbook-028 latencia-changelog-workspace \"runbook-028 latencia-changelog-workspace\"",
+   "paths": [
+    "runbooks/RUNBOOK-028.md",
+    "runbooks/RUNBOOK-740.md"
+   ]
+  },
+  {
+   "query": "dec-384 migracion-glossary-indice \"dec-384 migracion-glossary-indice\"",
+   "paths": [
+    "decisions/DEC-384.md"
+   ]
+  },
+  {
+   "query": "2026-07-10-0735-session checkpoint-chunking \"2026-07-10-0735-session checkpoint-chunking\"",
+   "paths": [
+    "sessions/2026-07-10-0735-session.md",
+    "hu/HU-391.md",
+    "sessions/2026-07-10-0649-session.md"
+   ]
+  },
+  {
+   "query": "adr-138 \"adr-138 [[adr-992]] [[adr-706]]",
+   "paths": [
+    "decisions/ADR-138.md"
+   ]
+  },
+  {
+   "query": "chg-840 autenticacion-deploy \"chg-840 autenticacion-deploy\"",
+   "paths": [
+    "changelog/CHG-840.md"
+   ]
+  },
+  {
+   "query": "runbook-871 search-migracion-embeddings \"runbook-871 search-migracion-embeddings\"",
+   "paths": [
+    "runbooks/RUNBOOK-871.md"
+   ]
+  },
+  {
+   "query": "dec-835 bm25-rendimiento-spec \"dec-835 bm25-rendimiento-spec\"",
+   "paths": [
+    "decisions/DEC-835.md",
+    "decisions/DEC-825.md"
+   ]
+  },
+  {
+   "query": "2026-08-04-0861-session checkpoint-search \"2026-08-04-0861-session checkpoint-search\"",
+   "paths": [
+    "sessions/2026-08-04-0861-session.md"
+   ]
+  },
+  {
+   "query": "glos-776 changelog-cosine-handoff \"glos-776 changelog-cosine-handoff\"",
+   "paths": [
+    "glossary/GLOS-776.md",
+    "glossary/GLOS-664.md"
+   ]
+  },
+  {
+   "query": "adr-278 migracion-verificacion-deploy \"adr-278 migracion-verificacion-deploy\"",
+   "paths": [
+    "decisions/ADR-278.md"
+   ]
+  },
+  {
+   "query": "2026-08-25-0298-session handoff-workspace \"2026-08-25-0298-session handoff-workspace\"",
+   "paths": [
+    "sessions/2026-08-25-0298-session.md",
+    "hu/HU-437.md",
+    "decisions/DEC-033.md",
+    "runbooks/RUNBOOK-177.md"
+   ]
+  },
+  {
+   "query": "spec-807 adr-rollback-checkpoint \"spec-807 adr-rollback-checkpoint\"",
+   "paths": [
+    "specs/SPEC-807.md"
+   ]
+  },
+  {
+   "query": "spec-005 vault-budget-runbook \"spec-005 vault-budget-runbook\"",
+   "paths": [
+    "specs/SPEC-005.md",
+    "specs/SPEC-831.md"
+   ]
+  },
+  {
+   "query": "adr-482 indice-postmortem-schema \"adr-482 indice-postmortem-schema\"",
+   "paths": [
+    "decisions/ADR-482.md"
+   ]
+  },
+  {
+   "query": "spec-600 \"spec-600 [[spec-682]] [[spec-489]]",
+   "paths": [
+    "specs/SPEC-600.md"
+   ]
+  },
+  {
+   "query": "spec-640 memoria-checkpoint-deploy \"spec-640 memoria-checkpoint-deploy\"",
+   "paths": [
+    "specs/SPEC-640.md"
+   ]
+  },
+  {
+   "query": "inc-040 auth-embeddings \"inc-040 auth-embeddings\"",
+   "paths": [
+    "incidents/INC-040.md"
+   ]
+  },
+  {
+   "query": "runbook-686 throughput-rendimiento-vault \"runbook-686 throughput-rendimiento-vault\"",
+   "paths": [
+    "runbooks/RUNBOOK-686.md"
+   ]
+  },
+  {
+   "query": "2026-08-19-0227-session cache-auth-bm25 \"2026-08-19-0227-session cache-auth-bm25\"",
+   "paths": [
+    "sessions/2026-08-19-0227-session.md"
+   ]
+  },
+  {
+   "query": "hu-45 adr-spec \"hu-45 adr-spec\"",
+   "paths": [
+    "hu/HU-45.md",
+    "hu/HU-458.md",
+    "incidents/INC-112.md",
+    "hu/HU-453.md",
+    "hu/HU-521.md",
+    "hu/HU-555.md",
+    "hu/HU-962.md"
+   ]
+  },
+  {
+   "query": "dec-128 despliegue-latencia-governance \"dec-128 despliegue-latencia-governance\"",
+   "paths": [
+    "decisions/DEC-128.md"
+   ]
+  },
+  {
+   "query": "hu-477 \"hu-477 [[hu-634]]",
+   "paths": [
+    "hu/HU-477.md"
+   ]
+  },
+  {
+   "query": "hu-391 policy-checkpoint-chunking \"hu-391 policy-checkpoint-chunking\"",
+   "paths": [
+    "hu/HU-391.md"
+   ]
+  },
+  {
+   "query": "dec-556 runbook-postmortem-indice \"dec-556 runbook-postmortem-indice\"",
+   "paths": [
+    "decisions/DEC-556.md"
+   ]
+  },
+  {
+   "query": "runbook-958 embeddings-workspace \"runbook-958 embeddings-workspace\"",
+   "paths": [
+    "runbooks/RUNBOOK-958.md"
+   ]
+  }
+ ]
+}

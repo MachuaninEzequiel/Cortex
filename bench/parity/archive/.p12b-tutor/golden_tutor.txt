@@ -1,0 +1,12 @@
+### TOPICS
+{"title": "Primeros Pasos", "icon": "\ud83d\ude80", "slug": "start", "one_liner": "C\u00f3mo instalar y empezar a usar Cortex", "guide_path": "docs/guides/getting-started.md"}
+{"title": "Comandos Esenciales", "icon": "\ud83d\udccb", "slug": "commands", "one_liner": "Cheatsheet r\u00e1pido de los comandos m\u00e1s usados", "guide_path": null}
+{"title": "Flujo de Trabajo", "icon": "\ud83d\udd04", "slug": "workflow", "one_liner": "El modelo tripartito: sync \u2192 SDDwork \u2192 documenter", "guide_path": "docs/enterprise/MANIFIESTO-CORTEX-ENTERPRISE.md"}
+{"title": "Pipeline CI/CD", "icon": "\u2699\ufe0f", "slug": "pipeline", "one_liner": "C\u00f3mo funciona el pipeline y c\u00f3mo cambiar m\u00f3dulos", "guide_path": "docs/guides/pipeline-setup.md"}
+{"title": "Vault y Documentaci\u00f3n", "icon": "\ud83d\udcc1", "slug": "vault", "one_liner": "Estructura del vault y qu\u00e9 va a Git", "guide_path": "docs/guides/vault-structure.md"}
+{"title": "Enterprise Memory", "icon": "\ud83c\udfe2", "slug": "enterprise", "one_liner": "Memoria corporativa, promoci\u00f3n y topolog\u00edas", "guide_path": "docs/guides/enterprise-vault.md"}
+{"title": "Integraci\u00f3n IDE", "icon": "\ud83d\udd0c", "slug": "ide", "one_liner": "C\u00f3mo conectar Cortex con tu IDE via MCP", "guide_path": null}
+### HINTS
+{"fixture": "l0_empty", "icon": "\ud83d\ude80", "title": "Cortex no est\u00e1 inicializado en este proyecto", "body": "Este directorio no tiene config.yaml.\nInicializ\u00e1 Cortex para empezar a construir memoria.", "command": "cortex setup agent"}
+{"fixture": "l1_config_only", "icon": "\ud83d\udcdd", "title": "No hay especificaciones creadas", "body": "Antes de codear, cre\u00e1 una spec para documentar qu\u00e9 vas a hacer.\nEsto alimenta el contexto para futuras b\u00fasquedas.", "command": "cortex create-spec --title \"Mi Feature\" --goal \"Descripci\u00f3n del objetivo\""}
+{"fixture": "l7_full", "icon": "\u2705", "title": "Tu proyecto Cortex est\u00e1 en buena forma", "body": "Vault: 5 docs | Specs: 3 | Sessions: 2\nBusc\u00e1 algo en tu memoria para verificar que todo funciona.", "command": "cortex search \"mi query\""}

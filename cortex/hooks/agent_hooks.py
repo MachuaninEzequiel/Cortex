@@ -1,6 +1,10 @@
 """
 cortex.hooks.agent_hooks
 ------------------------
+DEPRECATED (dueño, 2026-08-25 — doc 12 §4.4): módulo huérfano — ni templates,
+ni IDE adapters, ni setup lo referencian; los hooks vigentes viven en
+cortex/setup/session_hooks (gate P8: 38/38). Se elimina en la baja de Python.
+
 Drop-in hooks / callbacks that wire cortex into popular agent frameworks.
 
 Supported frameworks

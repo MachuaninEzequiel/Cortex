@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,7 +12,9 @@ import pytest
 from cortex.session import (
     Checkpoint,
     CheckpointSource,
+    GITLESS_COMMIT_PLACEHOLDER,
     SessionMode,
+    git,
     SessionRecord,
     SessionStatus,
 )
@@ -79,7 +82,8 @@ class TestOpen:
         assert record.start_branch == "main"
         assert service.get_active().session_id == "2026-05-16_demo"  # type: ignore[union-attr]
 
-    def test_open_duplicate_id_appends_counter(self, service: SessionService) -> None:
+    def test_open_reopen_returns_same_session_while_open(self, service: SessionService) -> None:
+        """Re-opening an OPEN session is idempotent: same id, set active."""
         first = service.open(
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
@@ -88,11 +92,26 @@ class TestOpen:
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
         )
+        assert first.session_id == "2026-05-16_foo"
+        assert second.session_id == "2026-05-16_foo"
+
+    def test_open_after_close_appends_counter(self, service: SessionService) -> None:
+        """Once the previous session is closed, a new open appends -2, -3..."""
+        first = service.open(
+            spec_id="2026-05-16_foo",
+            spec_path=Path("vault/specs/2026-05-16_foo.md"),
+        )
+        from cortex.session.models import SessionStatus as _SS
+        service.close(session_id=first.session_id, status=_SS.CLOSED, documenter_decision=_SS.CLOSED)
+        second = service.open(
+            spec_id="2026-05-16_foo",
+            spec_path=Path("vault/specs/2026-05-16_foo.md"),
+        )
+        service.close(session_id=second.session_id, status=_SS.CLOSED, documenter_decision=_SS.CLOSED)
         third = service.open(
             spec_id="2026-05-16_foo",
             spec_path=Path("vault/specs/2026-05-16_foo.md"),
         )
-        assert first.session_id == "2026-05-16_foo"
         assert second.session_id == "2026-05-16_foo-2"
         assert third.session_id == "2026-05-16_foo-3"
 
@@ -509,6 +528,103 @@ class TestSessionLockFile:
             spec_path=Path("vault/specs/2026-05-16_besteffort.md"),
         )
         assert record.session_id.startswith("2026-05-16_besteffort")
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: CORTEX_CODE_DESIGNER counts as a Cortex source (MANAGED)
+# ---------------------------------------------------------------------------
+
+
+class TestDesignerSourceManaged:
+    def test_infer_mode_designer_is_managed(self) -> None:
+        cp = Checkpoint(timestamp=_utc(2026, 8, 1), source=CheckpointSource.CORTEX_CODE_DESIGNER)
+        assert SessionService.infer_mode([cp]) is SessionMode.MANAGED
+
+    def test_close_with_only_designer_checkpoints_is_managed(
+        self, service: SessionService
+    ) -> None:
+        record = service.open(
+            spec_id="2026-08-01_designer",
+            spec_path=Path("vault/specs/2026-08-01_designer.md"),
+        )
+        service.checkpoint(record.session_id, source=CheckpointSource.CORTEX_CODE_DESIGNER)
+        closed = service.close(
+            record.session_id,
+            status=SessionStatus.CLOSED,
+            documenter_decision=SessionStatus.CLOSED,
+        )
+        assert closed.mode is SessionMode.MANAGED
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: close() falls back to the gitless placeholder if HEAD capture fails
+# ---------------------------------------------------------------------------
+
+
+class TestCloseGitFallback:
+    def test_close_survives_git_error_after_open(
+        self, service: SessionService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        record = service.open(
+            spec_id="2026-08-01_brokenhead",
+            spec_path=Path("vault/specs/2026-08-01_brokenhead.md"),
+        )
+        assert not record.is_gitless  # opened on a valid repo
+
+        def _boom(repo_root: Path) -> str:
+            raise git.GitError("simulated corrupted .git")
+
+        monkeypatch.setattr(git, "get_head_commit", _boom)
+        closed = service.close(
+            record.session_id,
+            status=SessionStatus.CLOSED,
+            documenter_decision=SessionStatus.CLOSED,
+        )
+        assert closed.status is SessionStatus.CLOSED
+        assert closed.end_commit == GITLESS_COMMIT_PLACEHOLDER
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: concurrent checkpoint() calls must not lose updates
+# ---------------------------------------------------------------------------
+
+
+class TestConcurrentCheckpoints:
+    def test_two_threads_checkpoint_same_session_no_lost_update(
+        self, tmp_path: Path, git_repo: Path
+    ) -> None:
+        storage = SessionStorage(tmp_path / "sessions")
+        service = SessionService(storage, repo_root=git_repo)
+        record = service.open(
+            spec_id="2026-08-01_race",
+            spec_path=Path("vault/specs/2026-08-01_race.md"),
+        )
+
+        barrier = threading.Barrier(2)
+        errors: list[Exception] = []
+
+        def worker() -> None:
+            try:
+                barrier.wait()
+                service.checkpoint(
+                    record.session_id,
+                    source=CheckpointSource.MANUAL,
+                    note=f"from {threading.current_thread().name}",
+                )
+            except Exception as exc:  # noqa: BLE001 — collected for assertion
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, name=f"w{i}") for i in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert errors == []
+        final = service.get(record.session_id)
+        assert len(final.checkpoints) == 2
+        notes = {cp.note for cp in final.checkpoints}
+        assert notes == {"from w0", "from w1"}
 
 
 # Reference an unused import to keep linters quiet when we ever stop using

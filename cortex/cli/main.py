@@ -25,6 +25,7 @@ Memory + retrieval
 - ``cortex remember``           — store an episodic memory (with ``--branch``, ``--commit``, ``--repo``).
 - ``cortex forget``             — delete an episodic memory by id.
 - ``cortex stats``              — memory store statistics (``--project-root`` aware).
+- ``cortex embedding-status``   — active embedding model/backend + per-language config (Obra 04).
 - ``cortex sync-vault``         — re-index the semantic vault.
 
 Workflow (governance-guarded)
@@ -92,10 +93,8 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 # SILENCE PROTOCOL v2.14: Suprimir advertencias de runpy/typer antes de que toquen stdout
 warnings.filterwarnings("ignore")
 
-import asyncio
 import getpass
 import json
-import subprocess
 from enum import Enum
 from pathlib import Path
 
@@ -103,7 +102,6 @@ import typer
 import yaml
 
 from cortex.cli.review_knowledge import review_app
-from cortex.core import AgentMemory
 from cortex.webgraph.cli import app as webgraph_app
 from cortex.workspace.layout import WorkspaceLayout
 
@@ -122,8 +120,9 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def _root_callback(
+    ctx: typer.Context,
     version: bool = typer.Option(
         False,
         "--version",
@@ -133,30 +132,75 @@ def _root_callback(
         is_eager=True,
     ),
 ) -> None:
-    """Cortex — hybrid cognitive memory for AI agents."""
+    """Cortex — hybrid cognitive memory for AI agents.
+
+    Sin argumentos abre el Home TUI (dashboard + acciones pendientes).
+    """
+    if ctx.invoked_subcommand is None and not version:
+        from cortex.tui.core import run_home
+
+        run_home()
 
 
-app.add_typer(webgraph_app, name="webgraph")
+app.add_typer(webgraph_app, name="webgraph", hidden=True)
 
 # Autopilot subcommand (Fase 3)
 from cortex.autopilot.cli import app as autopilot_app
 
-app.add_typer(autopilot_app, name="autopilot")
+app.add_typer(autopilot_app, name="autopilot", hidden=True)
 
 # Session subcommand (Pluggable Middle architecture — Phase 00 / T0.8)
 from cortex.cli.session import session_app
 
-app.add_typer(session_app, name="session")
+app.add_typer(session_app, name="session", hidden=True)
+
+# Unified IDE surface (Obra 02 / Fase 3) — `cortex ide list|setup|remove|status`.
+from cortex.cli.ide import ide_app
+
+app.add_typer(ide_app, name="ide", hidden=True)
+
+_IDE_PROJECT_ROOT_HELP = "Path to the Cortex project root (defaults to current directory)."
+
+# Brain — asistente local experto del proyecto (Obra 06 BRAIN v1)
+from cortex.brain.cli import register as _register_brain
+
+_register_brain(app)
+
+# ActionEngine (Obra 05 Fase B)
+from cortex.cli.next import register as _register_next
+
+_register_next(app)
+
+# Documenting trio (extraído del monolito — Obra 01 P4)
+import cortex.cli.documenting as _documenting_mod
+
+_documenting_mod.register(app)
+# Compatibilidad: tests y adopters importan _parse_verification_hooks de main.
+from cortex.cli.documenting import _parse_verification_hooks  # noqa: E402,F401
+
+# Embeddings + MCP server (extraídos del monolito — Obra 01 P4)
+from cortex.cli.embedding import register as _register_embedding
+from cortex.cli.mcp_cmd import register as _register_mcp
+
+_register_embedding(app)
+_register_mcp(app)
+
+# pr-context + hu (extraídos del monolito — Obra 01 P4)
+from cortex.cli.hu import hu_app
+from cortex.cli.pr_context import pr_context_app
+
+app.add_typer(pr_context_app, name="pr-context", hidden=True)
+app.add_typer(hu_app, name="hu", hidden=True)
 
 # CI subcommand (Pluggable Middle Phase 07)
 from cortex.cli.ci import ci_app
 
-app.add_typer(ci_app, name="ci")
+app.add_typer(ci_app, name="ci", hidden=True)
 
 # Canonical documentation system (Fase 02 of canonical-documentation initiative)
 from cortex.cli.docs_subcommand import app as docs_app
 
-app.add_typer(docs_app, name="docs")
+app.add_typer(docs_app, name="docs", hidden=True)
 
 _DEFAULT_CONFIG = {
     "episodic": {
@@ -190,10 +234,6 @@ class DoctorScope(str, Enum):
 # pr-context  (DevSecDocOps subcommand group)
 # ---------------------------------------------------------------------------
 
-pr_context_app = typer.Typer(help="PR documentation pipeline (DevSecDocOps).")
-app.add_typer(pr_context_app, name="pr-context")
-hu_app = typer.Typer(help="Tracked work item management (read-only external import).")
-app.add_typer(hu_app, name="hu")
 
 
 @pr_context_app.command("capture")
@@ -430,7 +470,17 @@ def pr_context_full(
 # ---------------------------------------------------------------------------
 
 setup_app = typer.Typer(help="Project setup with specialized profiles (agent, pipeline, full).")
-app.add_typer(setup_app, name="setup")
+app.add_typer(setup_app, name="setup", hidden=True)
+
+
+def _echo_dry_run_plan(profile: str, actions: list[str]) -> None:
+    """Print a ``[dry-run]`` action plan without touching the filesystem."""
+    typer.echo(f"🧠 Cortex — [dry-run] Setup {profile} profile (simulation)")
+    typer.echo("")
+    for action in actions:
+        typer.echo(f"[dry-run] crearía: {action}")
+    typer.echo("")
+    typer.echo("✅ Dry-run complete — no changes were made.")
 
 
 @setup_app.command(name="agent")
@@ -438,7 +488,7 @@ def setup_agent(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be done without making changes."
     ),
-    git_depth: int = typer.Option(
+    git_depth: int | None = typer.Option(
         None, "--git-depth", help="Number of git commits to index for context."
     ),
     ide: str | None = typer.Option(
@@ -454,24 +504,45 @@ def setup_agent(
     Setup only local agent/cognitive components (Vault, Memory, .cortex, IDE).
     """
     from cortex.cli._setup_helpers import select_ide_interactive
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "agent",
+            [
+                ".cortex/ workspace directories",
+                "config.yaml (project config)",
+                ".cortex/org.yaml (enterprise org config)",
+                "vault docs (architecture.md, context.md, decisions.md, runbooks/)",
+                "enterprise vault structure",
+                "agent guidelines + skills install",
+                "memory init (git history indexing)",
+                *( [f"IDE config for '{ide}'"] if ide else [] ),
+            ],
+        )
+        return
+
+    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
+    _run_setup_agent(git_depth=git_depth, ide=selected_ide, non_interactive=non_interactive)
+
+
+def _run_setup_agent(*, git_depth: int | None, ide: str | None, non_interactive: bool) -> None:
+    """Implementación llana (sin defaults Typer) — llamada por `init` también."""
+    typer.echo("🧠 Cortex — Setting up Agent profile...")
+    typer.echo("")
+
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
     if git_depth is None:
         if non_interactive:
             git_depth = 50
         else:
-            git_depth = typer.prompt("📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?", default=50, type=int)
-
-    # Fase 6 plan multi-IDE & MCP hardening: la seleccion de IDE vive en
-    # cortex.cli._setup_helpers para evitar duplicacion entre setup_agent
-    # y setup_full. Respeta --ide explicito y --non-interactive.
-    selected_ide = select_ide_interactive(provided_ide=ide, non_interactive=non_interactive)
-
-    typer.echo("🧠 Cortex — Setting up Agent profile...")
-    typer.echo("")
+            git_depth = typer.prompt(
+                "📈 ¿Cuántos commits de Git deseas indexar para el contexto inicial?",
+                default=50, type=int,
+            )
 
     orchestrator = SetupOrchestrator()
-    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth, ide=selected_ide)
+    summary = orchestrator.run(mode=SetupMode.AGENT, git_depth=git_depth, ide=ide)
     typer.echo(format_summary(summary))
 
 
@@ -490,6 +561,18 @@ def setup_pipeline(
     Setup only CI/CD / DevOps components (Workflows, Scripts, Config).
     """
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "pipeline",
+            [
+                ".github/workflows/ CI workflows (ci-feature, ci-pull-request, cd-deploy)",
+                "scripts/ DevSecDocOps pipeline script",
+                "config.yaml (project config)",
+                "enterprise vault structure (CI/CD docs)",
+            ],
+        )
+        return
 
     typer.echo("🧠 Cortex — Setting up Pipeline profile...")
     typer.echo("")
@@ -532,6 +615,24 @@ def setup_full(
     """
     from cortex.cli._setup_helpers import select_ide_interactive
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
+
+    if dry_run:
+        _echo_dry_run_plan(
+            "full",
+            [
+                ".cortex/ workspace directories",
+                "config.yaml (project config)",
+                ".cortex/org.yaml (enterprise org config)",
+                "vault docs (architecture.md, context.md, decisions.md, runbooks/)",
+                "enterprise vault structure",
+                ".github/workflows/ CI workflows + scripts/ DevSecDocOps script",
+                "agent guidelines + skills install",
+                "webgraph visualization module (.cortex/webgraph/)",
+                "memory init (git history indexing) + .gitignore update",
+                *( [f"IDE config for '{ide}'"] if ide else [] ),
+            ],
+        )
+        return
 
     if git_depth is None:
         if non_interactive:
@@ -576,7 +677,21 @@ def setup_webgraph(
     """
     from cortex.setup.orchestrator import SetupMode, SetupOrchestrator, format_summary
 
-    del dry_run
+    if dry_run:
+        _echo_dry_run_plan(
+            "webgraph",
+            [
+                "webgraph module files under .cortex/webgraph/",
+                ".cortex/webgraph/workspace.yaml",
+                *(
+                    [f"registration of project root '{attach_project_root}' in workspace.yaml"]
+                    if attach_project_root
+                    else []
+                ),
+            ],
+        )
+        return
+
     typer.echo("🧠 Cortex — Setting up WebGraph profile...")
     typer.echo("")
 
@@ -679,9 +794,15 @@ def setup_enterprise(
 # ---------------------------------------------------------------------------
 
 @app.command()
-def init() -> None:
-    """Bootstrap cortex: Alias for `cortex setup agent`."""
-    setup_agent(dry_run=False)
+def init(
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Skip prompts (safe defaults). Required for CI/scripted setups.",
+    ),
+) -> None:
+    """Bootstrap cortex: Alias for `cortex setup agent` (nivel-0, flujo nuevo usuario)."""
+    _run_setup_agent(git_depth=None, ide=None, non_interactive=non_interactive)
 
 
 @app.command()
@@ -726,7 +847,7 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-@app.command(name="org-config")
+@app.command(name="org-config", hidden=True)
 def org_config(
     project_root: str | None = typer.Option(
         None,
@@ -797,9 +918,6 @@ def context(
     expand: bool = typer.Option(
         False, "--expand", "-e", help="Show full content of items."
     ),
-    no_graph: bool = typer.Option(
-        False, "--no-graph", help="Skip graph expansion."
-    ),
 ) -> None:
     """
     Get enriched context for current work.
@@ -837,355 +955,10 @@ def context(
 
 
 # ---------------------------------------------------------------------------
-# save-session
-# ---------------------------------------------------------------------------
-
-@app.command(name="save-session")
-def save_session(
-    title: str = typer.Option(..., help="Session title."),
-    spec_summary: str = typer.Option(..., help="Original specification or task summary."),
-    changes_made: list[str] = typer.Option([], "--change", help="Change description (repeatable)."),
-    files_touched: list[str] = typer.Option([], "--file", help="Touched file (repeatable)."),
-    key_decisions: list[str] = typer.Option([], "--decision", help="Key decision (repeatable)."),
-    next_steps: list[str] = typer.Option([], "--next-step", help="Follow-up task (repeatable)."),
-    tags: list[str] = typer.Option([], "--tag", help="Session tags (repeatable)."),
-    no_sync: bool = typer.Option(False, "--no-sync", help="Skip vault sync after writing."),
-) -> None:
-    """Persist a structured session note into the vault."""
-    mem = _load_memory()
-    path = mem.save_session_note(
-        title=title,
-        spec_summary=spec_summary,
-        changes_made=changes_made,
-        files_touched=files_touched,
-        key_decisions=key_decisions,
-        next_steps=next_steps,
-        tags=tags,
-        sync_vault=not no_sync,
-    )
-    typer.echo(f"Session note saved -> {path}")
-
-
-# ---------------------------------------------------------------------------
-# create-spec
-# ---------------------------------------------------------------------------
-
-@app.command(name="create-spec")
-def create_spec(
-    title: str = typer.Option(..., help="Specification title."),
-    goal: str = typer.Option(..., help="Primary implementation goal."),
-    requirements: list[str] = typer.Option([], "--requirement", help="Requirement (repeatable)."),
-    files_in_scope: list[str] = typer.Option([], "--file", help="File in scope (repeatable)."),
-    constraints: list[str] = typer.Option([], "--constraint", help="Constraint (repeatable)."),
-    acceptance_criteria: list[str] = typer.Option(
-        [], "--acceptance", help="Acceptance criterion (repeatable)."
-    ),
-    tags: list[str] = typer.Option([], "--tag", help="Spec tags (repeatable)."),
-    verification_hook: list[str] = typer.Option(
-        [],
-        "--verification-hook",
-        help=(
-            "Verification hook in 'key=value;key=value' format "
-            "(repeatable). Keys: name, command, required (true/false, "
-            "default true), success_criteria, timeout_seconds. "
-            "Example: 'name=tests;command=pytest tests/auth/'."
-        ),
-    ),
-    no_sync: bool = typer.Option(False, "--no-sync", help="Skip vault sync after writing."),
-    proposal_mode: str = typer.Option(
-        "optional",
-        "--proposal-mode",
-        help=(
-            "Phase 09.A: gate on the cortex-sync proposal step. "
-            "'optional' (default) lets the spec proceed without explicit "
-            "confirmation; 'required' fails unless --proposal-confirmed is "
-            "passed; 'skip' bypasses the gate entirely."
-        ),
-    ),
-    proposal_confirmed: bool = typer.Option(
-        False,
-        "--proposal-confirmed",
-        help=(
-            "Phase 09.A: signal that the cortex-sync proposal has been "
-            "acknowledged by the user. Only consulted when "
-            "--proposal-mode=required."
-        ),
-    ),
-    with_tasks: bool = typer.Option(
-        False,
-        "--with-tasks",
-        help=(
-            "Phase 09.C: ask SDDwork to emit a granular task "
-            "decomposition for this spec (Deep Track only). Adds the "
-            "``tasks-required`` tag to the spec frontmatter."
-        ),
-    ),
-) -> None:
-    """Persist an implementation spec into the vault."""
-    hooks = _parse_verification_hooks(verification_hook)
-    mem = _load_memory()
-    try:
-        result = mem.create_spec_note(
-            title=title,
-            goal=goal,
-            requirements=requirements,
-            files_in_scope=files_in_scope,
-            constraints=constraints,
-            acceptance_criteria=acceptance_criteria,
-            tags=tags,
-            verification_hooks=hooks,
-            sync_vault=not no_sync,
-            proposal_mode=proposal_mode,
-            proposal_confirmed=proposal_confirmed,
-            with_tasks=with_tasks,
-        )
-    except ValueError as exc:
-        typer.echo(f"✗ {exc}", err=True)
-        raise typer.Exit(1) from None
-    typer.echo(f"Specification saved -> {result.path}")
-    if result.session is not None and result.session.is_gitless:
-        typer.echo(
-            "\n⚠️  No git repository detected. Session opened in degraded mode:\n"
-            "   • cortex finish-session will skip git diff reconstruction\n"
-            "   • documenter will rely exclusively on checkpoints\n"
-            "   • To enable full session capabilities, run:\n"
-            "       git init && git add -A && git commit -m \"initial\"",
-            err=True,
-        )
-
-
-def _parse_verification_hooks(specs: list[str]) -> list[dict[str, object]]:
-    """Parse repeatable ``--verification-hook 'name=...;command=...'`` arguments.
-
-    Each token between semicolons is a ``key=value`` pair. Boolean and
-    integer fields are coerced. Unknown keys cause a clear CLI error.
-    """
-    parsed: list[dict[str, object]] = []
-    allowed = {"name", "command", "required", "success_criteria", "timeout_seconds"}
-    for raw in specs:
-        if not raw.strip():
-            continue
-        hook: dict[str, object] = {}
-        for pair in raw.split(";"):
-            pair = pair.strip()
-            if not pair:
-                continue
-            if "=" not in pair:
-                typer.echo(
-                    f"Invalid --verification-hook entry {pair!r}: expected key=value.",
-                    err=True,
-                )
-                raise typer.Exit(1)
-            key, value = pair.split("=", 1)
-            key = key.strip()
-            value = value.strip()
-            if key not in allowed:
-                typer.echo(
-                    f"Unknown verification_hook key {key!r}. "
-                    f"Allowed: {sorted(allowed)}",
-                    err=True,
-                )
-                raise typer.Exit(1)
-            if key == "required":
-                hook[key] = value.lower() in {"true", "1", "yes"}
-            elif key == "timeout_seconds":
-                try:
-                    hook[key] = int(value)
-                except ValueError:
-                    typer.echo(
-                        f"timeout_seconds must be an integer, got {value!r}.", err=True
-                    )
-                    raise typer.Exit(1) from None
-            else:
-                hook[key] = value
-        if hook:
-            parsed.append(hook)
-    return parsed
-
-
-# ---------------------------------------------------------------------------
-# finish-session (Pluggable Middle — Phase 01)
-# ---------------------------------------------------------------------------
-
-def _resolve_interactive_mode(mem: object, cli_flag: bool | None) -> bool:
-    """Resolve whether ``finish-session`` should enter interactive mode.
-
-    CLI flag wins; if absent, fall back to ``documenter.default_mode``
-    from the loaded :class:`CortexConfig` (``"interactive"`` → True,
-    anything else → False).
-    """
-    if cli_flag is not None:
-        return cli_flag
-    try:
-        cfg = getattr(mem, "config", None)
-        documenter_cfg = getattr(cfg, "documenter", None) if cfg is not None else None
-        mode = getattr(documenter_cfg, "default_mode", "auto") if documenter_cfg else "auto"
-        return mode == "interactive"
-    except Exception:
-        return False
-
-
-@app.command(name="finish-session")
-def finish_session(
-    session_id: str | None = typer.Argument(
-        None, help="Session id (defaults to the active session)."
-    ),
-    handoff: bool = typer.Option(
-        False, "--handoff", help="Force the session to close as HANDOFF."
-    ),
-    abandon: bool = typer.Option(
-        False, "--abandon", help="Force the session to close as ABANDONED (no note)."
-    ),
-    reason: str = typer.Option(
-        "",
-        "--reason",
-        help="Reason recorded in the session note (required when --handoff/--abandon).",
-    ),
-    interactive: bool | None = typer.Option(
-        None,
-        "--interactive/--no-interactive",
-        help=(
-            "Override the documenter mode for this call. Default reads "
-            "`documenter.default_mode` from config.yaml (auto unless changed)."
-        ),
-    ),
-    output_json: bool = typer.Option(
-        False, "--json", help="Emit a machine-readable JSON summary."
-    ),
-    project_root: Path | None = typer.Option(
-        None, "--project-root", help="Project root (defaults to current directory)."
-    ),
-) -> None:
-    """Close a Session: reconstruct context, run verification hooks, persist."""
-    if handoff and abandon:
-        typer.echo("--handoff and --abandon are mutually exclusive.", err=True)
-        raise typer.Exit(1)
-    if (handoff or abandon) and not reason.strip():
-        typer.echo("--reason is required with --handoff or --abandon.", err=True)
-        raise typer.Exit(1)
-
-    mem = _load_memory(project_root) if project_root else _load_memory()
-    target_id = (session_id or "").strip()
-    if not target_id:
-        active = mem.get_active_session()
-        if active is None:
-            typer.echo(
-                "No active session. Pass an explicit session id or open one with "
-                "`cortex create-spec`.",
-                err=True,
-            )
-            raise typer.Exit(1)
-        target_id = active.session_id
-
-    from cortex.documenter import (
-        DocumenterPersister,
-        FinishOverrides,
-        ReconstructionInput,
-        Reconstructor,
-    )
-    from cortex.session import SessionStatus
-    from cortex.session.verification import VerificationRunner
-
-    record = mem.get_session(target_id)
-    if record.status is not SessionStatus.OPEN:
-        typer.echo(
-            f"Session {target_id!r} is already {record.status.value}; nothing to finish.",
-            err=True,
-        )
-        raise typer.Exit(1)
-
-    reconstructor = Reconstructor(
-        session_service=mem._session_service,
-        verification_runner=VerificationRunner(repo_root=mem.repo_root),
-        repo_root=mem.repo_root,
-    )
-    out = reconstructor.reconstruct(ReconstructionInput(session_id=target_id))
-
-    forced_status: SessionStatus | None = None
-    if abandon:
-        forced_status = SessionStatus.ABANDONED
-    elif handoff:
-        forced_status = SessionStatus.HANDOFF
-
-    # Resolve interactive mode: CLI flag wins; otherwise config default
-    # (documenter.default_mode, see cortex.core.DocumenterConfig).
-    use_interactive = _resolve_interactive_mode(mem, interactive)
-    overrides = FinishOverrides(forced_status=forced_status, forced_reason=reason)
-    if use_interactive and not (handoff or abandon):
-        from cortex.documenter.interactive import InteractiveAction, InteractiveSession
-
-        prompt_session = InteractiveSession()
-        verdict = prompt_session.prompt(out)
-        if verdict.action is InteractiveAction.CANCEL:
-            typer.echo(
-                "✗ Cancelled. The session is still OPEN — re-run "
-                "`cortex finish-session` when ready.",
-                err=True,
-            )
-            raise typer.Exit(0)
-        overrides = FinishOverrides(
-            approved_adr_indices=verdict.approved_adr_indices,
-            edited_note_title=verdict.edited_note_title,
-            edited_note_body=verdict.edited_note_body,
-            forced_status=verdict.forced_status or forced_status,
-            forced_reason=verdict.forced_reason or reason,
-        )
-
-    persister = DocumenterPersister(
-        note_service=mem._note_service,
-        session_service=mem._session_service,
-        vault_path=mem._vault_path_resolved,
-    )
-    result = persister.finalize(out, overrides=overrides)
-
-    if output_json:
-        typer.echo(
-            json.dumps(
-                {
-                    "session_id": result.session_id,
-                    "final_status": result.final_status.value,
-                    "session_note_path": (
-                        str(result.session_note_path)
-                        if result.session_note_path
-                        else None
-                    ),
-                    "adrs_created": [str(p) for p in result.adrs_created],
-                    "summary": result.summary,
-                    "already_closed": result.already_closed,
-                },
-                ensure_ascii=False,
-            )
-        )
-        return
-
-    if result.already_closed:
-        typer.echo(f"⚠ Session {result.session_id} was already closed.")
-        return
-
-    typer.echo(f"✓ Session {result.session_id} closed as {result.final_status.value}.")
-    typer.echo(f"  {result.summary}")
-    if result.session_note_path is not None:
-        typer.echo(f"  Session note: {result.session_note_path}")
-    for adr in result.adrs_created:
-        typer.echo(f"  ADR: {adr}")
-    # Phase 09.A+ / May 2026: nudge users toward the editorial closing
-    # anchor. CLI auto-persist remains valid for scripting/CI, but for
-    # interactive use the /cortex-documenter skill produces higher-signal
-    # notes (LLM writes prose with judgement instead of Jinja templates
-    # filling slots from checkpoints).
-    typer.echo(
-        "\n💡 Tip: for higher-signal documentation (LLM writes the note "
-        "with editorial criterion), use the /cortex-documenter skill in "
-        "your IDE instead of this CLI command. This auto-persist path "
-        "remains valid for scripting and CI.",
-    )
-
-
-# ---------------------------------------------------------------------------
 # verify-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="verify-docs")
+@app.command(name="verify-docs", hidden=True)
 def verify_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
     base_branch: str = typer.Option("main", help="Branch to diff against."),
@@ -1242,7 +1015,7 @@ def verify_docs(
 # validate-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="validate-docs")
+@app.command(name="validate-docs", hidden=True)
 def validate_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
     files: str = typer.Option(
@@ -1312,7 +1085,7 @@ def validate_docs(
 # index-docs
 # ---------------------------------------------------------------------------
 
-@app.command(name="index-docs")
+@app.command(name="index-docs", hidden=True)
 def index_docs(
     vault: str = typer.Option("vault", help="Path to the vault directory."),
 ) -> None:
@@ -1356,7 +1129,7 @@ def index_docs(
 # agent-guidelines
 # ---------------------------------------------------------------------------
 
-@app.command(name="agent-guidelines")
+@app.command(name="agent-guidelines", hidden=True)
 def agent_guidelines() -> None:
     """
     Display agent behavior guidelines.
@@ -1410,7 +1183,7 @@ def tutor(
 # hint
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def hint() -> None:
     """Tip contextual: qué hacer ahora con Cortex. Zero tokens.
 
@@ -1430,7 +1203,7 @@ def hint() -> None:
 # install-skills
 # ---------------------------------------------------------------------------
 
-@app.command(name="install-skills")
+@app.command(name="install-skills", hidden=True)
 def install_skills(
     dest: str = typer.Option(
         ".cortex/skills", help="Directory to install skills into."
@@ -1460,7 +1233,7 @@ def install_skills(
 # remember
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def remember(
     content: str = typer.Argument(..., help="What the agent did / what happened."),
     memory_type: str = typer.Option("general", "--type", "-t", help="Memory category."),
@@ -1583,6 +1356,10 @@ def search(
 
     from cortex.cli._search_filters import build_enrichment_filters_from_cli, has_any_filter
 
+    # B3: scope/project_id REALES del usuario (antes hardcodeados → el
+    # dispatch cambiaba según combinación de flags).
+    # B4: --format distinto de text también activa el path estructural —
+    # un solo convenio de salida (--format); --json queda como legacy compat.
     structural_mode = has_any_filter(
         doc_type=doc_type,
         exclude_doc_type=exclude_doc_type,
@@ -1590,10 +1367,10 @@ def search(
         tag=tag,
         tag_any=tag_any,
         max_age_days=max_age_days,
-        project_id=None,
+        project_id=project_id,
         strict=strict,
-        scope="local",
-    )
+        scope=scope or "local",
+    ) or output_format != "text"
 
     if structural_mode:
         if output_format not in {"text", "json", "compact"}:
@@ -1621,10 +1398,13 @@ def search(
         from cortex.models import WorkContext
 
         mem = _load_memory()
+        from cortex.context_enricher.telemetry import make_observer
+
         enricher = ContextEnricher(
             episodic=mem.episodic,
             semantic=mem.semantic,
             config=ContextEnricherConfig(),
+            observer=make_observer(project_root=mem.workspace_root),
         )
         work = WorkContext(
             source="manual",
@@ -1702,7 +1482,7 @@ def search(
 # ---------------------------------------------------------------------------
 
 
-@app.command(name="promote-knowledge")
+@app.command(name="promote-knowledge", hidden=True)
 def promote_knowledge(
     project_root: str | None = typer.Option(
         None,
@@ -1765,10 +1545,10 @@ def promote_knowledge(
         typer.echo(f"  - {r.local_rel_path} -> {r.dest_rel_path}  ({r.origin_id})")
 
 
-app.add_typer(review_app, name="review-knowledge")
+app.add_typer(review_app, name="review-knowledge", hidden=True)
 
 
-@app.command(name="sync-enterprise-vault")
+@app.command(name="sync-enterprise-vault", hidden=True)
 def sync_enterprise_vault(
     project_root: str | None = typer.Option(
         None,
@@ -1832,8 +1612,8 @@ def sync_enterprise_vault(
     mem = _load_memory()
     reader = VaultReader(
         vault_path=str(enterprise_vault),
-        embedding_model=mem.config.episodic.embedding_model,
-        embedding_backend=mem.config.episodic.embedding_backend,
+        embedding_model=mem._effective_embedding[0],
+        embedding_backend=mem._effective_embedding[1],
     )
     indexed = reader.sync()
     payload["indexed_docs"] = indexed
@@ -1849,86 +1629,52 @@ def sync_enterprise_vault(
 
 
 # ---------------------------------------------------------------------------
-# sync-vault
-# ---------------------------------------------------------------------------
-
-@app.command(name="sync-vault")
-def sync_vault() -> None:
-    """Re-index the markdown vault."""
-    mem = _load_memory()
-    count = mem.sync_vault()
-    typer.echo(f"Vault synced -- {count} documents indexed.")
-
-
-# ---------------------------------------------------------------------------
 # IDE / MCP
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def install_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to configure (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Configure all IDE adapters (deprecated/experimental)."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Install Cortex agent profiles and MCP config in supported IDEs."""
-    from cortex.ide import get_supported_ides, inject, inject_all
+    """(Deprecated) Install Cortex agent profiles and MCP config in supported IDEs.
 
+    Delegates to the unified `cortex ide setup` implementation.
+    """
+    from cortex.cli.ide import DEPRECATION_SETUP, run_bulk_inject, run_setup
+    from cortex.ide import get_supported_ides
+
+    typer.echo(f"Warning: {DEPRECATION_SETUP}")
     if all_ides or ide is None:
-        typer.echo("Warning: --all uses deprecated/experimental bulk installation. Prefer --ide <name>.")
-        inject_all(project_root=Path.cwd())
+        typer.echo("Warning: --all uses deprecated/experimental bulk installation. Prefer `cortex ide setup --ide <name>`.")
+        run_bulk_inject(project_root)
         return
 
-    inject(ide, project_root=Path.cwd())
+    run_setup(ide, project_root=project_root)
     typer.echo(f"Supported IDEs: {', '.join(get_supported_ides())}")
 
-@app.command()
+@app.command(hidden=True)
 def uninstall_ide(
     ide: str | None = typer.Option(None, "--ide", help="IDE to clean (e.g. opencode, cursor, claude-code)."),
     all_ides: bool = typer.Option(False, "--all", help="Clean all IDE adapters (deprecated/experimental)."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Remove Cortex agent profiles and MCP config from supported IDEs."""
-    from cortex.ide import uninstall, uninstall_all
+    """(Deprecated) Remove Cortex profiles and MCP config from supported IDEs.
 
+    Delegates to the unified `cortex ide remove` implementation.
+    """
+    from cortex.cli.ide import DEPRECATION_REMOVE, run_bulk_uninstall, run_remove
+
+    typer.echo(f"Warning: {DEPRECATION_REMOVE}")
     if all_ides or ide is None:
-        typer.echo("Warning: --all uses deprecated/experimental bulk removal. Prefer --ide <name>.")
-        uninstall_all()
+        typer.echo("Warning: --all uses deprecated/experimental bulk removal. Prefer `cortex ide remove --ide <name>`.")
+        run_bulk_uninstall(project_root)
         return
 
-    uninstall(ide)
+    run_remove(ide, project_root=project_root)
 
-@app.command(name="mcp-server")
-def mcp_server(
-    project_root: str = typer.Option(None, "--project-root", help="Ruta absoluta al directorio del proyecto Cortex (donde está config.yaml)."),
-    stdio: bool = typer.Option(True, "--stdio", help="Use stdio transport (required for IDE integration)."),
-) -> None:
-    """Start the Cortex v2.1 MCP Server (stdio transport).
-    
-    Para integración con IDEs (Cursor, VSCode, Claude Desktop), usa --project-root
-    para especificar la ruta del proyecto Cortex cuando el cwd del IDE no coincide
-    con el directorio del proyecto.
-    """
-    import sys
-    
-    # Determinar el directorio raíz del proyecto
-    root = Path(project_root) if project_root else Path.cwd()
-    
-    # Redirección temporal de stdout a stderr para proteger el handshake JSON-RPC
-    old_stdout = sys.stdout
-    sys.stdout = sys.stderr
-    
-    try:
-        from cortex.mcp.server import CortexMCPServer
-        server = CortexMCPServer(project_root=root)
-    finally:
-        sys.stdout = old_stdout
-        
-    asyncio.run(server.run())
-
-@app.command(name="mcp-serve", hidden=True)
-def mcp_serve_legacy() -> None:
-    """Legacy alias for mcp-server."""
-    mcp_server()
-
-@app.command(name="inject")
+@app.command(name="inject", hidden=True)
 def inject(
     ide: str | None = typer.Option(None, "--ide", help="IDE to inject (canonical names or aliases such as claude-code / claude-desktop)."),
     sync_canonical: bool = typer.Option(
@@ -1940,6 +1686,7 @@ def inject(
             "to copy the bundle as-is (snapshot mode)."
         ),
     ),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
     """Inject Cortex agent profiles into the specified IDE.
 
@@ -1953,11 +1700,15 @@ def inject(
     - Markdown files: Writes with autogeneration header (never overwrites manual edits)
     - Automatic backup created before any modification
     """
-    import cortex.ide as cortex_ide
+    from cortex.cli.ide import DEPRECATION_SETUP, resolve_project_root, run_setup
+    import cortex.ide as cortex_ide  # F821 fix: rama interactiva lo usa
+
+    typer.echo(f"Warning: {DEPRECATION_SETUP}")
+    resolved_root = resolve_project_root(project_root)
 
     if ide:
-        # Direct injection for specified IDE
-        cortex_ide.inject(ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
+        # Direct injection for specified IDE — delegates to `cortex ide setup`.
+        run_setup(ide, project_root=resolved_root, sync_canonical=sync_canonical)
         typer.echo(f"\n✅ Successfully configured {ide}")
         typer.echo("Run 'cortex inject' again to configure another IDE.")
     else:
@@ -1981,72 +1732,32 @@ def inject(
             selected_ide = choice
 
         if selected_ide:
-            cortex_ide.inject(selected_ide, project_root=Path.cwd(), sync_canonical=sync_canonical)
+            run_setup(selected_ide, project_root=resolved_root, sync_canonical=sync_canonical)
             typer.echo(f"\n✅ Successfully configured {selected_ide}")
             typer.echo("Run 'cortex inject' again to configure another IDE.")
         else:
             typer.echo(f"❌ Invalid selection. Supported IDEs: {', '.join(supported)}")
 
 
-@app.command(name="sync-ide")
+@app.command(name="sync-ide", hidden=True)
 def sync_ide(
     ide: str = typer.Option(..., "--ide", help="IDE to sync (required)."),
-    force: bool = typer.Option(False, "--force", help="Force regeneration even if file exists."),
+    force: bool = typer.Option(False, "--force", help="Ignored: setup is idempotent."),
+    project_root: Path | None = typer.Option(None, "--project-root", help=_IDE_PROJECT_ROOT_HELP),
 ) -> None:
-    """Sync IDE configuration with current .cortex/skills/ content.
+    """(Deprecated) Sync IDE configuration with current .cortex/skills/ content.
 
-    This regenerates the IDE configuration files from the current .cortex/skills/
-    and .cortex/subagents/ content. Use this after modifying Cortex skills to
-    update your IDE configuration.
-
-    The generated files include an autogeneration header with the command to
-    regenerate them manually.
+    `cortex ide setup` is idempotent and re-syncs on every run; this command
+    only delegates to it.
     """
-    import cortex.ide as cortex_ide
+    from cortex.cli.ide import DEPRECATION_SETUP, run_setup
 
-    cortex_ide.inject(ide, project_root=Path.cwd())
+    typer.echo("Notice: sync-ide is deprecated; setup es idempotente. "
+               f"Use `cortex ide setup --ide {ide}` (Warning: {DEPRECATION_SETUP})")
+    run_setup(ide, project_root=project_root)
     typer.echo(f"\n✅ Successfully synced {ide} configuration")
-    typer.echo("Configuration regenerated from .cortex/skills/ and .cortex/subagents/")
 
-@hu_app.command("import")
-def hu_import(
-    external_id: str = typer.Argument(..., help="External item key, for example PROJ-123."),
-    provider: str = typer.Option("jira", "--provider", help="External provider name."),
-    no_remember: bool = typer.Option(False, "--no-remember", help="Skip episodic summary storage."),
-) -> None:
-    """Import one external tracked item into ``vault/hu/``."""
-    mem = _load_memory()
-    path = mem.import_work_item(external_id, provider=provider, remember=not no_remember)
-    typer.echo(f"Tracked item imported -> {path}")
-
-
-@hu_app.command("list")
-def hu_list() -> None:
-    """List tracked item notes already stored in ``vault/hu/``."""
-    mem = _load_memory()
-    notes = mem.list_work_item_notes()
-    if not notes:
-        typer.echo("No tracked items imported yet.")
-        return
-    for note in notes:
-        typer.echo(str(note))
-
-
-@hu_app.command("show")
-def hu_show(
-    item_id: str = typer.Argument(..., help="Tracked item ID, for example PROJ-123."),
-) -> None:
-    """Show the local vault note path for one tracked item."""
-    mem = _load_memory()
-    try:
-        note = mem.get_work_item_note(item_id)
-    except FileNotFoundError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
-    typer.echo(str(note))
-
-
-@app.command()
+@app.command(hidden=True)
 def stats(
     project_root: str | None = typer.Option(
         None,
@@ -2060,7 +1771,7 @@ def stats(
     typer.echo(json.dumps(s, indent=2))
 
 
-@app.command(name="memory-report")
+@app.command(name="memory-report", hidden=True)
 def memory_report(
     project_root: str | None = typer.Option(
         None,
@@ -2191,7 +1902,7 @@ def memory_report(
 # forget
 # ---------------------------------------------------------------------------
 
-@app.command()
+@app.command(hidden=True)
 def forget(
     memory_id: str = typer.Argument(..., help="ID of the memory to delete (e.g. mem_abc123)."),
 ) -> None:
@@ -2211,67 +1922,10 @@ def forget(
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Internal helpers (implementación en cortex.cli.common)
 # ---------------------------------------------------------------------------
 
-def _load_memory(project_root: str | Path | None = None) -> AgentMemory:  # noqa: F821
-    """Return an ``AgentMemory`` rooted at *project_root* (or CWD if None).
-
-    Accepts ``--project-root`` from any CLI command so that adopters
-    don't need to ``cd`` into their workspace just to run a query.
-    """
-    from cortex.core import AgentMemory
-    from cortex.workspace import WorkspaceLayout
-
-    start = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
-    layout = WorkspaceLayout.discover(start)
-    config_path = layout.config_path
-    if not config_path.exists():
-        typer.echo(
-            f"❌ Cortex no está configurado en {start}.\n"
-            f"   No encuentro `{config_path}`.\n"
-            "   Ejecutá `cortex setup full --non-interactive` para inicializar el workspace,\n"
-            "   o pasá `--project-root <ruta>` apuntando a un repo ya configurado.",
-            err=True,
-        )
-        sys.exit(1)
-    return AgentMemory(config_path=config_path)
-
-
-def _get_staged_files() -> list[str]:
-    """Get list of staged (and modified) files from git."""
-
-    files: list[str] = []
-    try:
-        # Staged files
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "--cached"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.stdout.strip():
-            files.extend(f for f in result.stdout.strip().split("\n") if f)
-
-        # Modified (not staged)
-        result2 = subprocess.run(
-            ["git", "diff", "--name-only"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result2.stdout.strip():
-            files.extend(f for f in result2.stdout.strip().split("\n") if f)
-
-        # Untracked
-        result3 = subprocess.run(
-            ["git", "ls-files", "--others", "--exclude-standard"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result3.stdout.strip():
-            files.extend(f for f in result3.stdout.strip().split("\n") if f)
-
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
-    return list(dict.fromkeys(files))  # Deduplicate preserving order
-
+from cortex.cli.common import _get_staged_files, _load_memory  # noqa: E402
 
 if __name__ == "__main__":
     app()

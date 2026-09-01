@@ -1,0 +1,22 @@
+╭───────────────────────────────────── 📋 COMANDOS ESENCIALES ─────────────────────────────────────╮
+│                                                                                                  │
+│ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
+│ ┃ Comando                        ┃ Para qué sirve                                              ┃ │
+│ ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩ │
+│ │ cortex setup agent             │ Inicializar Cortex en tu proyecto                           │ │
+│ │ cortex create-spec             │ Crear especificación antes de codear                        │ │
+│ │ cortex save-session            │ Guardar sesión de trabajo al terminar                       │ │
+│ │ cortex search                  │ Buscar en tu memoria (episódica + semántica)                │ │
+│ │ cortex context                 │ Inyectar contexto por archivos modificados                  │ │
+│ │ cortex doctor                  │ Verificar salud del proyecto                                │ │
+│ │ cortex stats                   │ Ver estadísticas de memoria                                 │ │
+│ │ cortex remember                │ Almacenar una memoria episódica manual                      │ │
+│ │ cortex forget                  │ Eliminar una memoria por ID                                 │ │
+│ │ cortex inject                  │ Configurar tu IDE para usar Cortex                          │ │
+│ │ cortex tutor                   │ Esta guía que estás viendo ahora                            │ │
+│ │ cortex hint                    │ Tip contextual: qué hacer ahora                             │ │
+│ └────────────────────────────────┴─────────────────────────────────────────────────────────────┘ │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Más comandos: cortex --help  |  Enterprise: cortex tutor → tema 6

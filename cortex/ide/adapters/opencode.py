@@ -182,3 +182,99 @@ class OpenCodeAdapter(IDEAdapter):
 
         config_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return [str(config_file)]
+
+    def uninstall(self, project_root: Path | None = None) -> list[str]:
+        """Remove Cortex artifacts from OpenCode (Obra 02 Fase 2).
+
+        Regla de oro: SOLO se borra lo que Cortex creó.
+
+        - ``~/.config/opencode/skills/cortex-*.md`` → unlink.
+        - Subagents copiados por ``inject_profiles`` → unlink (solo los
+          nombres que trae el bundle actual; fallback a ``cortex-*.md``).
+        - ``agent.cortex-*`` y ``mcp.cortex`` en ``opencode.json`` →
+          remoción por clave (deep-merge inverso), preservando todo lo
+          ajeno. Si el archivo queda vacío (``{}``) → unlink.
+        - Contenido mixto/desconocido queda intacto y se reporta como
+          ``skipped``.
+
+        Idempotente: una segunda pasada no encuentra nada y devuelve ``[]``.
+        """
+        report: list[str] = []
+        paths = self.get_config_paths()
+        skills_dir = paths["skills_dir"]
+        subagents_dir = paths["subagents_dir"]
+
+        # 1. Skills escritas por inject_profiles (cortex-*.md).
+        if skills_dir.exists():
+            for skill_file in sorted(skills_dir.glob("cortex-*.md")):
+                if skill_file.is_file():
+                    skill_file.unlink()
+                    report.append(str(skill_file))
+
+        # 2. Subagents copiados por inject_profiles: solo los que trae el
+        # bundle actual (.cortex/subagents/*.md del proyecto); sin
+        # project_root, fallback conservador a ``cortex-*.md``.
+        bundle_names: set[str] = set()
+        if project_root is not None:
+            with contextlib.suppress(Exception):
+                layout = WorkspaceLayout.discover(Path(project_root))
+                if layout.subagents_dir.exists():
+                    bundle_names.update(
+                        p.name for p in layout.subagents_dir.glob("*.md")
+                    )
+        if subagents_dir.exists():
+            candidates = {
+                p.name
+                for p in subagents_dir.glob("*.md")
+                if p.name.startswith("cortex-") or p.name in bundle_names
+            }
+            for name in sorted(candidates):
+                dest = subagents_dir / name
+                if dest.is_file():
+                    dest.unlink()
+                    report.append(str(dest))
+
+        # 3. opencode.json: quitar agent.cortex-* y mcp.cortex por clave,
+        # preservando todo lo ajeno. Archivo que queda en ``{}`` → unlink.
+        config_file = paths["main"]
+        if config_file.exists():
+            try:
+                data: dict[str, Any] = json.loads(
+                    config_file.read_text(encoding="utf-8")
+                )
+            except Exception:
+                report.append(f"{config_file} (skipped: invalid JSON, not touched)")
+            else:
+                if isinstance(data, dict):
+                    changed = False
+
+                    agent_cfg = data.get("agent")
+                    if isinstance(agent_cfg, dict):
+                        cortex_keys = [
+                            k for k in agent_cfg if k.startswith("cortex-")
+                        ]
+                        for key in cortex_keys:
+                            del agent_cfg[key]
+                            changed = True
+                        if not agent_cfg and "agent" in data:
+                            del data["agent"]
+
+                    mcp_cfg = data.get("mcp")
+                    if isinstance(mcp_cfg, dict) and "cortex" in mcp_cfg:
+                        del mcp_cfg["cortex"]
+                        changed = True
+                        if not mcp_cfg and "mcp" in data:
+                            del data["mcp"]
+
+                    if changed:
+                        if not data:
+                            config_file.unlink()
+                            report.append(str(config_file))
+                        else:
+                            _backup_file(config_file)
+                            config_file.write_text(
+                                json.dumps(data, indent=2), encoding="utf-8"
+                            )
+                            report.append(f"{config_file} (Cortex keys removed)")
+
+        return report

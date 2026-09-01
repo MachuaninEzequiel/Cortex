@@ -13,11 +13,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from cortex.semantic.vector_cache import VECTOR_DIM, VectorCache
+from cortex.semantic.vector_cache import VectorCache
+
+_DIM = 384  # all-MiniLM-L6-v2 (local: the module constant was removed by A1)
 
 
 def _rand() -> np.ndarray:
-    return np.random.rand(VECTOR_DIM).astype(np.float32)
+    return np.random.rand(_DIM).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -99,4 +101,4 @@ def test_short_read_raises_value_error(tmp_path: Path) -> None:
     # Truncate so read returns fewer bytes than expected.
     (cache_dir / "chunks.bin").write_bytes(b"\x00" * 10)
     with pytest.raises(ValueError, match="Short read"):
-        cache._read_vector_at(0, VECTOR_DIM)
+        cache._read_vector_at(0, _DIM)

@@ -1,0 +1,478 @@
+=== SEGMENT config ===
+# Cortex enterprise memory topology
+# This file governs organization-level memory, promotion and governance behavior.
+# Local runtime mechanics still live in config.yaml.
+
+schema_version: 1
+organization:
+  name: Acme Platform
+  slug: acme-platform
+  profile: small-company
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: local
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.0
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: balanced
+  ci_profile: advisory
+  version_sessions_in_git: false
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0
+profile=small-company, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=local, promotion=on, ci=advisory, enterprise_vault=vault-enterprise
+# Cortex enterprise memory topology
+# This file governs organization-level memory, promotion and governance behavior.
+# Local runtime mechanics still live in config.yaml.
+
+schema_version: 1
+organization:
+  name: Acme Platform
+  slug: acme-platform
+  profile: multi-project-team
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: all
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.2
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: balanced
+  ci_profile: advisory
+  version_sessions_in_git: false
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0
+profile=multi-project-team, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=all, promotion=on, ci=advisory, enterprise_vault=vault-enterprise
+# Cortex enterprise memory topology
+# This file governs organization-level memory, promotion and governance behavior.
+# Local runtime mechanics still live in config.yaml.
+
+schema_version: 1
+organization:
+  name: Acme Platform
+  slug: acme-platform
+  profile: regulated-organization
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: true
+  retrieval_default_scope: all
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.3
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: strict
+  ci_profile: enforced
+  version_sessions_in_git: true
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0
+profile=regulated-organization, mode=layered, project_memory=isolated, branch_isolation=on, retrieval_default=all, promotion=on, ci=enforced, enterprise_vault=vault-enterprise
+# Cortex enterprise memory topology
+# This file governs organization-level memory, promotion and governance behavior.
+# Local runtime mechanics still live in config.yaml.
+
+schema_version: 1
+organization:
+  name: Acme Platform
+  slug: acme-platform
+  profile: custom
+memory:
+  mode: layered
+  enterprise_vault_path: vault-enterprise
+  enterprise_memory_path: memory/enterprise/chroma
+  enterprise_semantic_enabled: true
+  enterprise_episodic_enabled: false
+  project_memory_mode: isolated
+  branch_isolation_enabled: false
+  retrieval_default_scope: local
+  retrieval_local_weight: 1.0
+  retrieval_enterprise_weight: 1.0
+promotion:
+  enabled: true
+  allowed_doc_types:
+  - spec
+  - decision
+  - runbook
+  - hu
+  - incident
+  require_review: true
+  default_targets:
+  - enterprise_vault
+governance:
+  git_policy: custom
+  ci_profile: advisory
+  version_sessions_in_git: false
+integration:
+  github_actions_enabled: true
+  webgraph_workspace_enabled: true
+  ide_profiles: []
+teams: []
+classifications:
+- public
+- internal
+- confidential
+policies:
+  confidential_visible_to: []
+retention_defaults:
+  session: 365
+  handoff: 30
+  spec: 1095
+  adr: 2555
+  decision: 365
+  incident: 1825
+  postmortem: 2555
+  runbook: 730
+  architecture: 2555
+  changelog: 0
+  hu: 90
+  glossary: 0
+profile=custom, mode=layered, project_memory=isolated, branch_isolation=off, retrieval_default=local, promotion=on, ci=advisory, enterprise_vault=vault-enterprise
+roundtrip=True
+path=org.yaml
+slug=cme-platform
+cross_rule=promotion.enabled requires memory.enterprise_semantic_enabled=true so promoted knowledge has a target
+=== SEGMENT governance ===
+{"user_alice": "first", "user_unknown": null, "can_promote_first": false, "visible_confidential_first": true, "visible_confidential_none": false, "allowed_first": ["public", "internal", "confidential"]}
+deny=actor 'alice' (team='first') cannot promote
+=== SEGMENT promotion_legacy ===
+[
+ {
+  "origin_id": "acme-api:specs/auth.md",
+  "doc_type": "spec",
+  "local_rel_path": "specs/auth.md",
+  "dest_rel_path": "specs/acme-api/auth.md",
+  "fingerprint": "ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a",
+  "status": "candidate",
+  "issues": [
+   {
+    "file": "specs/auth.md",
+    "field": "date",
+    "message": "Missing 'date' or 'created' property in frontmatter",
+    "severity": "info"
+   }
+  ]
+ }
+]
+{"origin_id":"acme-api:specs/auth.md","local_rel_path":"specs/auth.md","doc_type":"spec","dest_rel_path":"specs/acme-api/auth.md","fingerprint":"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a","status":"reviewed","created_at":"{{TS}}","updated_at":"{{TS}}","decision":{"decision":"approve","actor":"tester","decided_at":"{{TS}}","reason":"ok"},"events":[{"event":"candidate","at":"{{TS}}","actor":null,"payload":{"fingerprint":"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a"}},{"event":"reviewed","at":"{{TS}}","actor":"tester","payload":{"reason":"ok"}}]}
+PROMOTED_FILE_START
+---
+title: Auth
+tags:
+- spec
+promotion_status: promoted
+promotion_origin_id: acme-api:specs/auth.md
+promotion_origin_path: specs/auth.md
+promotion_origin_project: acme-api
+promotion_fingerprint: ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a
+promotion_promoted_at: '{{TS}}'
+---
+
+Initial spec body
+PROMOTED_FILE_END
+{
+ "written": 1,
+ "records": "{\"origin_id\":\"acme-api:specs/auth.md\",\"local_rel_path\":\"specs/auth.md\",\"doc_type\":\"spec\",\"dest_rel_path\":\"specs/acme-api/auth.md\",\"fingerprint\":\"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a\",\"status\":\"reviewed\",\"created_at\":\"{{TS}}\",\"updated_at\":\"{{TS}}\",\"decision\":{\"decision\":\"approve\",\"actor\":\"tester\",\"decided_at\":\"{{TS}}\",\"reason\":\"ok\"},\"events\":[{\"event\":\"candidate\",\"at\":\"{{TS}}\",\"actor\":null,\"payload\":{\"fingerprint\":\"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a\"}},{\"event\":\"reviewed\",\"at\":\"{{TS}}\",\"actor\":\"tester\",\"payload\":{\"reason\":\"ok\"}}]}\n{\"origin_id\":\"acme-api:specs/auth.md\",\"local_rel_path\":\"specs/auth.md\",\"doc_type\":\"spec\",\"dest_rel_path\":\"specs/acme-api/auth.md\",\"fingerprint\":\"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a\",\"status\":\"promoted\",\"created_at\":\"{{TS}}\",\"updated_at\":\"{{TS}}\",\"decision\":{\"decision\":\"approve\",\"actor\":\"tester\",\"decided_at\":\"{{TS}}\",\"reason\":\"ok\"},\"events\":[{\"event\":\"candidate\",\"at\":\"{{TS}}\",\"actor\":null,\"payload\":{\"fingerprint\":\"ed254ede43a4a92c18c35be12441adc46e44fa1bb5c8e66eeea67f383c865a7a\"}},{\"event\":\"promoted\",\"at\":\"{{TS}}\",\"actor\":\"tester\",\"payload\":{}}]}\n"
+}
+idempotent_discover=True
+=== SEGMENT doctype ===
+CASE session
+mode=summarize
+summarized=True
+requires_review=False
+FILE_START
+---
+schema_version: 1
+doc_type: session
+title: Sprint
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags: []
+status: completed
+links: []
+vault_scope: enterprise
+fingerprint: 2230cb44f10e5e251b9b56a8cdc7cc782cb79b30234e650af5797a97b45e5a77
+owner: tester
+team: admin
+classification: internal
+retention_days: 365
+audit_trail:
+- actor: tester
+  action: promoted
+  timestamp: '{{TS}}'
+  reason: null
+  promotion_mode: summarize
+---
+
+# Sprint
+
+**Promoted session digest.** Full session lives at the source path.
+
+## Key Decisions
+
+Keep Rust
+FILE_END
+CASE runbook
+mode=review-required
+summarized=False
+requires_review=True
+FILE_START
+---
+schema_version: 1
+doc_type: runbook
+title: Deploy
+created_at: '{{TS}}'
+updated_at: '{{TS}}'
+tags: []
+status: draft
+links: []
+vault_scope: enterprise
+fingerprint: 7560ce224b5fc5b27e77ff7df468cbbcf7a657e67ad208d0c35ee6cf8ff44ea8
+owner: tester
+team: admin
+classification: internal
+retention_days: 730
+audit_trail:
+- actor: tester
+  action: promoted
+  timestamp: '{{TS}}'
+  reason: null
+  promotion_mode: review-required
+---
+
+Steps
+FILE_END
+=== SEGMENT review_queue ===
+[
+ {
+  "path": "runbooks/b.md",
+  "doc_type": "runbook",
+  "title": "B",
+  "owner": "ana",
+  "team": null,
+  "created_at": null
+ },
+ {
+  "path": "specs/a.md",
+  "doc_type": "spec",
+  "title": "A",
+  "owner": "bob",
+  "team": null,
+  "created_at": null
+ }
+]
+=== SEGMENT retention ===
+[
+ {
+  "path": "overdue.md",
+  "doc_type": "hu",
+  "retention_days": 90,
+  "days_overdue": 725
+ },
+ {
+  "path": "archived.md",
+  "doc_type": "hu",
+  "retention_days": 90,
+  "days_overdue": 511
+ }
+]
+["_archived/overdue.md", "_archived/archived.md"]
+=== SEGMENT retrieval ===
+{
+ "unified": [
+  {
+   "source": "semantic",
+   "score": 0.016393442623,
+   "scope": "local",
+   "project": "acme-project"
+  },
+  {
+   "source": "semantic",
+   "score": 0.016129032258,
+   "scope": "enterprise",
+   "project": "acme"
+  }
+ ],
+ "breakdown": {
+  "local": 1,
+  "enterprise": 1
+ }
+}
+=== SEGMENT reporting ===
+{
+ "doctor": {
+  "check_names": [
+   "project_root",
+   "layout_mode",
+   "config_yaml",
+   "config_validation",
+   "vault_dir",
+   "episodic_store",
+   "cortex_workspace",
+   "agent_guidelines",
+   "workspace_yaml",
+   "git_repository",
+   "git_branch",
+   "gitignore:.memory/",
+   "gitignore:vault/sessions/",
+   "gitignore:.cortex/session.lock",
+   "webgraph_dependencies",
+   "vault_markdown",
+   "sessions_dir",
+   "autopilot_policy",
+   "session_hooks_installed",
+   "pm_workspace_layout_v2",
+   "pm_documenter_module",
+   "pm_documenter_interactive",
+   "pm_documenter_default_mode",
+   "pm_verification_runner",
+   "pm_mcp_tools_registered",
+   "pm_git_available",
+   "enterprise_config",
+   "enterprise_config_validation",
+   "enterprise_topology",
+   "enterprise_vault_dir",
+   "enterprise_vault_markdown",
+   "enterprise_promotion_allowed_doc_types",
+   "enterprise_promotion_dir",
+   "enterprise_promotion_records_presence",
+   "enterprise_branch_isolation_alignment",
+   "enterprise_retrieval_scope"
+  ],
+  "has_failures": true
+ },
+ "enterprise_enabled": true,
+ "project_root": "{{ROOT}}",
+ "promotion": {
+  "candidates_discovered": 0,
+  "enabled": true,
+  "require_review": true
+ },
+ "sources": [
+  {
+   "markdown_files": 0,
+   "notes": [],
+   "scope": "local",
+   "validation_errors": 0,
+   "validation_warnings": 0
+  },
+  {
+   "markdown_files": 0,
+   "notes": [],
+   "scope": "enterprise",
+   "validation_errors": 0,
+   "validation_warnings": 0
+  }
+ ]
+}

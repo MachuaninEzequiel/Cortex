@@ -169,23 +169,28 @@ class PersistentObserver:
     # ------------------------------------------------------------------
 
     def iter_events(self) -> list[dict[str, Any]]:
-        """Load all events from disk. Returns ``[]`` on missing or unreadable file."""
-        if not self._enabled or not self._path.exists():
+        """Load all events from disk (vivo + generación rotada, en orden)."""
+        if not self._enabled:
             return []
-        events: list[dict[str, Any]] = []
-        try:
-            with self._path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        events.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        logger.warning("Skipping malformed telemetry line: %r", line[:80])
-        except OSError:
-            return []
-        return events
+        eventos: list[dict[str, Any]] = []
+        # orden cronológico: primero la generación rotada (si existe)
+        rutas = [self._path.with_suffix(".1.jsonl"), self._path]
+        for ruta in rutas:
+            if not ruta.exists():
+                continue
+            try:
+                with ruta.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            eventos.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            logger.warning("Skipping malformed telemetry line: %r", line[:80])
+            except OSError:
+                continue
+        return eventos
 
     def events_for_run(self, run_id: str) -> dict[str, Any]:
         """Return ``{"enrichment": <event>, "citations": [<event>, ...]}`` for a run."""
@@ -289,11 +294,25 @@ class PersistentObserver:
 
     def _append(self, event: EnrichmentEvent | CitationEvent) -> None:
         try:
+            self._rotate_if_needed()
             line = json.dumps(event.__dict__, default=str)
             with self._path.open("a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
         except OSError as exc:  # pragma: no cover - defensive
             logger.warning("Telemetry append failed: %s", exc)
+
+    # Rotación JSONL (Obra 05 Fase A): una generación histórica, mismo
+    # patrón que FeedbackStore. Evita que el events file crezca sin fin.
+    _MAX_BYTES = 5 * 1024 * 1024
+
+    def _rotate_if_needed(self) -> None:
+        if not self._path.exists() or self._path.stat().st_size < self._MAX_BYTES:
+            return
+        rotado = self._path.with_suffix(".1.jsonl")
+        if rotado.exists():
+            rotado.unlink()
+        self._path.rename(rotado)
+        logger.info("Telemetría rotada a %s", rotado.name)
 
 
 # ---------------------------------------------------------------------------

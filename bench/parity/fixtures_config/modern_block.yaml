@@ -1,0 +1,3 @@
+embedding:
+  model: all-MiniLM-L6-v2
+  backend: onnx

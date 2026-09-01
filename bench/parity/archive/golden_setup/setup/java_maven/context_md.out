@@ -1,0 +1,33 @@
+---
+title: Ubiquitous Language Guide
+tags: [glossary, domain, cortex-context]
+created: 2026-05-13
+project: java_maven
+---
+
+# Ubiquitous Language (CONTEXT.md)
+
+Este archivo define el **vocabulario canonico del dominio** de `java_maven`.
+Los skills `cortex-sync` y `cortex-documenter` lo leen al boot para usar
+terminos consistentes. **No es una capa de retrieval** — es material de
+prompt para los agentes.
+
+## Como extenderlo
+
+Cuando descubras un termino del dominio nuevo:
+
+1. Agregalo a la tabla de abajo con su definicion canonica.
+2. Lista sinonimos prohibidos (que NO se deben usar en docs).
+3. Si entra en conflicto con uso previo, crea un ADR de rename.
+
+## Terminos
+
+| Termino canonico | Definicion | Sinonimos prohibidos |
+|------------------|------------|----------------------|
+| _completar con terminos del dominio_ |   |   |
+
+## Reglas de uso
+
+1. Usa SIEMPRE el termino canonico en session notes y specs.
+2. Si descubris un nuevo concepto del dominio, registralo aqui ANTES de usarlo.
+3. Si un concepto entra en conflicto con uso previo, crea un ADR de rename.
