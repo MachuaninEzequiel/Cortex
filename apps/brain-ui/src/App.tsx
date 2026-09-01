@@ -282,6 +282,16 @@ export function App() {
     }
   };
 
+  // Levantar servidor WebGraph externo y abrir en navegador
+  const handleLaunchExternalServer = async () => {
+    if (!selectedProjectPath) return;
+    try {
+      await tauriInvoke("open_webgraph_browser", { project: selectedProjectPath });
+    } catch (e) {
+      console.error("Error al abrir WebGraph en navegador:", e);
+    }
+  };
+
   // Abrir modal de Doctor y correr diagnóstico
   const handleOpenDoctor = async () => {
     setIsDoctorOpen(true);
@@ -619,7 +629,7 @@ export function App() {
         isLoading={isGraphLoading}
         highlightedNodeIds={highlightedNodeIds}
         onPinNode={handlePinNode}
-        onLaunchExternalServer={() => handleSendMessage("cortex webgraph serve")}
+        onLaunchExternalServer={handleLaunchExternalServer}
         lang={lang}
       />
 

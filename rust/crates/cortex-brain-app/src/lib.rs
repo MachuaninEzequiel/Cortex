@@ -381,6 +381,25 @@ async fn run_doctor_inspect(project: String) -> Result<graph::DoctorReportPayloa
     Ok(doc)
 }
 
+/// Command Tauri: levanta el servidor webgraph de Cortex y lo abre en el navegador.
+#[tauri::command]
+async fn open_webgraph_browser(project: String) -> Result<String, String> {
+    eprintln!("[cortex-brain] Levantando servidor webgraph externo para '{project}'...");
+    let project_path = std::path::PathBuf::from(&project);
+    std::thread::spawn(move || {
+        let _ = std::process::Command::new("cortex")
+            .args(["webgraph", "serve", "--project-root", &project_path.to_string_lossy()])
+            .status();
+    });
+
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let _ = std::process::Command::new("xdg-open")
+        .arg("http://127.0.0.1:8765")
+        .spawn();
+
+    Ok("http://127.0.0.1:8765".to_string())
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -570,7 +589,8 @@ pub fn run() {
             set_always_on_top,
             get_project_graph,
             get_session_status,
-            run_doctor_inspect
+            run_doctor_inspect,
+            open_webgraph_browser
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
