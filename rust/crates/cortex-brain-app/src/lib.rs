@@ -280,6 +280,52 @@ async fn clear_chat_history(app: tauri::AppHandle, project: String) -> Result<()
     Ok(())
 }
 
+/// Command Tauri: alterna visibilidad y foco de la ventana principal (toggle estilo Spotlight).
+#[tauri::command]
+async fn toggle_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let is_visible = window.is_visible().unwrap_or(false);
+        let is_focused = window.is_focused().unwrap_or(false);
+        if is_visible && is_focused {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }
+    Ok(())
+}
+
+/// Command Tauri: oculta la ventana principal al fondo (ej. al presionar Escape).
+#[tauri::command]
+async fn hide_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    Ok(())
+}
+
+/// Command Tauri: muestra y da foco a la ventana principal.
+#[tauri::command]
+async fn show_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+    Ok(())
+}
+
+/// Command Tauri: activa o desactiva el modo siempre visible (Always on Top / Flotante).
+#[tauri::command]
+async fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(enabled);
+    }
+    Ok(())
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -378,6 +424,8 @@ fn handle_connection(
 /// `list_models` para la UI completa.
 /// G-A8: registra `download_model`.
 /// G-A9: single-instance forward de foco a la ventana existente.
+/// Pilar 1: persistencia de historial conversacional (`load_chat_history`, etc.).
+/// Pilar 2: atajo global flotante (toggle de visibilidad con Ctrl+Shift+B).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Un engine compartido: el server IPC y el command `chat_turn`
@@ -420,7 +468,34 @@ pub fn run() {
         }
     }
 
+    let default_shortcut = tauri_plugin_global_shortcut::Shortcut::new(
+        Some(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::SHIFT),
+        tauri_plugin_global_shortcut::Code::KeyB,
+    );
+
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_shortcut(default_shortcut)
+                .map_err(|e| eprintln!("cortex-brain: no pude registrar atajo global default: {e}"))
+                .unwrap_or_default()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let is_visible = window.is_visible().unwrap_or(false);
+                            let is_focused = window.is_focused().unwrap_or(false);
+                            if is_visible && is_focused {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             list_projects,
             refresh_projects,
@@ -432,7 +507,11 @@ pub fn run() {
             download_model,
             load_chat_history,
             save_chat_message,
-            clear_chat_history
+            clear_chat_history,
+            toggle_window,
+            hide_window,
+            show_window,
+            set_always_on_top
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {

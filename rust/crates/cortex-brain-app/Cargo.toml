@@ -20,6 +20,7 @@ tauri-build = { version = "2", features = [] }
 # G-A1: shell Tauri mínimo. Cero lógica de motor (esa entra en G-A4).
 # El motor (Liquid, downloads, paths) ya vive en cortex-brain como lib.
 tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 

@@ -44,6 +44,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [pendingToolCall, setPendingToolCall] = useState<ToolCall | null>(null);
   const [lang, setLang] = useState<Lang>("es");
+  const [alwaysOnTop, setAlwaysOnTop] = useState<boolean>(false);
 
   // Proyecto activo seleccionado
   const selectedProject = useMemo(() => {
@@ -350,6 +351,37 @@ export function App() {
     }
   };
 
+  // Alternar modo siempre al frente (Always on top / Floating mode)
+  const handleToggleAlwaysOnTop = async (enabled: boolean) => {
+    setAlwaysOnTop(enabled);
+    try {
+      await tauriInvoke("set_always_on_top", { enabled });
+    } catch (e) {
+      console.error("Error al configurar always on top:", e);
+    }
+  };
+
+  // Listener global de la tecla Escape para ocultar la ventana al fondo (Spotlight / Raycast style)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isSettingsOpen) {
+          setIsSettingsOpen(false);
+          return;
+        }
+        if (pendingToolCall) {
+          setPendingToolCall(null);
+          return;
+        }
+        // Si no hay modales abiertos, ocultar la ventana
+        tauriInvoke("hide_window").catch(() => {});
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSettingsOpen, pendingToolCall]);
+
   const activeSessionsCount = useMemo(() => {
     return projects.filter((p) => p.has_session).length;
   }, [projects]);
@@ -419,6 +451,8 @@ export function App() {
         onSetIdleTimeout={setIdleTimeout}
         lang={lang}
         onSetLang={setLang}
+        alwaysOnTop={alwaysOnTop}
+        onToggleAlwaysOnTop={handleToggleAlwaysOnTop}
       />
 
       <ToolApprovalModal

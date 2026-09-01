@@ -19,6 +19,8 @@ interface SettingsModalProps {
   onSetIdleTimeout: (sec: number) => void;
   lang: Lang;
   onSetLang: (lang: Lang) => void;
+  alwaysOnTop?: boolean;
+  onToggleAlwaysOnTop?: (enabled: boolean) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -38,6 +40,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSetIdleTimeout,
   lang,
   onSetLang,
+  alwaysOnTop = false,
+  onToggleAlwaysOnTop,
 }) => {
   const [activeTab, setActiveTab] = useState<"model" | "paths" | "general" | "about">("model");
   const t = getT(lang);
@@ -328,6 +332,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="h-4 w-4 rounded-full bg-mocha-base border border-mocha-mauve" />
                     <span className="font-mono text-xs text-mocha-subtext0">{t.settings.themeDesc}</span>
                   </div>
+                </div>
+
+                {/* Launcher Global & Modo Flotante */}
+                <div className="pt-3 border-t border-mocha-surface/50 space-y-3">
+                  <h4 className="font-semibold text-mocha-mauve font-mono text-xs">
+                    🚀 {t.settings.launcherSection}
+                  </h4>
+
+                  <div className="rounded-lg border border-mocha-surface bg-mocha-surface/20 p-3 space-y-2 font-mono text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-mocha-subtext0">{t.settings.globalShortcut}</span>
+                      <kbd className="rounded bg-mocha-surface px-2 py-1 font-mono text-[11px] font-bold text-cortex-mint border border-mocha-surface2/60 shadow-sm">
+                        Ctrl + Shift + B
+                      </kbd>
+                    </div>
+                    <p className="text-[11px] text-mocha-surface2 font-sans">
+                      {t.settings.globalShortcutDesc} {t.settings.escapeDesc}
+                    </p>
+                  </div>
+
+                  {onToggleAlwaysOnTop && (
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
+                      <input
+                        type="checkbox"
+                        checked={alwaysOnTop}
+                        onChange={(e) => onToggleAlwaysOnTop(e.target.checked)}
+                        className="h-4 w-4 rounded border-mocha-surface bg-mocha-surface text-mocha-mauve focus:ring-0 focus:ring-offset-0 cursor-pointer accent-mocha-mauve"
+                      />
+                      <div>
+                        <span className="font-semibold text-mocha-text">{t.settings.alwaysOnTop}</span>
+                        <p className="text-[11px] text-mocha-subtext0 font-sans">
+                          {t.settings.alwaysOnTopDesc}
+                        </p>
+                      </div>
+                    </label>
+                  )}
                 </div>
               </div>
             )}
