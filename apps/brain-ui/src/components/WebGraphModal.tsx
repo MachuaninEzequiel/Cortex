@@ -47,7 +47,7 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
 
   // Filtrado de nodos
   const filteredNodes = useMemo(() => {
-    if (!graphData) return [];
+    if (!graphData || !graphData.nodes) return [];
     return graphData.nodes.filter((node) => {
       const matchesKind = filterKind === "all" || node.kind === filterKind;
       const matchesSearch =
@@ -64,11 +64,10 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
     const count = filteredNodes.length;
     if (count === 0) return positions;
 
-    const centerX = 400;
-    const centerY = 280;
-    const radius = Math.min(220, Math.max(140, count * 35));
+    const centerX = 380;
+    const centerY = 260;
+    const radius = Math.min(200, Math.max(130, count * 30));
 
-    // Si el primer nodo es root/module, ponerlo al centro
     const rootIndex = filteredNodes.findIndex((n) => n.kind === "module" || n.id === "root");
     const hasCenter = rootIndex >= 0 && count > 1;
 
@@ -93,7 +92,7 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
 
   // Filtrado de aristas visibles
   const visibleEdges = useMemo(() => {
-    if (!graphData) return [];
+    if (!graphData || !graphData.edges) return [];
     const visibleIds = new Set(filteredNodes.map((n) => n.id));
     return graphData.edges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target));
   }, [graphData, filteredNodes]);
@@ -129,7 +128,7 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
 
   const getNodeColor = (kind: string, isHighlighted: boolean, isSelected: boolean) => {
     if (isSelected) return "#f5c2e7"; // Pink
-    if (isHighlighted) return "#a6e3a1"; // Green glow
+    if (isHighlighted) return "#a6e3a1"; // Green
     switch (kind) {
       case "module":
         return "#cba6f7"; // Mauve
@@ -144,17 +143,33 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6 select-none animate-fade-in font-sans">
-      <div className="flex h-[88vh] w-[92vw] max-w-6xl flex-col rounded-2xl border border-mocha-surface bg-mocha-base shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center select-none"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
+    >
+      <div
+        className="flex flex-col rounded-xl border border-[#313244] shadow-2xl overflow-hidden font-sans"
+        style={{
+          width: "960px",
+          maxWidth: "94vw",
+          height: "620px",
+          maxHeight: "90vh",
+          backgroundColor: "#1e1e2e",
+          color: "#cdd6f4",
+        }}
+      >
         {/* Header */}
-        <div className="flex h-14 items-center justify-between border-b border-mocha-surface bg-mocha-mantle px-6">
+        <div
+          className="flex h-14 items-center justify-between px-5 border-b border-[#313244]"
+          style={{ backgroundColor: "#181825" }}
+        >
           <div className="flex items-center gap-3">
             <span className="text-xl">🕸️</span>
             <div>
-              <h3 className="font-bold text-mocha-text font-mono text-sm">
+              <h3 className="font-bold text-sm font-mono text-[#cdd6f4]">
                 {t.webgraph.title}
               </h3>
-              <p className="text-[11px] text-mocha-subtext0">
+              <p className="text-[11px] text-[#a6adc8]">
                 {t.webgraph.subtitle}
               </p>
             </div>
@@ -168,12 +183,12 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
                 placeholder={t.webgraph.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-52 rounded-lg border border-mocha-surface bg-mocha-surface/50 px-3 py-1.5 font-mono text-xs text-mocha-text focus:border-mocha-mauve focus:outline-none"
+                className="w-48 rounded-lg border border-[#313244] bg-[#313244]/60 px-3 py-1 font-mono text-xs text-[#cdd6f4] focus:outline-none focus:border-[#cba6f7]"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="absolute right-2 top-1.5 text-xs text-mocha-subtext0 hover:text-mocha-text"
+                  className="absolute right-2 top-1 text-xs text-[#a6adc8] hover:text-[#cdd6f4]"
                 >
                   ✕
                 </button>
@@ -183,17 +198,17 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
             {onLaunchExternalServer && (
               <button
                 onClick={onLaunchExternalServer}
-                className="flex items-center gap-1.5 rounded-lg border border-mocha-surface bg-mocha-surface/40 px-3 py-1.5 font-mono text-xs text-cortex-mint hover:bg-cortex-forest/40 transition active:scale-95"
+                className="flex items-center gap-1.5 rounded-lg border border-[#313244] bg-[#313244]/40 px-3 py-1 font-mono text-xs text-[#8FDCB0] hover:bg-[#03522E]/40 transition active:scale-95"
                 title="Levanta el visualizador WebGraph nativo de Cortex en un puerto local"
               >
                 <span>🌐</span>
-                <span>Servidor Web</span>
+                <span className="hidden sm:inline">Servidor Web</span>
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="rounded-lg bg-mocha-surface px-3 py-1.5 font-mono text-xs text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition"
+              className="rounded-lg bg-[#313244] px-3 py-1 font-mono text-xs text-[#cdd6f4] hover:bg-[#cba6f7] hover:text-[#181825] transition"
             >
               ✕ {t.webgraph.close}
             </button>
@@ -201,17 +216,20 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
         </div>
 
         {/* Filter Bar */}
-        <div className="flex items-center justify-between border-b border-mocha-surface/60 bg-mocha-surface/20 px-6 py-2">
+        <div
+          className="flex items-center justify-between px-5 py-2 border-b border-[#313244]"
+          style={{ backgroundColor: "#1e1e2e" }}
+        >
           <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="text-mocha-subtext0">Filtrar:</span>
+            <span className="text-[#a6adc8]">Filtrar:</span>
             {["all", "module", "file", "spec", "adr"].map((kind) => (
               <button
                 key={kind}
                 onClick={() => setFilterKind(kind)}
-                className={`rounded px-2.5 py-1 transition ${
+                className={`rounded px-2.5 py-0.5 transition ${
                   filterKind === kind
-                    ? "bg-mocha-mauve text-mocha-base font-bold shadow-sm"
-                    : "bg-mocha-surface/30 text-mocha-subtext0 hover:text-mocha-text hover:bg-mocha-surface/60"
+                    ? "bg-[#cba6f7] text-[#181825] font-bold"
+                    : "bg-[#313244]/50 text-[#a6adc8] hover:text-[#cdd6f4] hover:bg-[#313244]"
                 }`}
               >
                 {kind === "all"
@@ -227,51 +245,59 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
             ))}
           </div>
 
-          <div className="text-xs font-mono text-mocha-subtext0">
+          <div className="text-xs font-mono text-[#a6adc8]">
             {filteredNodes.length} nodos / {visibleEdges.length} relaciones
           </div>
         </div>
 
         {/* Content Body: Sidebar List + SVG Canvas */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
           {/* Left: Interactive Node Directory List */}
-          <div className="w-72 border-r border-mocha-surface bg-mocha-mantle/60 p-3 overflow-y-auto flex flex-col gap-1.5 font-mono text-xs">
-            <div className="text-[11px] font-bold text-mocha-subtext0 uppercase tracking-wider mb-1 px-1">
+          <div
+            className="w-64 border-r border-[#313244] p-3 overflow-y-auto flex flex-col gap-1.5 font-mono text-xs flex-shrink-0"
+            style={{ backgroundColor: "#181825" }}
+          >
+            <div className="text-[10px] font-bold text-[#a6adc8] uppercase tracking-wider mb-1 px-1">
               Directorio de Nodos ({filteredNodes.length})
             </div>
-            {filteredNodes.map((node) => {
-              const isSelected = selectedNodeId === node.id;
-              const isHighlighted = highlightedNodeIds.includes(node.id);
-              const color = getNodeColor(node.kind, isHighlighted, isSelected);
+            {filteredNodes.length === 0 ? (
+              <div className="text-xs text-[#585b70] p-2">Sin nodos disponibles</div>
+            ) : (
+              filteredNodes.map((node) => {
+                const isSelected = selectedNodeId === node.id;
+                const isHighlighted = highlightedNodeIds.includes(node.id);
+                const color = getNodeColor(node.kind, isHighlighted, isSelected);
 
-              return (
-                <div
-                  key={node.id}
-                  onClick={() => handleNodeClick(node)}
-                  className={`flex items-center justify-between rounded-lg p-2 cursor-pointer transition ${
-                    isSelected
-                      ? "bg-mocha-mauve/20 border border-mocha-mauve text-mocha-text"
-                      : "bg-mocha-surface/20 border border-mocha-surface/40 text-mocha-subtext0 hover:bg-mocha-surface/50 hover:text-mocha-text"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="truncate font-semibold">{node.label}</span>
+                return (
+                  <div
+                    key={node.id}
+                    onClick={() => handleNodeClick(node)}
+                    className={`flex items-center justify-between rounded-lg p-2 cursor-pointer transition ${
+                      isSelected
+                        ? "bg-[#cba6f7]/20 border border-[#cba6f7] text-[#cdd6f4]"
+                        : "bg-[#313244]/30 border border-[#313244]/50 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="truncate font-semibold">{node.label}</span>
+                    </div>
+                    <span className="text-[10px] rounded bg-[#313244] px-1 py-0.5 text-[#a6adc8]">
+                      {node.kind}
+                    </span>
                   </div>
-                  <span className="text-[10px] rounded bg-mocha-surface px-1 py-0.5 text-mocha-surface2">
-                    {node.kind}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Right: Interactive SVG Canvas */}
           <div
-            className="relative flex-1 bg-mocha-base/90 overflow-hidden cursor-grab active:cursor-grabbing"
+            className="relative flex-1 min-h-0 min-w-0 overflow-hidden cursor-grab active:cursor-grabbing"
+            style={{ backgroundColor: "#11111b" }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -279,34 +305,29 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
           >
             {isLoading ? (
               <div className="flex h-full w-full items-center justify-center">
-                <div className="flex items-center gap-3 rounded-xl border border-mocha-surface bg-mocha-surface/30 px-6 py-4 font-mono text-xs text-mocha-mauve animate-pulse">
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-mocha-mauve border-t-transparent" />
+                <div className="flex items-center gap-3 rounded-xl border border-[#313244] bg-[#181825] px-6 py-4 font-mono text-xs text-[#cba6f7] animate-pulse">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#cba6f7] border-t-transparent" />
                   <span>Extrayendo grafo de dependencias y specs...</span>
                 </div>
               </div>
             ) : filteredNodes.length === 0 ? (
-              <div className="flex h-full w-full items-center justify-center font-mono text-xs text-mocha-surface2">
+              <div className="flex h-full w-full items-center justify-center font-mono text-xs text-[#585b70]">
                 No se encontraron nodos que coincidan con la búsqueda.
               </div>
             ) : (
               <svg
-                className="h-full w-full"
-                viewBox="0 0 800 560"
+                width="100%"
+                height="100%"
+                viewBox="0 0 760 520"
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                   transformOrigin: "center center",
                   transition: isDragging ? "none" : "transform 0.15s ease-out",
+                  display: "block",
                 }}
               >
-                <defs>
-                  <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur stdDeviation="8" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
-                </defs>
-
                 {/* Aristas / Conexiones */}
-                <g className="edges opacity-60">
+                <g className="edges">
                   {visibleEdges.map((edge, idx) => {
                     const src = nodePositions[edge.source];
                     const tgt = nodePositions[edge.target];
@@ -320,8 +341,8 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
                         y1={src.y}
                         x2={tgt.x}
                         y2={tgt.y}
-                        stroke={isHighlighted ? "#a6e3a1" : "#585b70"}
-                        strokeWidth={isHighlighted ? 3 : 1.5}
+                        stroke={isHighlighted ? "#a6e3a1" : "#45475a"}
+                        strokeWidth={isHighlighted ? 3 : 1.8}
                         strokeDasharray={edge.relation === "tests" ? "4 4" : undefined}
                       />
                     );
@@ -337,31 +358,21 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
                     const isSelected = selectedNodeId === node.id;
                     const color = getNodeColor(node.kind, isHighlighted, isSelected);
 
+                    const pillWidth = Math.max(70, node.label.length * 7.5 + 16);
+
                     return (
                       <g
                         key={node.id}
                         transform={`translate(${pos.x}, ${pos.y})`}
                         onClick={(e) => handleNodeClick(node, e)}
-                        className="cursor-pointer group"
+                        className="cursor-pointer"
                       >
-                        {/* Glow si está resaltado o seleccionado */}
-                        {(isHighlighted || isSelected) && (
-                          <circle
-                            r="32"
-                            fill={color}
-                            opacity="0.35"
-                            filter="url(#glow)"
-                            className="animate-pulse"
-                          />
-                        )}
-
                         {/* Círculo Principal */}
                         <circle
                           r={isHighlighted || isSelected ? 22 : 18}
-                          fill="#181825"
+                          fill="#1e1e2e"
                           stroke={color}
                           strokeWidth={isHighlighted || isSelected ? 4 : 2.5}
-                          className="transition-all duration-200 group-hover:scale-110 shadow-lg"
                         />
 
                         {/* Icono / Inicial */}
@@ -372,7 +383,7 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
                           fontSize={isHighlighted || isSelected ? "13" : "11"}
                           fontWeight="bold"
                           fontFamily="monospace"
-                          className="pointer-events-none select-none"
+                          style={{ pointerEvents: "none" }}
                         >
                           {node.kind === "module"
                             ? "📦"
@@ -385,27 +396,26 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
 
                         {/* Pill de fondo para el texto */}
                         <rect
-                          x={-(node.label.length * 3.8 + 8)}
-                          y={isHighlighted || isSelected ? 30 : 26}
-                          width={node.label.length * 7.6 + 16}
+                          x={-pillWidth / 2}
+                          y={isHighlighted || isSelected ? 28 : 24}
+                          width={pillWidth}
                           height="18"
                           rx="4"
-                          fill="#11111b"
+                          fill="#181825"
                           stroke={isSelected ? color : "#313244"}
                           strokeWidth="1"
-                          opacity="0.95"
-                          className="pointer-events-none"
+                          style={{ pointerEvents: "none" }}
                         />
 
                         {/* Etiqueta / Nombre */}
                         <text
                           textAnchor="middle"
-                          y={isHighlighted || isSelected ? 43 : 39}
+                          y={isHighlighted || isSelected ? 41 : 37}
                           fill={isHighlighted || isSelected ? "#cdd6f4" : "#a6adc8"}
                           fontSize="11"
                           fontWeight={isHighlighted || isSelected ? "bold" : "normal"}
                           fontFamily="monospace"
-                          className="pointer-events-none select-none"
+                          style={{ pointerEvents: "none" }}
                         >
                           {node.label}
                         </text>
@@ -417,17 +427,20 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
             )}
 
             {/* Floating Controls: Zoom */}
-            <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-xl border border-mocha-surface bg-mocha-mantle/90 p-2 shadow-lg backdrop-blur">
+            <div
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg border border-[#313244] p-1.5 shadow-lg"
+              style={{ backgroundColor: "#181825" }}
+            >
               <button
                 onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
-                className="h-7 w-7 rounded bg-mocha-surface font-mono text-xs text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition"
+                className="h-6 w-6 rounded bg-[#313244] font-mono text-xs text-[#cdd6f4] hover:bg-[#cba6f7] hover:text-[#181825] transition"
                 title="Zoom In"
               >
                 +
               </button>
               <button
                 onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
-                className="h-7 w-7 rounded bg-mocha-surface font-mono text-xs text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition"
+                className="h-6 w-6 rounded bg-[#313244] font-mono text-xs text-[#cdd6f4] hover:bg-[#cba6f7] hover:text-[#181825] transition"
                 title="Zoom Out"
               >
                 -
@@ -437,7 +450,7 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
                   setZoom(1);
                   setPan({ x: 0, y: 0 });
                 }}
-                className="rounded bg-mocha-surface px-2.5 py-1 font-mono text-[11px] text-mocha-text hover:bg-mocha-mauve hover:text-mocha-base transition"
+                className="rounded bg-[#313244] px-2 py-0.5 font-mono text-[10px] text-[#cdd6f4] hover:bg-[#cba6f7] hover:text-[#181825] transition"
                 title="Reset View"
               >
                 Reset
@@ -445,31 +458,37 @@ export const WebGraphModal: React.FC<WebGraphModalProps> = ({
             </div>
 
             {/* Legend Banner */}
-            <div className="absolute bottom-4 left-4 flex items-center gap-4 rounded-xl border border-mocha-surface bg-mocha-mantle/90 px-4 py-2 text-[11px] font-mono text-mocha-subtext0 shadow-lg backdrop-blur">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#cba6f7]" />
-                <span>{t.webgraph.legendModules}</span>
+            <div
+              className="absolute bottom-3 left-3 flex items-center gap-3 rounded-lg border border-[#313244] px-3 py-1.5 text-[10px] font-mono text-[#a6adc8] shadow-lg"
+              style={{ backgroundColor: "#181825" }}
+            >
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-[#cba6f7]" />
+                <span>Módulos</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#89b4fa]" />
-                <span>{t.webgraph.legendFiles}</span>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-[#89b4fa]" />
+                <span>Archivos</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#a6e3a1]" />
-                <span>{t.webgraph.legendSpecs}</span>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-[#a6e3a1]" />
+                <span>Specs</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#fab387]" />
-                <span>{t.webgraph.legendAdrs}</span>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-[#fab387]" />
+                <span>ADRs</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer Hint */}
-        <div className="flex h-9 items-center justify-between border-t border-mocha-surface bg-mocha-mantle px-6 font-mono text-[11px] text-mocha-subtext0">
+        <div
+          className="flex h-8 items-center justify-between px-5 border-t border-[#313244] font-mono text-[10px] text-[#a6adc8]"
+          style={{ backgroundColor: "#181825" }}
+        >
           <span>💡 {t.webgraph.clickHint}</span>
-          <span className="text-mocha-mauve font-semibold">Cortex Brain 2.0 WebGraph Engine</span>
+          <span className="text-[#cba6f7] font-semibold">Cortex WebGraph Engine</span>
         </div>
       </div>
     </div>
