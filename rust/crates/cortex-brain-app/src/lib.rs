@@ -82,6 +82,59 @@ async fn chat_turn(
     engine.respond(&project, &text)
 }
 
+/// Payload del evento `chat-chunk` emitido durante el streaming en vivo.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ChatChunkPayload {
+    pub request_id: String,
+    pub chunk: String,
+}
+
+/// Command Tauri: turno de chat streaming (G-A7). Emite eventos
+/// `chat-chunk` en vivo a medida que el motor genera piezas, y
+/// devuelve el `ChatTurn` autoritativo final (con el texto procesado
+/// y las tools) al terminar.
+#[tauri::command]
+async fn chat_turn_stream(
+    app: tauri::AppHandle,
+    project: String,
+    text: String,
+    request_id: String,
+) -> Result<chat::ChatTurn, String> {
+    use tauri::Emitter;
+    let engine = app.state::<chat::SharedEngine>();
+    let req_id = request_id.clone();
+    let app_handle = app.clone();
+    engine.respond_streaming(&project, &text, &mut move |piece: &str| {
+        let payload = ChatChunkPayload {
+            request_id: req_id.clone(),
+            chunk: piece.to_string(),
+        };
+        let _ = app_handle.emit("chat-chunk", &payload);
+    })
+}
+
+/// Command Tauri: devuelve los proyectos con backend actualmente
+/// cargado en RAM (status bar live widget).
+#[tauri::command]
+async fn loaded_projects(app: tauri::AppHandle) -> Vec<String> {
+    let engine = app.state::<chat::SharedEngine>();
+    engine.loaded_projects()
+}
+
+/// Command Tauri: descarga backends inactivos (>90s) para liberar RAM.
+/// Invocado periódicamente por el ticker de la UI.
+#[tauri::command]
+async fn reap_idle(app: tauri::AppHandle) {
+    let engine = app.state::<chat::SharedEngine>();
+    engine.reap_idle();
+}
+
+/// Command Tauri: lista de modelos GGUF detectados / elegibles.
+#[tauri::command]
+async fn list_models() -> Vec<chat::ModelEntry> {
+    chat::list_available_models()
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -151,6 +204,8 @@ fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
 /// (sidebar de proyectos; el frontend los consume en G-A7).
 /// G-A4: registra `chat_turn` + el server IPC enruta las queries al
 /// engine de chat.
+/// G-A7: registra `chat_turn_stream`, `loaded_projects`, `reap_idle`,
+/// `list_models` para la UI completa.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Un engine compartido: el server IPC y el command `chat_turn`
@@ -184,7 +239,7 @@ pub fn run() {
             // del flag --query (main.rs). Acá sólo dejamos el aviso.
             eprintln!(
                 "cortex-brain: otra instancia ya está corriendo. Las queries por \
-                 --query se mandan a esa instancia; esta GUI corre en paralelo."
+                --query se mandan a esa instancia; esta GUI corre en paralelo."
             );
         }
         Err(ipc::BindError::NotSupported) => {
@@ -199,7 +254,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_projects,
             refresh_projects,
-            chat_turn
+            chat_turn,
+            chat_turn_stream,
+            loaded_projects,
+            reap_idle,
+            list_models
         ])
         .setup(move |app| {
             app.manage(std::sync::Arc::clone(&engine_para_estado));

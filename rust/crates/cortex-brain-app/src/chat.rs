@@ -71,6 +71,61 @@ pub struct ToolCall {
     pub args: String,
 }
 
+/// Información de un modelo GGUF para la UI (topbar y settings).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ModelEntry {
+    pub name: String,
+    pub filename: String,
+    pub path: String,
+    pub exists: bool,
+    pub active: bool,
+    pub size_bytes: Option<u64>,
+}
+
+/// Lista los modelos disponibles en la convención `~/.cache/cortex/models/`.
+/// Siempre incluye el modelo oficial por default (`LFM2.5-1.2B-Instruct-Q4_K_M.gguf`),
+/// marcando si existe en disco o está pendiente de descarga.
+#[must_use]
+pub fn list_available_models() -> Vec<ModelEntry> {
+    let dir = cortex_brain::paths::default_model_dir();
+    let default_file = cortex_brain::paths::DEFAULT_MODEL_FILENAME;
+    let default_path = cortex_brain::paths::default_model_path();
+    let default_exists = default_path.is_file();
+    let default_size = default_path.metadata().ok().map(|m| m.len());
+
+    let mut models = vec![ModelEntry {
+        name: "LFM2.5 1.2B Instruct (Q4_K_M)".to_string(),
+        filename: default_file.to_string(),
+        path: default_path.to_string_lossy().into_owned(),
+        exists: default_exists,
+        active: default_exists,
+        size_bytes: default_size,
+    }];
+
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let name_os = entry.file_name();
+                let name_str = name_os.to_string_lossy();
+                if name_str.ends_with(".gguf") && name_str != default_file {
+                    let size = entry.metadata().ok().map(|m| m.len());
+                    models.push(ModelEntry {
+                        name: name_str.trim_end_matches(".gguf").replace('_', " "),
+                        filename: name_str.into_owned(),
+                        path: path.to_string_lossy().into_owned(),
+                        exists: true,
+                        active: false,
+                        size_bytes: size,
+                    });
+                }
+            }
+        }
+    }
+
+    models
+}
+
 /// Resultado de un turno de chat. Serialize porque es el return de
 /// un command Tauri (IpcResponse exige Serialize).
 #[derive(Debug, Clone, serde::Serialize)]
@@ -643,5 +698,16 @@ pub(crate) mod tests {
         // Pero se reporta para que la UI la ofrezca con [Ejecutar].
         assert_eq!(turn.tool_calls.len(), 1);
         assert_eq!(turn.tool_calls[0].tool, "webgraph.serve");
+    }
+
+    #[test]
+    fn lista_modelos_incluye_default() {
+        let models = list_available_models();
+        assert!(!models.is_empty());
+        assert_eq!(
+            models[0].filename,
+            cortex_brain::paths::DEFAULT_MODEL_FILENAME
+        );
+        assert_eq!(models[0].name, "LFM2.5 1.2B Instruct (Q4_K_M)");
     }
 }

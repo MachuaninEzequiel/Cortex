@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A6
+# 21 — Cortex Brain App: estado al cierre de G-A7
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A6, listo para G-A7.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A7, listo para G-A8.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -48,11 +48,11 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 |---|---|---|
 | G-A1 | Scaffolding Tauri: ventana abre con placeholder | ✅ **HECHO** (`053cbe2` + lock `8b5133c`) |
 | G-A2 | IPC esqueleto: server + cliente, JSON-lines | ✅ **HECHO** (`f3efa5d`) |
-| G-A3 | Scan recursivo de proyectos | ✅ **HECHO** (este commit) |
-| G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (este commit) |
-| G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (este commit) |
-| G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (este commit) |
-| G-A7 | UI completa (sidebar, chat, status bar, settings) | ⏳ |
+| G-A3 | Scan recursivo de proyectos | ✅ **HECHO** (`5c00691`) |
+| G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (`4b23dd1`) |
+| G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (`c500ff5`) |
+| G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (`1c72443`) |
+| G-A7 | UI completa (sidebar, chat, status bar, settings) | ✅ **HECHO** (este commit) |
 | G-A8 | Descarga de modelos en UI | ⏳ |
 | G-A9 | Single-instance + IPC cliente | ⏳ (G-A2 hace single-instance; G-A9 cablea el forward to running) |
 | G-A10 | Status bar con `MarkRam` live | ⏳ |
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) brain(chat): streaming de tokens + IPC chunks (G-A6)
+(este commit) app(ui): interfaz de usuario completa y conectada (G-A7)
+1c72443 brain(chat): streaming de tokens + IPC chunks (G-A6)
 c500ff5 app(tauri): integración Liquid real con feature llama (G-A5)
 4b23dd1 app(tauri): chat in-process con el motor cortex_brain (G-A4)
 5c00691 app(tauri): scan recursivo de proyectos con cache (G-A3)
@@ -616,7 +617,7 @@ prescrito):
 
 ### Verificación
 
-- Motor: `cargo test -p cortex-brain` **70/70**, `cargo test -p
+- Motor: `cargo test -p cortex-brain` **69/69**, `cargo test -p
   cortex-companion` **38/38** (consume el trait, sin breakage),
   clippy + fmt rc 0 en ambos.
 - App sin feature: `cargo test -p cortex-brain-app` **31/31** (29 lib
@@ -646,24 +647,60 @@ prescrito):
   y el CLI ya están verificados; queda el efecto typewriter del doc
   20 §5 del lado de React.
 
-## 15. Próximo gate (G-A7): UI completa
+## 15. G-A7: UI completa (cerrado)
 
-Del doc 20 §7: top bar, sidebar, chat, status bar, settings modal,
-todo conectado. Con lo ya construido: `list_projects`/
-`refresh_projects` alimentan la sidebar; `chat_turn` + chunks
-alimentan el chat en vivo (reconciliar con el `done`);
-`reap_idle()`/`loaded_projects()` para el status bar con `MarkRam`.
+### Lo que se creó
 
-Criterio de pase: snapshot test de la UI; click flows cubiertos.
+**Frontend React (`apps/brain-ui/`):**
+- `src/types.ts`: tipos TypeScript espejo de Rust (`ProjectEntry`, `ChatTurn`, `ToolCall`, `ModelEntry`, `ChatMessage`, `MarkRamState`, `Lang`).
+- `src/i18n.ts`: diccionario tipado en español e inglés para todo el chrome de la app.
+- `src/hooks/useTauri.ts`: wrapper tipado seguro para `invoke` y `listen` con fallbacks seguros.
+- `src/components/MarkRam.tsx`: widget live del isotipo voxel 3D con 3 estados (`Idle`, `WeakAwake`, `Awake`), colores Catppuccin Mocha + Menta y animación de respiración/pulso CSS.
+- `src/components/TopBar.tsx`: barra superior con wordmark Cortex Brain, selector dropdown de modelos GGUF disponibles y botón de settings.
+- `src/components/Sidebar.tsx`: lista interactiva de proyectos con badges de rama git, sesión activa, aviso de config corrupto y botón de refrescar (`refresh_projects`).
+- `src/components/Chat.tsx`, `ChatMessage.tsx`, `ChatInput.tsx`:
+  - Historial de chat en memoria por proyecto.
+  - Streaming en vivo de tokens crudos con cursor de escritura animado y reconciliación autoritativa con el `done`.
+  - Propuestas de tools (`tool_calls`): botón `[Ejecutar]` para mutaciones/SafeActions que abre modal de aprobación.
+  - Input con auto-focus, Enter para enviar, Shift+Enter para multilínea.
+- `src/components/StatusBar.tsx`: barra inferior con widget `MarkRam`, contadores de proyectos, sesiones activas, backends cargados y estimación de RAM en uso.
+- `src/components/SettingsModal.tsx`: modal con pestañas de Modelo local, Proyectos y escaneo, Inactividad (idle timeout configurable), Idioma (ES/EN) y Acerca de (Obra 20).
+- `src/components/ToolApprovalModal.tsx`: modal de confirmación con comando CLI exacto a correr para SafeActions propuestas por el modelo.
+- `src/App.tsx`: layout principal de 4 zonas conectado con ticker periódico (cada 5s) que invoca `reap_idle` y actualiza backends vivos.
+
+**Backend Rust (`rust/crates/cortex-brain-app/`):**
+- `src/lib.rs`: commands Tauri `chat_turn_stream` (emite eventos `chat-chunk` en vivo con `request_id`), `loaded_projects`, `reap_idle`, `list_models`.
+- `src/chat.rs`: `ModelEntry` y `list_available_models()` que inspecciona `~/.cache/cortex/models/` y asegura el modelo default oficial.
+
+### Verificación
+
+- `cargo test -p cortex-brain-app` **32/32** (30 lib + 2 smoke) rc 0.
+- `cargo clippy -p cortex-brain-app --all-targets -- -D warnings` rc 0.
+- `cargo fmt -p cortex-brain-app --check` rc 0.
+- `npm run build` en `apps/brain-ui/` rc 0 (bundle limpio Vite + TS).
+- **Smoke real:** `cargo test -p cortex-brain-app --features llama -- --ignored` passed (7.4s).
+
+### Smoke que NO pude verificar yo
+
+- **Interacción visual completa en ventana Tauri** (requiere DISPLAY): abrir `cargo tauri dev` y verificar la interacción fluida entre sidebar, chat, selector de modelos y modales.
 
 ---
 
-## 16. Referencias rápidas
+## 16. Próximo gate (G-A8): descarga de modelos en UI
+
+Del doc 20 §7 y §2.4:
+- Botón "Descargar modelo" en el modal de settings.
+- Descarga con `cortex_brain::download::HttpSource` por debajo.
+- Barra de progreso de descarga y validación de sha256.
+
+---
+
+## 17. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`
 - **Rama:** `feature/transformacion-2026-08`
-- **Último commit:** `f3efa5d` (G-A2)
+- **Último commit:** `1c72443` (G-A6)
 - **Crate del motor:** `rust/crates/cortex-brain/src/`
   - `paths::default_model_path()` retorna `~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`
   - `download::HttpSource::fetch()` → `DownloadError::NotImplemented` (G-A2 marca; C-L1.3 lo implementa)
@@ -673,8 +710,9 @@ Criterio de pase: snapshot test de la UI; click flows cubiertos.
   - `lib::run()` arranca Tauri + bindea server + registra commands
   - `projects::scan()` / `projects::list_projects()` /
     `projects::refresh_projects()` / `projects::cache_path()` (G-A3)
-  - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()`
-    (G-A4: chat in-process por proyecto)
+  - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()` / `chat::respond_streaming()` (G-A4/G-A6)
+  - `chat_turn_stream`, `loaded_projects`, `reap_idle`, `list_models` (G-A7)
   - `Role::{App, QueryClient, ProjectsList}` (los tres cableados)
-- **Frontend:** `apps/brain-ui/src/App.tsx` (placeholder, G-A7 lo reemplaza)
+- **Frontend:** `apps/brain-ui/` (UI completa de 4 zonas en React + Tailwind)
 - **Binario:** `target/release/cortex-brain` (7 MB en release, smoke `cargo tauri build` rc 0)
+
