@@ -30,6 +30,10 @@ export const translations = {
       executed: "Ejecutado con éxito",
       declined: "Cancelado",
       backend: "Motor:",
+      newChat: "Nueva conversación",
+      clearHistory: "Limpiar historial",
+      confirmClear: "¿Deseas borrar el historial conversacional de este proyecto?",
+      historyCleared: "Historial limpiado",
     },
     statusBar: {
       ramUsage: "en RAM:",
@@ -109,6 +113,10 @@ export const translations = {
       executed: "Executed successfully",
       declined: "Cancelled",
       backend: "Engine:",
+      newChat: "New conversation",
+      clearHistory: "Clear history",
+      confirmClear: "Do you want to clear the conversation history for this project?",
+      historyCleared: "History cleared",
     },
     statusBar: {
       ramUsage: "in RAM:",

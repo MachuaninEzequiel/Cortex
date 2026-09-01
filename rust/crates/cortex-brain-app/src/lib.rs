@@ -216,6 +216,70 @@ async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<St
     .map_err(|e| format!("falló el task de descarga: {e}"))?
 }
 
+/// Obtiene la ruta al archivo de historial conversacional del proyecto: `<project>/.cortex/brain/history.jsonl`.
+pub fn history_file_path(project_path: &str) -> std::path::PathBuf {
+    std::path::Path::new(project_path)
+        .join(".cortex")
+        .join("brain")
+        .join("history.jsonl")
+}
+
+/// Command Tauri: carga el historial persistido de un proyecto (JSON-lines).
+#[tauri::command]
+async fn load_chat_history(project: String) -> Vec<chat::ChatMessagePayload> {
+    use std::io::BufRead;
+    let path = history_file_path(&project);
+    let Ok(file) = std::fs::File::open(path) else {
+        return Vec::new();
+    };
+    let reader = std::io::BufReader::new(file);
+    let mut messages = Vec::new();
+    for line in reader.lines().flatten() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Ok(msg) = serde_json::from_str::<chat::ChatMessagePayload>(trimmed) {
+            messages.push(msg);
+        }
+    }
+    messages
+}
+
+/// Command Tauri: guarda (append) un mensaje al historial persistido del proyecto.
+#[tauri::command]
+async fn save_chat_message(
+    project: String,
+    message: chat::ChatMessagePayload,
+) -> Result<(), String> {
+    use std::io::Write;
+    let path = history_file_path(&project);
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let json = serde_json::to_string(&message)
+        .map_err(|e| format!("error al serializar mensaje: {e}"))?;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("no pude abrir {}: {e}", path.display()))?;
+    writeln!(file, "{json}").map_err(|e| format!("no pude escribir mensaje: {e}"))?;
+    Ok(())
+}
+
+/// Command Tauri: limpia el historial conversacional persistido y resetea el contexto en RAM.
+#[tauri::command]
+async fn clear_chat_history(app: tauri::AppHandle, project: String) -> Result<(), String> {
+    let path = history_file_path(&project);
+    if path.is_file() {
+        let _ = std::fs::remove_file(&path);
+    }
+    let engine = app.state::<chat::SharedEngine>();
+    engine.clear_project_context(&project);
+    Ok(())
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -365,7 +429,10 @@ pub fn run() {
             loaded_projects,
             reap_idle,
             list_models,
-            download_model
+            download_model,
+            load_chat_history,
+            save_chat_message,
+            clear_chat_history
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
@@ -629,5 +696,63 @@ mod tests {
         assert!(json.contains("\"bytes_done\":1024"));
         assert!(json.contains("\"percentage\":50.0"));
         assert!(json.contains("\"status\":\"downloading\""));
+    }
+
+    #[test]
+    fn chat_history_roundtrip_salva_carga_y_limpia() {
+        tauri::async_runtime::block_on(async {
+            let tmp = std::env::temp_dir().join(format!("cortex-brain-hist-test-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&tmp);
+            std::fs::create_dir_all(&tmp).unwrap();
+
+            let proj_str = tmp.to_string_lossy().into_owned();
+
+            // 1. Cargar historial vacío
+            let initial = load_chat_history(proj_str.clone()).await;
+            assert!(initial.is_empty());
+
+            // 2. Guardar mensaje de usuario
+            let user_msg = chat::ChatMessagePayload {
+                id: "msg-1".into(),
+                sender: "user".into(),
+                text: "hola mundo".into(),
+                timestamp: 123456789,
+                tool_calls: None,
+                backend: None,
+            };
+            save_chat_message(proj_str.clone(), user_msg.clone()).await.unwrap();
+
+            // 3. Guardar mensaje del brain con tool_call
+            let brain_msg = chat::ChatMessagePayload {
+                id: "msg-2".into(),
+                sender: "brain".into(),
+                text: "respuesta".into(),
+                timestamp: 123456790,
+                tool_calls: Some(vec![chat::ToolCall {
+                    tool: "docs.related".into(),
+                    args: "query".into(),
+                }]),
+                backend: Some("LFM2.5".into()),
+            };
+            save_chat_message(proj_str.clone(), brain_msg.clone()).await.unwrap();
+
+            // 4. Cargar y verificar
+            let loaded = load_chat_history(proj_str.clone()).await;
+            assert_eq!(loaded.len(), 2);
+            assert_eq!(loaded[0], user_msg);
+            assert_eq!(loaded[1], brain_msg);
+
+            // 5. Verificar que tolera líneas corruptas
+            let hist_file = history_file_path(&proj_str);
+            use std::io::Write;
+            let mut f = std::fs::OpenOptions::new().append(true).open(&hist_file).unwrap();
+            writeln!(f, "{{ corrupt json line").unwrap();
+            drop(f);
+
+            let loaded_after_corrupt = load_chat_history(proj_str.clone()).await;
+            assert_eq!(loaded_after_corrupt.len(), 2, "debe ignorar la línea corrupta");
+
+            let _ = std::fs::remove_dir_all(&tmp);
+        });
     }
 }

@@ -71,6 +71,19 @@ pub struct ToolCall {
     pub args: String,
 }
 
+/// Mensaje persistido en el historial conversacional del proyecto (`.cortex/brain/history.jsonl`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChatMessagePayload {
+    pub id: String,
+    pub sender: String, // "user" | "brain"
+    pub text: String,
+    pub timestamp: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backend: Option<String>,
+}
+
 /// Información de un modelo GGUF para la UI (topbar y settings).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ModelEntry {
@@ -226,6 +239,15 @@ impl BrainEngine {
     pub fn reap_idle(&self) {
         if let Ok(mut map) = self.backends.lock() {
             self.reap_locked(&mut map);
+        }
+    }
+
+    /// Resetea y desaloja el contexto conversacional del backend cargado en RAM de un proyecto.
+    pub fn clear_project_context(&self, project: &str) {
+        if let Ok(mut map) = self.backends.lock() {
+            if map.remove(project).is_some() {
+                eprintln!("chat: contexto en RAM de {project} reseteado.");
+            }
         }
     }
 

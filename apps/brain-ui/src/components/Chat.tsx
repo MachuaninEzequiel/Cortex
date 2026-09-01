@@ -9,6 +9,7 @@ interface ChatProps {
   messages: ChatMessageType[];
   onSendMessage: (text: string) => void;
   onExecuteTool: (tool: ToolCall) => void;
+  onClearHistory?: () => void;
   isGenerating: boolean;
   lang: "es" | "en";
 }
@@ -18,6 +19,7 @@ export const Chat: React.FC<ChatProps> = ({
   messages,
   onSendMessage,
   onExecuteTool,
+  onClearHistory,
   isGenerating,
   lang,
 }) => {
@@ -59,8 +61,21 @@ export const Chat: React.FC<ChatProps> = ({
             )}
           </div>
 
-          <div className="text-[11px] font-mono text-mocha-surface2 truncate max-w-sm" title={project.path}>
-            {project.path}
+          <div className="flex items-center gap-3">
+            <div className="text-[11px] font-mono text-mocha-surface2 truncate max-w-xs" title={project.path}>
+              {project.path}
+            </div>
+            {messages.length > 0 && onClearHistory && (
+              <button
+                onClick={onClearHistory}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 rounded border border-mocha-surface/60 bg-mocha-surface/30 px-2 py-1 text-[11px] font-mono text-mocha-subtext0 transition hover:border-mocha-red/40 hover:bg-mocha-red/10 hover:text-mocha-red disabled:opacity-40 active:scale-95"
+                title={t.chat.clearHistory}
+              >
+                <span>🗑️</span>
+                <span>{t.chat.newChat}</span>
+              </button>
+            )}
           </div>
         </div>
       )}

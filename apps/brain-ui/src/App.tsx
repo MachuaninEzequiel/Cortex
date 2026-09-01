@@ -17,6 +17,7 @@ import { Chat } from "./components/Chat";
 import { StatusBar } from "./components/StatusBar";
 import { SettingsModal } from "./components/SettingsModal";
 import { ToolApprovalModal } from "./components/ToolApprovalModal";
+import { getT } from "./i18n";
 
 export function App() {
   // Estado de proyectos
@@ -160,7 +161,28 @@ export function App() {
     return "idle";
   }, [isGenerating, isDownloading, loadedProjectsList]);
 
-  // Manejo de envío de mensajes de chat con streaming en vivo
+  // Carga del historial persistido al cambiar de proyecto (Pilar 1)
+  useEffect(() => {
+    if (!selectedProjectPath) return;
+    if (messagesByProject[selectedProjectPath] === undefined) {
+      tauriInvoke<ChatMessage[]>("load_chat_history", { project: selectedProjectPath })
+        .then((hist) => {
+          setMessagesByProject((prev) => ({
+            ...prev,
+            [selectedProjectPath]: hist || [],
+          }));
+        })
+        .catch((err) => {
+          console.error("Error al cargar historial:", err);
+          setMessagesByProject((prev) => ({
+            ...prev,
+            [selectedProjectPath]: [],
+          }));
+        });
+    }
+  }, [selectedProjectPath, messagesByProject]);
+
+  // Manejo de envío de mensajes de chat con streaming en vivo y persistencia
   const handleSendMessage = async (text: string) => {
     if (!selectedProjectPath || isGenerating) return;
 
@@ -189,6 +211,9 @@ export function App() {
       [projPath]: [...(prev[projPath] || []), userMessage, initialAssistantMessage],
     }));
 
+    // Persistir mensaje del usuario en background
+    tauriInvoke("save_chat_message", { project: projPath, message: userMessage }).catch(console.error);
+
     setIsGenerating(true);
 
     let unlistenChunk: (() => void) | null = null;
@@ -216,43 +241,62 @@ export function App() {
         requestId,
       });
 
+      const finalAssistantMessage: ChatMessage = {
+        id: assistantMsgId,
+        sender: "brain",
+        text: turn.text,
+        tool_calls: turn.tool_calls,
+        backend: turn.backend,
+        timestamp: Date.now(),
+        isStreaming: false,
+      };
+
       setMessagesByProject((prev) => {
         const list = prev[projPath] || [];
         return {
           ...prev,
           [projPath]: list.map((msg) =>
-            msg.id === assistantMsgId
-              ? {
-                  ...msg,
-                  text: turn.text,
-                  tool_calls: turn.tool_calls,
-                  backend: turn.backend,
-                  isStreaming: false,
-                }
-              : msg
+            msg.id === assistantMsgId ? finalAssistantMessage : msg
           ),
         };
       });
+
+      // Persistir respuesta final del brain
+      tauriInvoke("save_chat_message", {
+        project: projPath,
+        message: {
+          id: finalAssistantMessage.id,
+          sender: finalAssistantMessage.sender,
+          text: finalAssistantMessage.text,
+          timestamp: finalAssistantMessage.timestamp,
+          tool_calls: finalAssistantMessage.tool_calls,
+          backend: finalAssistantMessage.backend,
+        },
+      }).catch(console.error);
 
       const loaded = await tauriInvoke<string[]>("loaded_projects");
       setLoadedProjectsList(loaded);
     } catch (err: unknown) {
       const errMsg = typeof err === "string" ? err : (err as Error)?.message || "Error al procesar consulta";
+      const errAssistantMessage: ChatMessage = {
+        id: assistantMsgId,
+        sender: "brain",
+        text: `⚠️ Error: ${errMsg}`,
+        timestamp: Date.now(),
+        isStreaming: false,
+      };
+
       setMessagesByProject((prev) => {
         const list = prev[projPath] || [];
         return {
           ...prev,
           [projPath]: list.map((msg) =>
-            msg.id === assistantMsgId
-              ? {
-                  ...msg,
-                  text: `⚠️ Error: ${errMsg}`,
-                  isStreaming: false,
-                }
-              : msg
+            msg.id === assistantMsgId ? errAssistantMessage : msg
           ),
         };
       });
+
+      tauriInvoke("save_chat_message", { project: projPath, message: errAssistantMessage }).catch(console.error);
     } finally {
       if (unlistenChunk) unlistenChunk();
       setIsGenerating(false);
@@ -268,18 +312,42 @@ export function App() {
     const executedTool = pendingToolCall;
     setPendingToolCall(null);
 
+    const toolExecMsg: ChatMessage = {
+      id: `tool-exec-${Date.now()}`,
+      sender: "brain",
+      text: `⚡ Acción aprobada y ejecutada: \`cortex ${executedTool.tool} ${executedTool.args}\`.`,
+      timestamp: Date.now(),
+    };
+
     setMessagesByProject((prev) => ({
       ...prev,
       [selectedProjectPath]: [
         ...(prev[selectedProjectPath] || []),
-        {
-          id: `tool-exec-${Date.now()}`,
-          sender: "brain",
-          text: `⚡ Acción aprobada y ejecutada: \`cortex ${executedTool.tool} ${executedTool.args}\`.`,
-          timestamp: Date.now(),
-        },
+        toolExecMsg,
       ],
     }));
+
+    tauriInvoke("save_chat_message", {
+      project: selectedProjectPath,
+      message: toolExecMsg,
+    }).catch(console.error);
+  };
+
+  // Limpiar historial conversacional persistido y memoria del motor
+  const handleClearHistory = async () => {
+    if (!selectedProjectPath || isGenerating) return;
+    const t = getT(lang);
+    if (!window.confirm(t.chat.confirmClear)) return;
+
+    try {
+      await tauriInvoke("clear_chat_history", { project: selectedProjectPath });
+      setMessagesByProject((prev) => ({
+        ...prev,
+        [selectedProjectPath]: [],
+      }));
+    } catch (e) {
+      console.error("Error al limpiar historial:", e);
+    }
   };
 
   const activeSessionsCount = useMemo(() => {
@@ -316,6 +384,7 @@ export function App() {
           messages={currentMessages}
           onSendMessage={handleSendMessage}
           onExecuteTool={handleExecuteTool}
+          onClearHistory={handleClearHistory}
           isGenerating={isGenerating}
           lang={lang}
         />
