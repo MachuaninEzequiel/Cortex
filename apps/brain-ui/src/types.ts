@@ -1,5 +1,5 @@
 /**
- * Tipos canónicos para Cortex Brain UI (Obra 20, G-A7).
+ * Tipos canónicos para Cortex Brain UI (Obra 20, G-A7 / G-A8).
  * Espejo de los tipos en Rust (`cortex-brain-app`).
  */
 
@@ -34,6 +34,14 @@ export interface ModelEntry {
 export interface ChatChunkPayload {
   request_id: string;
   chunk: string;
+}
+
+export interface DownloadProgressPayload {
+  bytes_done: number;
+  bytes_total?: number;
+  percentage?: number;
+  status: "downloading" | "done" | "error";
+  error?: string;
 }
 
 export interface ChatMessage {

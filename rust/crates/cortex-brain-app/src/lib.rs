@@ -135,6 +135,87 @@ async fn list_models() -> Vec<chat::ModelEntry> {
     chat::list_available_models()
 }
 
+/// Payload del evento `download-progress` emitido durante la descarga de un modelo.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DownloadProgressPayload {
+    pub bytes_done: u64,
+    pub bytes_total: Option<u64>,
+    pub percentage: Option<f32>,
+    pub status: String,
+    pub error: Option<String>,
+}
+
+/// Command Tauri: descarga el modelo oficial (o custom URL) vía HttpSource
+/// en un thread dedicado emitiendo eventos `download-progress` (G-A8).
+#[tauri::command]
+async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<String, String> {
+    use cortex_brain::download::{DownloadProgress, HttpSource, ModelSource};
+    use cortex_brain::paths;
+    use tauri::Emitter;
+
+    let app_handle = app.clone();
+    let source = match url {
+        Some(custom_url) => {
+            let sha = format!("{custom_url}.sha256");
+            HttpSource::with_url(custom_url, sha)
+        }
+        None => HttpSource::new(),
+    };
+
+    let dest = paths::default_model_path();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let res = source.fetch(
+            &dest,
+            Some(&mut |p: DownloadProgress| {
+                let percentage = p.bytes_total.map(|tot| {
+                    if tot > 0 {
+                        ((p.bytes_done as f64 / tot as f64) * 100.0) as f32
+                    } else {
+                        0.0
+                    }
+                });
+                let payload = DownloadProgressPayload {
+                    bytes_done: p.bytes_done,
+                    bytes_total: p.bytes_total,
+                    percentage,
+                    status: "downloading".into(),
+                    error: None,
+                };
+                let _ = app_handle.emit("download-progress", &payload);
+            }),
+        );
+
+        match res {
+            Ok(r) => {
+                let payload = DownloadProgressPayload {
+                    bytes_done: r.bytes,
+                    bytes_total: Some(r.bytes),
+                    percentage: Some(100.0),
+                    status: "done".into(),
+                    error: None,
+                };
+                let _ = app_handle.emit("download-progress", &payload);
+                Ok(r.path.to_string_lossy().into_owned())
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                let payload = DownloadProgressPayload {
+                    bytes_done: 0,
+                    bytes_total: None,
+                    percentage: None,
+                    status: "error".into(),
+                    error: Some(err_str.clone()),
+                };
+                let _ = app_handle.emit("download-progress", &payload);
+                Err(err_str)
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("falló el task de descarga: {e}"))?
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -258,7 +339,8 @@ pub fn run() {
             chat_turn_stream,
             loaded_projects,
             reap_idle,
-            list_models
+            list_models,
+            download_model
         ])
         .setup(move |app| {
             app.manage(std::sync::Arc::clone(&engine_para_estado));
@@ -453,5 +535,20 @@ mod tests {
             std::env::remove_var("XDG_RUNTIME_DIR");
         }
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn download_progress_payload_serializa() {
+        let p = DownloadProgressPayload {
+            bytes_done: 1024,
+            bytes_total: Some(2048),
+            percentage: Some(50.0),
+            status: "downloading".into(),
+            error: None,
+        };
+        let json = serde_json::to_string(&p).expect("serialize");
+        assert!(json.contains("\"bytes_done\":1024"));
+        assert!(json.contains("\"percentage\":50.0"));
+        assert!(json.contains("\"status\":\"downloading\""));
     }
 }

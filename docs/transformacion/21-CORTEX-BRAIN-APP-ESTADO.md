@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A7
+# 21 — Cortex Brain App: estado al cierre de G-A8
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A7, listo para G-A8.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A8, listo para G-A9.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -52,8 +52,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (`4b23dd1`) |
 | G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (`c500ff5`) |
 | G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (`1c72443`) |
-| G-A7 | UI completa (sidebar, chat, status bar, settings) | ✅ **HECHO** (este commit) |
-| G-A8 | Descarga de modelos en UI | ⏳ |
+| G-A7 | UI completa (sidebar, chat, status bar, settings) | ✅ **HECHO** (`be36ee9`) |
+| G-A8 | Descarga de modelos en UI | ✅ **HECHO** (este commit) |
 | G-A9 | Single-instance + IPC cliente | ⏳ (G-A2 hace single-instance; G-A9 cablea el forward to running) |
 | G-A10 | Status bar con `MarkRam` live | ⏳ |
 | G-A2.1 | Windows: named pipes (stub hoy) | ⏳ deferido |
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(ui): interfaz de usuario completa y conectada (G-A7)
+(este commit) app(download): descarga de modelos GGUF en UI con progreso (G-A8)
+be36ee9 app(ui): interfaz de usuario completa y conectada (G-A7)
 1c72443 brain(chat): streaming de tokens + IPC chunks (G-A6)
 c500ff5 app(tauri): integración Liquid real con feature llama (G-A5)
 4b23dd1 app(tauri): chat in-process con el motor cortex_brain (G-A4)
@@ -686,24 +687,56 @@ prescrito):
 
 ---
 
-## 16. Próximo gate (G-A8): descarga de modelos en UI
+## 16. G-A8: descarga de modelos en UI (cerrado)
 
-Del doc 20 §7 y §2.4:
-- Botón "Descargar modelo" en el modal de settings.
-- Descarga con `cortex_brain::download::HttpSource` por debajo.
-- Barra de progreso de descarga y validación de sha256.
+### Lo que se creó
+
+**Motor `cortex-brain` (`src/download.rs`):**
+- `HttpSource::fetch`: implementación completa con `ureq 3` que descarga el GGUF por chunks (64 KB), invoca `on_progress` periódicamente con bytes transferidos y total (desde `Content-Length`), escribe en `.partial.<nombre>` en el mismo directorio, descarga el sidecar `.sha256` y realiza un `rename` atómico al destino final.
+- Tests mock HTTP server: `http_source_fetch_con_mock_server_descarga_y_reporta_progreso` y `http_source_fetch_error_status_retorna_error` con `std::net::TcpListener` local (sin tocar red externa).
+
+**Backend Rust (`rust/crates/cortex-brain-app/`):**
+- `src/lib.rs`: command Tauri `download_model(app, url)` que corre en `spawn_blocking` emitiendo eventos `download-progress` con `{ bytes_done, bytes_total, percentage, status, error }` y devuelve la ruta final instalada.
+- `DownloadProgressPayload` con test de serialización serde.
+
+**Frontend React (`apps/brain-ui/`):**
+- `src/types.ts`: interface `DownloadProgressPayload`.
+- `src/i18n.ts`: strings para descarga, re-descarga, validación y estados en ES y EN.
+- `src/components/SettingsModal.tsx`: sección reactiva de descarga con barra de progreso en vivo, porcentaje, MB transferidos, estado ("Descargando...", "Completado") y botón [Descargar modelo (730 MB)] / [Re-descargar].
+- `src/App.tsx`: handler `handleDownloadModel` con listener de `download-progress` y refresco automático de modelos tras la descarga.
+
+### Verificación
+
+- `cargo test -p cortex-brain` **70/70** rc 0 (incluye mock HTTP server tests).
+- `cargo test -p cortex-companion` **100+** rc 0.
+- `cargo test -p cortex-brain-app` **33/33** (31 lib + 2 smoke) rc 0.
+- `cargo clippy -p cortex-brain` y `cargo clippy -p cortex-brain-app` con 0 warnings.
+- `cargo fmt` limpio en ambos crates.
+- `npm run build` en `apps/brain-ui/` rc 0 (bundle limpio).
+
+### Smoke que NO pude verificar yo
+
+- **Descarga real de los 730 MB de HuggingFace en la GUI** (requiere DISPLAY y red): abrir `cargo tauri dev` y clickear "Descargar modelo" para verificar la animación de la barra de progreso contra HuggingFace en vivo.
 
 ---
 
-## 17. Referencias rápidas
+## 17. Próximo gate (G-A9): single-instance estricto + IPC cliente
+
+Del doc 20 §7 y §3.1:
+- Si ya hay una instancia GUI abierta y se corre `cortex-brain` (sin args o con `--app`): traer la ventana existente al frente (focus forward) y salir inmediatamente.
+- Si se corre `cortex-brain --query "..." --project ...`, mandar al server existente vía Unix socket y salir imprimiendo la respuesta (ya funciona desde G-A4/G-A6).
+
+---
+
+## 18. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`
 - **Rama:** `feature/transformacion-2026-08`
-- **Último commit:** `1c72443` (G-A6)
+- **Último commit:** `be36ee9` (G-A7)
 - **Crate del motor:** `rust/crates/cortex-brain/src/`
   - `paths::default_model_path()` retorna `~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`
-  - `download::HttpSource::fetch()` → `DownloadError::NotImplemented` (G-A2 marca; C-L1.3 lo implementa)
+  - `download::HttpSource::fetch()` → descarga real con ureq 3 + sha256 + progreso (G-A8)
   - `chat::LlmBackend` trait, `chat::ScriptedBackend` para CI
 - **Crate de la app:** `rust/crates/cortex-brain-app/src/`
   - `ipc::try_bind()` / `ipc::try_connect()` (Unix hoy)
@@ -711,8 +744,8 @@ Del doc 20 §7 y §2.4:
   - `projects::scan()` / `projects::list_projects()` /
     `projects::refresh_projects()` / `projects::cache_path()` (G-A3)
   - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()` / `chat::respond_streaming()` (G-A4/G-A6)
-  - `chat_turn_stream`, `loaded_projects`, `reap_idle`, `list_models` (G-A7)
+  - `chat_turn_stream`, `loaded_projects`, `reap_idle`, `list_models`, `download_model` (G-A7/G-A8)
   - `Role::{App, QueryClient, ProjectsList}` (los tres cableados)
-- **Frontend:** `apps/brain-ui/` (UI completa de 4 zonas en React + Tailwind)
+- **Frontend:** `apps/brain-ui/` (UI completa de 4 zonas en React + Tailwind + descarga de modelos)
 - **Binario:** `target/release/cortex-brain` (7 MB en release, smoke `cargo tauri build` rc 0)
 

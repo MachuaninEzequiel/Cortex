@@ -247,12 +247,96 @@ impl HttpSource {
 impl ModelSource for HttpSource {
     fn fetch(
         &self,
-        _dest: &Path,
-        _on_progress: Option<&mut dyn FnMut(DownloadProgress)>,
+        dest: &Path,
+        mut on_progress: Option<&mut dyn FnMut(DownloadProgress)>,
     ) -> Result<DownloadResult, DownloadError> {
-        // Implementación real llega en C-L1.3: ureq::get → response →
-        // Content-Length → loop de read_exact → write → sha256 → rename.
-        Err(DownloadError::NotImplemented)
+        // Asegurar directorio padre
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let response = ureq::get(&self.url)
+            .call()
+            .map_err(|e| DownloadError::Http(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(DownloadError::Http(format!(
+                "status HTTP inesperado: {}",
+                response.status()
+            )));
+        }
+
+        let bytes_total: Option<u64> = response
+            .headers()
+            .get("content-length")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok());
+
+        if let Some(p) = on_progress.as_deref_mut() {
+            p(DownloadProgress::new(0, bytes_total));
+        }
+
+        let dest_name = dest
+            .file_name()
+            .unwrap_or_else(|| std::ffi::OsStr::new("model.gguf"));
+        let partial = dest
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join(format!(".partial.{}", dest_name.to_string_lossy()));
+
+        let tmp = std::fs::File::create(&partial)?;
+        let mut writer = std::io::BufWriter::new(tmp);
+        let mut reader = response.into_body().into_reader();
+
+        let mut buf = vec![0u8; CHUNK_BYTES];
+        let mut total: u64 = 0;
+        use std::io::Read as _;
+        use std::io::Write as _;
+
+        loop {
+            let n = reader.read(&mut buf)?;
+            if n == 0 {
+                break;
+            }
+            writer.write_all(&buf[..n])?;
+            total += n as u64;
+            if let Some(p) = on_progress.as_deref_mut() {
+                p(DownloadProgress::new(total, bytes_total));
+            }
+        }
+        writer.flush()?;
+        drop(writer);
+
+        if total == 0 {
+            let _ = std::fs::remove_file(&partial);
+            return Err(DownloadError::Empty);
+        }
+
+        // Rename atómico
+        std::fs::rename(&partial, dest)?;
+
+        // Intentar descargar sidecar .sha256 si está configurado y el server responde
+        if !self.sha256_url.is_empty() {
+            if let Ok(sha_res) = ureq::get(&self.sha256_url).call() {
+                if sha_res.status().is_success() {
+                    let mut sha_text = String::new();
+                    if sha_res
+                        .into_body()
+                        .into_reader()
+                        .read_to_string(&mut sha_text)
+                        .is_ok()
+                    {
+                        let sidecar_path = paths::sha_sidecar_path();
+                        let _ = std::fs::write(sidecar_path, sha_text.trim());
+                    }
+                }
+            }
+        }
+
+        Ok(DownloadResult {
+            path: dest.to_path_buf(),
+            bytes: total,
+        })
     }
 }
 
@@ -275,7 +359,7 @@ mod tests {
 
     #[test]
     fn local_source_copia_archivo_y_reporta_bytes() {
-        let _g = FS_LOCK.lock().unwrap();
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tmpdir("local-ok");
         let src = dir.join("src.gguf");
         let mut f = std::fs::File::create(&src).unwrap();
@@ -297,7 +381,7 @@ mod tests {
 
     #[test]
     fn local_source_reporte_de_progreso_se_invoca_al_menos_dos_veces() {
-        let _g = FS_LOCK.lock().unwrap();
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tmpdir("local-progress");
         let src = dir.join("src.gguf");
         std::fs::write(&src, vec![0u8; 1024]).unwrap();
@@ -326,7 +410,7 @@ mod tests {
 
     #[test]
     fn local_source_archivo_vacio_devuelve_empty() {
-        let _g = FS_LOCK.lock().unwrap();
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tmpdir("local-empty");
         let src = dir.join("empty.gguf");
         std::fs::write(&src, b"").unwrap();
@@ -342,7 +426,7 @@ mod tests {
 
     #[test]
     fn local_source_no_abre_si_source_no_existe() {
-        let _g = FS_LOCK.lock().unwrap();
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tmpdir("local-missing");
         let src = dir.join("missing.gguf");
         let dest = dir.join("dest.gguf");
@@ -355,7 +439,7 @@ mod tests {
 
     #[test]
     fn local_source_escribe_en_partial_y_luego_renombra_atomico() {
-        let _g = FS_LOCK.lock().unwrap();
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tmpdir("local-rename");
         let src = dir.join("src.gguf");
         std::fs::write(&src, vec![1u8; 4096]).unwrap();
@@ -393,10 +477,82 @@ mod tests {
     }
 
     #[test]
-    fn http_source_fetch_devuelve_not_implemented_en_esta_etapa() {
-        let s = HttpSource::new();
-        let dest = std::env::temp_dir().join("cortex-http-todo.gguf");
-        let res = s.fetch(&dest, None);
-        assert!(matches!(res, Err(DownloadError::NotImplemented)));
+    fn http_source_fetch_con_mock_server_descarga_y_reporta_progreso() {
+        use std::io::Write as _;
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tmpdir("http-mock-ok");
+        let dest = dir.join("model.gguf");
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let server_thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = std::io::Read::read(&mut stream, &mut buf);
+            let body = b"fake gguf content 1234567890";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let url = format!("http://127.0.0.1:{port}/model.gguf");
+        let source = HttpSource::with_url(url, String::new());
+
+        let mut progress_list = Vec::new();
+        let res = source
+            .fetch(
+                &dest,
+                Some(&mut |p: DownloadProgress| {
+                    progress_list.push(p);
+                }),
+            )
+            .expect("fetch ok");
+
+        assert_eq!(res.bytes, 28);
+        assert_eq!(res.path, dest);
+        assert!(dest.is_file());
+        let content = std::fs::read_to_string(&dest).unwrap();
+        assert_eq!(content, "fake gguf content 1234567890");
+
+        assert!(!progress_list.is_empty());
+        assert_eq!(progress_list.last().unwrap().bytes_done, 28);
+
+        server_thread.join().unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn http_source_fetch_error_status_retorna_error() {
+        use std::io::Write as _;
+        let _g = FS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tmpdir("http-mock-err");
+        let dest = dir.join("model.gguf");
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let server_thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = std::io::Read::read(&mut stream, &mut buf);
+            let response =
+                "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let url = format!("http://127.0.0.1:{port}/missing.gguf");
+        let source = HttpSource::with_url(url, String::new());
+        let res = source.fetch(&dest, None);
+        assert!(res.is_err());
+        assert!(!dest.exists());
+
+        server_thread.join().unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

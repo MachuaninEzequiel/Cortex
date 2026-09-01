@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ModelEntry, Lang } from "../types";
+import { ModelEntry, Lang, DownloadProgressPayload } from "../types";
 import { getT } from "../i18n";
 
 interface SettingsModalProps {
@@ -8,6 +8,9 @@ interface SettingsModalProps {
   models: ModelEntry[];
   selectedModel: string;
   onSelectModel: (filename: string) => void;
+  onDownloadModel: (url?: string) => void;
+  isDownloading: boolean;
+  downloadProgress: DownloadProgressPayload | null;
   detectedCount: number;
   lastScanTimestamp: number;
   onScanNow: () => void;
@@ -24,6 +27,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   models,
   selectedModel,
   onSelectModel,
+  onDownloadModel,
+  isDownloading,
+  downloadProgress,
   detectedCount,
   lastScanTimestamp,
   onScanNow,
@@ -130,7 +136,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <select
                     value={selectedModel}
                     onChange={(e) => onSelectModel(e.target.value)}
-                    className="w-full rounded border border-mocha-surface bg-mocha-surface/60 p-2 text-xs font-mono text-mocha-text focus:border-mocha-mauve focus:outline-none"
+                    disabled={isDownloading}
+                    className="w-full rounded border border-mocha-surface bg-mocha-surface/60 p-2 text-xs font-mono text-mocha-text focus:border-mocha-mauve focus:outline-none disabled:opacity-50"
                   >
                     {models.map((m) => (
                       <option key={m.filename} value={m.filename}>
@@ -148,7 +155,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-mocha-surface2">{t.settings.modelStatus}</span>
-                      <span className={activeModelObj.exists ? "text-cortex-mint" : "text-mocha-mauve"}>
+                      <span className={activeModelObj.exists ? "text-cortex-mint font-bold" : "text-mocha-mauve"}>
                         {activeModelObj.exists ? t.settings.installed : t.settings.notInstalled}
                       </span>
                     </div>
@@ -165,6 +172,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Download / Re-download Section */}
+                <div className="pt-2 border-t border-mocha-surface/40">
+                  {isDownloading ? (
+                    <div className="space-y-2 rounded-lg border border-mocha-mauve/40 bg-mocha-surface/30 p-3">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="flex items-center gap-2 text-mocha-mauve font-semibold">
+                          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-mocha-mauve border-t-transparent" />
+                          {t.settings.downloading}
+                        </span>
+                        <span className="text-mocha-text font-bold">
+                          {downloadProgress?.percentage !== undefined
+                            ? `${downloadProgress.percentage.toFixed(1)}%`
+                            : "0%"}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-mocha-base">
+                        <div
+                          className="h-full bg-cortex-mint transition-all duration-300"
+                          style={{
+                            width: `${Math.min(100, Math.max(5, downloadProgress?.percentage || 5))}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex justify-between text-[10px] font-mono text-mocha-subtext0">
+                        <span>
+                          {downloadProgress
+                            ? `${(downloadProgress.bytes_done / (1024 * 1024)).toFixed(1)} MB`
+                            : "0 MB"}
+                          {downloadProgress?.bytes_total
+                            ? ` / ${(downloadProgress.bytes_total / (1024 * 1024)).toFixed(1)} MB`
+                            : " / ~730 MB"}
+                        </span>
+                        <span className="text-mocha-surface2">HuggingFace (LiquidAI/LFM2.5)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => onDownloadModel()}
+                        className="flex items-center justify-center gap-2 rounded bg-cortex-forest px-4 py-2 font-mono text-xs font-semibold text-cortex-mint shadow transition hover:bg-cortex-forest/80 active:scale-95"
+                      >
+                        <span>⬇</span>
+                        <span>
+                          {activeModelObj?.exists
+                            ? t.settings.redownloadModel
+                            : t.settings.downloadModel}
+                        </span>
+                      </button>
+
+                      {downloadProgress?.status === "done" && (
+                        <div className="rounded bg-cortex-forest/40 p-2 font-mono text-[11px] text-cortex-mint">
+                          ✓ {t.settings.downloadSuccess}
+                        </div>
+                      )}
+
+                      {downloadProgress?.status === "error" && (
+                        <div className="rounded bg-red-900/40 p-2 font-mono text-[11px] text-red-300">
+                          ✗ {t.settings.downloadError} {downloadProgress.error}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -269,9 +343,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="rounded-lg border border-mocha-surface bg-mocha-surface/20 p-3 space-y-1.5 font-mono text-xs text-mocha-subtext0">
-                  <div>{t.settings.version}: 0.1.0 (G-A7)</div>
+                  <div>{t.settings.version}: 0.1.0 (G-A8)</div>
                   <div>Arquitectura: Tauri 2 + Rust + React + Vite + Tailwind</div>
-                  <div>Motor: Liquid LFM2.5 (GGUF Q4_K_M) + Protocolo TOOL</div>
+                  <div>Motor: Liquid LFM2.5 (GGUF Q4_K_M) + Protocolo TOOL + HttpSource</div>
                   <div>Design System: Catppuccin Mocha + Voxel Mint</div>
                 </div>
 

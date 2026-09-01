@@ -7,6 +7,7 @@ import {
   ToolCall,
   ChatTurn,
   ChatChunkPayload,
+  DownloadProgressPayload,
   Lang,
 } from "./types";
 import { tauriInvoke, tauriListen } from "./hooks/useTauri";
@@ -23,9 +24,11 @@ export function App() {
   const [selectedProjectPath, setSelectedProjectPath] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Estado de modelos
+  // Estado de modelos y descarga
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("LFM2.5-1.2B-Instruct-Q4_K_M.gguf");
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgressPayload | null>(null);
 
   // Historial de mensajes por proyecto
   const [messagesByProject, setMessagesByProject] = useState<Record<string, ChatMessage[]>>({});
@@ -105,6 +108,34 @@ export function App() {
     }
   };
 
+  // Descarga de modelos (G-A8)
+  const handleDownloadModel = async (customUrl?: string) => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    setDownloadProgress({ bytes_done: 0, status: "downloading" });
+
+    let unlisten: (() => void) | null = null;
+    try {
+      unlisten = await tauriListen<DownloadProgressPayload>("download-progress", (payload) => {
+        setDownloadProgress(payload);
+      });
+
+      await tauriInvoke<string>("download_model", { url: customUrl || null });
+      setDownloadProgress({ bytes_done: 0, status: "done" });
+      await loadModels();
+    } catch (e) {
+      console.error("Error en download_model:", e);
+      setDownloadProgress({
+        bytes_done: 0,
+        status: "error",
+        error: typeof e === "string" ? e : (e as Error)?.message || "Error de descarga",
+      });
+    } finally {
+      if (unlisten) unlisten();
+      setIsDownloading(false);
+    }
+  };
+
   // Ticker de idle reap y estado de RAM cada 5 segundos
   useEffect(() => {
     const tick = async () => {
@@ -124,10 +155,10 @@ export function App() {
 
   // Cálculo del estado de MarkRam
   const markRamState: MarkRamState = useMemo(() => {
-    if (isGenerating) return "awake";
+    if (isGenerating || isDownloading) return "awake";
     if (loadedProjectsList.length > 0) return "weak_awake";
     return "idle";
-  }, [isGenerating, loadedProjectsList]);
+  }, [isGenerating, isDownloading, loadedProjectsList]);
 
   // Manejo de envío de mensajes de chat con streaming en vivo
   const handleSendMessage = async (text: string) => {
@@ -153,7 +184,6 @@ export function App() {
       isStreaming: true,
     };
 
-    // Añadir mensaje del usuario y placeholder de streaming
     setMessagesByProject((prev) => ({
       ...prev,
       [projPath]: [...(prev[projPath] || []), userMessage, initialAssistantMessage],
@@ -164,7 +194,6 @@ export function App() {
     let unlistenChunk: (() => void) | null = null;
 
     try {
-      // Escuchar chunks en vivo para este request_id
       unlistenChunk = await tauriListen<ChatChunkPayload>("chat-chunk", (payload) => {
         if (payload.request_id === requestId) {
           setMessagesByProject((prev) => {
@@ -181,14 +210,12 @@ export function App() {
         }
       });
 
-      // Invocar command de streaming en el backend
       const turn = await tauriInvoke<ChatTurn>("chat_turn_stream", {
         project: projPath,
         text,
         requestId,
       });
 
-      // Reconciliar con el resultado autoritativo final (done)
       setMessagesByProject((prev) => {
         const list = prev[projPath] || [];
         return {
@@ -207,7 +234,6 @@ export function App() {
         };
       });
 
-      // Actualizar backends cargados
       const loaded = await tauriInvoke<string[]>("loaded_projects");
       setLoadedProjectsList(loaded);
     } catch (err: unknown) {
@@ -233,7 +259,6 @@ export function App() {
     }
   };
 
-  // Manejo de ejecución de Tool propuesta
   const handleExecuteTool = (tool: ToolCall) => {
     setPendingToolCall(tool);
   };
@@ -243,7 +268,6 @@ export function App() {
     const executedTool = pendingToolCall;
     setPendingToolCall(null);
 
-    // Feedback en el chat
     setMessagesByProject((prev) => ({
       ...prev,
       [selectedProjectPath]: [
@@ -258,7 +282,6 @@ export function App() {
     }));
   };
 
-  // Conteo de sesiones activas
   const activeSessionsCount = useMemo(() => {
     return projects.filter((p) => p.has_session).length;
   }, [projects]);
@@ -315,6 +338,9 @@ export function App() {
         models={models}
         selectedModel={selectedModel}
         onSelectModel={setSelectedModel}
+        onDownloadModel={handleDownloadModel}
+        isDownloading={isDownloading}
+        downloadProgress={downloadProgress}
         detectedCount={projects.length}
         lastScanTimestamp={lastScanTimestamp}
         onScanNow={handleRefreshProjects}
