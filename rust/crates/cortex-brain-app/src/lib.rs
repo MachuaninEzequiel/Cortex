@@ -381,6 +381,12 @@ async fn run_doctor_inspect(project: String) -> Result<graph::DoctorReportPayloa
     Ok(doc)
 }
 
+/// Command Tauri: recibe logs desde JavaScript y los imprime directamente en la terminal.
+#[tauri::command]
+fn log_to_terminal(level: String, msg: String) {
+    eprintln!("[ui-{level}] {msg}");
+}
+
 /// Command Tauri: levanta el servidor webgraph de Cortex y lo abre en el navegador.
 #[tauri::command]
 async fn open_webgraph_browser(project: String) -> Result<String, String> {
@@ -590,7 +596,8 @@ pub fn run() {
             get_project_graph,
             get_session_status,
             run_doctor_inspect,
-            open_webgraph_browser
+            open_webgraph_browser,
+            log_to_terminal
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
