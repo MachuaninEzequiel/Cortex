@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A9
+# 21 — Cortex Brain App: estado al cierre de la Obra 20 (G-A10)
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A9, listo para G-A10.
+> Estado: CERRADA — Obra 20 completada al 100% (G-A1 a G-A10 en verde).
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -54,8 +54,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (`1c72443`) |
 | G-A7 | UI completa (sidebar, chat, status bar, settings) | ✅ **HECHO** (`be36ee9`) |
 | G-A8 | Descarga de modelos en UI | ✅ **HECHO** (`29eff70`) |
-| G-A9 | Single-instance + IPC cliente | ✅ **HECHO** (este commit) |
-| G-A10 | Status bar con `MarkRam` live | ⏳ |
+| G-A9 | Single-instance + IPC cliente | ✅ **HECHO** (`4f10358`) |
+| G-A10 | Status bar con `MarkRam` live | ✅ **HECHO** (este commit) |
 | G-A2.1 | Windows: named pipes (stub hoy) | ⏳ deferido |
 
 ---
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(ipc): single-instance estricto + forward de foco y query cliente (G-A9)
+(este commit) app(ui): status bar con MarkRam live final y cierre de Obra 20 (G-A10)
+4f10358 app(ipc): single-instance estricto + forward de foco y query cliente (G-A9)
 29eff70 app(download): descarga de modelos GGUF en UI con progreso (G-A8)
 be36ee9 app(ui): interfaz de usuario completa y conectada (G-A7)
 1c72443 brain(chat): streaming de tokens + IPC chunks (G-A6)
@@ -749,20 +750,58 @@ prescrito):
 
 ---
 
-## 18. Próximo gate (G-A10): widget MarkRam y status bar live final
+## 18. G-A10: Status bar con MarkRam live final (cerrado)
 
-Del doc 20 §7 y §2.3:
-- Refinamiento y pulido del widget `MarkRam` interactivo en la StatusBar (indicador de estado en vivo de RAM/inactividad con tooltips detallados de backends y consumo).
-- Verificación integral del ciclo de vida (Idle -> WeakAwake -> Awake).
+### Lo que se creó
+
+**Frontend React (`apps/brain-ui/`):**
+- `src/components/MarkRam.tsx`: widget SVG isométrico de alta fidelidad con paleta Catppuccin Mocha + Voxel Mint (`#8FDCB0`, `#C8F0DC`, `#03522E`, `#06331C`). Ciclo de vida completo:
+  - `Idle`: gris silencioso (0 MB en RAM).
+  - `WeakAwake`: menta intermedio con animación de pulso sutil (modelo en espera tras consulta, ticker de 90s).
+  - `Awake`: menta pleno con resplandor glow `drop-shadow` y animación de respiración viva durante streaming o descarga.
+- `src/components/StatusBar.tsx`: barra de estado inferior enriquecida:
+  - Estimación dinámica de RAM según el modelo activo (`~730 MB` con LFM2.5).
+  - Contadores en tiempo real: total de proyectos, sesiones activas, backends vivos en RAM.
+  - Atajos interactivos: click en el contador de RAM o en la píldora de `MarkRam` abre el modal de Settings.
+- `src/App.tsx`: orquestación de eventos reactivos entre StatusBar, TopBar y modales.
+
+### Verificación
+
+- `cargo test -p cortex-brain` **70/70** rc 0.
+- `cargo test -p cortex-brain-app` **35/35** (32 lib + 3 smoke) rc 0.
+- `cargo clippy -p cortex-brain` y `cargo clippy -p cortex-brain-app` con 0 warnings.
+- `cargo fmt` limpio en todos los crates.
+- `npm run build` en `apps/brain-ui/` rc 0 (bundle limpio de 182 KB).
+- **Smoke del modelo real:** `cargo test -p cortex-brain-app --features llama -- --ignored` pasa en CPU.
 
 ---
 
-## 19. Referencias rápidas
+## 19. Cierre de Obra 20: Conclusiones y balance final
+
+La **Obra 20 (Cortex Brain App)** queda formalmente **completada y cerrada al 100%**, habiendo cumplido con todos los objetivos del doc 20:
+
+1. **Binario unificado y liviano (`cortex-brain`):**
+   - Shell nativo en Tauri 2 con frontend en React 18 + Vite + Tailwind CSS.
+   - Solo 7 MB en release, sin el sobrepeso de Electron.
+   - Soporte tripartito de roles por CLI (`--app` default, `--query` cliente IPC, `--projects-list` lista rápida).
+2. **Motor de inferencia local Liquid LFM2.5:**
+   - In-process con streaming de tokens crudos en tiempo real por chunks.
+   - Protocolo TOOL nativo integrado con confirmación segura de mutaciones (SafeActions).
+   - Gestión inteligente de RAM (`LiquidRam` / `reap_idle`) con ciclo de vida `Idle` ➔ `WeakAwake` ➔ `Awake`.
+3. **Experiencia de usuario de escritorio:**
+   - Single-instance estricto con forward de foco inteligente.
+   - Detección automática y escaneo recursivo de proyectos en `$HOME`.
+   - Selector y gestor de descarga directa de modelos GGUF desde HuggingFace con verificación de SHA-256 y barra de progreso animada.
+   - Diseño Catppuccin Mocha + Voxel Mint consistente con el ecosistema Cortex (Herdr / Companion).
+
+---
+
+## 20. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`
 - **Rama:** `feature/transformacion-2026-08`
-- **Último commit:** `29eff70` (G-A8)
+- **Último commit:** `4f10358` (G-A9)
 - **Crate del motor:** `rust/crates/cortex-brain/src/`
   - `paths::default_model_path()` retorna `~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`
   - `download::HttpSource::fetch()` → descarga real con ureq 3 + sha256 + progreso (G-A8)
@@ -776,6 +815,6 @@ Del doc 20 §7 y §2.3:
   - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()` / `chat::respond_streaming()` (G-A4/G-A6)
   - `chat_turn_stream`, `loaded_projects`, `reap_idle`, `list_models`, `download_model` (G-A7/G-A8)
   - `Role::{App, QueryClient, ProjectsList}` (los tres cableados)
-- **Frontend:** `apps/brain-ui/` (UI completa de 4 zonas en React + Tailwind + descarga de modelos)
+- **Frontend:** `apps/brain-ui/` (UI completa de 4 zonas en React + Tailwind + descarga de modelos + MarkRam live)
 - **Binario:** `target/release/cortex-brain` (7 MB en release, smoke `cargo tauri build` rc 0)
 

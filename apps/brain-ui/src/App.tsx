@@ -328,6 +328,7 @@ export function App() {
         loadedProjectsCount={loadedProjectsList.length}
         markRamState={markRamState}
         activeModelSize={activeModelObj?.size_bytes}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         lang={lang}
       />
 

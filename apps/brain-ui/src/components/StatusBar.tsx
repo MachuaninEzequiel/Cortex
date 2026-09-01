@@ -9,6 +9,7 @@ interface StatusBarProps {
   loadedProjectsCount: number;
   markRamState: MarkRamState;
   activeModelSize?: number;
+  onOpenSettings?: () => void;
   lang: "es" | "en";
 }
 
@@ -18,11 +19,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   loadedProjectsCount,
   markRamState,
   activeModelSize,
+  onOpenSettings,
   lang,
 }) => {
   const t = getT(lang);
 
-  // Estimación de RAM
+  // Estimación de RAM basada en tamaño del modelo activo
   const getRamUsageText = () => {
     if (markRamState === "idle" || loadedProjectsCount === 0) {
       return "0 MB";
@@ -47,9 +49,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
   return (
     <footer className="flex h-7 w-full select-none items-center justify-between border-t border-mocha-surface bg-mocha-base px-3 text-[11px] font-mono text-mocha-subtext0">
-      {/* Left counters */}
+      {/* Contadores a la izquierda */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+        <button
+          onClick={onOpenSettings}
+          className="flex items-center gap-1.5 hover:text-mocha-mauve transition cursor-pointer"
+          title="Consumo de RAM estimado — Click para abrir configuración"
+        >
           <span className="text-mocha-surface2">{t.statusBar.ramUsage}</span>
           <span
             className={`font-semibold ${
@@ -58,7 +64,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           >
             {getRamUsageText()}
           </span>
-        </div>
+        </button>
 
         <span className="text-mocha-surface/80">|</span>
 
@@ -86,21 +92,25 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       </div>
 
-      {/* Right live state indicator */}
-      <div className="flex items-center gap-2">
+      {/* Indicador live de MarkRam a la derecha */}
+      <button
+        onClick={onOpenSettings}
+        className="flex items-center gap-2 rounded px-1.5 py-0.5 hover:bg-mocha-surface/40 transition cursor-pointer"
+        title={`Estado MarkRam: ${getMarkRamLabel()} — Click para ver detalles en Configuración`}
+      >
         <MarkRam state={markRamState} size="sm" />
         <span
           className={`font-medium ${
             markRamState === "awake"
               ? "text-cortex-mint font-semibold animate-pulse"
               : markRamState === "weak_awake"
-              ? "text-mocha-lavender"
+              ? "text-mocha-lavender font-semibold"
               : "text-mocha-surface2"
           }`}
         >
           {getMarkRamLabel()}
         </span>
-      </div>
+      </button>
     </footer>
   );
 };
