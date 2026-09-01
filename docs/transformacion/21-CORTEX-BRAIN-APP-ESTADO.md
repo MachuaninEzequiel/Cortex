@@ -1,6 +1,6 @@
-# 21 — Cortex Brain App: estado al cierre de G-A8
+# 21 — Cortex Brain App: estado al cierre de G-A9
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A8, listo para G-A9.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A9, listo para G-A10.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -53,8 +53,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A5 | Integración Liquid real (feature `llama`) | ✅ **HECHO** (`c500ff5`) |
 | G-A6 | Streaming por IPC (chunks) | ✅ **HECHO** (`1c72443`) |
 | G-A7 | UI completa (sidebar, chat, status bar, settings) | ✅ **HECHO** (`be36ee9`) |
-| G-A8 | Descarga de modelos en UI | ✅ **HECHO** (este commit) |
-| G-A9 | Single-instance + IPC cliente | ⏳ (G-A2 hace single-instance; G-A9 cablea el forward to running) |
+| G-A8 | Descarga de modelos en UI | ✅ **HECHO** (`29eff70`) |
+| G-A9 | Single-instance + IPC cliente | ✅ **HECHO** (este commit) |
 | G-A10 | Status bar con `MarkRam` live | ⏳ |
 | G-A2.1 | Windows: named pipes (stub hoy) | ⏳ deferido |
 
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(download): descarga de modelos GGUF en UI con progreso (G-A8)
+(este commit) app(ipc): single-instance estricto + forward de foco y query cliente (G-A9)
+29eff70 app(download): descarga de modelos GGUF en UI con progreso (G-A8)
 be36ee9 app(ui): interfaz de usuario completa y conectada (G-A7)
 1c72443 brain(chat): streaming de tokens + IPC chunks (G-A6)
 c500ff5 app(tauri): integración Liquid real con feature llama (G-A5)
@@ -720,20 +721,48 @@ prescrito):
 
 ---
 
-## 17. Próximo gate (G-A9): single-instance estricto + IPC cliente
+## 17. G-A9: single-instance estricto + IPC cliente (cerrado)
 
-Del doc 20 §7 y §3.1:
-- Si ya hay una instancia GUI abierta y se corre `cortex-brain` (sin args o con `--app`): traer la ventana existente al frente (focus forward) y salir inmediatamente.
-- Si se corre `cortex-brain --query "..." --project ...`, mandar al server existente vía Unix socket y salir imprimiendo la respuesta (ya funciona desde G-A4/G-A6).
+### Lo que se creó
+
+**Backend Rust (`rust/crates/cortex-brain-app/`):**
+- `src/lib.rs`:
+  - `handle_connection`: soporte para mensaje `kind == "focus"`. Al recibirlo, invoca `app_handle.get_webview_window("main")` para hacer `show()`, `unminimize()` y `set_focus()`, respondiendo inmediatamente con `kind: "focus_ack"`.
+  - `run()`: almacena el `AppHandle` de Tauri en un contenedor thread-safe en el hook de setup para que las conexiones entrantes de IPC puedan activar la ventana.
+  - Test unitario: `single_instance_focus_request_responde_focus_ack` (round-trip de conexión, request focus y recepción de ack).
+- `src/main.rs`:
+  - `run_app_entrypoint()`: antes de iniciar Tauri, verifica con `ipc::try_connect()` si ya hay una instancia GUI escuchando. Si existe, envía `focus`, espera el ack, imprime `Cortex Brain ya está corriendo. Se trajo la ventana al frente.` y sale con `ExitCode::SUCCESS` sin duplicar la app.
+  - `run_query_client()`: eliminada la lectura residual síncrona previa; los chunks de streaming viajan directo y en tiempo real a stdout.
+- `tests/smoke.rs`: test `argv_con_app_resuelve_app`.
+
+### Verificación
+
+- `cargo test -p cortex-brain` **70/70** rc 0.
+- `cargo test -p cortex-brain-app` **35/35** (32 lib + 3 smoke) rc 0.
+- `cargo clippy -p cortex-brain-app --all-targets -- -D warnings` rc 0.
+- `cargo fmt -p cortex-brain-app --check` rc 0.
+- `npm run build` en `apps/brain-ui/` rc 0.
+
+### Smoke que NO pude verificar yo
+
+- **Comportamiento en GUI con dos terminales** (requiere DISPLAY): levantar `cortex-brain` en una ventana; luego ejecutar `cortex-brain` en otra terminal y verificar que la ventana original toma el foco de inmediato y la segunda terminal sale con el mensaje informativo.
 
 ---
 
-## 18. Referencias rápidas
+## 18. Próximo gate (G-A10): widget MarkRam y status bar live final
+
+Del doc 20 §7 y §2.3:
+- Refinamiento y pulido del widget `MarkRam` interactivo en la StatusBar (indicador de estado en vivo de RAM/inactividad con tooltips detallados de backends y consumo).
+- Verificación integral del ciclo de vida (Idle -> WeakAwake -> Awake).
+
+---
+
+## 19. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`
 - **Rama:** `feature/transformacion-2026-08`
-- **Último commit:** `be36ee9` (G-A7)
+- **Último commit:** `29eff70` (G-A8)
 - **Crate del motor:** `rust/crates/cortex-brain/src/`
   - `paths::default_model_path()` retorna `~/.cache/cortex/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`
   - `download::HttpSource::fetch()` → descarga real con ureq 3 + sha256 + progreso (G-A8)
@@ -741,6 +770,7 @@ Del doc 20 §7 y §3.1:
 - **Crate de la app:** `rust/crates/cortex-brain-app/src/`
   - `ipc::try_bind()` / `ipc::try_connect()` (Unix hoy)
   - `lib::run()` arranca Tauri + bindea server + registra commands
+  - Single-instance: forward de foco en `main.rs` y `lib.rs` (G-A9)
   - `projects::scan()` / `projects::list_projects()` /
     `projects::refresh_projects()` / `projects::cache_path()` (G-A3)
   - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()` / `chat::respond_streaming()` (G-A4/G-A6)

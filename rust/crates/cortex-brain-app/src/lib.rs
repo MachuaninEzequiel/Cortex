@@ -222,7 +222,11 @@ async fn download_model(app: tauri::AppHandle, url: Option<String>) -> Result<St
 /// final y se cierra (un request por conexión; los chunks viajan por
 /// la MISMA conexión). El `done.text` es el texto procesado
 /// autoritativo (con la salida de las tools ya integrada).
-fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
+fn handle_connection(
+    conn: ipc::IpcConnection,
+    engine: &chat::BrainEngine,
+    app_handle: Option<&tauri::AppHandle>,
+) {
     use std::io::BufReader;
     let (raw_read, mut write) = match conn.into_split() {
         Ok(parts) => parts,
@@ -241,6 +245,27 @@ fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
         }
     };
     let request_id = req.request_id.clone();
+
+    // G-A9: Manejo del request de foco para single-instance
+    if req.kind == "focus" {
+        if let Some(app) = app_handle {
+            use tauri::Manager as _;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }
+        let response = ipc::QueryResponse {
+            kind: "focus_ack".into(),
+            text: "focused".into(),
+            request_id,
+            tool_calls: None,
+        };
+        let _ = ipc::write_json_line(&mut write, &response);
+        return;
+    }
+
     let result = engine.respond_streaming(&req.project, &req.text, &mut |piece: &str| {
         let chunk = ipc::QueryResponse {
             kind: "chunk".into(),
@@ -287,6 +312,8 @@ fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
 /// engine de chat.
 /// G-A7: registra `chat_turn_stream`, `loaded_projects`, `reap_idle`,
 /// `list_models` para la UI completa.
+/// G-A8: registra `download_model`.
+/// G-A9: single-instance forward de foco a la ventana existente.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Un engine compartido: el server IPC y el command `chat_turn`
@@ -295,6 +322,10 @@ pub fn run() {
     // engine (chdir + i18n).
     let engine: chat::SharedEngine = std::sync::Arc::new(chat::BrainEngine::new());
     let engine_para_estado = std::sync::Arc::clone(&engine);
+    let app_handle_holder: std::sync::Arc<std::sync::Mutex<Option<tauri::AppHandle>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+    let holder_para_server = std::sync::Arc::clone(&app_handle_holder);
+    let holder_para_setup = std::sync::Arc::clone(&app_handle_holder);
 
     match ipc::try_bind() {
         Ok(server) => {
@@ -305,23 +336,17 @@ pub fn run() {
                 .spawn(move || {
                     while let Ok(conn) = server.accept() {
                         let engine = std::sync::Arc::clone(&engine);
+                        let app_handle = holder_para_server.lock().ok().and_then(|g| g.clone());
                         // Cada conexión entrante se procesa en su propio
-                        // thread: un request, una respuesta, cierre. El
-                        // streaming real (chunks) llega en G-A6.
+                        // thread: un request, una respuesta, cierre.
                         let _ = std::thread::spawn(move || {
-                            handle_connection(conn, &engine);
+                            handle_connection(conn, &engine, app_handle.as_ref());
                         });
                     }
                 });
         }
         Err(ipc::BindError::AlreadyBound(_)) => {
-            // Hay otra instancia. Lo registramos; el comportamiento de
-            // "forward to running instance" como cliente es responsabilidad
-            // del flag --query (main.rs). Acá sólo dejamos el aviso.
-            eprintln!(
-                "cortex-brain: otra instancia ya está corriendo. Las queries por \
-                --query se mandan a esa instancia; esta GUI corre en paralelo."
-            );
+            eprintln!("cortex-brain: otra instancia ya está corriendo.");
         }
         Err(ipc::BindError::NotSupported) => {
             eprintln!("cortex-brain: IPC no soportado en este OS (G-A2: sólo Unix)");
@@ -343,6 +368,9 @@ pub fn run() {
             download_model
         ])
         .setup(move |app| {
+            if let Ok(mut g) = holder_para_setup.lock() {
+                *g = Some(app.handle().clone());
+            }
             app.manage(std::sync::Arc::clone(&engine_para_estado));
             Ok(())
         })
@@ -421,7 +449,7 @@ mod tests {
         let server = ipc::try_bind().expect("bind");
         let server_thread = std::thread::spawn(move || {
             let conn = server.accept().unwrap();
-            handle_connection(conn, &engine);
+            handle_connection(conn, &engine, None);
             // handle_connection responde y cierra (un request por
             // conexión); al dropear el server acá se limpia el socket.
         });
@@ -497,7 +525,7 @@ mod tests {
         let server = ipc::try_bind().expect("bind");
         let server_thread = std::thread::spawn(move || {
             let conn = server.accept().unwrap();
-            handle_connection(conn, &engine);
+            handle_connection(conn, &engine, None);
         });
 
         let client = ipc::try_connect().expect("connect");
@@ -529,6 +557,57 @@ mod tests {
         assert_eq!(done.request_id, "r-s1");
         assert_eq!(done.text.trim(), "La sesión está activa");
         assert!(done.tool_calls.is_none());
+
+        server_thread.join().unwrap();
+        unsafe {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn single_instance_focus_request_responde_focus_ack() {
+        use crate::ipc;
+        use std::io::BufReader;
+
+        let _env_lock = ipc::tests::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let tmp =
+            std::env::temp_dir().join(format!("cortex-brain-e2e-focus-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let xdg = tmp.join("runtime");
+        std::fs::create_dir_all(&xdg).unwrap();
+        unsafe {
+            std::env::set_var("XDG_RUNTIME_DIR", &xdg);
+        }
+
+        let engine = chat::BrainEngine::new();
+        let server = ipc::try_bind().expect("bind");
+        let server_thread = std::thread::spawn(move || {
+            let conn = server.accept().unwrap();
+            handle_connection(conn, &engine, None);
+        });
+
+        let client = ipc::try_connect().expect("connect");
+        let conn = client.into_connection();
+        let (read, mut write) = conn.into_split().unwrap();
+        let req = ipc::QueryRequest {
+            kind: "focus".into(),
+            project: String::new(),
+            text: String::new(),
+            request_id: "focus-123".into(),
+        };
+        ipc::write_json_line(&mut write, &req).unwrap();
+        drop(write);
+
+        let mut br = BufReader::new(read);
+        let resp: ipc::QueryResponse = ipc::read_json_line(&mut br).unwrap().expect("response");
+        assert_eq!(resp.kind, "focus_ack");
+        assert_eq!(resp.request_id, "focus-123");
+        assert_eq!(resp.text, "focused");
 
         server_thread.join().unwrap();
         unsafe {

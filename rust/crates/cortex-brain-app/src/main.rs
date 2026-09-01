@@ -23,13 +23,37 @@ fn main() -> ExitCode {
     let role = Role::from_argv(&argv);
 
     match role {
-        Role::App => {
-            run_app();
-            ExitCode::SUCCESS
-        }
+        Role::App => run_app_entrypoint(),
         Role::QueryClient => run_query_client(&argv),
         Role::ProjectsList => run_projects_list(),
     }
+}
+
+/// Entrypoint para `Role::App`: single-instance estricto (G-A9).
+/// Si ya hay una instancia de la GUI escuchando en el socket IPC,
+/// le envía un request `focus` para traer la ventana existente al frente
+/// e informa al usuario sin abrir una segunda app.
+fn run_app_entrypoint() -> ExitCode {
+    if let Ok(client) = cortex_brain_app::ipc::try_connect() {
+        let conn = client.into_connection();
+        if let Ok((read, mut write)) = conn.into_split() {
+            let req = QueryRequest {
+                kind: "focus".into(),
+                project: String::new(),
+                text: String::new(),
+                request_id: format!("focus-{}", std::process::id()),
+            };
+            if write_json_line(&mut write, &req).is_ok() {
+                let mut reader = std::io::BufReader::new(read);
+                let _ = read_json_line::<QueryResponse, _>(&mut reader);
+            }
+        }
+        println!("Cortex Brain ya está corriendo. Se trajo la ventana al frente.");
+        return ExitCode::SUCCESS;
+    }
+
+    run_app();
+    ExitCode::SUCCESS
 }
 
 /// Implementación del flag `--projects-list` (G-A3): lista los
@@ -137,19 +161,6 @@ fn run_query_client(argv: &[String]) -> ExitCode {
     if let Err(e) = write_json_line(&mut write, &req) {
         eprintln!("cortex-brain: error al enviar: {e}");
         return ExitCode::from(1);
-    }
-
-    // G-A2: el server loggea pero NO responde. Leemos hasta EOF.
-    let mut received: Vec<QueryResponse> = Vec::new();
-    loop {
-        match read_json_line::<QueryResponse, _>(&mut read) {
-            Ok(Some(resp)) => received.push(resp),
-            Ok(None) => break,
-            Err(e) => {
-                eprintln!("cortex-brain: error al leer: {e}");
-                break;
-            }
-        }
     }
 
     // G-A6: los chunks llegan ANTES del done (streaming). Se imprimen

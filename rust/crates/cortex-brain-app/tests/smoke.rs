@@ -20,3 +20,9 @@ fn argv_con_query_resuelve_query_client() {
     ];
     assert_eq!(Role::from_argv(&argv), Role::QueryClient);
 }
+
+#[test]
+fn argv_con_app_resuelve_app() {
+    let argv: Vec<String> = vec!["cortex-brain".into(), "--app".into()];
+    assert_eq!(Role::from_argv(&argv), Role::App);
+}
