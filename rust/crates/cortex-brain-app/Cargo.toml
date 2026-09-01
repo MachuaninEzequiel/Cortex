@@ -24,10 +24,12 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # G-A3 (scan de proyectos): parsing del config.yaml y fingerprint del
-# cache. Ambas ya están en [workspace.dependencies]: cero paquetes
-# nuevos al lock.
+# cache. G-A4 (chat in-process): el motor como lib (backend por
+# proyecto, router determinista, protocolo TOOL). Todas ya resueltas
+# en el workspace: cero paquetes nuevos al lock.
 serde_yaml = { workspace = true }
 sha2 = { workspace = true }
+cortex-brain = { path = "../cortex-brain" }
 
 # G-A2: getuid() en Linux para el path fallback del socket. Sólo se
 # usa bajo cfg(target_os = "linux"); en macOS/Windows no se compila.

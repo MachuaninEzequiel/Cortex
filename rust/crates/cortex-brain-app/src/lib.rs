@@ -1,17 +1,22 @@
 //! cortex-brain-app — shell Tauri de Cortex Brain (Obra 20, G-A1+).
 //!
 //! Estado: scaffolding + IPC esqueleto (G-A2) + scan de proyectos
-//! (G-A3). La app abre una ventana Tauri con un "Hello, Cortex Brain"
-//! del lado de React (apps/brain-ui/).
+//! (G-A3) + chat in-process con el motor (G-A4). La app abre una
+//! ventana Tauri con un "Hello, Cortex Brain" del lado de React
+//! (apps/brain-ui/).
 //!
 //! Próximos gates:
-//! - G-A4: integración con `cortex_brain` (lib) para chat in-process.
-//! - G-A7: UI completa (sidebar con los proyectos de `projects.rs`).
+//! - G-A5: integración Liquid real (feature `llama` + GGUF).
+//! - G-A7: UI completa (sidebar con los proyectos de `projects.rs`,
+//!   chat con el engine de `chat.rs`).
 //!
 //! Spec: docs/transformacion/20-CORTEX-BRAIN-APP.md
 
 #![allow(unsafe_code)] // std::env::set_var en tests con HOME_LOCK (serialización de test).
 
+use tauri::Manager;
+
+pub mod chat;
 pub mod ipc;
 pub mod projects;
 
@@ -61,6 +66,64 @@ async fn refresh_projects() -> Vec<projects::ProjectEntry> {
     projects::refresh_projects()
 }
 
+/// Command Tauri: un turno de chat in-process con el motor (G-A4).
+/// Usa el SharedEngine de la app (mismo estado que el server IPC),
+/// resuelto via AppHandle: los commands async de Tauri exigen futures
+/// Send + 'static y `State<'_, T>` prestado no lo cumple (doc de
+/// Tauri 2: en async, resolver el estado adentro con `app.state`).
+/// G-A7 lo invoca desde la UI por proyecto.
+#[tauri::command]
+async fn chat_turn(
+    app: tauri::AppHandle,
+    project: String,
+    text: String,
+) -> Result<chat::ChatTurn, String> {
+    let engine = app.state::<chat::SharedEngine>();
+    engine.respond(&project, &text)
+}
+
+/// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
+/// responde `done`/`error`; después cierra (un request por conexión;
+/// el streaming multi-mensaje llega en G-A6). Con esto el cliente
+/// `--query` del binario funciona end-to-end: manda, lee hasta EOF,
+/// imprime.
+fn handle_connection(conn: ipc::IpcConnection, engine: &chat::BrainEngine) {
+    use std::io::BufReader;
+    let (raw_read, mut write) = match conn.into_split() {
+        Ok(parts) => parts,
+        Err(e) => {
+            eprintln!("ipc: split falló: {e}");
+            return;
+        }
+    };
+    let mut reader = BufReader::new(raw_read);
+    let req = match ipc::read_json_line::<ipc::QueryRequest, _>(&mut reader) {
+        Ok(Some(req)) => req,
+        Ok(None) => return,
+        Err(e) => {
+            eprintln!("ipc: request inválido: {e}");
+            return;
+        }
+    };
+    let response = match engine.respond(&req.project, &req.text) {
+        Ok(turn) => ipc::QueryResponse {
+            kind: "done".into(),
+            text: turn.text,
+            request_id: req.request_id.clone(),
+            tool_calls: (!turn.tool_calls.is_empty()).then_some(turn.tool_calls),
+        },
+        Err(e) => ipc::QueryResponse {
+            kind: "error".into(),
+            text: e,
+            request_id: req.request_id.clone(),
+            tool_calls: None,
+        },
+    };
+    if let Err(e) = ipc::write_json_line(&mut write, &response) {
+        eprintln!("ipc: no pude responder: {e}");
+    }
+}
+
 /// Construye la app Tauri.
 ///
 /// G-A2: al setup, intenta bindear el server IPC. Si ya hay una
@@ -73,9 +136,16 @@ async fn refresh_projects() -> Vec<projects::ProjectEntry> {
 ///
 /// G-A3: registra los commands `list_projects` / `refresh_projects`
 /// (sidebar de proyectos; el frontend los consume en G-A7).
+/// G-A4: registra `chat_turn` + el server IPC enruta las queries al
+/// engine de chat.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    use std::io::BufReader;
+    // Un engine compartido: el server IPC y el command `chat_turn`
+    // (estado Tauri) operan sobre el MISMO estado conversacional por
+    // proyecto. Los turnos están serializados por el lock interno del
+    // engine (chdir + i18n).
+    let engine: chat::SharedEngine = std::sync::Arc::new(chat::BrainEngine::new());
+    let engine_para_estado = std::sync::Arc::clone(&engine);
 
     match ipc::try_bind() {
         Ok(server) => {
@@ -85,27 +155,12 @@ pub fn run() {
                 .name("cortex-brain-ipc".into())
                 .spawn(move || {
                     while let Ok(conn) = server.accept() {
-                        let (raw_read, _write) = match conn.into_split() {
-                            Ok(parts) => parts,
-                            Err(e) => {
-                                eprintln!("ipc: split falló: {e}");
-                                continue;
-                            }
-                        };
-                        // Por cada conexión entrante, leemos queries
-                        // hasta EOF y las loggeamos. G-A4 las enruta al
-                        // motor y responde por el `_write`. G-A6 lo hace
-                        // en chunks streaming.
+                        let engine = std::sync::Arc::clone(&engine);
+                        // Cada conexión entrante se procesa en su propio
+                        // thread: un request, una respuesta, cierre. El
+                        // streaming real (chunks) llega en G-A6.
                         let _ = std::thread::spawn(move || {
-                            let mut reader = BufReader::new(raw_read);
-                            while let Ok(Some(req)) =
-                                ipc::read_json_line::<ipc::QueryRequest, _>(&mut reader)
-                            {
-                                eprintln!(
-                                    "ipc: query recibida: project={} text={:?} request_id={}",
-                                    req.project, req.text, req.request_id
-                                );
-                            }
+                            handle_connection(conn, &engine);
                         });
                     }
                 });
@@ -128,8 +183,15 @@ pub fn run() {
     }
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![list_projects, refresh_projects])
-        .setup(|_app| Ok(()))
+        .invoke_handler(tauri::generate_handler![
+            list_projects,
+            refresh_projects,
+            chat_turn
+        ])
+        .setup(move |app| {
+            app.manage(std::sync::Arc::clone(&engine_para_estado));
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error al iniciar Cortex Brain");
 }
@@ -164,5 +226,78 @@ mod tests {
             "/tmp".into(),
         ];
         assert_eq!(Role::from_argv(&argv), Role::App);
+    }
+
+    // ── Server e2e (G-A4): bind + request + respuesta del engine ─────
+
+    #[cfg(unix)]
+    #[test]
+    fn server_responde_query_e2e() {
+        use crate::ipc;
+        use std::io::BufReader;
+
+        // Comparte el lock con los tests de ipc: todos tocan
+        // XDG_RUNTIME_DIR (env de proceso).
+        let _env_lock = ipc::tests::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let tmp = std::env::temp_dir().join(format!("cortex-brain-e2e-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let xdg = tmp.join("runtime");
+        std::fs::create_dir_all(&xdg).unwrap();
+        unsafe {
+            std::env::set_var("XDG_RUNTIME_DIR", &xdg);
+        }
+
+        // Proyecto fixture: existe (para el chdir del engine) pero sin
+        // config.yaml (i18n cae al default). El engine le inyecta un
+        // ScriptedBackend: el e2e NO depende del CLI cortex.
+        let project = tmp.join("proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let engine = chat::BrainEngine::new();
+        engine.insert_backend(
+            &project.to_string_lossy(),
+            Box::new(cortex_brain::chat::ScriptedBackend::new(
+                "e2e",
+                ["eco desde el motor"],
+            )),
+        );
+
+        let server = ipc::try_bind().expect("bind");
+        let server_thread = std::thread::spawn(move || {
+            let conn = server.accept().unwrap();
+            handle_connection(conn, &engine);
+            // handle_connection responde y cierra (un request por
+            // conexión); al dropear el server acá se limpia el socket.
+        });
+
+        let client = ipc::try_connect().expect("connect");
+        let conn = client.into_connection();
+        let (read, mut write) = conn.into_split().unwrap();
+        let req = ipc::QueryRequest {
+            kind: "query".into(),
+            project: project.to_string_lossy().into_owned(),
+            text: "hola motor".into(),
+            request_id: "r-e2e-1".into(),
+        };
+        ipc::write_json_line(&mut write, &req).unwrap();
+        drop(write); // EOF del cliente: el server ya respondió igual
+
+        let mut br = BufReader::new(read);
+        let resp: ipc::QueryResponse = ipc::read_json_line(&mut br).unwrap().expect("respuesta");
+        assert_eq!(resp.kind, "done");
+        assert_eq!(resp.request_id, "r-e2e-1");
+        assert_eq!(resp.text.trim(), "eco desde el motor");
+        assert!(
+            resp.tool_calls.is_none(),
+            "script sin TOOL ⇒ sin tool_calls"
+        );
+
+        server_thread.join().unwrap();
+        unsafe {
+            std::env::remove_var("XDG_RUNTIME_DIR");
+        }
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

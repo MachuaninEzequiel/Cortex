@@ -28,14 +28,24 @@ pub struct QueryRequest {
     pub request_id: String,
 }
 
-/// Mensaje del server al cliente. Hoy es un solo mensaje `echo` por
-/// query. G-A6 introduce `chunk` + `done` + `error`.
+/// Mensaje del server al cliente.
+///
+/// G-A2: un mensaje `echo` por query (sólo plumbing). G-A4: el server
+/// responde UN mensaje por conexión:
+/// - `"done"`: `text` = texto a mostrar; `tool_calls` = tool calls
+///   detectados (None si no hubo, y no se serializa).
+/// - `"error"`: `text` = mensaje de error accionable.
+///
+/// G-A6 introduce `chunk` (streaming).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QueryResponse {
     #[serde(rename = "type")]
-    pub kind: String, // "echo" en G-A2; "chunk"/"done"/"error" en G-A6
+    pub kind: String, // "done" / "error" (G-A4); "chunk" llega en G-A6
     pub text: String,
     pub request_id: String,
+    /// Tool calls propuestos por el modelo (G-A4). None ⇒ no viaja.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<crate::chat::ToolCall>>,
 }
 
 /// Path default del socket. Cross-platform; en Windows retorna None
@@ -431,7 +441,7 @@ pub fn write_json_line<T: serde::Serialize, W: Write>(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::io::Cursor;
 
@@ -456,6 +466,34 @@ mod tests {
         let parsed: QueryRequest = read_json_line(&mut cursor).unwrap().unwrap();
         assert_eq!(parsed.text, "hola");
         assert_eq!(parsed.request_id, "r1");
+
+        // QueryResponse: tool_calls None no se serializa (contrato
+        // backward-compatible con clientes G-A2).
+        let resp = QueryResponse {
+            kind: "done".into(),
+            text: "respuesta".into(),
+            request_id: "r2".into(),
+            tool_calls: None,
+        };
+        let mut buf = Vec::new();
+        write_json_line(&mut buf, &resp).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(!s.contains("tool_calls"), "None no viaja: {s}");
+        let resp2 = QueryResponse {
+            kind: "done".into(),
+            text: "respuesta".into(),
+            request_id: "r3".into(),
+            tool_calls: Some(vec![crate::chat::ToolCall {
+                tool: "memory.search".into(),
+                args: "jwt".into(),
+            }]),
+        };
+        let mut buf = Vec::new();
+        write_json_line(&mut buf, &resp2).unwrap();
+        let mut cursor = Cursor::new(buf);
+        let parsed: QueryResponse = read_json_line(&mut cursor).unwrap().unwrap();
+        assert_eq!(parsed.tool_calls.as_ref().map(|t| t.len()), Some(1));
+        assert_eq!(parsed.tool_calls.as_ref().unwrap()[0].tool, "memory.search");
     }
 
     #[test]
@@ -498,7 +536,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         use std::sync::{Arc, Barrier};
 
-        let _home_lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _env_lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp = std::env::temp_dir().join(format!("cortex-brain-ipc-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
@@ -525,6 +563,7 @@ mod tests {
                 kind: "echo".into(),
                 text: req.text.clone(),
                 request_id: req.request_id.clone(),
+                tool_calls: None,
             };
             write_json_line(&mut write, &resp).unwrap();
         });
@@ -556,7 +595,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn connect_sin_server_retorna_no_server() {
-        let _home_lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _env_lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp =
             std::env::temp_dir().join(format!("cortex-brain-ipc-empty-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
@@ -583,7 +622,7 @@ mod tests {
     fn stale_socket_se_reemplaza() {
         // Si el path existe pero no hay nadie escuchando, el bind lo
         // borra y arranca limpio.
-        let _home_lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _env_lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp =
             std::env::temp_dir().join(format!("cortex-brain-ipc-stale-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
@@ -610,8 +649,9 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
-    // Lock para tests que tocan XDG_RUNTIME_DIR (no es thread-safe con
-    // tests paralelos que también setean env). Usamos `lock().unwrap_or_else(|e| e.into_inner())`
-    // para recuperarnos de PoisonError cuando un test paralelo hace panic.
-    static HOME_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    // Lock para tests que tocan XDG_RUNTIME_DIR / CORTEX_BIN (env de
+    // proceso, no thread-safe con tests paralelos que también lo
+    // setean). Los tests e2e del server (lib.rs) comparten ESTE lock
+    // vía `crate::ipc::tests::ENV_LOCK` para no pisarse el XDG.
+    pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 }

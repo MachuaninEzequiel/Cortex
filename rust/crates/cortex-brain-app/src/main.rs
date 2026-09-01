@@ -1,14 +1,13 @@
-//! Entrypoint del binario `cortex-brain` (G-A1 + G-A2 + G-A3).
+//! Entrypoint del binario `cortex-brain` (G-A1 a G-A4).
 //!
 //! Decide el rol según argv:
 //! - `--query <text> [--project <path>]`  ⇒ cliente IPC: conecta al
 //!   server, manda query, lee respuestas, imprime a stdout, sale.
+//!   Desde G-A4 el server responde de verdad (chat in-process con el
+//!   motor); los tool calls propuestos se listan como `> TOOL: …`.
 //! - `--projects-list`                     ⇒ lista proyectos Cortex
 //!   detectados desde el cache y sale (G-A3).
 //! - sin flag reconocido                    ⇒ GUI Tauri (default).
-//!
-//! G-A1 implementó el camino GUI. G-A2 el camino cliente. G-A3 el
-//! listado de proyectos.
 
 use std::process::ExitCode;
 
@@ -153,13 +152,24 @@ fn run_query_client(argv: &[String]) -> ExitCode {
 
     if received.is_empty() {
         eprintln!(
-            "cortex-brain: query enviada (server la loggeó, sin respuesta todavía —\n\
-             el server GUI corre pero G-A2 sólo recibe; la respuesta real llega en G-A4).\n\
+            "cortex-brain: query enviada pero el server no respondió nada.\n\
              query: {text:?}"
         );
     } else {
         for r in &received {
-            println!("{}", r.text);
+            if r.kind == "error" {
+                eprintln!("cortex-brain: error del server: {}", r.text);
+                continue;
+            }
+            print!("{}", r.text);
+            if let Some(tool_calls) = &r.tool_calls {
+                for tc in tool_calls {
+                    // Patrón del motor (doc 19 §3.3): el TOOL propuesto
+                    // se muestra como línea aparte. En G-A4 ya se ejecutó
+                    // si era read; safe-action queda propuesta.
+                    println!("> TOOL: {} {}", tc.tool, tc.args);
+                }
+            }
         }
     }
     ExitCode::SUCCESS

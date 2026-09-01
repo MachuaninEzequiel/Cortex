@@ -1,6 +1,6 @@
 # 21 — Cortex Brain App: estado al cierre de G-A3
 
-> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A3, listo para G-A4.
+> Estado: ASENTAMIENTO — toda la Obra 20 hasta G-A4, listo para G-A5.
 > Origen: decisión de realineamiento (doc 20) que reemplazó el
 > subcomando CLI `cortex brain *` del doc 19 por una app de escritorio
 > estilo Handy (Tauri + React).
@@ -49,7 +49,7 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 | G-A1 | Scaffolding Tauri: ventana abre con placeholder | ✅ **HECHO** (`053cbe2` + lock `8b5133c`) |
 | G-A2 | IPC esqueleto: server + cliente, JSON-lines | ✅ **HECHO** (`f3efa5d`) |
 | G-A3 | Scan recursivo de proyectos | ✅ **HECHO** (este commit) |
-| G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ⏳ |
+| G-A4 | Chat in-process por proyecto (motor `cortex_brain` lib) | ✅ **HECHO** (este commit) |
 | G-A5 | Integración Liquid real (feature `llama`) | ⏳ |
 | G-A6 | Streaming por IPC (chunks) | ⏳ |
 | G-A7 | UI completa (sidebar, chat, status bar, settings) | ⏳ |
@@ -63,7 +63,8 @@ G-A1 a G-A10, cada uno un commit, cada uno con suite verde.
 ## 3. Commits de la Obra 20 (sobre la rama)
 
 ```
-(este commit) app(tauri): scan recursivo de proyectos con cache (G-A3)
+(este commit) app(tauri): chat in-process con el motor cortex_brain (G-A4)
+5c00691 app(tauri): scan recursivo de proyectos con cache (G-A3)
 f3efa5d app(tauri): IPC esqueleto JSON-lines por Unix socket (G-A2)
 053cbe2 app(tauri): scaffold de Cortex Brain App con Tauri 2 + React + Vite
 8b5133c chore(lock): incorporar deps de Tauri 2 (sin código nuevo)
@@ -186,7 +187,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 
 ---
 
-## 6. Lo que la app YA hace (G-A1 + G-A2 + G-A3)
+## 6. Lo que la app YA hace (G-A1 a G-A4)
 
 1. Abre una ventana Tauri 1100×720 con "Hello, Cortex Brain" en el centro.
 2. Al setup, bindea un Unix socket en `~/.cache/cortex-brain.sock`
@@ -207,13 +208,24 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
    mtime + sha256 del config por entrada.
 8. La GUI registra los commands `list_projects` / `refresh_projects`
    (G-A3); la sidebar React los consume en G-A7.
+9. Chat in-process con el motor `cortex_brain` por proyecto (G-A4):
+   backend por proyecto (determinista default; el estado del chat
+   vive en RAM), read-tools auto-ejecutadas, safe-action denegada y
+   reportada, i18n por proyecto, CWD del proyecto durante el turno.
+10. El server IPC responde de verdad (G-A4): un request por conexión,
+    envelope `done` (text + tool_calls) / `error`. `--query` del
+    binario funciona end-to-end contra la GUI.
+11. Command Tauri `chat_turn` (G-A4): la UI hace turnos de chat por
+    proyecto con el MISMO engine compartido que el server IPC
+    (`SharedEngine`, registrado via `app.manage`).
 
 ---
 
 ## 7. Lo que la app TODAVÍA NO hace
 
-- ❌ No tiene un motor de chat real (G-A4): el server sólo loggea.
-- ❌ No carga el modelo Liquid (G-A5): el LLM no se usa todavía.
+- ❌ No carga el modelo Liquid (G-A5): el LLM no se usa todavía; el
+  chat corre en modo determinista (router 1:1, igual que `--no-model`
+  del motor).
 - ❌ No streamea tokens al cliente (G-A6).
 - ❌ UI mínima: sólo el placeholder, sin sidebar, sin chat real,
   sin status bar con `MarkRam` (G-A7).
@@ -226,7 +238,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 
 ---
 
-## 8. Estructura del repo al cierre de G-A3
+## 8. Estructura del repo al cierre de G-A4
 
 ```
 /home/chucho/Cortex/
@@ -261,6 +273,7 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
 │           │   ├── lib.rs                  (Role enum, run() con server bind + commands)
 │           │   ├── ipc.rs                  ← G-A2
 │           │   ├── projects.rs             ← G-A3 (scan recursivo + cache)
+│           │   ├── chat.rs                 ← G-A4 (engine in-process)
 │           │   └── main.rs                 (dispatch por argv)
 │           ├── tests/smoke.rs              (2 tests de argv)
 │           └── .gitignore                  (gen/)
@@ -385,21 +398,107 @@ El lock del workspace quedó actualizado por las deps de Tauri (tauri
   llega en G-A7, pero `cargo tauri dev` ya registra los commands sin
   error.
 
-## 12. Próximo gate (G-A4): chat in-process con el motor
+## 12. G-A4: chat in-process con el motor (cerrado)
 
-Del doc 20 §7: cuando se selecciona un proyecto en la UI, el chat usa
-el motor `cortex_brain` (lib) con el path del proyecto como contexto,
-TODO in-process (sin IPC para esto). Sin modelo GGUF usa
-`ScriptedBackend`/`DeterministicBackend` para CI; el modelo real entra
-en G-A5 (feature `llama`).
+### Lo que se creó
 
-Criterio de pase: test de integración end-to-end con backend scripted
-(sin modelo); el server IPC del G-A2 pasa a responder queries
-ruteándolas al motor.
+- `rust/crates/cortex-brain-app/Cargo.toml`: dependencia
+  `cortex-brain = { path = "../cortex-brain" }` (cero paquetes nuevos
+  al lock; sólo la edge del crate). Sin feature `llama` (G-A5).
+- `src/chat.rs` (nuevo módulo):
+  - `BrainEngine`: backend por proyecto
+    (`Mutex<HashMap<path, Box<dyn LlmBackend + Send>>>`); default
+    `DeterministicBackend` (router 1:1, igual que `--no-model` del
+    motor). `insert_backend()` público para tests y para G-A5.
+  - `SharedEngine = Arc<BrainEngine>`: un único engine compartido
+    entre el server IPC y el estado Tauri (`app.manage`), para que el
+    estado conversacional por proyecto sea el mismo desde ambos
+    caminos.
+  - `respond(project, text) -> ChatTurn { text, tool_calls, backend }`:
+    espeja el loop del binario del motor (`generate` →
+    `procesar_respuesta_modelo`), con i18n por proyecto
+    (`CORTEX_LANG > .cortex/config.yaml > config.yaml > es`).
+  - **chdir al proyecto bajo el lock del engine**: las tools del
+    motor shell-out al CLI `cortex` heredando CWD; los turnos están
+    serializados por el lock, así que el CWD de proceso es seguro.
+    `ChdirGuard` restaura al salir. `project` vacío = sin chdir.
+  - **Decisiones del dueño (G-A4):** las `TOOL:` de tier `Read` que
+    propone el modelo se AUTO-EJECUTAN sin confirmación; las
+    `SafeAction` (webgraph.serve) se DENIEGAN (no hay modal de
+    aprobación hasta G-A7+) y se reportan en `tool_calls` para que la
+    UI las ofrezca con [Ejecutar]. El backend determinista mantiene
+    su comportamiento actual (sus 5 read-tools corren directo, como
+    en el binario del motor).
+  - `/quit` vía chat no mata la app: devuelve la despedida.
+- `src/lib.rs`:
+  - `handle_connection(conn, engine)`: el server IPC pasó de "sólo
+    loggear" a responder de verdad: UN request por conexión →
+    envelope `done` (text + tool_calls) o `error` → cierra. Con esto
+    el cliente `--query` del binario funciona end-to-end (manda, lee
+    hasta EOF, imprime). El streaming multi-mensaje llega en G-A6.
+  - Command `chat_turn(app, project, text)`: resuelve el
+    `SharedEngine` via `app.state()`. Los commands async de Tauri
+    exigen futures `Send + 'static`; `State<'_, T>` prestado no lo
+    cumple, así que el estado se resuelve adentro con AppHandle
+    (patrón Tauri 2).
+- `src/ipc.rs`: `QueryResponse` gana el campo opcional
+  `tool_calls` (serde `skip_serializing_if` — None no viaja,
+  backward-compatible con clientes G-A2). El lock de tests pasó a
+  `pub(crate) mod tests` + `ENV_LOCK` para que el test e2e del server
+  comparta la serialización de XDG_RUNTIME_DIR.
+- `src/main.rs`: el cliente `--query` imprime la respuesta (sin
+  newline extra) y lista los tool calls como `> TOOL: <name> <args>`;
+  los `error` del server van a stderr con exit 0 (el protocolo
+  respondió; el contenido del error es del turn).
+
+### Verificación
+
+- `cargo test -p cortex-brain-app` **26/26** (24 lib — 4 role + 6 ipc
+  + 1 server e2e + 6 projects + 7 chat — + 2 smoke)
+- `cargo clippy -p cortex-brain-app --all-targets -- -D warnings` rc 0
+- `cargo fmt -p cortex-brain-app --check` rc 0
+- `cargo build -p cortex-brain-app` rc 0
+- `cargo test -p cortex-brain` (baseline del motor con el WIP del
+  dueño en chat.rs: banner Compact→Mark) verde — 70/70.
+
+### Hallazgos
+
+- **Commands async de Tauri 2:** el macro exige futures
+  `Send + 'static` para el dispatch (`FutureTag::future`); un
+  `State<'_, T>` prestado rompe el bound y `ChatTurn` sin `Serialize`
+  ni siquiera resuelve el tag (`IpcResponse` = blanket de
+  `Serialize`). Patrón que quedó: estado via `app.manage(Arc<…>)` +
+  `app.state::<T>()` dentro del command async.
+- **El e2e del server reusa `ipc::tests::ENV_LOCK`** (antes
+  `HOME_LOCK`, ahora `pub(crate)`): los tests que tocan
+  XDG_RUNTIME_DIR deben serializarse entre sí o se pisan el env.
+
+### Smoke que NO pude verificar yo
+
+- **`--query` contra la GUI real** (requiere DISPLAY): abrir
+  `cortex-brain` y en otra terminal
+  `cortex-brain --query "hola" --project <path>`; la respuesta sale
+  por stdout (determinista, sin modelo).
+- **El command `chat_turn` desde el frontend** (G-A7 lo cablea); el
+  registro del command ya compila y el e2e del server cubre el mismo
+  engine.
+
+## 13. Próximo gate (G-A5): integración Liquid real
+
+Del doc 20 §7: con `--features llama` + GGUF instalado (la
+convención de rutas vive en `cortex_brain::paths`), el chat usa
+`LlamaChatBackend` con load/unload. En el engine (`chat.rs`), el
+lug natural es la fábrica de backends por proyecto: si hay GGUF y el
+feature está activo, `insert_backend`/`or_insert_with` monta
+`LlamaChatBackend` (con el system prompt del binario del motor).
+
+Criterio de pase: smoke con modelo cargado — elegir proyecto, hacer
+pregunta, respuesta real. Load/unload por idle timeout llega con la
+UI (G-A7/G-A10, mismo `MarkRam` del Companion).
 
 ---
 
-## 13. Referencias rápidas
+## 14. Referencias rápidas
 
 - **Doc 20** (propuesta completa): `docs/transformacion/20-CORTEX-BRAIN-APP.md`
 - **Doc 19** (motor LFM, base técnica): `docs/transformacion/19-LIQUID-LOAD-UNLOAD-Y-MEJORAS.md`
@@ -414,6 +513,8 @@ ruteándolas al motor.
   - `lib::run()` arranca Tauri + bindea server + registra commands
   - `projects::scan()` / `projects::list_projects()` /
     `projects::refresh_projects()` / `projects::cache_path()` (G-A3)
+  - `chat::BrainEngine` / `chat::SharedEngine` / `chat::respond()`
+    (G-A4: chat in-process por proyecto)
   - `Role::{App, QueryClient, ProjectsList}` (los tres cableados)
 - **Frontend:** `apps/brain-ui/src/App.tsx` (placeholder, G-A7 lo reemplaza)
 - **Binario:** `target/release/cortex-brain` (7 MB en release, smoke `cargo tauri build` rc 0)
