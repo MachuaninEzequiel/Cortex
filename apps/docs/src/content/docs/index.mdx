@@ -1,0 +1,61 @@
+---
+title: Cortex — Memoria Cognitiva Híbrida para Agentes de IA
+description: Documentación oficial de Cortex, el motor de memoria cognitiva híbrida nativo en Rust para agentes de IA.
+template: splash
+hero:
+  tagline: Memoria episódica, semántica y procedural ultra-rápida, 100% nativa en Rust, con inferencia ONNX local y protocolo MCP integrado.
+  image:
+    file: ../../assets/cortex-logo.svg
+  actions:
+    - text: Inicio Rápido
+      link: /getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: Referencia CLI
+      link: /cli/overview/
+      icon: document
+      variant: secondary
+    - text: Catálogo MCP (32 Tools)
+      link: /mcp/overview/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Características Principales
+
+<CardGrid stagger>
+  <Card title="100% Rust Nativo" icon="rocket">
+    Arquitectura ultra-optimizada en 21 crates de Rust con cero passthrough a Python. Latencias de búsqueda en milisegundos y binarios autocontenidos.
+  </Card>
+  <Card title="Memoria Tripartita" icon="puzzle">
+    Combina memoria **episódica** (eventos y sesiones JSONL), **semántica** (notas y grafos Markdown) y **procedural** (reglas y ActionEngine).
+  </Card>
+  <Card title="Búsqueda Híbrida con RRF" icon="magnifier">
+    Fusión de búsqueda léxica BM25 nativa y similitud coseno vectorial mediante *Reciprocal Rank Fusion*, garantizando los resultados más relevantes.
+  </Card>
+  <Card title="Inferencia ONNX Local" icon="laptop">
+    Generación de embeddings en tu propia máquina mediante `ort` y modelos ONNX locales (`all-MiniLM-L6-v2`). Cero llamadas a APIs externas para indexar.
+  </Card>
+  <Card title="Servidor MCP Integrado" icon="setting">
+    32 herramientas de Model Context Protocol anunciadas de forma nativa para Claude Code, Cursor, Pi IDE, Windsurf, Codex y Antigravity.
+  </Card>
+  <Card title="Gobernanza Enterprise" icon="approve-check-circle">
+    Colas de revisión de conocimiento, pipeline de promoción, audit trail y políticas de retención organizacionales configurables.
+  </Card>
+</CardGrid>
+
+---
+
+## Estructura de la Documentación
+
+Explore las diferentes áreas de Cortex según su caso de uso:
+
+* **[Comenzando](/getting-started/welcome/):** Descubra qué es Cortex, cómo instalarlo y cómo realizar su primera sesión de trabajo asistida por IA.
+* **[Conceptos y Arquitectura](/concepts/overview/):** Comprenda el ciclo tripartito, el algoritmo RRF y cómo opera el vault local.
+* **[Referencia CLI](/cli/overview/):** Todos los comandos nativos de `cortex-cli` (`session`, `search`, `remember`, `hu`, `autopilot`, `tui`, etc.).
+* **[Protocolo MCP](/mcp/overview/):** Documentación exhaustiva de las 32 tools expuestas a los LLMs.
+* **[Gobernanza Enterprise](/enterprise/governance/):** Políticas de equipo, control de calidad del conocimiento y configuración de organizaciones.
+* **[Integraciones IDE](/ide/claude/):** Conexión con Claude, Cursor, Pi, VSCode y otros entornos de desarrollo.
+* **[CortexBrain App](/cortexbrain/overview/):** La aplicación de escritorio visual construida sobre Tauri v2.

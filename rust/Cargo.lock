@@ -829,7 +829,10 @@ dependencies = [
 name = "cortex-brain-app"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "cortex-brain",
+ "cortex-enterprise",
+ "cortex-workspace",
  "libc",
  "serde",
  "serde_json",
@@ -838,6 +841,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-global-shortcut",
+ "tempfile",
 ]
 
 [[package]]

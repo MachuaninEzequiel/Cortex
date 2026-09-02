@@ -19,6 +19,7 @@ use tauri::Manager;
 pub mod chat;
 pub mod graph;
 pub mod ipc;
+pub mod org_memory;
 pub mod projects;
 
 /// Roles del binario unificado `cortex-brain` (decisión del dueño,
@@ -406,6 +407,42 @@ async fn open_webgraph_browser(project: String) -> Result<String, String> {
     Ok("http://127.0.0.1:8765".to_string())
 }
 
+/// Command Tauri: obtiene el estado de la memoria organizacional y los candidatos.
+#[tauri::command]
+async fn get_org_memory(project: String) -> Result<org_memory::OrgMemoryPayload, String> {
+    eprintln!("[cortex-brain] Consultando memoria organizacional para '{project}'...");
+    let payload = org_memory::get_project_org_memory(std::path::Path::new(&project));
+    eprintln!(
+        "[cortex-brain] Memoria organizacional: {} promovidos, {} candidatos",
+        payload.total_promoted, payload.total_candidates
+    );
+    Ok(payload)
+}
+
+/// Command Tauri: aprueba y promulga un documento al Vault Organizacional.
+#[tauri::command]
+async fn approve_org_candidate(
+    project: String,
+    path: String,
+    reviewer: String,
+    reason: String,
+) -> Result<String, String> {
+    eprintln!("[cortex-brain] Promulgando '{path}' con revisor '{reviewer}'...");
+    org_memory::approve_org_knowledge(std::path::Path::new(&project), &path, &reviewer, &reason)
+}
+
+/// Command Tauri: rechaza un candidato a conocimiento organizacional.
+#[tauri::command]
+async fn reject_org_candidate(
+    project: String,
+    path: String,
+    reviewer: String,
+    reason: String,
+) -> Result<String, String> {
+    eprintln!("[cortex-brain] Rechazando '{path}' con revisor '{reviewer}'...");
+    org_memory::reject_org_knowledge(std::path::Path::new(&project), &path, &reviewer, &reason)
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -597,7 +634,10 @@ pub fn run() {
             get_session_status,
             run_doctor_inspect,
             open_webgraph_browser,
-            log_to_terminal
+            log_to_terminal,
+            get_org_memory,
+            approve_org_candidate,
+            reject_org_candidate
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {

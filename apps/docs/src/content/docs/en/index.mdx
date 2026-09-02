@@ -1,0 +1,47 @@
+---
+title: Cortex — Hybrid Cognitive Memory for AI Agents
+description: Official documentation for Cortex, the 100% native Rust hybrid cognitive memory engine for AI coding agents.
+template: splash
+hero:
+  tagline: Blazing fast episodic, semantic, and procedural memory in 100% native Rust, with local ONNX inference and integrated Model Context Protocol (MCP).
+  image:
+    file: ../../../assets/cortex-logo.svg
+  actions:
+    - text: Quickstart
+      link: /en/getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: CLI Reference
+      link: /es/cli/overview/
+      icon: document
+      variant: secondary
+    - text: MCP Catalog (32 Tools)
+      link: /es/mcp/overview/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Key Features
+
+<CardGrid stagger>
+  <Card title="100% Native Rust" icon="rocket">
+    Ultra-optimized architecture across 21 modular Rust crates with zero runtime Python passthrough. Sub-millisecond search latencies and self-contained binaries.
+  </Card>
+  <Card title="Tripartite Memory Model" icon="puzzle">
+    Seamlessly combines **episodic** (JSONL events & sessions), **semantic** (Markdown vault notes & graph), and **procedural** (rules & ActionEngine) memory.
+  </Card>
+  <Card title="Hybrid Search with RRF" icon="magnifier">
+    Fusion of native BM25 lexical search and ONNX cosine vector similarity via *Reciprocal Rank Fusion*, guaranteeing the most relevant retrieval.
+  </Card>
+  <Card title="Local ONNX Inference" icon="laptop">
+    Generates embeddings directly on your machine using `ort` and local ONNX models (`all-MiniLM-L6-v2`). Zero external API calls for indexing.
+  </Card>
+  <Card title="Built-in MCP Server" icon="setting">
+    32 Model Context Protocol tools natively announced for Claude Code, Cursor, Pi IDE, Windsurf, Codex, and Antigravity.
+  </Card>
+  <Card title="Enterprise Governance" icon="approve-check-circle">
+    Knowledge review queues, promotion pipelines, audit trails, and configurable team retention policies.
+  </Card>
+</CardGrid>

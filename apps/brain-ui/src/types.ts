@@ -114,3 +114,26 @@ export interface DoctorReportPayload {
   is_healthy: boolean;
   checks: DoctorCheck[];
 }
+
+// ── Memoria Organizacional & Enterprise Vault ────────────────────────────────
+
+export interface OrgKnowledgeItem {
+  origin_id: string;
+  rel_path: string;
+  doc_type: string;
+  title: string;
+  status: string;
+  priority: string;
+  issues: string[];
+  reviewer?: string | null;
+  reason?: string | null;
+  updated_at: string;
+  is_promoted: boolean;
+}
+
+export interface OrgMemoryPayload {
+  enterprise_vault_path: string;
+  total_promoted: number;
+  total_candidates: number;
+  items: OrgKnowledgeItem[];
+}

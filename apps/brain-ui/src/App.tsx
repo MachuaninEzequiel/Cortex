@@ -14,6 +14,7 @@ import {
   DoctorReportPayload,
   PinnedContextNode,
   NodeHighlightEvent,
+  OrgMemoryPayload,
 } from "./types";
 import { tauriInvoke, tauriListen } from "./hooks/useTauri";
 import { TopBar } from "./components/TopBar";
@@ -25,6 +26,7 @@ import { ToolApprovalModal } from "./components/ToolApprovalModal";
 import { WebGraphModal } from "./components/WebGraphModal";
 import { GovernanceBar } from "./components/GovernanceBar";
 import { DoctorModal } from "./components/DoctorModal";
+import { OrgMemoryModal } from "./components/OrgMemoryModal";
 import { getT } from "./i18n";
 
 export function App() {
@@ -66,6 +68,11 @@ export function App() {
   const [doctorReport, setDoctorReport] = useState<DoctorReportPayload | null>(null);
   const [isDoctorLoading, setIsDoctorLoading] = useState<boolean>(false);
   const [sessionStatus, setSessionStatus] = useState<SessionStatusPayload | null>(null);
+
+  // Memoria Organizacional
+  const [isOrgMemoryOpen, setIsOrgMemoryOpen] = useState<boolean>(false);
+  const [orgMemoryData, setOrgMemoryData] = useState<OrgMemoryPayload | null>(null);
+  const [isOrgMemoryLoading, setIsOrgMemoryLoading] = useState<boolean>(false);
 
   // Proyecto activo seleccionado
   const selectedProject = useMemo(() => {
@@ -216,6 +223,13 @@ export function App() {
       // Fallback
       setDoctorReport(null);
     }
+
+    try {
+      const org = await tauriInvoke<OrgMemoryPayload>("get_org_memory", { project: projPath });
+      setOrgMemoryData(org);
+    } catch {
+      setOrgMemoryData(null);
+    }
   }, []);
 
   // Carga del historial persistido y gobernanza al cambiar de proyecto (Pilar 1 & Línea B)
@@ -313,6 +327,61 @@ export function App() {
       });
     } finally {
       setIsDoctorLoading(false);
+    }
+  };
+
+  // Abrir modal de Memoria Organizacional
+  const handleOpenOrgMemory = async () => {
+    setIsOrgMemoryOpen(true);
+    if (!selectedProjectPath) return;
+    setIsOrgMemoryLoading(true);
+    try {
+      const data = await tauriInvoke<OrgMemoryPayload>("get_org_memory", {
+        project: selectedProjectPath,
+      });
+      setOrgMemoryData(data);
+    } catch (e) {
+      console.error("Error al consultar memoria organizacional:", e);
+    } finally {
+      setIsOrgMemoryLoading(false);
+    }
+  };
+
+  // Aprobar y promulgar candidato a la organización
+  const handleApproveOrgCandidate = async (relPath: string, reviewer: string, reason: string) => {
+    if (!selectedProjectPath) return;
+    try {
+      await tauriInvoke("approve_org_candidate", {
+        project: selectedProjectPath,
+        path: relPath,
+        reviewer,
+        reason,
+      });
+      const data = await tauriInvoke<OrgMemoryPayload>("get_org_memory", {
+        project: selectedProjectPath,
+      });
+      setOrgMemoryData(data);
+    } catch (e) {
+      console.error("Error al aprobar candidato:", e);
+    }
+  };
+
+  // Rechazar candidato
+  const handleRejectOrgCandidate = async (relPath: string, reviewer: string, reason: string) => {
+    if (!selectedProjectPath) return;
+    try {
+      await tauriInvoke("reject_org_candidate", {
+        project: selectedProjectPath,
+        path: relPath,
+        reviewer,
+        reason,
+      });
+      const data = await tauriInvoke<OrgMemoryPayload>("get_org_memory", {
+        project: selectedProjectPath,
+      });
+      setOrgMemoryData(data);
+    } catch (e) {
+      console.error("Error al rechazar candidato:", e);
     }
   };
 
@@ -591,6 +660,8 @@ export function App() {
               doctorReport={doctorReport}
               onOpenWebGraph={handleOpenWebGraph}
               onOpenDoctor={handleOpenDoctor}
+              onOpenOrgMemory={handleOpenOrgMemory}
+              orgCandidatesCount={orgMemoryData?.total_candidates || 0}
               onSaveCheckpoint={handleSaveCheckpoint}
               pinnedNodes={pinnedNodes}
               onRemovePinnedNode={handleRemovePinnedNode}
@@ -640,6 +711,17 @@ export function App() {
         isLoading={isDoctorLoading}
         onRunInspect={() => selectedProjectPath && handleOpenDoctor()}
         onExecuteFix={(toolName) => handleSendMessage(`cortex ${toolName}`)}
+        lang={lang}
+      />
+
+      <OrgMemoryModal
+        isOpen={isOrgMemoryOpen}
+        onClose={() => setIsOrgMemoryOpen(false)}
+        memoryData={orgMemoryData}
+        isLoading={isOrgMemoryLoading}
+        onApprove={handleApproveOrgCandidate}
+        onReject={handleRejectOrgCandidate}
+        onPinNode={handlePinNode}
         lang={lang}
       />
 
