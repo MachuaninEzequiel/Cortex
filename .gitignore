@@ -1,12 +1,23 @@
+# Node & Web / Astro
+node_modules/
+.astro/
+dist/
+build/
+.pnpm-debug.log*
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock.tmp
+
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
-dist/
-build/
 .eggs/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
 
 # Virtual envs
 .venv/
@@ -29,6 +40,7 @@ vault/sessions/
 # Config with secrets
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
