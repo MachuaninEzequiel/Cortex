@@ -276,8 +276,8 @@ async fn save_chat_message(
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let json = serde_json::to_string(&message)
-        .map_err(|e| format!("error al serializar mensaje: {e}"))?;
+    let json =
+        serde_json::to_string(&message).map_err(|e| format!("error al serializar mensaje: {e}"))?;
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -395,7 +395,12 @@ async fn open_webgraph_browser(project: String) -> Result<String, String> {
     let project_path = std::path::PathBuf::from(&project);
     std::thread::spawn(move || {
         let _ = std::process::Command::new("cortex")
-            .args(["webgraph", "serve", "--project-root", &project_path.to_string_lossy()])
+            .args([
+                "webgraph",
+                "serve",
+                "--project-root",
+                &project_path.to_string_lossy(),
+            ])
             .status();
     });
 
@@ -441,6 +446,17 @@ async fn reject_org_candidate(
 ) -> Result<String, String> {
     eprintln!("[cortex-brain] Rechazando '{path}' con revisor '{reviewer}'...");
     org_memory::reject_org_knowledge(std::path::Path::new(&project), &path, &reviewer, &reason)
+}
+
+/// Command Tauri: ejecuta una tool aprobada por el usuario (catálogo + nativo).
+#[tauri::command]
+async fn execute_cortex_tool(
+    project: String,
+    tool: String,
+    args: String,
+) -> Result<String, String> {
+    eprintln!("[cortex-brain] Ejecutando tool '{tool}' con args '{args}' en '{project}'...");
+    chat::execute_approved_tool(std::path::Path::new(&project), &tool, &args)
 }
 
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
@@ -586,7 +602,10 @@ pub fn run() {
     }
 
     let default_shortcut = tauri_plugin_global_shortcut::Shortcut::new(
-        Some(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::SHIFT),
+        Some(
+            tauri_plugin_global_shortcut::Modifiers::CONTROL
+                | tauri_plugin_global_shortcut::Modifiers::SHIFT,
+        ),
         tauri_plugin_global_shortcut::Code::KeyB,
     );
 
@@ -637,7 +656,8 @@ pub fn run() {
             log_to_terminal,
             get_org_memory,
             approve_org_candidate,
-            reject_org_candidate
+            reject_org_candidate,
+            execute_cortex_tool
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
@@ -906,7 +926,8 @@ mod tests {
     #[test]
     fn chat_history_roundtrip_salva_carga_y_limpia() {
         tauri::async_runtime::block_on(async {
-            let tmp = std::env::temp_dir().join(format!("cortex-brain-hist-test-{}", std::process::id()));
+            let tmp =
+                std::env::temp_dir().join(format!("cortex-brain-hist-test-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&tmp);
             std::fs::create_dir_all(&tmp).unwrap();
 
@@ -925,7 +946,9 @@ mod tests {
                 tool_calls: None,
                 backend: None,
             };
-            save_chat_message(proj_str.clone(), user_msg.clone()).await.unwrap();
+            save_chat_message(proj_str.clone(), user_msg.clone())
+                .await
+                .unwrap();
 
             // 3. Guardar mensaje del brain con tool_call
             let brain_msg = chat::ChatMessagePayload {
@@ -939,7 +962,9 @@ mod tests {
                 }]),
                 backend: Some("LFM2.5".into()),
             };
-            save_chat_message(proj_str.clone(), brain_msg.clone()).await.unwrap();
+            save_chat_message(proj_str.clone(), brain_msg.clone())
+                .await
+                .unwrap();
 
             // 4. Cargar y verificar
             let loaded = load_chat_history(proj_str.clone()).await;
@@ -950,12 +975,19 @@ mod tests {
             // 5. Verificar que tolera líneas corruptas
             let hist_file = history_file_path(&proj_str);
             use std::io::Write;
-            let mut f = std::fs::OpenOptions::new().append(true).open(&hist_file).unwrap();
+            let mut f = std::fs::OpenOptions::new()
+                .append(true)
+                .open(&hist_file)
+                .unwrap();
             writeln!(f, "{{ corrupt json line").unwrap();
             drop(f);
 
             let loaded_after_corrupt = load_chat_history(proj_str.clone()).await;
-            assert_eq!(loaded_after_corrupt.len(), 2, "debe ignorar la línea corrupta");
+            assert_eq!(
+                loaded_after_corrupt.len(),
+                2,
+                "debe ignorar la línea corrupta"
+            );
 
             let _ = std::fs::remove_dir_all(&tmp);
         });
@@ -964,7 +996,10 @@ mod tests {
     #[test]
     fn catalogo_multimodelo_contiene_modelos_curados() {
         let models = chat::list_available_models();
-        assert!(models.len() >= 4, "debe contener al menos los 4 modelos curados");
+        assert!(
+            models.len() >= 4,
+            "debe contener al menos los 4 modelos curados"
+        );
         let filenames: Vec<&str> = models.iter().map(|m| m.filename.as_str()).collect();
         assert!(filenames.contains(&"LFM2.5-1.2B-Instruct-Q4_K_M.gguf"));
         assert!(filenames.contains(&"qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"));
@@ -977,6 +1012,9 @@ mod tests {
         let engine = chat::BrainEngine::new();
         assert_eq!(engine.active_model(), "LFM2.5-1.2B-Instruct-Q4_K_M.gguf");
         engine.set_active_model("qwen2.5-coder-1.5b-instruct-q4_k_m.gguf");
-        assert_eq!(engine.active_model(), "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf");
+        assert_eq!(
+            engine.active_model(),
+            "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+        );
     }
 }

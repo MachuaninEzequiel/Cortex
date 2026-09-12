@@ -4,9 +4,9 @@
 //! visual (nodos y aristas), leer el estado de gobernanza (.cortex/sessions/)
 //! y diagnosticar la salud del repositorio sin dependencias externas.
 
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 
 /// Nodo del grafo de conocimiento del proyecto.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -178,7 +178,11 @@ pub fn extract_project_graph(project_root: &Path) -> ProjectGraphPayload {
                     let p = entry.path();
                     if p.is_file() && p.extension().is_some_and(|ext| ext == "md") {
                         let fname = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                        if fname.starts_with("ADR") || fname.starts_with("adr") || fname.contains("SESSION") || fname.contains("PLAN") {
+                        if fname.starts_with("ADR")
+                            || fname.starts_with("adr")
+                            || fname.contains("SESSION")
+                            || fname.contains("PLAN")
+                        {
                             let id = format!("{adr_dir_name}/{fname}");
                             nodes.push(GraphNode {
                                 id: id.clone(),
@@ -320,8 +324,14 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
     }
 
     if let Some(session_path) = newest_file {
-        let fname = session_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        let session_id = fname.trim_end_matches(".json").trim_end_matches(".jsonl").to_string();
+        let fname = session_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        let session_id = fname
+            .trim_end_matches(".json")
+            .trim_end_matches(".jsonl")
+            .to_string();
 
         let mut checkpoints_count = 0;
         let mut last_checkpoint = None;
@@ -355,6 +365,46 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
     }
 }
 
+/// Persiste un checkpoint en `.cortex/sessions/` (crea la sesión si no hay).
+pub fn record_session_checkpoint(project_root: &Path, note: &str) -> Result<String, String> {
+    let sessions_dir = project_root.join(".cortex").join("sessions");
+    fs::create_dir_all(&sessions_dir)
+        .map_err(|e| format!("No pude crear .cortex/sessions: {e}"))?;
+
+    let mut newest_file: Option<PathBuf> = None;
+    let mut newest_time = std::time::UNIX_EPOCH;
+    if let Ok(entries) = fs::read_dir(&sessions_dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() {
+                if let Ok(meta) = p.metadata() {
+                    if let Ok(modified) = meta.modified() {
+                        if modified > newest_time {
+                            newest_time = modified;
+                            newest_file = Some(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let session_path = newest_file.unwrap_or_else(|| sessions_dir.join("session.jsonl"));
+    let note = note.trim();
+    let line = serde_json::json!({
+        "event": "checkpoint",
+        "note": note,
+        "at": chrono::Utc::now().to_rfc3339(),
+    });
+    use std::io::Write;
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&session_path)
+        .map_err(|e| format!("No pude escribir checkpoint: {e}"))?;
+    writeln!(f, "{line}").map_err(|e| format!("No pude persistir checkpoint: {e}"))?;
+    Ok(format!("Checkpoint registrado: {note}"))
+}
+
 /// Ejecuta diagnóstico de salud de Cortex sobre el proyecto.
 pub fn inspect_doctor_health(project_root: &Path) -> DoctorReportPayload {
     let mut checks = Vec::new();
@@ -372,7 +422,8 @@ pub fn inspect_doctor_health(project_root: &Path) -> DoctorReportPayload {
         checks.push(DoctorCheck {
             name: "Cortex Layout (.cortex)".to_string(),
             status: "fail".to_string(),
-            message: "Falta el directorio .cortex. El proyecto no está inicializado con Cortex".to_string(),
+            message: "Falta el directorio .cortex. El proyecto no está inicializado con Cortex"
+                .to_string(),
             auto_fix_tool: Some("setup init".to_string()),
         });
     }
@@ -458,7 +509,10 @@ mod tests {
 
         let report = inspect_doctor_health(&temp);
         assert!(report.is_healthy);
-        assert!(report.checks.iter().any(|c| c.name.contains("Cortex Layout") && c.status == "ok"));
+        assert!(report
+            .checks
+            .iter()
+            .any(|c| c.name.contains("Cortex Layout") && c.status == "ok"));
 
         let _ = fs::remove_dir_all(&temp);
     }

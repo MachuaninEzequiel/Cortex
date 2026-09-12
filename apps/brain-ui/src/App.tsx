@@ -540,15 +540,17 @@ export function App() {
     setPendingToolCall(tool);
   };
 
-  const handleConfirmTool = () => {
+  const handleConfirmTool = async () => {
     if (!pendingToolCall || !selectedProjectPath) return;
     const executedTool = pendingToolCall;
     setPendingToolCall(null);
 
+    // Mensaje inicial de ejecución en curso
+    const runningMsgId = `tool-exec-${Date.now()}`;
     const toolExecMsg: ChatMessage = {
-      id: `tool-exec-${Date.now()}`,
+      id: runningMsgId,
       sender: "brain",
-      text: `⚡ Acción aprobada y ejecutada: \`cortex ${executedTool.tool} ${executedTool.args}\`.`,
+      text: `⚡ Ejecutando: \`cortex ${executedTool.tool} ${executedTool.args}\`...`,
       timestamp: Date.now(),
     };
 
@@ -560,10 +562,54 @@ export function App() {
       ],
     }));
 
-    tauriInvoke("save_chat_message", {
-      project: selectedProjectPath,
-      message: toolExecMsg,
-    }).catch(console.error);
+    try {
+      const output = await tauriInvoke<string>("execute_cortex_tool", {
+        project: selectedProjectPath,
+        tool: executedTool.tool,
+        args: executedTool.args || "",
+      });
+
+      const finishedMsg: ChatMessage = {
+        id: runningMsgId,
+        sender: "brain",
+        text: `⚡ **Resultado de \`cortex ${executedTool.tool} ${executedTool.args}\`:**\n\n\`\`\`\n${output}\n\`\`\``,
+        timestamp: Date.now(),
+      };
+
+      setMessagesByProject((prev) => ({
+        ...prev,
+        [selectedProjectPath]: (prev[selectedProjectPath] || []).map((m) =>
+          m.id === runningMsgId ? finishedMsg : m
+        ),
+      }));
+
+      tauriInvoke("save_chat_message", {
+        project: selectedProjectPath,
+        message: finishedMsg,
+      }).catch(console.error);
+
+      // Recargar gobernanza tras ejecutar la acción
+      loadGovernanceData(selectedProjectPath);
+    } catch (err: any) {
+      const errorMsg: ChatMessage = {
+        id: runningMsgId,
+        sender: "brain",
+        text: `❌ **Error al ejecutar \`cortex ${executedTool.tool}\`:**\n\n\`\`\`\n${err}\n\`\`\``,
+        timestamp: Date.now(),
+      };
+
+      setMessagesByProject((prev) => ({
+        ...prev,
+        [selectedProjectPath]: (prev[selectedProjectPath] || []).map((m) =>
+          m.id === runningMsgId ? errorMsg : m
+        ),
+      }));
+
+      tauriInvoke("save_chat_message", {
+        project: selectedProjectPath,
+        message: errorMsg,
+      }).catch(console.error);
+    }
   };
 
   // Limpiar historial conversacional persistido y memoria del motor
@@ -654,20 +700,18 @@ export function App() {
 
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Governance & Health Top Bar (Línea B) */}
-          {selectedProject && (
-            <GovernanceBar
-              sessionStatus={sessionStatus}
-              doctorReport={doctorReport}
-              onOpenWebGraph={handleOpenWebGraph}
-              onOpenDoctor={handleOpenDoctor}
-              onOpenOrgMemory={handleOpenOrgMemory}
-              orgCandidatesCount={orgMemoryData?.total_candidates || 0}
-              onSaveCheckpoint={handleSaveCheckpoint}
-              pinnedNodes={pinnedNodes}
-              onRemovePinnedNode={handleRemovePinnedNode}
-              lang={lang}
-            />
-          )}
+          <GovernanceBar
+            sessionStatus={sessionStatus}
+            doctorReport={doctorReport}
+            onOpenWebGraph={handleOpenWebGraph}
+            onOpenDoctor={handleOpenDoctor}
+            onOpenOrgMemory={handleOpenOrgMemory}
+            orgCandidatesCount={orgMemoryData?.total_candidates || 0}
+            onSaveCheckpoint={handleSaveCheckpoint}
+            pinnedNodes={pinnedNodes}
+            onRemovePinnedNode={handleRemovePinnedNode}
+            lang={lang}
+          />
 
           <Chat
             project={selectedProject}
