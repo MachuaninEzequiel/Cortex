@@ -5,7 +5,7 @@
   "identifier": "com.cortex.brain",
   "build": {
     "frontendDist": "../../../apps/brain-ui/dist",
-    "beforeBuildCommand": "npm --prefix ../../apps/brain-ui run build || npm --prefix ../apps/brain-ui run build || npm --prefix apps/brain-ui run build"
+    "beforeBuildCommand": "cargo build --release -p cortex-cli --manifest-path ../../Cargo.toml && (npm --prefix ../../apps/brain-ui run build || npm --prefix ../apps/brain-ui run build || npm --prefix apps/brain-ui run build)"
   },
   "app": {
     "windows": [
@@ -27,6 +27,7 @@
   },
   "bundle": {
     "active": true,
+    "externalBin": ["binaries/cortex-cli"],
     "targets": ["deb", "nsis", "dmg", "app"],
     "icon": [
       "icons/32x32.png",

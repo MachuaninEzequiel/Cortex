@@ -297,27 +297,7 @@ fn replace_or_append_cortex_toml_block(existing: &str, cortex_toml: &str) -> Str
 /// (`cortex-cli`) en cada dir de `PATH` como archivo ejecutable. Devuelve
 /// la ruta absoluta o el nombre pelado.
 fn resolve_cortex_command() -> String {
-    if let Some(path_env) = std::env::var_os("PATH") {
-        for dir in std::env::split_paths(&path_env) {
-            let candidate = dir.join("cortex-cli");
-            if candidate.is_file() {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Ok(md) = std::fs::metadata(&candidate) {
-                        if md.permissions().mode() & 0o111 != 0 {
-                            return candidate.to_string_lossy().into_owned();
-                        }
-                    }
-                }
-                #[cfg(not(unix))]
-                {
-                    return candidate.to_string_lossy().into_owned();
-                }
-            }
-        }
-    }
-    "cortex-cli".to_string()
+    super::cortex_cli_command()
 }
 
 /// `_build_cortex_toml_block`: bloque TOML del MCP server Cortex.

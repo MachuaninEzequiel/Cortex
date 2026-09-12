@@ -79,6 +79,10 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0.0" --locked
 
+      - name: Build cortex-cli sidecar
+        working-directory: rust
+        run: cargo build --release -p cortex-cli --target ${{ matrix.target }}
+
       - name: Build Cortex Brain Bundle
         working-directory: rust/crates/cortex-brain-app
         run: cargo tauri build ${{ matrix.args }} --target ${{ matrix.target }}

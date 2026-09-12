@@ -33,7 +33,9 @@ sha2 = { workspace = true }
 cortex-brain = { path = "../cortex-brain" }
 cortex-enterprise = { path = "../cortex-enterprise" }
 cortex-workspace = { path = "../cortex-workspace" }
+cortex-setup = { path = "../cortex-setup" }
 chrono = { workspace = true }
+tauri-plugin-dialog = "2"
 
 # G-A2: getuid() en Linux para el path fallback del socket. Sólo se
 # usa bajo cfg(target_os = "linux"); en macOS/Windows no se compila.

@@ -135,7 +135,7 @@ impl IdeAdapter for WindsurfAdapter {
         }
 
         let cortex_config = json!({
-            "command": "cortex-cli",
+            "command": super::cortex_cli_command(),
             "args": ["mcp-server", "--stdio", "--project-root",
                      ctx.project_root.to_string_lossy()],
             "env": {"PYTHONWARNINGS": "ignore"},

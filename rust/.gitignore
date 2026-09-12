@@ -1,2 +1,3 @@
 /target
 *.so
+crates/cortex-brain-app/binaries/cortex-cli*

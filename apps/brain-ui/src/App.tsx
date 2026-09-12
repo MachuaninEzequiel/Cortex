@@ -27,6 +27,7 @@ import { WebGraphModal } from "./components/WebGraphModal";
 import { GovernanceBar } from "./components/GovernanceBar";
 import { DoctorModal } from "./components/DoctorModal";
 import { OrgMemoryModal } from "./components/OrgMemoryModal";
+import { SetupPanel } from "./components/SetupPanel";
 import { getT } from "./i18n";
 
 export function App() {
@@ -70,6 +71,9 @@ export function App() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatusPayload | null>(null);
 
   // Memoria Organizacional
+  const [setupOpen, setSetupOpen] = useState<boolean>(false);
+  const [setupPath, setSetupPath] = useState<string | null>(null);
+
   const [isOrgMemoryOpen, setIsOrgMemoryOpen] = useState<boolean>(false);
   const [orgMemoryData, setOrgMemoryData] = useState<OrgMemoryPayload | null>(null);
   const [isOrgMemoryLoading, setIsOrgMemoryLoading] = useState<boolean>(false);
@@ -93,6 +97,8 @@ export function App() {
       if (list.length > 0) {
         setLastScanTimestamp(list[0].last_scan);
         setSelectedProjectPath((prev) => prev || list[0].path);
+      } else {
+        setSetupOpen(true);
       }
     } catch (e) {
       console.error("Error al listar proyectos:", e);
@@ -691,37 +697,72 @@ export function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           projects={projects}
-          selectedProject={selectedProjectPath}
-          onSelectProject={setSelectedProjectPath}
+          selectedProject={setupOpen ? null : selectedProjectPath}
+          onSelectProject={(path) => {
+            setSetupOpen(false);
+            setSelectedProjectPath(path);
+          }}
           onRefresh={handleRefreshProjects}
           isRefreshing={isRefreshing}
+          setupActive={setupOpen}
+          onOpenSetup={() => {
+            setSetupOpen(true);
+            setSetupPath(selectedProjectPath);
+          }}
           lang={lang}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Governance & Health Top Bar (Línea B) */}
-          <GovernanceBar
-            sessionStatus={sessionStatus}
-            doctorReport={doctorReport}
-            onOpenWebGraph={handleOpenWebGraph}
-            onOpenDoctor={handleOpenDoctor}
-            onOpenOrgMemory={handleOpenOrgMemory}
-            orgCandidatesCount={orgMemoryData?.total_candidates || 0}
-            onSaveCheckpoint={handleSaveCheckpoint}
-            pinnedNodes={pinnedNodes}
-            onRemovePinnedNode={handleRemovePinnedNode}
-            lang={lang}
-          />
+          {!setupOpen && (
+            <GovernanceBar
+              sessionStatus={sessionStatus}
+              doctorReport={doctorReport}
+              onOpenWebGraph={handleOpenWebGraph}
+              onOpenDoctor={handleOpenDoctor}
+              onOpenOrgMemory={handleOpenOrgMemory}
+              orgCandidatesCount={orgMemoryData?.total_candidates || 0}
+              onSaveCheckpoint={handleSaveCheckpoint}
+              pinnedNodes={pinnedNodes}
+              onRemovePinnedNode={handleRemovePinnedNode}
+              lang={lang}
+            />
+          )}
 
-          <Chat
-            project={selectedProject}
-            messages={currentMessages}
-            onSendMessage={handleSendMessage}
-            onExecuteTool={handleExecuteTool}
-            onClearHistory={handleClearHistory}
-            isGenerating={isGenerating}
-            lang={lang}
-          />
+          {setupOpen ? (
+            <SetupPanel
+              folder={setupPath}
+              onPickFolder={async () => {
+                try {
+                  const picked = await tauriInvoke<string | null>("pick_project_folder");
+                  if (picked) setSetupPath(picked);
+                } catch (e) {
+                  console.error("pick_project_folder", e);
+                }
+              }}
+              onOpenAsProject={async (path) => {
+                try {
+                  const fresh = await tauriInvoke<ProjectEntry[]>("open_as_project", { path });
+                  setProjects(fresh);
+                } catch (e) {
+                  console.error("open_as_project", e);
+                }
+                setSelectedProjectPath(path);
+                setSetupOpen(false);
+              }}
+              lang={lang}
+            />
+          ) : (
+            <Chat
+              project={selectedProject}
+              messages={currentMessages}
+              onSendMessage={handleSendMessage}
+              onExecuteTool={handleExecuteTool}
+              onClearHistory={handleClearHistory}
+              isGenerating={isGenerating}
+              lang={lang}
+            />
+          )}
         </div>
       </div>
 

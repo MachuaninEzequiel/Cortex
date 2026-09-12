@@ -137,3 +137,42 @@ export interface OrgMemoryPayload {
   total_candidates: number;
   items: OrgKnowledgeItem[];
 }
+
+export type SetupAction =
+  | "agent"
+  | "full"
+  | "pipeline"
+  | "enterprise"
+  | "composed"
+  | "ide"
+  | "ide_remove";
+
+export interface PlannedFile {
+  path: string;
+  op: "create" | "update" | string;
+  note: string;
+}
+
+export interface ApplyResult {
+  ok: boolean;
+  files: string[];
+  log: string[];
+}
+
+export interface IdeStatus {
+  name: string;
+  display_name: string;
+  tier: string;
+  uninstall_supported: boolean;
+  injected: boolean;
+}
+
+export interface SetupTarget {
+  path: string;
+  exists: boolean;
+  has_cortex: boolean;
+  has_org_yaml: boolean;
+  doctor_healthy: boolean | null;
+  doctor_checks: number;
+  ides: IdeStatus[];
+}

@@ -8,6 +8,8 @@ interface SidebarProps {
   onSelectProject: (path: string) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  setupActive?: boolean;
+  onOpenSetup?: () => void;
   lang: "es" | "en";
 }
 
@@ -17,6 +19,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectProject,
   onRefresh,
   isRefreshing,
+  setupActive = false,
+  onOpenSetup,
   lang,
 }) => {
   const t = getT(lang);
@@ -137,6 +141,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })
         )}
       </div>
+
+      {onOpenSetup && (
+        <div className="border-t border-mocha-surface p-2">
+          <button
+            onClick={onOpenSetup}
+            className={`flex w-full flex-col rounded-md px-3 py-2 text-left font-mono transition ${
+              setupActive
+                ? "bg-mocha-surface text-mocha-text ring-1 ring-mocha-mauve/40"
+                : "text-mocha-subtext0 hover:bg-mocha-surface/40 hover:text-mocha-text"
+            }`}
+          >
+            <span className="text-xs font-semibold">{t.sidebar.installCortex}</span>
+            <span className="text-[10px] text-mocha-surface2">{t.sidebar.installHint}</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

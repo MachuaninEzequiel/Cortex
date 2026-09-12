@@ -19,6 +19,7 @@ use tauri::Manager;
 pub mod chat;
 pub mod graph;
 pub mod ipc;
+pub mod onboard;
 pub mod org_memory;
 pub mod projects;
 
@@ -459,6 +460,65 @@ async fn execute_cortex_tool(
     chat::execute_approved_tool(std::path::Path::new(&project), &tool, &args)
 }
 
+#[tauri::command]
+async fn pick_project_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked =
+        tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_folder())
+            .await
+            .map_err(|e| e.to_string())?;
+    Ok(picked.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+async fn inspect_setup_target(path: String) -> Result<onboard::SetupTarget, String> {
+    onboard::inspect_setup_target(std::path::Path::new(&path))
+}
+
+#[tauri::command]
+async fn preview_setup(
+    path: String,
+    action: onboard::SetupAction,
+    ide: Option<String>,
+    preset: Option<String>,
+) -> Result<Vec<onboard::PlannedFile>, String> {
+    onboard::preview_setup(
+        std::path::Path::new(&path),
+        action,
+        ide.as_deref(),
+        preset.as_deref(),
+    )
+}
+
+#[tauri::command]
+async fn apply_setup(
+    path: String,
+    action: onboard::SetupAction,
+    ide: Option<String>,
+    preset: Option<String>,
+) -> Result<onboard::ApplyResult, String> {
+    onboard::apply_setup(
+        std::path::Path::new(&path),
+        action,
+        ide.as_deref(),
+        preset.as_deref(),
+    )
+}
+
+#[tauri::command]
+async fn list_ides() -> Vec<onboard::IdeStatus> {
+    onboard::list_ides()
+}
+
+#[tauri::command]
+async fn open_as_project(path: String) -> Result<Vec<projects::ProjectEntry>, String> {
+    let p = std::path::Path::new(&path);
+    if !p.is_dir() {
+        return Err(format!("No existe la carpeta {path}"));
+    }
+    Ok(projects::refresh_projects())
+}
+
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
 /// responde. Con G-A6 el backend streaming emite piezas: cada una sale
 /// por el socket como `chunk` EN VIVO, después va el `done`/`error`
@@ -610,6 +670,7 @@ pub fn run() {
     );
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_shortcut(default_shortcut)
@@ -657,7 +718,13 @@ pub fn run() {
             get_org_memory,
             approve_org_candidate,
             reject_org_candidate,
-            execute_cortex_tool
+            execute_cortex_tool,
+            pick_project_folder,
+            inspect_setup_target,
+            preview_setup,
+            apply_setup,
+            list_ides,
+            open_as_project
         ])
         .setup(move |app| {
             if let Ok(mut g) = holder_para_setup.lock() {
