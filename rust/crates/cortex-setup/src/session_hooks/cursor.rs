@@ -72,12 +72,19 @@ impl CursorGitHookAdapter {
 
     /// `_ensure_executable`: chmod |0o111; OSError ignorado (Windows/RO).
     fn ensure_executable(&self, path: &Path) {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(meta) = path.metadata() {
-            let mut perms = meta.permissions();
-            let mode = perms.mode();
-            perms.set_mode(mode | 0o111);
-            let _ = std::fs::set_permissions(path, perms);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(meta) = path.metadata() {
+                let mut perms = meta.permissions();
+                let mode = perms.mode();
+                perms.set_mode(mode | 0o111);
+                let _ = std::fs::set_permissions(path, perms);
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = path;
         }
     }
 }
