@@ -1,12 +1,16 @@
 <div align="center">
   <br />
   <a href="https://github.com/MachuaninEzequiel/Cortex">
-    <img src="assets/logo.png" alt="Cortex" width="320" />
+    <img src="assets/logo.png" alt="Cortex" width="380" />
   </a>
+  <br />
 
-  <h1>Cortex</h1>
+  <h1>CORTEX</h1>
 
-  <p><strong>El harness organizacional de memoria corporativa.</strong></p>
+  <p>
+    <strong>El harness organizacional de memoria corporativa.</strong><br />
+    El sistema nervioso de la empresa cuando el trabajo lo hacen agentes.
+  </p>
 
   <p>
     <a href="README.md">English</a>
@@ -15,11 +19,27 @@
     ·
     <a href="docs/GUIA-MIGRACION-RUST.md">Guía de coexistencia Python / Rust</a>
   </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Rust-nativo-orange?logo=rust&style=flat-square" alt="Rust" />
+    <img src="https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&style=flat-square" alt="Tauri 2" />
+    <img src="https://img.shields.io/badge/LLM-Liquid_LFM2.5-purple?style=flat-square" alt="Liquid LFM" />
+    <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
+    <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
+    <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
+  </p>
+
+  <br />
+  
 </div>
 
 ---
 
+<div align="center">
+
 ## Qué es
+
+</div>
 
 Cortex es el **harness organizacional de memoria corporativa**: el sistema nervioso de la empresa cuando el trabajo lo hacen agentes.
 
@@ -27,20 +47,32 @@ Cada IDE, cada modelo y cada sesión beben de la misma memoria institucional. Sp
 
 La unidad de trabajo es una **sesión**: se abre desde una spec, registra checkpoints y solo se cierra cuando la verificación pasa. «Listo» significa comprobado, no declarado. Todo corre **en tu máquina**.
 
+---
+
+<div align="center">
+
 ## Por qué usarlo
+
+</div>
 
 Los agentes son potentes y amnésicos. Cada conversación arranca de cero, las decisiones se pierden entre herramientas y casi nunca queda rastro verificable.
 
 | Problema | Qué aporta Cortex |
-| --- | --- |
-| Amnesia entre sesiones | Memoria híbrida (episódica + semántica) sobre el vault del proyecto. |
-| Trabajo sin disciplina | Sesiones con checkpoints, quality gates y cierre con evidencia. |
-| Contexto distinto en cada IDE | Un solo vault y un solo MCP por proyecto, compartido por todos los agentes. |
-| Código que sale de la máquina | Inferencia y búsqueda locales. La experiencia central no exige API keys ni telemetría. |
+| :--- | :--- |
+| **Amnesia entre sesiones** | Memoria híbrida (episódica + semántica) sobre el vault del proyecto. |
+| **Trabajo sin disciplina** | Sesiones con checkpoints, quality gates y cierre con evidencia. |
+| **Contexto distinto en cada IDE** | Un solo vault y un solo MCP por proyecto, compartido por todos los agentes. |
+| **Código que sale de la máquina** | Inferencia y búsqueda locales. Sin API keys ni telemetría en la experiencia central. |
 
 Cortex **solo se activa en los proyectos donde lo instalaste**. Un repositorio sin Setup no expone tools ni servidor MCP.
 
+---
+
+<div align="center">
+
 ## Cómo está compuesto
+
+</div>
 
 Cuatro órganos, un cuerpo:
 
@@ -56,7 +88,7 @@ El `cortex` de la terminal (pip / pipx) sigue siendo Python hasta que migres el 
 Tres memorias, como un cerebro que no se rinde al olvido. Una cuarta, cuando la organización exige doctrina.
 
 | Memoria | Pregunta que responde | Dónde vive |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | **Episódica** | ¿Qué ocurrió, cuándo, en qué sesión? | Eventos y embeddings locales |
 | **Semántica** | ¿Qué es verdad en este sistema? | Vault: ADRs, specs, runbooks, glosario |
 | **Procedural** | ¿Qué hay que hacer ahora? | Action Engine, `next`, autopilot |
@@ -79,13 +111,16 @@ El conocimiento no es una lista. Es un grafo: módulos, specs, ADRs, archivos, a
 
 Liquid no alucina la topología: la **pregunta**. Un nodo se fija al chat; Doctor y Memoria Org cuelgan del mismo mapa. Lo que la memoria recuerda, el grafo lo muestra; lo que el grafo muestra, el modelo lo puede citar.
 
-<div align="center">
-  <img src="assets/cortex-brain.png" alt="Cortex Brain" width="90%" />
-</div>
+<img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
 
 ---
 
+
+<div align="center">
+
 ## Instalación: Cortex Brain
+
+</div>
 
 Lo primero que se instala es la aplicación. Desde ahí se inicializa un proyecto, se conecta el IDE y se usa Cortex **sin clonar este repositorio y sin `pip` ni `cargo`**.
 
@@ -94,7 +129,7 @@ Lo primero que se instala es la aplicación. Desde ahí se inicializa un proyect
 [github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6)
 
 | Sistema | Archivo |
-| --- | --- |
+| :--- | :--- |
 | Linux | `Cortex.Brain_0.2.6_amd64.deb` |
 | Windows | `Cortex.Brain_0.2.6_x64-setup.exe` |
 | macOS (Apple Silicon) | `Cortex.Brain_0.2.6_aarch64.dmg` |
@@ -125,7 +160,11 @@ Refrescar solo lista repos **dentro del perfil de usuario** que ya tengan uno de
 
 ---
 
+<div align="center">
+
 ## Quienes ya usan Cortex en Python
+
+</div>
 
 Antes que nada, hacé un backup por las dudas (`cp -r .cortex .cortex.backup` o una copia del repo). No debería romper el proyecto — en las pruebas no lo hizo — pero conviene.
 
@@ -147,10 +186,18 @@ Comprobación: en `.mcp.json` el campo `command` debe ser `cortex-cli` o la ruta
 
 ---
 
+<div align="center">
+
 ## Compilar desde el código
+
+</div>
 
 Quienes desarrollan Cortex, no quienes solo lo usan, pueden seguir la [guía de coexistencia y compilación](docs/GUIA-MIGRACION-RUST.md).
 
-## Licencia
+---
 
-MIT. Véase `LICENSE`.
+<div align="center">
+
+**MIT License** · Véase `LICENSE`
+
+</div>

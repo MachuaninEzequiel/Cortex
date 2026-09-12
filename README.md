@@ -1,12 +1,16 @@
 <div align="center">
   <br />
   <a href="https://github.com/MachuaninEzequiel/Cortex">
-    <img src="assets/logo.png" alt="Cortex" width="320" />
+    <img src="assets/logo.png" alt="Cortex" width="380" />
   </a>
+  <br />
 
-  <h1>Cortex</h1>
+  <h1>CORTEX</h1>
 
-  <p><strong>The organizational harness for corporate memory.</strong></p>
+  <p>
+    <strong>The organizational harness for corporate memory.</strong><br />
+    The nervous system of the company when the work is done by agents.
+  </p>
 
   <p>
     <a href="README.md">English</a>
@@ -15,32 +19,60 @@
     ·
     <a href="docs/GUIA-MIGRACION-RUST.md">Python / Rust coexistence guide</a>
   </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Rust-native-orange?logo=rust&style=flat-square" alt="Rust" />
+    <img src="https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&style=flat-square" alt="Tauri 2" />
+    <img src="https://img.shields.io/badge/LLM-Liquid_LFM2.5-purple?style=flat-square" alt="Liquid LFM" />
+    <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
+    <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
+    <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
+  </p>
+
+  <br />
+  <img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
 </div>
 
 ---
 
+<div align="center">
+
 ## What it is
+
+</div>
 
 Cortex is the **organizational harness for corporate memory**: the nervous system of the company when the work is done by agents.
 
-Every IDE, every model, and every session drinks from the same institutional memory. Specs, decisions, evidence, and context do not live in a chat that evaporates — they live in the repository, governed, auditable, reusable. This is not a chatbot. It is the operational-intelligence layer that turns loose agents into one organism: one truth, one close ritual, one memory.
+Every IDE, every model, and every session drinks from the same institutional memory. Specs, decisions, evidence, and context do not live in a chat that evaporates — they live in the repository, governed, auditable, reusable. This is the operational-intelligence layer that turns loose agents into one organism: one truth, one close ritual, one memory.
 
 The unit of work is a **session**: it opens from a spec, records checkpoints, and closes only when verification passes. “Done” means proven, not claimed. Everything runs **on your machine**.
 
+---
+
+<div align="center">
+
 ## Why use it
+
+</div>
 
 Agents are powerful and amnesiac. Each conversation starts from zero, decisions scatter across tools, and almost nothing is left as verifiable record.
 
 | Problem | What Cortex provides |
-| --- | --- |
-| Amnesia between sessions | Hybrid memory (episodic + semantic) over the project vault. |
-| Undisciplined work | Sessions with checkpoints, quality gates, and evidence-based close. |
-| A different context in every IDE | One vault and one MCP per project, shared by every agent. |
-| Code leaving the machine | Local inference and search. The core experience needs no API keys and no telemetry. |
+| :--- | :--- |
+| **Amnesia between sessions** | Hybrid memory (episodic + semantic) over the project vault. |
+| **Undisciplined work** | Sessions with checkpoints, quality gates, and evidence-based close. |
+| **A different context in every IDE** | One vault and one MCP per project, shared by every agent. |
+| **Code leaving the machine** | Local inference and search. No API keys, no telemetry in the core experience. |
 
 Cortex **only activates in projects where you installed it**. A folder without Setup does not expose tools or an MCP server.
 
+---
+
+<div align="center">
+
 ## How it is composed
+
+</div>
 
 Four organs, one body:
 
@@ -56,7 +88,7 @@ The `cortex` command in the terminal (pip / pipx) remains Python until you migra
 Three memories, like a brain that refuses amnesia. A fourth, when the organization demands doctrine.
 
 | Memory | Question it answers | Where it lives |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | **Episodic** | What happened, when, in which session? | Events and local embeddings |
 | **Semantic** | What is true in this system? | Vault: ADRs, specs, runbooks, glossary |
 | **Procedural** | What should we do now? | Action Engine, `next`, autopilot |
@@ -79,13 +111,13 @@ Knowledge is not a list. It is a graph: modules, specs, ADRs, files, dependency 
 
 Liquid does not hallucinate topology: it **asks**. A node pins into chat; Doctor and Org Memory hang off the same map. What memory remembers, the graph shows; what the graph shows, the model can cite.
 
-<div align="center">
-  <img src="assets/cortex-brain.png" alt="Cortex Brain" width="90%" />
-</div>
-
 ---
 
+<div align="center">
+
 ## Install Cortex Brain
+
+</div>
 
 Install the app first. From there you can initialize a project, connect an IDE, and use Cortex **without cloning this repository and without `pip` or `cargo`**.
 
@@ -94,7 +126,7 @@ Install the app first. From there you can initialize a project, connect an IDE, 
 [github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6)
 
 | System | File |
-| --- | --- |
+| :--- | :--- |
 | Linux | `Cortex.Brain_0.2.6_amd64.deb` |
 | Windows | `Cortex.Brain_0.2.6_x64-setup.exe` |
 | macOS (Apple Silicon) | `Cortex.Brain_0.2.6_aarch64.dmg` |
@@ -125,7 +157,11 @@ Refresh only lists repos **inside the user profile** that already have one of th
 
 ---
 
+<div align="center">
+
 ## If you already use Cortex with Python
+
+</div>
 
 Take a backup first (`cp -r .cortex .cortex.backup` or a copy of the repo). It should not break the project — it has not in testing — but do it anyway.
 
@@ -147,10 +183,18 @@ Check: in `.mcp.json`, `command` must be `cortex-cli` or an absolute path to tha
 
 ---
 
+<div align="center">
+
 ## Building from source
+
+</div>
 
 For people who develop Cortex, not people who only use it, see the [coexistence and build guide](docs/GUIA-MIGRACION-RUST.md).
 
-## License
+---
 
-MIT. See `LICENSE`.
+<div align="center">
+
+**MIT License** · See `LICENSE`
+
+</div>
