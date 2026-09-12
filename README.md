@@ -1,7 +1,7 @@
 <div align="center">
   <br />
   <a href="https://github.com/MachuaninEzequiel/Cortex">
-    <img src="assets/logo.png" alt="Cortex" width="380" />
+    <img src="assets/cortex-prime.png" alt="Cortex" width="380" />
   </a>
   <br />
 
@@ -30,7 +30,7 @@
   </p>
 
   <br />
-  <img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
+  
 </div>
 
 ---
@@ -110,6 +110,8 @@ The IDE agent and Liquid drink from the **same** index. There is no one truth fo
 Knowledge is not a list. It is a graph: modules, specs, ADRs, files, dependency edges. WebGraph makes it **visible, orbital, queryable**.
 
 Liquid does not hallucinate topology: it **asks**. A node pins into chat; Doctor and Org Memory hang off the same map. What memory remembers, the graph shows; what the graph shows, the model can cite.
+
+<img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
 
 ---
 
