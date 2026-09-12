@@ -654,7 +654,8 @@ pub fn run() {
             eprintln!("cortex-brain: otra instancia ya está corriendo.");
         }
         Err(ipc::BindError::NotSupported) => {
-            eprintln!("cortex-brain: IPC no soportado en este OS (G-A2: sólo Unix)");
+            // Windows: el IPC (named pipe) es G-A2.1. La GUI arranca igual;
+            // no es un error para el usuario y no debe abrir una consola.
         }
         Err(e) => {
             eprintln!("cortex-brain: error al bindear IPC: {e}");

@@ -1,4 +1,8 @@
 //! Entrypoint del binario `cortex-brain` (G-A1 a G-A4).
+
+// En release de Windows la GUI no debe abrir una consola extra. Los flags
+// `--query` / `--projects-list` se usan desde una terminal ya abierta.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //!
 //! Decide el rol según argv:
 //! - `--query <text> [--project <path>]`  ⇒ cliente IPC: conecta al
