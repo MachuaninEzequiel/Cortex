@@ -72,9 +72,10 @@ jobs:
             libxdo-dev
 
       - name: Install Frontend Dependencies & Build UI
+        working-directory: apps/brain-ui
         run: |
-          npm --prefix apps/brain-ui install
-          npm --prefix apps/brain-ui run build
+          npm install
+          npm run build
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0.0" --locked
