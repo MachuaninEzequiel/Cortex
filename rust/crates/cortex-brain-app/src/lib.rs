@@ -463,16 +463,32 @@ async fn execute_cortex_tool(
 #[tauri::command]
 async fn pick_project_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let picked =
-        tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_folder())
-            .await
-            .map_err(|e| e.to_string())?;
-    Ok(picked.map(|p| p.to_string()))
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    app.dialog()
+        .file()
+        .set_title("Carpeta del proyecto Cortex")
+        .pick_folder(move |folder| {
+            let _ = tx.send(folder);
+        });
+    let picked = tauri::async_runtime::spawn_blocking(move || rx.recv())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    match picked {
+        None => Ok(None),
+        Some(fp) => {
+            let path = fp
+                .into_path()
+                .map_err(|e| format!("No pude resolver la carpeta elegida: {e}"))?;
+            Ok(Some(path.to_string_lossy().into_owned()))
+        }
+    }
 }
 
 #[tauri::command]
 async fn inspect_setup_target(path: String) -> Result<onboard::SetupTarget, String> {
-    onboard::inspect_setup_target(std::path::Path::new(&path))
+    let path = onboard::normalize_picked_path(&path)?;
+    onboard::inspect_setup_target(&path)
 }
 
 #[tauri::command]
@@ -482,12 +498,8 @@ async fn preview_setup(
     ide: Option<String>,
     preset: Option<String>,
 ) -> Result<Vec<onboard::PlannedFile>, String> {
-    onboard::preview_setup(
-        std::path::Path::new(&path),
-        action,
-        ide.as_deref(),
-        preset.as_deref(),
-    )
+    let path = onboard::normalize_picked_path(&path)?;
+    onboard::preview_setup(&path, action, ide.as_deref(), preset.as_deref())
 }
 
 #[tauri::command]
@@ -497,12 +509,8 @@ async fn apply_setup(
     ide: Option<String>,
     preset: Option<String>,
 ) -> Result<onboard::ApplyResult, String> {
-    onboard::apply_setup(
-        std::path::Path::new(&path),
-        action,
-        ide.as_deref(),
-        preset.as_deref(),
-    )
+    let path = onboard::normalize_picked_path(&path)?;
+    onboard::apply_setup(&path, action, ide.as_deref(), preset.as_deref())
 }
 
 #[tauri::command]

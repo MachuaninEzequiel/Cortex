@@ -738,6 +738,9 @@ export function App() {
                   if (picked) setSetupPath(picked);
                 } catch (e) {
                   console.error("pick_project_folder", e);
+                  window.alert(
+                    `No pude abrir el selector de carpeta:\n${e}`
+                  );
                 }
               }}
               onOpenAsProject={async (path) => {

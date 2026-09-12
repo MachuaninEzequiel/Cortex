@@ -136,10 +136,14 @@ fn ide_tier(name: &str) -> &'static str {
     }
 }
 
-fn list_ides_for(root: &Path) -> Vec<IdeStatus> {
-    let home = std::env::var_os("HOME")
+fn user_home() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
-        .unwrap_or_else(|| root.to_path_buf());
+}
+
+fn list_ides_for(root: &Path) -> Vec<IdeStatus> {
+    let home = user_home().unwrap_or_else(|| root.to_path_buf());
     let ctx = IdeCtx {
         project_root: root,
         home: &home,
@@ -237,9 +241,7 @@ fn plan_files(root: &Path, action: SetupAction, ide: Option<&str>) -> Vec<Planne
             if let Some(name) = ide {
                 let adapters = all_adapters();
                 if let Some(adapter) = adapters.iter().find(|a| a.name() == name) {
-                    let home = std::env::var_os("HOME")
-                        .map(PathBuf::from)
-                        .unwrap_or_else(|| root.to_path_buf());
+                    let home = user_home().unwrap_or_else(|| root.to_path_buf());
                     let ctx = IdeCtx {
                         project_root: root,
                         home: &home,
@@ -439,9 +441,7 @@ fn apply_ide(root: &Path, ide: Option<&str>) -> Result<ApplyResult, String> {
             .iter()
             .find(|a| a.name() == ide)
             .ok_or_else(|| format!("IDE desconocido: {ide}"))?;
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| root.to_path_buf());
+        let home = user_home().unwrap_or_else(|| root.to_path_buf());
         let ctx = IdeCtx {
             project_root: root,
             home: &home,
@@ -470,9 +470,7 @@ fn apply_ide_remove(root: &Path, ide: Option<&str>) -> Result<ApplyResult, Strin
         .iter()
         .find(|a| a.name() == ide)
         .ok_or_else(|| format!("IDE desconocido: {ide}"))?;
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.to_path_buf());
+    let home = user_home().unwrap_or_else(|| root.to_path_buf());
     let ctx = IdeCtx {
         project_root: root,
         home: &home,
@@ -484,6 +482,48 @@ fn apply_ide_remove(root: &Path, ide: Option<&str>) -> Result<ApplyResult, Strin
         log: vec![format!("IDE {} quitado", adapter.display_name())],
         files,
     })
+}
+
+/// Convierte lo que devuelve el diálogo nativo (path o `file://`) a PathBuf.
+pub fn normalize_picked_path(raw: &str) -> Result<PathBuf, String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return Err("Carpeta vacía".into());
+    }
+    if let Some(rest) = raw.strip_prefix("file://") {
+        let rest = percent_decode_unreserved(rest);
+        // file:///C:/Users/...  o  file:///home/...
+        if rest.starts_with('/') {
+            if cfg!(windows) && rest.len() >= 3 && rest.as_bytes().get(2) == Some(&b':') {
+                // "/C:/Users" → "C:/Users"
+                return Ok(PathBuf::from(&rest[1..]));
+            }
+            return Ok(PathBuf::from(rest));
+        }
+        return Ok(PathBuf::from(rest));
+    }
+    Ok(PathBuf::from(raw))
+}
+
+fn percent_decode_unreserved(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Ok(h), Ok(l)) = (
+                u8::from_str_radix(std::str::from_utf8(&bytes[i + 1..i + 2]).unwrap_or(""), 16),
+                u8::from_str_radix(std::str::from_utf8(&bytes[i + 2..i + 3]).unwrap_or(""), 16),
+            ) {
+                out.push(char::from((h << 4) | l));
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
 }
 
 fn resolve_root(root: &Path) -> Result<PathBuf, String> {
@@ -500,6 +540,27 @@ fn resolve_root(root: &Path) -> Result<PathBuf, String> {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    #[test]
+    fn normalize_picked_path_acepta_file_url_unix() {
+        let p = normalize_picked_path("file:///tmp/proyecto").unwrap();
+        assert_eq!(p, PathBuf::from("/tmp/proyecto"));
+    }
+
+    #[test]
+    fn normalize_picked_path_rechaza_vacio() {
+        assert!(normalize_picked_path("   ").is_err());
+    }
+
+    #[test]
+    fn inspect_con_file_url_de_carpeta_real() {
+        let tmp = TempDir::new().unwrap();
+        let url = format!("file://{}", tmp.path().display());
+        let path = normalize_picked_path(&url).unwrap();
+        let snap = inspect_setup_target(&path).expect("inspect");
+        assert!(snap.exists);
+        assert!(!snap.has_cortex);
+    }
 
     #[test]
     fn preview_agent_lista_archivos_y_no_escribe() {
