@@ -14,6 +14,7 @@ interface SetupPanelProps {
   folder: string | null;
   onPickFolder: () => void;
   onOpenAsProject: (path: string) => void;
+  onFolderReady?: (path: string) => void;
   lang: Lang;
 }
 
@@ -23,6 +24,7 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({
   folder,
   onPickFolder,
   onOpenAsProject,
+  onFolderReady,
   lang,
 }) => {
   const t = getT(lang).setup;
@@ -99,6 +101,7 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({
       setPlan(null);
       setPending(null);
       await inspect(folder);
+      onFolderReady?.(folder);
     } catch (e) {
       setError(String(e));
     } finally {

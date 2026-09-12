@@ -291,15 +291,54 @@ pub fn list_projects() -> Vec<ProjectEntry> {
     kept.into_iter().map(|c| c.entry).collect()
 }
 
-/// Scan completo de la raíz + reescritura del cache. Es la operación
-/// cara; la dispara `refresh_projects` (command Tauri, click
-/// "Refrescar") o `--projects-list` cuando el cache todavía no existe.
+/// Scan completo de la raíz + reescritura del cache. Conserva proyectos
+/// recordados (p.ej. inicializados desde Setup) que estén fuera de HOME.
 #[must_use]
 pub fn refresh_projects() -> Vec<ProjectEntry> {
-    let entries = match scan_root() {
+    let mut entries = match scan_root() {
         Some(root) => scan(&root),
         None => Vec::new(),
     };
+    if let Some(old) = load_cache() {
+        for cached in old.entries {
+            if entries.iter().any(|e| e.path == cached.entry.path) {
+                continue;
+            }
+            let dir = PathBuf::from(&cached.entry.path);
+            if let Some(config) = config_path_for(&dir) {
+                if dir.is_dir() {
+                    entries.push(build_entry(&dir, &config));
+                }
+            }
+        }
+    }
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    save_entries(&entries);
+    entries
+}
+
+/// Registra un path explícito en el cache (Init desde Brain, fuera de HOME).
+pub fn remember_project(path: &Path) -> Result<Vec<ProjectEntry>, String> {
+    if !path.is_dir() {
+        return Err(format!("No existe la carpeta {}", path.display()));
+    }
+    let Some(config) = config_path_for(path) else {
+        return Err(
+            "Esa carpeta no es un proyecto Cortex todavía (falta .cortex/config.yaml). Aplicá Init primero."
+                .into(),
+        );
+    };
+    let entry = build_entry(path, &config);
+    let key = entry.path.clone();
+    let mut entries = list_projects();
+    entries.retain(|e| e.path != key);
+    entries.push(entry);
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    save_entries(&entries);
+    Ok(entries)
+}
+
+fn save_entries(entries: &[ProjectEntry]) {
     let cached: Vec<CachedProject> = entries
         .iter()
         .map(|entry| {
@@ -316,7 +355,6 @@ pub fn refresh_projects() -> Vec<ProjectEntry> {
         version: CACHE_VERSION,
         entries: cached,
     });
-    entries
 }
 
 fn load_cache() -> Option<CacheFile> {
@@ -659,5 +697,38 @@ mod tests {
         assert_eq!(found[0].path, path_str(&parent));
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn remember_project_fuera_del_home_aparece_y_sobrevive_refresh() {
+        let _g = PROJECTS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let home = tmp_root("remember-home");
+        let outside = tmp_root("remember-outside");
+        std::fs::create_dir_all(outside.join(".cortex")).unwrap();
+        std::fs::write(outside.join(".cortex").join("config.yaml"), VALID_CONFIG).unwrap();
+
+        unsafe {
+            std::env::set_var("HOME", &home);
+            std::env::set_var("USERPROFILE", &home);
+        }
+
+        let listed = remember_project(&outside).expect("remember");
+        assert!(
+            listed.iter().any(|e| e.path == path_str(&outside)),
+            "listed: {listed:?}"
+        );
+
+        let after_refresh = refresh_projects();
+        assert!(
+            after_refresh.iter().any(|e| e.path == path_str(&outside)),
+            "refresh dropeó el proyecto fuera de HOME: {after_refresh:?}"
+        );
+
+        unsafe {
+            std::env::remove_var("HOME");
+            std::env::remove_var("USERPROFILE");
+        }
+        let _ = std::fs::remove_dir_all(&home);
+        let _ = std::fs::remove_dir_all(&outside);
     }
 }

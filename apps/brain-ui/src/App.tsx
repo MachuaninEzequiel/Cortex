@@ -743,6 +743,14 @@ export function App() {
                   );
                 }
               }}
+              onFolderReady={async (path) => {
+                try {
+                  const fresh = await tauriInvoke<ProjectEntry[]>("open_as_project", { path });
+                  setProjects(fresh);
+                } catch (e) {
+                  console.error("open_as_project", e);
+                }
+              }}
               onOpenAsProject={async (path) => {
                 try {
                   const fresh = await tauriInvoke<ProjectEntry[]>("open_as_project", { path });

@@ -520,11 +520,8 @@ async fn list_ides() -> Vec<onboard::IdeStatus> {
 
 #[tauri::command]
 async fn open_as_project(path: String) -> Result<Vec<projects::ProjectEntry>, String> {
-    let p = std::path::Path::new(&path);
-    if !p.is_dir() {
-        return Err(format!("No existe la carpeta {path}"));
-    }
-    Ok(projects::refresh_projects())
+    let path = onboard::normalize_picked_path(&path)?;
+    projects::remember_project(&path)
 }
 
 /// Procesa UNA conexión IPC: lee un request, lo enruta al engine y
