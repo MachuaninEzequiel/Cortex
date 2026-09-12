@@ -82,7 +82,7 @@ jobs:
 
       - name: Build cortex-cli sidecar
         working-directory: rust
-        run: cargo build --release -p cortex-cli --target ${{ matrix.target }}
+        run: cargo build --release -p cortex-cli
 
       - name: Build Cortex Brain Bundle
         working-directory: rust/crates/cortex-brain-app
