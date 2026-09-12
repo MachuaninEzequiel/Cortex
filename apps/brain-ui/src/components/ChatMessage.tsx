@@ -118,26 +118,46 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {/* Proposed Tool Actions */}
         {!isUser && message.tool_calls && message.tool_calls.length > 0 && (
           <div className="mt-2.5 flex w-full flex-col gap-2 rounded border border-mocha-mauve/30 bg-mocha-base/80 p-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-mocha-mauve">
-              <span>⚡</span>
-              <span>{t.chat.toolProposal}</span>
-            </div>
-            {message.tool_calls.map((tc, idx) => (
-              <div key={idx} className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="font-mono text-xs text-mocha-subtext0">
-                  <span className="text-cortex-mint font-semibold">{tc.tool}</span>{" "}
-                  <span className="text-mocha-text/80">{tc.args}</span>
-                </div>
-                {onExecuteTool && (
-                  <button
-                    onClick={() => onExecuteTool(tc)}
-                    className="self-start rounded bg-cortex-forest px-2.5 py-1 text-xs font-mono font-medium text-cortex-mint shadow transition hover:bg-cortex-forest/80 active:scale-95 sm:self-auto"
-                  >
-                    [ {t.chat.execute} ]
-                  </button>
-                )}
+            <div className="flex items-center justify-between text-xs font-mono font-semibold text-mocha-mauve">
+              <div className="flex items-center gap-1.5">
+                <span>⚡</span>
+                <span>{t.chat.toolProposal}</span>
               </div>
-            ))}
+              <span className="text-[10px] text-[#6c7086] font-normal">
+                Podés ejecutarla directamente o copiar el comando para tu terminal
+              </span>
+            </div>
+            {message.tool_calls.map((tc, idx) => {
+              const fullCmd = `cortex ${tc.tool.replace('.', ' ')} ${tc.args || ''}`.trim();
+              return (
+                <div key={idx} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-[#11111b]/80 p-2 rounded border border-[#313244]">
+                  <div className="font-mono text-xs text-mocha-subtext0 flex items-center gap-1.5">
+                    <span className="text-[#a6adc8]">$</span>
+                    <span className="text-cortex-mint font-semibold">{fullCmd}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(fullCmd);
+                        alert(`Comando copiado:\n${fullCmd}`);
+                      }}
+                      className="rounded bg-[#313244] hover:bg-[#45475a] px-2.5 py-1 text-[11px] font-mono text-[#cdd6f4] transition active:scale-95"
+                      title="Copiar comando al portapapeles"
+                    >
+                      📋 Copiar
+                    </button>
+                    {onExecuteTool && (
+                      <button
+                        onClick={() => onExecuteTool(tc)}
+                        className="rounded bg-cortex-forest px-3 py-1 text-xs font-mono font-bold text-cortex-mint shadow transition hover:bg-cortex-forest/80 active:scale-95"
+                      >
+                        ⚡ {t.chat.execute}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

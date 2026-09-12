@@ -5,7 +5,9 @@
 //! se despacha y procesa correctamente con cero alucinaciones.
 
 use cortex_brain_app::chat::{build_all_tools, dispatch_tool, BrainEngine, ToolCall};
-use cortex_brain_app::graph::{extract_project_graph, inspect_doctor_health, inspect_session_status};
+use cortex_brain_app::graph::{
+    extract_project_graph, inspect_doctor_health, inspect_session_status,
+};
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
@@ -100,7 +102,10 @@ fn eval_06_extractor_de_grafo_detecta_modulos_y_crates() {
     let _ = fs::create_dir_all(&crates_dir);
 
     let graph = extract_project_graph(&temp);
-    assert!(graph.nodes.iter().any(|n| n.label == "cortex-sample" && n.kind == "module"));
+    assert!(graph
+        .nodes
+        .iter()
+        .any(|n| n.label == "cortex-sample" && n.kind == "module"));
 
     let _ = fs::remove_dir_all(&temp);
 }
@@ -113,13 +118,13 @@ fn eval_07_engine_ejecuta_scripted_con_session_status() {
     fs::write(sessions_dir.join("session-001.jsonl"), "{\"step\": 1}\n").unwrap();
 
     let engine = BrainEngine::with_factory(Duration::from_secs(90), |_| None);
-    let backend = cortex_brain::chat::ScriptedBackend::new(
-        "scripted-eval",
-        vec!["TOOL: session.status"],
-    );
+    let backend =
+        cortex_brain::chat::ScriptedBackend::new("scripted-eval", vec!["TOOL: session.status"]);
     engine.insert_backend(temp.to_str().unwrap(), Box::new(backend));
 
-    let turn = engine.respond(temp.to_str().unwrap(), "qué sesión está abierta?").unwrap();
+    let turn = engine
+        .respond(temp.to_str().unwrap(), "qué sesión está abierta?")
+        .unwrap();
     assert!(turn.text.contains("Sesión Activa"));
     assert!(turn.text.contains("session-001"));
 
@@ -132,13 +137,13 @@ fn eval_08_engine_ejecuta_scripted_con_doctor_inspect() {
     let _ = fs::create_dir_all(temp.join(".cortex"));
 
     let engine = BrainEngine::with_factory(Duration::from_secs(90), |_| None);
-    let backend = cortex_brain::chat::ScriptedBackend::new(
-        "scripted-eval",
-        vec!["TOOL: doctor.inspect"],
-    );
+    let backend =
+        cortex_brain::chat::ScriptedBackend::new("scripted-eval", vec!["TOOL: doctor.inspect"]);
     engine.insert_backend(temp.to_str().unwrap(), Box::new(backend));
 
-    let turn = engine.respond(temp.to_str().unwrap(), "cómo está el proyecto?").unwrap();
+    let turn = engine
+        .respond(temp.to_str().unwrap(), "cómo está el proyecto?")
+        .unwrap();
     assert!(turn.text.contains("Auditoría de Salud"));
 
     let _ = fs::remove_dir_all(&temp);
@@ -275,8 +280,20 @@ fn eval_17_doctor_report_payload_serializa_json() {
 #[test]
 fn eval_18_engine_mantiene_aislamiento_entre_proyectos_distintos() {
     let engine = BrainEngine::with_factory(Duration::from_secs(90), |_| None);
-    engine.insert_backend("proj_alpha", Box::new(cortex_brain::chat::ScriptedBackend::new("b1", vec!["Respuesta Alpha"])));
-    engine.insert_backend("proj_beta", Box::new(cortex_brain::chat::ScriptedBackend::new("b2", vec!["Respuesta Beta"])));
+    engine.insert_backend(
+        "proj_alpha",
+        Box::new(cortex_brain::chat::ScriptedBackend::new(
+            "b1",
+            vec!["Respuesta Alpha"],
+        )),
+    );
+    engine.insert_backend(
+        "proj_beta",
+        Box::new(cortex_brain::chat::ScriptedBackend::new(
+            "b2",
+            vec!["Respuesta Beta"],
+        )),
+    );
 
     let t1 = engine.respond("proj_alpha", "q").unwrap();
     let t2 = engine.respond("proj_beta", "q").unwrap();
@@ -288,7 +305,10 @@ fn eval_18_engine_mantiene_aislamiento_entre_proyectos_distintos() {
 #[test]
 fn eval_19_slash_quit_no_mata_el_proceso() {
     let engine = BrainEngine::with_factory(Duration::from_secs(90), |_| None);
-    engine.insert_backend("test", Box::new(cortex_brain::chat::ScriptedBackend::new("b", vec!["/quit"])));
+    engine.insert_backend(
+        "test",
+        Box::new(cortex_brain::chat::ScriptedBackend::new("b", vec!["/quit"])),
+    );
 
     let turn = engine.respond("test", "/quit").unwrap();
     assert!(!turn.text.is_empty());
@@ -302,12 +322,17 @@ fn eval_20_streaming_con_tool_governance_integra_resultado() {
     let engine = BrainEngine::with_factory(Duration::from_secs(90), |_| None);
     engine.insert_backend(
         temp.to_str().unwrap(),
-        Box::new(cortex_brain::chat::ScriptedBackend::new("b", vec!["TOOL: doctor.inspect"])),
+        Box::new(cortex_brain::chat::ScriptedBackend::new(
+            "b",
+            vec!["TOOL: doctor.inspect"],
+        )),
     );
 
     let mut pieces = Vec::new();
     let turn = engine
-        .respond_streaming(temp.to_str().unwrap(), "salud", &mut |p| pieces.push(p.to_string()))
+        .respond_streaming(temp.to_str().unwrap(), "salud", &mut |p| {
+            pieces.push(p.to_string())
+        })
         .unwrap();
 
     assert_eq!(pieces, vec!["TOOL: doctor.inspect"]);

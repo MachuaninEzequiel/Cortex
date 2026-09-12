@@ -651,7 +651,11 @@ mod tests {
         );
 
         let found = scan(&root);
-        assert_eq!(found.len(), 1, "solo debe encontrar el proyecto raíz y no el anidado");
+        assert_eq!(
+            found.len(),
+            1,
+            "solo debe encontrar el proyecto raíz y no el anidado"
+        );
         assert_eq!(found[0].path, path_str(&parent));
 
         let _ = std::fs::remove_dir_all(&root);

@@ -50,7 +50,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use cortex_brain::chat::{DeterministicBackend, LlmBackend, extraer_tool};
+use cortex_brain::chat::{extraer_tool, DeterministicBackend, LlmBackend};
 use cortex_brain::i18n::{self, Lang};
 use cortex_brain::tools::Tier;
 
@@ -172,14 +172,19 @@ pub fn list_available_models() -> Vec<ModelEntry> {
                 if name_str.ends_with(".gguf") && !seen_filenames.contains(name_str.as_ref()) {
                     let size = entry.metadata().ok().map(|m| m.len());
                     models.push(ModelEntry {
-                        name: name_str.trim_end_matches(".gguf").replace('_', " ").replace('-', " "),
+                        name: name_str
+                            .trim_end_matches(".gguf")
+                            .replace('_', " ")
+                            .replace('-', " "),
                         filename: name_str.to_string(),
                         path: path.to_string_lossy().into_owned(),
                         exists: true,
                         active: false,
                         size_bytes: size,
                         url: None,
-                        description: Some("Modelo GGUF personalizado detectado en caché local.".to_string()),
+                        description: Some(
+                            "Modelo GGUF personalizado detectado en caché local.".to_string(),
+                        ),
                     });
                 }
             }
@@ -490,13 +495,15 @@ impl Drop for ChdirGuard {
 }
 
 /// Catálogo completo de tools de Cortex Brain (base + gobernanza + webgraph).
-pub fn build_all_tools() -> std::collections::BTreeMap<&'static str, cortex_brain::tools::ToolSpec> {
+pub fn build_all_tools() -> std::collections::BTreeMap<&'static str, cortex_brain::tools::ToolSpec>
+{
     let mut t = cortex_brain::tools::build_tools();
     t.insert(
         "session.status",
         cortex_brain::tools::ToolSpec {
             name: "session.status",
-            description: "Consulta la sesión activa en .cortex/sessions/, spec asociada y checkpoints.",
+            description:
+                "Consulta la sesión activa en .cortex/sessions/, spec asociada y checkpoints.",
             tier: Tier::Read,
             args_hint: "",
         },
@@ -540,14 +547,45 @@ pub fn build_all_tools() -> std::collections::BTreeMap<&'static str, cortex_brai
     t
 }
 
+/// Ejecuta una tool aprobada por el usuario: sólo el catálogo, sin shell.
+///
+/// Las tools de gobernanza se resuelven in-process (`dispatch_tool`).
+/// Cualquier nombre fuera del catálogo se rechaza — no hay `Command`
+/// armado con strings libres.
+pub fn execute_approved_tool(
+    project_root: &Path,
+    tool: &str,
+    args: &str,
+) -> Result<String, String> {
+    let tool = tool.trim();
+    if tool.is_empty() {
+        return Err("Tool vacía".into());
+    }
+    if !build_all_tools().contains_key(tool) {
+        return Err(format!("Tool no permitida: {tool}"));
+    }
+    dispatch_tool(tool, args, project_root)
+}
+
 /// Ejecuta una tool despachando entre las herramientas de la app y el motor base.
 pub fn dispatch_tool(tool: &str, args: &str, project_root: &Path) -> Result<String, String> {
     match tool {
-        "session.status" => {
+        "session.checkpoint" => crate::graph::record_session_checkpoint(project_root, args),
+        "session.finish_and_document" => crate::graph::record_session_checkpoint(
+            project_root,
+            if args.trim().is_empty() {
+                "Sesión documentada y cerrada"
+            } else {
+                args
+            },
+        ),
+        "session.status" | "session.current" => {
             let s = crate::graph::inspect_session_status(project_root);
             if s.active {
                 let id = s.session_id.unwrap_or_else(|| "activa".to_string());
-                let spec = s.spec_path.unwrap_or_else(|| "vault/specs/spec.md".to_string());
+                let spec = s
+                    .spec_path
+                    .unwrap_or_else(|| "vault/specs/spec.md".to_string());
                 let last = s.last_checkpoint.unwrap_or_else(|| "Inicio".to_string());
                 Ok(format!(
                     "📌 **Sesión Activa:** [Sesión #{id}]({spec})\n- **Checkpoints:** {}\n- **Último avance:** {last}",
@@ -557,11 +595,15 @@ pub fn dispatch_tool(tool: &str, args: &str, project_root: &Path) -> Result<Stri
                 Ok("○ No hay ninguna sesión de trabajo activa en .cortex/sessions/. Podés iniciar una nueva sesión para registrar tus avances.".to_string())
             }
         }
-        "doctor.inspect" => {
+        "doctor.inspect" | "cortex.health" => {
             let doc = crate::graph::inspect_doctor_health(project_root);
             let mut out = format!(
                 "🛡️ **Auditoría de Salud de Cortex:** {}\n\n",
-                if doc.is_healthy { "✓ Proyecto en estado óptimo" } else { "⚠ Se detectaron detalles para corregir" }
+                if doc.is_healthy {
+                    "✓ Proyecto en estado óptimo"
+                } else {
+                    "⚠ Se detectaron detalles para corregir"
+                }
             );
             for c in doc.checks {
                 let icon = match c.status.as_str() {
@@ -576,16 +618,30 @@ pub fn dispatch_tool(tool: &str, args: &str, project_root: &Path) -> Result<Stri
         "webgraph.query" => {
             let g = crate::graph::extract_project_graph(project_root);
             let q = args.trim().to_lowercase();
-            let matches: Vec<_> = g.nodes.into_iter().filter(|n| {
-                q.is_empty() || n.label.to_lowercase().contains(&q) || n.path.to_lowercase().contains(&q)
-            }).take(8).collect();
+            let matches: Vec<_> = g
+                .nodes
+                .into_iter()
+                .filter(|n| {
+                    q.is_empty()
+                        || n.label.to_lowercase().contains(&q)
+                        || n.path.to_lowercase().contains(&q)
+                })
+                .take(8)
+                .collect();
 
             if matches.is_empty() {
-                Ok(format!("No se encontraron nodos en el grafo para '{args}'."))
+                Ok(format!(
+                    "No se encontraron nodos en el grafo para '{args}'."
+                ))
             } else {
                 let mut out = format!("🕸️ **Nodos encontrados en WebGraph para '{args}':**\n");
                 for m in matches {
-                    let icon = match m.kind.as_str() { "module" => "📦", "spec" => "📄", "adr" => "🏛️", _ => "📄" };
+                    let icon = match m.kind.as_str() {
+                        "module" => "📦",
+                        "spec" => "📄",
+                        "adr" => "🏛️",
+                        _ => "📄",
+                    };
                     out.push_str(&format!("- {} [{}]({})\n", icon, m.label, m.path));
                 }
                 Ok(out)
@@ -961,5 +1017,86 @@ pub(crate) mod tests {
             cortex_brain::paths::DEFAULT_MODEL_FILENAME
         );
         assert!(models[0].name.contains("LFM2.5"));
+    }
+
+    #[test]
+    fn execute_approved_tool_rechaza_herramientas_fuera_del_catalogo() {
+        let proj = tmp_project("exec-deny");
+        let err = execute_approved_tool(Path::new(&proj), "vault.reindex", "")
+            .expect_err("mutación jamás se ejecuta");
+        assert!(
+            err.contains("vault.reindex"),
+            "error debe nombrar la tool: {err}"
+        );
+        let err2 = execute_approved_tool(Path::new(&proj), "rm", "-rf /")
+            .expect_err("binario arbitrario jamás se ejecuta");
+        assert!(err2.contains("rm"), "error debe nombrar la tool: {err2}");
+        std::fs::remove_dir_all(&proj).unwrap();
+    }
+
+    #[test]
+    fn execute_approved_tool_session_current_es_nativo_sin_cli() {
+        let proj = tmp_project("exec-session");
+        let sessions = Path::new(&proj).join(".cortex").join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        std::fs::write(
+            sessions.join("42.jsonl"),
+            "{\"event\":\"start\"}\n{\"event\":\"checkpoint\",\"note\":\"avance\"}\n",
+        )
+        .unwrap();
+
+        let out = execute_approved_tool(Path::new(&proj), "session.current", "")
+            .expect("session.current debe resolverse in-process");
+        assert!(
+            out.contains("Sesión Activa") || out.contains("sesión"),
+            "salida: {out}"
+        );
+        assert!(
+            out.contains("42") || out.contains("Checkpoints"),
+            "salida: {out}"
+        );
+        std::fs::remove_dir_all(&proj).unwrap();
+    }
+
+    #[test]
+    fn execute_approved_tool_checkpoint_persiste_en_sesion() {
+        let proj = tmp_project("exec-ckpt");
+        let out = execute_approved_tool(
+            Path::new(&proj),
+            "session.checkpoint",
+            "refactor completado",
+        )
+        .expect("checkpoint debe ejecutarse in-process");
+        assert!(
+            out.to_lowercase().contains("checkpoint") || out.contains("refactor"),
+            "salida: {out}"
+        );
+        let status = crate::graph::inspect_session_status(Path::new(&proj));
+        assert!(status.active, "debe existir sesión tras el checkpoint");
+        assert!(
+            status.checkpoints_count >= 1,
+            "checkpoints: {}",
+            status.checkpoints_count
+        );
+        let last = status.last_checkpoint.unwrap_or_default();
+        assert!(
+            last.contains("refactor completado"),
+            "último checkpoint: {last}"
+        );
+        std::fs::remove_dir_all(&proj).unwrap();
+    }
+
+    #[test]
+    fn execute_approved_tool_doctor_health_es_nativo_sin_cli() {
+        let proj = tmp_project("exec-doctor");
+        std::fs::create_dir_all(Path::new(&proj).join(".cortex")).unwrap();
+        std::fs::create_dir_all(Path::new(&proj).join("vault")).unwrap();
+        let out = execute_approved_tool(Path::new(&proj), "cortex.health", "")
+            .expect("cortex.health debe resolverse in-process");
+        assert!(
+            out.contains("Auditoría de Salud") || out.contains("Cortex Layout"),
+            "salida: {out}"
+        );
+        std::fs::remove_dir_all(&proj).unwrap();
     }
 }
