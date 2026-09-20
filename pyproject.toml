@@ -73,6 +73,8 @@ cortex = "cortex.cli.main:app"
     "skills/**/*.md",
     "setup/workspace_files/*.md",
     "webgraph/templates/*.html",
+    "documentation/templates/*.md.j2",
+    "documentation/templates/*.j2",
     "webgraph/static/*",
 ]
 
