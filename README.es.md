@@ -27,7 +27,7 @@
     <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
     <img src="https://img.shields.io/badge/System_One-JEV_1.13-cyan?style=flat-square" alt="System One JEV" />
     <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
-    <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
+    <img src="https://img.shields.io/badge/Brain-0.2.7-informational?style=flat-square" alt="Brain 0.2.7" />
   </p>
 
   <br />
@@ -146,15 +146,15 @@ En una evaluación experimental controlada de **18 turnos continuos** (benchmark
 
 Lo primero que se instala es la aplicación. Desde ahí se inicializa un proyecto, se conecta el IDE y se usa Cortex **sin clonar este repositorio y sin `pip` ni `cargo`**.
 
-**Descarga** (versión 0.2.6):
-
-[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6)
+**Descargas** (0.2.7):
+ 
+[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7)
 
 | Sistema | Archivo |
 | :--- | :--- |
-| Linux | `Cortex.Brain_0.2.6_amd64.deb` |
-| Windows | `Cortex.Brain_0.2.6_x64-setup.exe` |
-| macOS (Apple Silicon) | `Cortex.Brain_0.2.6_aarch64.dmg` |
+| Linux | `Cortex.Brain_0.2.7_amd64.deb` |
+| Windows | `Cortex.Brain_0.2.7_x64-setup.exe` |
+| macOS (Apple Silicon) | `Cortex.Brain_0.2.7_aarch64.dmg` |
 
 Instalá el paquete y abrí **Cortex Brain**.
 
@@ -175,7 +175,7 @@ El instalador trae `cortex-cli`. El MCP de los IDEs apunta a ese binario.
 Ninguno de estos casos exige repetir Init si el proyecto **ya** tiene Cortex.
 
 1. **Elegiste la carpeta y no la abriste.** Setup no la agrega solo. Hacé: Instalar Cortex → Elegir carpeta → **Abrir esta carpeta en Brain**. No ejecutes Init.
-2. **El repo no está bajo tu usuario** (`D:\…`, `C:\dev\…`). Refrescar solo recorre el perfil (`C:\Users\…`). Misma secuencia: Elegir carpeta → Abrir esta carpeta. Requiere Brain 0.2.6 o posterior.
+2. **El repo no está bajo tu usuario** (`D:\…`, `C:\dev\…`). Refrescar solo recorre el perfil (`C:\Users\…`). Misma secuencia: Elegir carpeta → Abrir esta carpeta. Requiere Brain 0.2.7 o posterior.
 3. **Hay `.cortex/` pero no hay config.** Brain exige `.cortex/config.yaml`, o `config.yaml` en la raíz, o `.cortex/workspace.yaml`. Si existe `config.yaml` en la raíz, usá el caso 1. Si no hay ninguno de los tres, ahí sí hace falta Init. Si ya hay config y vault, no corras Init: los pisa.
 
 Refrescar solo lista repos **dentro del perfil de usuario** que ya tengan uno de esos yaml. En la práctica: **Elegir carpeta → Abrir esta carpeta**, sin Init.
