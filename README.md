@@ -27,7 +27,7 @@
     <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
     <img src="https://img.shields.io/badge/System_One-JEV_1.13-cyan?style=flat-square" alt="System One JEV" />
     <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
-    <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
+    <img src="https://img.shields.io/badge/Brain-0.2.7-informational?style=flat-square" alt="Brain 0.2.7" />
   </p>
 
   <br />
@@ -174,7 +174,7 @@ The installer ships `cortex-cli`. IDE MCP configs point at that binary.
 None of these cases require re-running Init if the project **already** has Cortex.
 
 1. **You chose the folder and did not open it.** Setup does not add it by itself. Do: Install Cortex → Choose folder → **Open this folder in Brain**. Do not run Init.
-2. **The repo is not under your user profile** (`D:\…`, `C:\dev\…`). Refresh only walks the profile (`C:\Users\…`). Same sequence: Choose folder → Open this folder. Requires Brain 0.2.6 or later.
+2. **The repo is not under your user profile** (`D:\…`, `C:\dev\…`). Refresh only walks the profile (`C:\Users\…`). Same sequence: Choose folder → Open this folder. Requires Brain 0.2.7 or later.
 3. **There is a `.cortex/` directory but no config.** Brain requires `.cortex/config.yaml`, or `config.yaml` at the repo root, or `.cortex/workspace.yaml`. If root `config.yaml` exists, use case 1. If none of the three exist, then Init is required. If config and vault already exist, do not run Init: it overwrites them.
 
 Refresh only lists repos **inside the user profile** that already have one of those yaml files. In practice: **Choose folder → Open this folder**, without Init.

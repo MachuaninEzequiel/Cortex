@@ -136,6 +136,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            release-artifacts/**/*.deb
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.msi
+            release-artifacts/**/*.dmg
             release-artifacts/*.deb
             release-artifacts/*.exe
             release-artifacts/*.msi
