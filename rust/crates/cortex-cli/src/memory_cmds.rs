@@ -333,7 +333,7 @@ fn semantic_doc_pv(d: &cortex_app::semantic::SemDoc, score: f64) -> PyVal {
     ])
 }
 
-fn unified_hit_pv(hit: &UnifiedHit<'_>) -> PyVal {
+fn unified_hit_pv(hit: &UnifiedHit<'_>, noul: Option<f64>) -> PyVal {
     let metadata: Vec<(String, PyVal)> = if hit.source == "episodic" {
         let e = hit.entry.as_ref().expect("entry");
         let mut items: Vec<(String, PyVal)> = vec![
@@ -376,7 +376,7 @@ fn unified_hit_pv(hit: &UnifiedHit<'_>) -> PyVal {
             )
         };
 
-    PyVal::obj(vec![
+    let mut fields: Vec<(&str, PyVal)> = vec![
         ("source", PyVal::s(hit.source)),
         ("score", PyVal::Num(Num::Float(hit.score))),
         ("entry", entry_pv),
@@ -385,7 +385,11 @@ fn unified_hit_pv(hit: &UnifiedHit<'_>) -> PyVal {
         ("display_title", dtitle),
         ("display_content", dcontent),
         ("display_path", dpath),
-    ])
+    ];
+    if let Some(n) = noul {
+        fields.push(("noul", PyVal::Num(Num::Float(n))));
+    }
+    PyVal::obj(fields)
 }
 
 pub fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
@@ -420,7 +424,16 @@ pub fn retrieval_json(r: &crate::memory::RetrievalResultMirror<'_>) -> String {
         ),
         (
             "unified_hits",
-            PyVal::Arr(r.unified_hits.iter().map(unified_hit_pv).collect()),
+            PyVal::Arr(
+                r.unified_hits
+                    .iter()
+                    .enumerate()
+                    .map(|(i, h)| {
+                        let n = r.nouls.get(i).copied().flatten();
+                        unified_hit_pv(h, n)
+                    })
+                    .collect(),
+            ),
         ),
         ("source_breakdown", PyVal::Obj(vec![])),
     ]);
@@ -506,6 +519,16 @@ pub fn run_context(argv: &[String]) -> bool {
         return true;
     }
 
+    let pack_on = mem
+        .judgement
+        .as_ref()
+        .map(|h| h.client.enabled(cortex_judgement::Purpose::ContextPack))
+        .unwrap_or(false);
+    let mut enricher_cfg = cortex_app::context::ContextEnricherConfig::default();
+    if pack_on {
+        enricher_cfg.max_items = cortex_judgement::pack_fetch_k(enricher_cfg.max_items);
+    }
+
     let model_dir = default_model_dir();
     let mut observer = cortex_app::context::observer::ContextObserver::new(model_dir.as_deref());
     let work = observer.observe_from_files(&files, None, None, None, None, None, None, vec![]);
@@ -525,7 +548,7 @@ pub fn run_context(argv: &[String]) -> bool {
                 let enricher = cortex_app::context::ContextEnricher {
                     episodic: store,
                     semantic: &mem.semantic,
-                    config: cortex_app::context::ContextEnricherConfig::default(),
+                    config: enricher_cfg.clone(),
                 };
                 enricher.enrich(&work, emb, None, chrono_utc_now())
             }
@@ -533,17 +556,32 @@ pub fn run_context(argv: &[String]) -> bool {
                 let enricher = cortex_app::context::ContextEnricher {
                     episodic: empty_episodic(),
                     semantic: &mem.semantic,
-                    config: cortex_app::context::ContextEnricherConfig::default(),
+                    config: enricher_cfg.clone(),
                 };
                 enricher.enrich(&work, emb, None, chrono_utc_now())
             }
         }
     };
 
-    let text = match args.format.as_str() {
+    let native = match args.format.as_str() {
         "json" => enriched_json(&bundle),
         "compact" => prompt_format_compact(&bundle),
         _ => prompt_format_full(&bundle, args.expand),
+    };
+    let text = if args.format == "json" || !pack_on {
+        native
+    } else if let Some(h) = mem.judgement.as_ref() {
+        cortex_app::context::judgement_pack::format_pack_with_semantic(
+            h,
+            &bundle,
+            args.format == "compact",
+            args.expand,
+            Some(&mem.semantic),
+            Some(&root),
+        )
+        .unwrap_or(native)
+    } else {
+        native
     };
     match &args.output {
         Some(path) => {

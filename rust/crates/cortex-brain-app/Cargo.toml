@@ -33,6 +33,9 @@ sha2 = { workspace = true }
 cortex-brain = { path = "../cortex-brain" }
 cortex-enterprise = { path = "../cortex-enterprise" }
 cortex-workspace = { path = "../cortex-workspace" }
+cortex-config = { path = "../cortex-config" }
+cortex-judgement = { path = "../cortex-judgement" }
+cortex-app = { path = "../cortex-app" }
 cortex-setup = { path = "../cortex-setup" }
 chrono = { workspace = true }
 tauri-plugin-dialog = "2"

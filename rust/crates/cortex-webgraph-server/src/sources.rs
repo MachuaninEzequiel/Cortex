@@ -83,10 +83,19 @@ impl SemanticSource {
         let semantic_cfg = cfg.get("semantic");
         let _ = episodic_cfg;
         let configured = yaml_str(semantic_cfg.and_then(|m| m.get("vault_path")), "vault");
-        let vault = match vault_path {
+        let mut vault = match vault_path {
             Some(p) => cortex_workspace::layout::resolve_lexical(&p),
             None => layout.resolve_workspace_relative(Path::new(&configured)),
         };
+        if !vault.exists() {
+            let new_vault = layout.workspace_root.join("vault");
+            let legacy_vault = layout.repo_root.join("vault");
+            if new_vault.is_dir() {
+                vault = new_vault;
+            } else if legacy_vault.is_dir() {
+                vault = legacy_vault;
+            }
+        }
         Self {
             vault_path: vault,
             embedder,
@@ -177,7 +186,11 @@ fn semantic_node_type(rel_path: &str, tags: &[String]) -> &'static str {
     if tag_set.iter().any(|t| t == "spec") || rel_lower.starts_with("specs/") {
         return "semantic_spec";
     }
-    if tag_set.iter().any(|t| t == "session") || rel_lower.starts_with("sessions/") {
+    if tag_set.iter().any(|t| t == "session")
+        || rel_lower.starts_with("sessions/")
+        || rel_lower.starts_with("session-notes/")
+        || rel_lower.starts_with("session_notes/")
+    {
         return "semantic_session";
     }
     "semantic_doc"

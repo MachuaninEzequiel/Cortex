@@ -164,7 +164,7 @@ pub fn agent_skills_block() -> String {
 ## Agent skills
 
 Este proyecto usa la familia de skills COMPOSED de Cortex (en \
-`.cortex/skills/composed/`). Cada skill termina su etapa emitiendo un \
+`.agents/skills/`). Cada skill termina su etapa emitiendo un \
 checkpoint con `phase` via `cortex_session_checkpoint` (source `user-skill`) \
 — asi Cortex infiere el modo `composed`, mide la linea de fases y cierra con \
 evidencia.
@@ -175,12 +175,9 @@ evidencia.
 `diagnose`.
 - Cadena de fases: grill -> spec -> plan -> implement -> review -> close \
 (cierre: `cortex autopilot finish`).
-- La pericia de cada skill vive on-demand en sus `references/` y en los \
-craft hermanos de `.cortex/skills/` (`cortex-sync-spec-craft.md`, \
-`cortex-sync-proposal-craft.md`, `cortex-SDDwork-implement-craft.md`, \
-`cortex-documenter-close-craft.md`).
+- La pericia de cada skill vive on-demand en sus `references/`.
 - Skills de terceros (mattpocock, superpowers, propias): solo deben cumplir \
-el contrato del checkpoint — ver `.cortex/skills/composed/INSTALL-COMPOSED.md`.
+el contrato del checkpoint — ver `.agents/skills/INSTALL-COMPOSED.md`.
 ";
     format!(
         "{}\n\n{body}\n{}",

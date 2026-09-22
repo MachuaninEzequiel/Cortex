@@ -13,7 +13,12 @@
 pub mod adapters;
 pub mod base;
 pub mod canonical_tools;
+pub mod cli_discovery;
+pub mod host_detector;
 pub mod prompts;
+
+pub use cli_discovery::{discover_all_cli_models, discover_models_for_host, ProviderModelInfo};
+pub use host_detector::{detect_host, HostEnvironment};
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -69,4 +74,30 @@ pub trait IdeAdapter {
     fn needs_wsl_shielding(&self) -> bool {
         false
     }
+}
+
+/// Aliases reconocidos para normalizar nombres de IDE.
+pub const ALIASES: &[(&str, &str)] = &[
+    ("claude", "claude_code"),
+    ("claude-code", "claude_code"),
+    ("claude-desktop", "claude_desktop"),
+    ("code", "vscode"),
+    ("visual-studio-code", "vscode"),
+    ("vs-code", "vscode"),
+    ("openai-codex", "codex"),
+    ("codex-cli", "codex"),
+    ("gemini", "antigravity"),
+    ("gemini-cli", "antigravity"),
+    ("gemini_cli", "antigravity"),
+    ("agy", "antigravity"),
+];
+
+/// Normaliza un nombre o alias de IDE al nombre canónico de su adaptador.
+pub fn normalize_ide(raw: &str) -> String {
+    let n = raw.trim().to_lowercase();
+    ALIASES
+        .iter()
+        .find(|(a, _)| **a == n)
+        .map(|(_, canon)| canon.to_string())
+        .unwrap_or(n)
 }

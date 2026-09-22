@@ -19,9 +19,11 @@ license.workspace = true
 rmcp = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["preserve_order"] }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }
 cortex-setup = { path = "../cortex-setup" }
 cortex-app = { path = "../cortex-app" }
+cortex-config = { path = "../cortex-config" }
+cortex-judgement = { path = "../cortex-judgement" }
 cortex-workspace = { path = "../cortex-workspace" }
 cortex-services = { path = "../cortex-services" }
 cortex-autopilot = { path = "../cortex-autopilot" }

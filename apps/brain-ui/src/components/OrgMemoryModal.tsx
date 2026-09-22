@@ -260,6 +260,11 @@ export const OrgMemoryModal: React.FC<OrgMemoryModalProps> = ({
                         >
                           Prioridad {item.priority}
                         </span>
+                        {item.noul != null && (
+                          <span className="text-[10px] font-mono text-[#a6e3a1] px-2 py-0.5 rounded border border-[#a6e3a1]/40">
+                            noul {item.noul.toFixed(2)}
+                          </span>
+                        )}
                         <span className="text-[10px] text-[#585b70] font-mono">
                           {item.rel_path}
                         </span>

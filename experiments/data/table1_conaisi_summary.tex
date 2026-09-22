@@ -1,0 +1,17 @@
+\begin{table}[ht]
+\centering
+\caption{Comparación Experimental: Cortex Baseline vs Cortex + JEV (JevDD)}
+\label{tab:conaisi_results}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Fase} & \textbf{Tokens Baseline} & \textbf{Tokens JevDD} & \textbf{Reducción (\%)} & \textbf{Ruido Descartado} \\ \hline
+Sync_Architectural_Context & 147 & 189 & -28.6\% & 100\% \\
+SDD_Spec_Formalization & 13 & 13 & 0.0\% & 0\% \\
+Utterance_Gate_Casual_Trap & 337 & 0 & 100.0\% & 100\% \\
+Search_Squeeze_Visualizer & 566 & 559 & 1.2\% & 50\% \\
+Implementation_Checkpoint & 24 & 24 & 0.0\% & 0\% \\
+Review_ADR_and_Close & 19 & 19 & 0.0\% & 0\% \\
+\hline
+\textbf{Total / Promedio} & \textbf{1106} & \textbf{804} & \textbf{27.3\%} & \textbf{50\%} \\ \hline
+\end{tabular}
+\end{table}

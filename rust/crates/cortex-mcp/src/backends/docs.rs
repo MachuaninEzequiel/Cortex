@@ -115,10 +115,31 @@ impl DocsBackend for NativeDocsBackend {
                 _ => {}
             }
         }
-        let scope = if vault_scope.is_empty() {
-            doc_type.to_string()
+        // Si doc_type == "session" y no hay contenido editorial sustantivo (solo campos de máquina),
+        // la SSoT autoritativa es .cortex/sessions/<id>.yaml; no creamos un stub redundante.
+        if doc_type == "session" {
+            let has_substance = clean_payload.get("changes_made").map(|v| !v.is_null() && v != "").unwrap_or(false)
+                || clean_payload.get("key_decisions").map(|v| !v.is_null() && v != "").unwrap_or(false)
+                || clean_payload.get("next_steps").map(|v| !v.is_null() && v != "").unwrap_or(false)
+                || clean_payload.get("summary").map(|v| !v.is_null() && v != "").unwrap_or(false);
+            if !has_substance {
+                if let Some(sid) = clean_payload.get("session_id").and_then(Value::as_str) {
+                    let session_yaml = self.root.join(".cortex").join("sessions").join(format!("{sid}.yaml"));
+                    if session_yaml.is_file() {
+                        return Ok(session_yaml.display().to_string());
+                    }
+                }
+            }
+        }
+
+        let subfolder = cortex_setup::doc_type::DocType::parse(doc_type)
+            .map(|dt| cortex_setup::routing::resolve_route(dt).subfolder)
+            .unwrap_or(doc_type);
+
+        let scope = if vault_scope.is_empty() || vault_scope == "local" {
+            subfolder.to_string()
         } else {
-            format!("{vault_scope}/{doc_type}")
+            format!("{vault_scope}/{subfolder}")
         };
         // Nota real en el vault (misma forma que el writer del oráculo).
         self.write_note(&scope, &title, &lines.join("\n\n"), tags, overwrite)

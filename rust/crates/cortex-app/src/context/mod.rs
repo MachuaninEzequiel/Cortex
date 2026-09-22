@@ -21,6 +21,7 @@ pub mod feedback;
 pub mod filters;
 pub mod hybrid;
 pub mod intent;
+pub mod judgement_pack;
 pub mod models;
 pub mod observer;
 pub mod presenter;

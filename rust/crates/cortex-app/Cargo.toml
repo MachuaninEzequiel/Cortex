@@ -14,6 +14,7 @@ cortex-setup = { path = "../cortex-setup" }
 regex = "1"
 cortex-config = { path = "../cortex-config" }
 cortex-core = { path = "../cortex-core" }
+cortex-judgement = { path = "../cortex-judgement" }
 sha2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

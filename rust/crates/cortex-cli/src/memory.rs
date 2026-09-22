@@ -146,6 +146,8 @@ pub struct NativeMemory {
     pub vault_path: PathBuf,
     /// Dir runtime del store episódico (`str(self.episodic.persist_dir)`).
     pub persist_dir: PathBuf,
+    /// None ≡ community. Presente solo si judgement.search_squeeze está on y hay key.
+    pub judgement: Option<cortex_judgement::JudgementHandle>,
 }
 
 /// Espejo completo de `RetrievalResult` (lo que consumen el texto y --json).
@@ -155,6 +157,8 @@ pub struct RetrievalResultMirror<'a> {
     pub episodic_hits: Vec<(&'a MemoryEntry, f64)>,
     pub semantic_hits: Vec<(&'a SemDoc, f64)>,
     pub unified_hits: Vec<UnifiedHit<'a>>,
+    /// Paralelo a unified_hits; vacío cuando judgement está off (JSON idéntico).
+    pub nouls: Vec<Option<f64>>,
 }
 
 impl NativeMemory {
@@ -243,6 +247,11 @@ impl NativeMemory {
         let ns = cortex_workspace::EpisodicNamespaceCfg::new(&ps, &md, &nv);
         let runtime_episodic =
             cortex_workspace::resolve_episodic_persist_dir(&layout.workspace_root, &ns);
+        let qpath = crate::judgement_squeeze::questions_override_path(
+            &layout.workspace_root,
+            &layout.repo_root,
+        );
+        let judgement = crate::judgement_squeeze::handle_from_yaml(&cfg, Some(&qpath));
         Ok(Self {
             layout,
             semantic,
@@ -250,34 +259,66 @@ impl NativeMemory {
             embedder,
             vault_path: vault,
             persist_dir: runtime_episodic,
+            judgement,
         })
     }
 
     /// Espejo de `HybridSearch.search` + `AgentMemory.retrieve` (scope local,
     /// sin branch-namespacing activo en fixtures del gate).
+    fn fetch_fuse_k(
+        handle: Option<&cortex_judgement::JudgementHandle>,
+        top_k: usize,
+    ) -> (usize, usize) {
+        if let Some(h) = handle {
+            if h.client.enabled(cortex_judgement::Purpose::SearchSqueeze) {
+                let fetch = (top_k * 3).max(h.catalog.overfetch);
+                return (fetch, fetch);
+            }
+        }
+        (top_k * 3, top_k)
+    }
+
+    fn maybe_squeeze<'a>(
+        handle: Option<&cortex_judgement::JudgementHandle>,
+        query: &str,
+        unified: Vec<UnifiedHit<'a>>,
+        top_k: usize,
+    ) -> (Vec<UnifiedHit<'a>>, Vec<Option<f64>>) {
+        match handle {
+            Some(h) if h.client.enabled(cortex_judgement::Purpose::SearchSqueeze) => {
+                crate::judgement_squeeze::squeeze_unified(h, query, unified, top_k)
+            }
+            _ => (unified, Vec::new()),
+        }
+    }
+
     pub fn retrieve<'a>(
         &'a mut self,
         query: &str,
         top_k: usize,
         use_embeddings: bool,
     ) -> RetrievalResultMirror<'a> {
+        let handle = self.judgement.clone();
         if !use_embeddings || self.embedder.is_none() {
             // Keyword-only: episódico $contains score 1.0; semántico BM25.
+            let (fetch_k, fuse_k) = Self::fetch_fuse_k(handle.as_ref(), top_k);
             let ep: Vec<(&MemoryEntry, f64)> = match self.episodic.store() {
                 Some(store) => store
-                    .keyword_search(query, top_k * 3)
+                    .keyword_search(query, fetch_k)
                     .into_iter()
                     .map(|e| (e, 1.0))
                     .collect(),
                 None => vec![],
             };
-            let sem: Vec<(&SemDoc, f64)> = self.semantic.bm25_search(query, top_k * 3);
-            let unified = rrf_fuse(&ep, &sem, top_k, 1.0, 1.0);
+            let sem: Vec<(&SemDoc, f64)> = self.semantic.bm25_search(query, fetch_k);
+            let unified = rrf_fuse(&ep, &sem, fuse_k, 1.0, 1.0);
+            let (unified, nouls) = Self::maybe_squeeze(handle.as_ref(), query, unified, top_k);
             return RetrievalResultMirror {
                 query: query.into(),
                 episodic_hits: ep.into_iter().take(top_k).collect(),
                 semantic_hits: sem.into_iter().take(top_k).collect(),
                 unified_hits: unified,
+                nouls,
             };
         }
 
@@ -298,10 +339,11 @@ impl NativeMemory {
                 episodic_hits: vec![],
                 semantic_hits: vec![],
                 unified_hits: vec![],
+                nouls: vec![],
             };
         };
 
-        let fetch_k = top_k * 3;
+        let (fetch_k, fuse_k) = Self::fetch_fuse_k(handle.as_ref(), top_k);
         let (ep, sem) = match self.episodic.store() {
             Some(store) => (
                 store.vector_search(qv, fetch_k),
@@ -310,12 +352,14 @@ impl NativeMemory {
             None => (Vec::new(), self.semantic.semantic_search_vec(qv, fetch_k)),
         };
 
-        let unified = rrf_fuse(&ep, &sem, top_k, ep_w, sem_w);
+        let unified = rrf_fuse(&ep, &sem, fuse_k, ep_w, sem_w);
+        let (unified, nouls) = Self::maybe_squeeze(handle.as_ref(), query, unified, top_k);
         RetrievalResultMirror {
             query: query.into(),
             episodic_hits: ep.into_iter().take(top_k).collect(),
             semantic_hits: sem.into_iter().take(top_k).collect(),
             unified_hits: unified,
+            nouls,
         }
     }
 }

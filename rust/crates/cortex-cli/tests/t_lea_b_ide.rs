@@ -9,6 +9,7 @@ fn cli(root: &std::path::Path, args: &[&str]) -> std::process::Output {
         .args(args)
         .current_dir(root)
         .env("CORTEX_BIN", "/definitely/not/python-cortex")
+        .env("HOME", root)
         .output()
         .expect("run cortex-cli")
 }
@@ -231,4 +232,58 @@ fn ide_status_all_json_has_hooks_and_config_checks() {
         "\"hooks_detail\": \"{}/.claude/settings.json does not exist\"",
         root.display()
     )));
+}
+
+#[test]
+fn ide_setup_gemini_alias_writes_gemini_md_and_agents_skills() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".cortex")).unwrap();
+    std::fs::write(root.join(".cortex/workspace.yaml"), "layout_version: 2\n").unwrap();
+
+    let out = cli(
+        root,
+        &[
+            "ide",
+            "setup",
+            "--ide",
+            "gemini",
+            "--project-root",
+            root.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("[Cortex IDE] Injecting profiles for Antigravity (Gemini Code Assist / CLI)..."),
+        "{text}"
+    );
+    assert!(root.join("GEMINI.md").is_file());
+    assert!(root.join(".agents/skills/cortex-sync/SKILL.md").is_file());
+    assert!(root.join(".agents/skills/cortex-sddwork/SKILL.md").is_file());
+    assert!(root.join(".agents/skills/cortex-documenter/SKILL.md").is_file());
+
+    // remove con alias agy limpia GEMINI.md y .agents
+    let out = cli(
+        root,
+        &[
+            "ide",
+            "remove",
+            "--ide",
+            "agy",
+            "--project-root",
+            root.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!root.join("GEMINI.md").exists());
+    assert!(!root.join(".agents").exists());
 }

@@ -18,7 +18,7 @@ interface SetupPanelProps {
   lang: Lang;
 }
 
-const ACTIONS: SetupAction[] = ["agent", "full", "pipeline", "enterprise", "composed"];
+const ACTIONS: SetupAction[] = ["full", "agent", "composed", "enterprise", "pipeline"];
 
 export const SetupPanel: React.FC<SetupPanelProps> = ({
   folder,
@@ -198,7 +198,7 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({
                     <button
                       disabled={busy}
                       onClick={() => runPreview(action)}
-                      className="mt-2 rounded bg-mocha-surface px-2 py-1 font-mono text-[11px] text-mocha-lavender hover:bg-mocha-surface disabled:opacity-50"
+                      className="mt-2 rounded bg-mocha-surface px-2 py-1 font-mono text-[11px] text-mocha-lavender hover:bg-mocha-surface2 disabled:opacity-50"
                     >
                       {t.preview}
                     </button>

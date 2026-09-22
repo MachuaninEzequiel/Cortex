@@ -142,8 +142,10 @@ pub fn extract_project_graph(project_root: &Path) -> ProjectGraphPayload {
         }
     }
 
-    // 4. Specs en vault/specs/ o docs/specs/
-    for specs_dir_name in &["vault/specs", "docs/specs", "specs"] {
+    let mut seen_doc_paths = std::collections::HashSet::new();
+
+    // 4. Specs en .cortex/vault/specs/ (nuevo layout), vault/specs/ (legacy), docs/specs/ o specs/
+    for specs_dir_name in &[".cortex/vault/specs", "vault/specs", "docs/specs", "specs"] {
         let specs_dir = project_root.join(specs_dir_name);
         if specs_dir.is_dir() {
             if let Ok(entries) = fs::read_dir(&specs_dir) {
@@ -151,26 +153,46 @@ pub fn extract_project_graph(project_root: &Path) -> ProjectGraphPayload {
                     let p = entry.path();
                     if p.is_file() && p.extension().is_some_and(|ext| ext == "md") {
                         let fname = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                        let id = format!("{specs_dir_name}/{fname}");
-                        nodes.push(GraphNode {
-                            id: id.clone(),
-                            label: fname.trim_end_matches(".md").to_string(),
-                            kind: "spec".to_string(),
-                            path: p.display().to_string(),
-                        });
-                        edges.push(GraphEdge {
-                            source: root_id.clone(),
-                            target: id,
-                            relation: "documents".to_string(),
-                        });
+                        let canonical_path = p.display().to_string();
+                        if seen_doc_paths.insert(canonical_path.clone()) {
+                            let id = format!("{specs_dir_name}/{fname}");
+                            nodes.push(GraphNode {
+                                id: id.clone(),
+                                label: fname.trim_end_matches(".md").to_string(),
+                                kind: "spec".to_string(),
+                                path: canonical_path,
+                            });
+                            edges.push(GraphEdge {
+                                source: root_id.clone(),
+                                target: id,
+                                relation: "documents".to_string(),
+                            });
+                        }
                     }
                 }
             }
         }
     }
 
-    // 5. ADRs en vault/adrs/ o docs/adrs/ o vault/
-    for adr_dir_name in &["vault/adrs", "docs/adrs", "vault/session-notes", "docs"] {
+    // 5. ADRs y Session-Notes en nuevo layout (.cortex/vault/...) y legacy (vault/..., docs/...)
+    for adr_dir_name in &[
+        ".cortex/vault/decisions",
+        ".cortex/vault/specs",
+        ".cortex/vault/session-notes",
+        ".cortex/vault/sessions",
+        ".cortex/vault/local/adr",
+        ".cortex/vault/local/decisions",
+        ".cortex/vault/adrs",
+        ".cortex/vault",
+        "vault/decisions",
+        "vault/specs",
+        "vault/session-notes",
+        "vault/sessions",
+        "vault/adrs",
+        "vault",
+        "docs/adrs",
+        "docs",
+    ] {
         let adr_dir = project_root.join(adr_dir_name);
         if adr_dir.is_dir() {
             if let Ok(entries) = fs::read_dir(&adr_dir) {
@@ -178,23 +200,38 @@ pub fn extract_project_graph(project_root: &Path) -> ProjectGraphPayload {
                     let p = entry.path();
                     if p.is_file() && p.extension().is_some_and(|ext| ext == "md") {
                         let fname = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                        if fname.starts_with("ADR")
+                        let is_session_dir = adr_dir_name.contains("session");
+                        let is_decision_dir =
+                            adr_dir_name.contains("decision") || adr_dir_name.contains("adr");
+
+                        // Dentro de carpetas de sesiones o decisiones cualquier .md es relevante.
+                        // En la raíz de vault o docs filtramos archivos de arquitectura, ADRs o notas.
+                        let is_match = is_session_dir
+                            || is_decision_dir
+                            || fname.starts_with("ADR")
                             || fname.starts_with("adr")
                             || fname.contains("SESSION")
+                            || fname.contains("session")
                             || fname.contains("PLAN")
-                        {
-                            let id = format!("{adr_dir_name}/{fname}");
-                            nodes.push(GraphNode {
-                                id: id.clone(),
-                                label: fname.trim_end_matches(".md").to_string(),
-                                kind: "adr".to_string(),
-                                path: p.display().to_string(),
-                            });
-                            edges.push(GraphEdge {
-                                source: root_id.clone(),
-                                target: id,
-                                relation: "documents".to_string(),
-                            });
+                            || fname == "architecture.md"
+                            || fname == "context.md";
+
+                        if is_match {
+                            let canonical_path = p.display().to_string();
+                            if seen_doc_paths.insert(canonical_path.clone()) {
+                                let id = format!("{adr_dir_name}/{fname}");
+                                nodes.push(GraphNode {
+                                    id: id.clone(),
+                                    label: fname.trim_end_matches(".md").to_string(),
+                                    kind: "adr".to_string(),
+                                    path: canonical_path,
+                                });
+                                edges.push(GraphEdge {
+                                    source: root_id.clone(),
+                                    target: id,
+                                    relation: "documents".to_string(),
+                                });
+                            }
                         }
                     }
                 }
@@ -304,18 +341,57 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
         };
     }
 
-    let mut newest_file: Option<PathBuf> = None;
+    // 1. Intentar resolver mediante el puntero oficial active.txt
+    let active_ptr = sessions_dir.join("active.txt");
+    if let Ok(ptr) = fs::read_to_string(&active_ptr) {
+        let sid = ptr.trim();
+        if !sid.is_empty() {
+            let session_path = sessions_dir.join(format!("{sid}.yaml"));
+            if session_path.is_file() {
+                if let Ok(content) = fs::read_to_string(&session_path) {
+                    if let Ok(rec) = serde_yaml::from_str::<cortex_app::session::SessionRecord>(&content) {
+                        let is_active = rec.status == cortex_app::session::SessionStatus::Open;
+                        let last_cp = rec
+                            .checkpoints
+                            .last()
+                            .map(|c| c.note.clone())
+                            .filter(|n| !n.is_empty())
+                            .or_else(|| Some("Sesión activa".to_string()));
+                        let spec_path = if rec.spec_path.is_empty() {
+                            None
+                        } else {
+                            Some(rec.spec_path.clone())
+                        };
+                        return SessionStatusPayload {
+                            active: is_active,
+                            session_id: Some(rec.session_id),
+                            spec_path,
+                            checkpoints_count: rec.checkpoints.len(),
+                            last_checkpoint: last_cp,
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Si no hay active.txt o es stale, buscar el yaml de sesión más reciente
+    let mut newest_yaml: Option<PathBuf> = None;
     let mut newest_time = std::time::UNIX_EPOCH;
 
     if let Ok(entries) = fs::read_dir(&sessions_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.is_file() {
+            if p.is_file() && p.extension().is_some_and(|ext| ext == "yaml" || ext == "yml") {
+                let fname = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if fname.starts_with('.') {
+                    continue; // tmp files
+                }
                 if let Ok(meta) = p.metadata() {
                     if let Ok(modified) = meta.modified() {
                         if modified > newest_time {
                             newest_time = modified;
-                            newest_file = Some(p);
+                            newest_yaml = Some(p);
                         }
                     }
                 }
@@ -323,7 +399,51 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
         }
     }
 
-    if let Some(session_path) = newest_file {
+    if let Some(session_path) = newest_yaml {
+        if let Ok(content) = fs::read_to_string(&session_path) {
+            if let Ok(rec) = serde_yaml::from_str::<cortex_app::session::SessionRecord>(&content) {
+                let is_active = rec.status == cortex_app::session::SessionStatus::Open;
+                let last_cp = rec
+                    .checkpoints
+                    .last()
+                    .map(|c| c.note.clone())
+                    .filter(|n| !n.is_empty());
+                let spec_path = if rec.spec_path.is_empty() {
+                    None
+                } else {
+                    Some(rec.spec_path.clone())
+                };
+                return SessionStatusPayload {
+                    active: is_active,
+                    session_id: Some(rec.session_id),
+                    spec_path,
+                    checkpoints_count: rec.checkpoints.len(),
+                    last_checkpoint: last_cp,
+                };
+            }
+        }
+    }
+
+    // 3. Fallback legado: inspección de .jsonl / .json para tests o repos heredados
+    let mut newest_legacy: Option<PathBuf> = None;
+    let mut newest_legacy_time = std::time::UNIX_EPOCH;
+    if let Ok(entries) = fs::read_dir(&sessions_dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() && p.extension().is_some_and(|ext| ext == "jsonl" || ext == "json") {
+                if let Ok(meta) = p.metadata() {
+                    if let Ok(modified) = meta.modified() {
+                        if modified > newest_legacy_time {
+                            newest_legacy_time = modified;
+                            newest_legacy = Some(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(session_path) = newest_legacy {
         let fname = session_path
             .file_name()
             .and_then(|n| n.to_str())
@@ -337,7 +457,6 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
         let mut last_checkpoint = None;
 
         if let Ok(content) = fs::read_to_string(&session_path) {
-            // Conteo de checkpoints por líneas jsonl o bloques json
             for line in content.lines() {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
@@ -365,43 +484,46 @@ pub fn inspect_session_status(project_root: &Path) -> SessionStatusPayload {
     }
 }
 
-/// Persiste un checkpoint en `.cortex/sessions/` (crea la sesión si no hay).
+/// Persiste un checkpoint en `.cortex/sessions/` de forma canónica vía SessionStorage.
 pub fn record_session_checkpoint(project_root: &Path, note: &str) -> Result<String, String> {
-    let sessions_dir = project_root.join(".cortex").join("sessions");
-    fs::create_dir_all(&sessions_dir)
+    let note = note.trim();
+    let storage = cortex_app::session::SessionStorage::from_workspace(project_root);
+    fs::create_dir_all(storage.root())
         .map_err(|e| format!("No pude crear .cortex/sessions: {e}"))?;
 
-    let mut newest_file: Option<PathBuf> = None;
-    let mut newest_time = std::time::UNIX_EPOCH;
-    if let Ok(entries) = fs::read_dir(&sessions_dir) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if p.is_file() {
-                if let Ok(meta) = p.metadata() {
-                    if let Ok(modified) = meta.modified() {
-                        if modified > newest_time {
-                            newest_time = modified;
-                            newest_file = Some(p);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    let session_path = newest_file.unwrap_or_else(|| sessions_dir.join("session.jsonl"));
-    let note = note.trim();
-    let line = serde_json::json!({
-        "event": "checkpoint",
-        "note": note,
-        "at": chrono::Utc::now().to_rfc3339(),
-    });
-    use std::io::Write;
-    let mut f = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&session_path)
-        .map_err(|e| format!("No pude escribir checkpoint: {e}"))?;
-    writeln!(f, "{line}").map_err(|e| format!("No pude persistir checkpoint: {e}"))?;
+    let active_id = std::fs::read_to_string(storage.active_pointer_path())
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let mut record = if let Some(sid) = active_id {
+        storage.load(&sid).unwrap_or_else(|_| {
+            let mut r = cortex_app::session::SessionRecord::default();
+            r.session_id = sid;
+            r
+        })
+    } else {
+        let mut r = cortex_app::session::SessionRecord::default();
+        let sid = format!("{}_sesion", chrono::Utc::now().format("%Y-%m-%d"));
+        r.session_id = sid;
+        r.opened_at = chrono::Utc::now().to_rfc3339();
+        r.status = cortex_app::session::SessionStatus::Open;
+        let _ = std::fs::write(storage.active_pointer_path(), format!("{}\n", r.session_id));
+        r
+    };
+
+    let checkpoint = cortex_app::session::Checkpoint {
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        source: cortex_app::session::CheckpointSource::Manual,
+        verified_claims: vec![],
+        unverified_claims: vec![],
+        artifacts_touched: vec![],
+        note: note.to_string(),
+        phase: None,
+    };
+    record.checkpoints.push(checkpoint);
+    storage.save(&record).map_err(|e| format!("No pude persistir checkpoint: {e}"))?;
+
     Ok(format!("Checkpoint registrado: {note}"))
 }
 
@@ -447,10 +569,11 @@ pub fn inspect_doctor_health(project_root: &Path) -> DoctorReportPayload {
         });
     }
 
-    // 3. Check de Vault (vault/ o docs/)
+    // 3. Check de Vault (.cortex/vault/, vault/ o docs/)
     let vault_dir = project_root.join("vault");
+    let dot_vault = dot_cortex.join("vault");
     let docs_dir = project_root.join("docs");
-    if vault_dir.is_dir() || docs_dir.is_dir() {
+    if vault_dir.is_dir() || dot_vault.is_dir() || docs_dir.is_dir() {
         checks.push(DoctorCheck {
             name: "Vault de Documentación".to_string(),
             status: "ok".to_string(),
@@ -461,7 +584,7 @@ pub fn inspect_doctor_health(project_root: &Path) -> DoctorReportPayload {
         checks.push(DoctorCheck {
             name: "Vault de Documentación".to_string(),
             status: "warn".to_string(),
-            message: "No se encontró carpeta vault/ ni docs/".to_string(),
+            message: "No se encontró carpeta .cortex/vault/, vault/ ni docs/".to_string(),
             auto_fix_tool: Some("docs init".to_string()),
         });
     }
@@ -513,6 +636,40 @@ mod tests {
             .checks
             .iter()
             .any(|c| c.name.contains("Cortex Layout") && c.status == "ok"));
+
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn test_graph_extraction_supports_new_and_legacy_layout() {
+        let temp =
+            std::env::temp_dir().join(format!("cortex_layout_coexist_test_{}", std::process::id()));
+        let _ = fs::create_dir_all(temp.join(".cortex").join("vault").join("specs"));
+        let _ = fs::create_dir_all(temp.join(".cortex").join("vault").join("session-notes"));
+        let _ = fs::write(
+            temp.join(".cortex")
+                .join("vault")
+                .join("specs")
+                .join("spec-auth.md"),
+            "# Auth Spec",
+        );
+        let _ = fs::write(
+            temp.join(".cortex")
+                .join("vault")
+                .join("session-notes")
+                .join("2026-08-27_exploracion.md"),
+            "# Exploracion Session",
+        );
+
+        let g = extract_project_graph(&temp);
+        assert!(g
+            .nodes
+            .iter()
+            .any(|n| n.kind == "spec" && n.label == "spec-auth"));
+        assert!(g
+            .nodes
+            .iter()
+            .any(|n| n.kind == "adr" && n.label == "2026-08-27_exploracion"));
 
         let _ = fs::remove_dir_all(&temp);
     }

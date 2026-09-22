@@ -101,6 +101,8 @@ _PROMOTABLE: frozenset[DocType] = frozenset(
 # Subfolder -> doc_type slug mapping for path inference.
 _SUBFOLDER_TO_DOC_TYPE: dict[str, DocType] = {
     "sessions": DocType.SESSION,
+    "session-notes": DocType.SESSION,
+    "session_notes": DocType.SESSION,
     "handoffs": DocType.HANDOFF,
     "specs": DocType.SPEC,
     # 'decisions' resolved by filename below

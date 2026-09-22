@@ -1,7 +1,7 @@
 <div align="center">
   <br />
   <a href="https://github.com/MachuaninEzequiel/Cortex">
-    <img src="assets/logo.png" alt="Cortex" width="380" />
+    <img src="assets/cortex-prime.png" alt="Cortex" width="380" />
   </a>
   <br />
 
@@ -25,6 +25,7 @@
     <img src="https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&style=flat-square" alt="Tauri 2" />
     <img src="https://img.shields.io/badge/LLM-Liquid_LFM2.5-purple?style=flat-square" alt="Liquid LFM" />
     <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
+    <img src="https://img.shields.io/badge/System_One-JEV_1.13-cyan?style=flat-square" alt="System One JEV" />
     <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
     <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
   </p>
@@ -110,6 +111,27 @@ El agente del IDE y Liquid beben del **mismo** índice. No hay una verdad para e
 El conocimiento no es una lista. Es un grafo: módulos, specs, ADRs, archivos, aristas de dependencia. WebGraph lo vuelve **visible, orbital, consultable**.
 
 Liquid no alucina la topología: la **pregunta**. Un nodo se fija al chat; Doctor y Memoria Org cuelgan del mismo mapa. Lo que la memoria recuerda, el grafo lo muestra; lo que el grafo muestra, el modelo lo puede citar.
+
+### System One — Cognición rápida, gating y blindaje de contexto (motorizado por JEV)
+
+Inspirado en la teoría de los dos sistemas cognitivos, Cortex incorpora una arquitectura dual: mientras el agente deliberativo (**System Two**) analiza código y ejecuta tareas complejas, **System One** opera como un portero perceptual ultra-rápido de baja latencia y alta precisión que filtra, destila y compacta el contexto **antes** de alimentar al modelo principal.
+
+Actualmente, esta capa está motorizada en producción por **JEV** (`jev-1.13.0` / TypeSafe System One).
+
+#### ¿Qué hace System One?
+- **Utterance Gating (Portería de Intención):** Clasifica en milisegundos la naturaleza de cada prompt. Si el usuario realiza una consulta casual, teórica o trivia (`casual_trap`), System One la responde o aísla directamente **sin abrir sesiones innecesarias** y sin contaminar la memoria del repositorio con ruido.
+- **Search Squeeze & Context Pack v2 (Destilación de Contexto):** En lugar de arrojar al modelo fragmentos gigantes de documentación o dejar pasar distractores léxicos irrelevantes, suprime distractores y condensa el expediente a las variables canónicas y restricciones arquitectónicas vigentes.
+- **Session Compaction (Compactación de Historial):** Comprime automáticamente salidas masivas de linters, tests o ejecuciones de herramientas (reduciendo volcados ruidosos de más de 1.400 tokens a resúmenes informativos de 15 tokens), impidiendo el crecimiento cuadrático del contexto.
+- **Blindaje y Cumplimiento de ADRs:** Asegura que ante prompts escuetos o ambiguos en «terminal fría», el agente no alucine dependencias ni viole decisiones de diseño preexistentes.
+
+#### Impacto en el funcionamiento y resultados empíricos
+En una evaluación experimental controlada de **18 turnos continuos** (benchmark ConaISI):
+- **Frente a un Agente sin Cortex (RAW):**
+  - **-53.2% de tokens acumulados** al cabo de la sesión (14.856 vs 31.756 tokens).
+  - **Punto de cruce (Turno 9):** A partir del noveno turno, Cortex + System One se vuelve **más económico que operar sin Cortex**, mientras que el agente sin memoria sufre una tasa de cumplimiento arquitectónico de apenas **61.1%** frente al **100%** alcanzado con System One.
+- **Frente a Cortex tradicional / Baseline (sin System One):**
+  - **-68.6% de ahorro en tokens acumulados** (14.856 vs 47.368 tokens), evitando la explosión de contexto causada por volcados de herramientas y fragmentos ruidosos.
+  - **-52.8% de reducción en tokens de razonamiento (*thinking waste*):** Al no recibir distractores en el prompt, el modelo principal no gasta ciclos dudando o analizando código irrelevante.
 
 <img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
 

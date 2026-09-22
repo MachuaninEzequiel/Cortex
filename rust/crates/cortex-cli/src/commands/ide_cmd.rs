@@ -11,7 +11,7 @@ use chrono::Utc;
 use clap::Parser;
 use cortex_setup::ide::adapters::all_adapters;
 use cortex_setup::ide::prompts::build_all_prompts;
-use cortex_setup::ide::{IdeAdapter, IdeCtx};
+use cortex_setup::ide::{normalize_ide, IdeAdapter, IdeCtx};
 use cortex_setup::session_hooks::{default_installer, HookInstaller};
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -38,27 +38,6 @@ const TARGET_IDES: [&str; 4] = ["claude_code", "codex", "opencode", "pi"];
 const COMMUNITY_IDES: [&str; 4] = ["claude_desktop", "cursor", "vscode", "windsurf"];
 const EXPERIMENTAL_IDES: [&str; 3] = ["antigravity", "hermes", "zed"];
 const VALIDATED_IDES: [&str; 5] = ["claude_code", "cursor", "opencode", "pi", "codex"];
-
-/// `_ALIASES` de registry.py.
-const ALIASES: &[(&str, &str)] = &[
-    ("claude", "claude_code"),
-    ("claude-code", "claude_code"),
-    ("claude-desktop", "claude_desktop"),
-    ("code", "vscode"),
-    ("visual-studio-code", "vscode"),
-    ("vs-code", "vscode"),
-    ("openai-codex", "codex"),
-    ("codex-cli", "codex"),
-];
-
-fn normalize_ide(raw: &str) -> String {
-    let n = raw.trim().to_lowercase();
-    ALIASES
-        .iter()
-        .find(|(a, _)| **a == n)
-        .map(|(_, canon)| canon.to_string())
-        .unwrap_or(n)
-}
 
 fn tier_of(name: &str) -> &'static str {
     if TARGET_IDES.contains(&name) {

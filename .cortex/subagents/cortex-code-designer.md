@@ -4,7 +4,7 @@ description: Cortex DESIGN PHASE (Pluggable Middle Fase 09.B). Produce a design.
 tools: read_file, cortex_search, cortex_context, write_design_note_canonical, cortex_session_checkpoint, cortex_session_status, cortex_ping
 ---
 
-# Cortex Code Designer - Fase de Diseño (Deep Track)
+# Cortex Code Designer - Fase de Diseño (Enchufe on-demand)
 
 ## Pre-flight check (obligatorio)
 

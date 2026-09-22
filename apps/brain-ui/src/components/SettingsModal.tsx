@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ModelEntry, Lang, DownloadProgressPayload } from "../types";
 import { getT } from "../i18n";
+import { JudgementSettingsTab } from "./JudgementSettingsTab";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface SettingsModalProps {
   onSetLang: (lang: Lang) => void;
   alwaysOnTop?: boolean;
   onToggleAlwaysOnTop?: (enabled: boolean) => void;
+  projectPath?: string | null;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -42,8 +44,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSetLang,
   alwaysOnTop = false,
   onToggleAlwaysOnTop,
+  projectPath = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<"model" | "paths" | "general" | "about">("model");
+  const [activeTab, setActiveTab] = useState<"model" | "paths" | "general" | "judgement" | "about">("model");
   const [customGgufUrl, setCustomGgufUrl] = useState<string>("");
   const t = getT(lang);
 
@@ -129,6 +132,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               }`}
             >
               <span>⚡</span> {t.settings.generalTab}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("judgement")}
+              className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left transition ${
+                activeTab === "judgement"
+                  ? "bg-mocha-surface text-mocha-mauve font-semibold"
+                  : "text-mocha-subtext0 hover:bg-mocha-surface/50 hover:text-mocha-text"
+              }`}
+            >
+              <span>⚖</span> {t.settings.judgementTab}
             </button>
 
             <button
@@ -433,6 +447,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
               </div>
+            )}
+
+            {activeTab === "judgement" && (
+              <JudgementSettingsTab projectPath={projectPath ?? null} lang={lang} />
             )}
 
             {activeTab === "about" && (

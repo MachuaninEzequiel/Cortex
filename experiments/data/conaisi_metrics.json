@@ -1,0 +1,283 @@
+[
+  {
+    "phase_id": 1,
+    "phase_name": "1_Sync_Architectural_Context",
+    "condition": "baseline",
+    "tool_called": "cortex_context",
+    "duration_ms": 19.38,
+    "context_tokens": 147,
+    "context_chars": 589,
+    "prompt_tokens_est": 289,
+    "completion_tokens_est": 420,
+    "candidates_retrieved": 4,
+    "candidates_retained": 3,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "\ud83e\udde0 Cortex Context \u2014 Found 2 related memories  ### [SEMANTIC] Cortex Product Spec   bc8cff   # Cortex: Cognitive Operating System for AI Coding Agents *Especificaci\u00f3n Completa de Producto y Arquitectura para el Sitio Web Promocional*  ---  ## \u2026   Match",
+    "details": {
+      "is_pack": false,
+      "has_runbook": false,
+      "has_rate_limiter": false
+    }
+  },
+  {
+    "phase_id": 1,
+    "phase_name": "1_Sync_Architectural_Context",
+    "condition": "jev",
+    "tool_called": "cortex_context",
+    "duration_ms": 1467.17,
+    "context_tokens": 189,
+    "context_chars": 756,
+    "prompt_tokens_est": 331,
+    "completion_tokens_est": 420,
+    "candidates_retrieved": 4,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 100.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "## Context pack family: other canonical: 1  ### Cortex Product Spec [SEMANTIC] path: /home/chucho/pruebas/exp-cortex-jev/.cortex/vault/CORTEX_PRODUCT_SPEC.md noul: 0.62 # Cortex: Cognitive Operating System for AI Coding Agents *Especificaci\u00f3n Complet",
+    "details": {
+      "is_pack": true,
+      "has_runbook": false,
+      "has_rate_limiter": false
+    }
+  },
+  {
+    "phase_id": 2,
+    "phase_name": "2_SDD_Spec_Formalization",
+    "condition": "baseline",
+    "tool_called": "cortex_session_status",
+    "duration_ms": 1.22,
+    "context_tokens": 13,
+    "context_chars": 55,
+    "prompt_tokens_est": 213,
+    "completion_tokens_est": 350,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Spec exists: True, Session: 2026-09-18_cortex-landing",
+    "details": {
+      "spec_path": "/home/chucho/pruebas/exp-cortex-baseline/specs/SPEC-001-cortex-landing.md",
+      "spec_bytes": 2288
+    }
+  },
+  {
+    "phase_id": 2,
+    "phase_name": "2_SDD_Spec_Formalization",
+    "condition": "jev",
+    "tool_called": "cortex_session_status",
+    "duration_ms": 1.05,
+    "context_tokens": 13,
+    "context_chars": 55,
+    "prompt_tokens_est": 213,
+    "completion_tokens_est": 350,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Spec exists: True, Session: 2026-09-18_cortex-landing",
+    "details": {
+      "spec_path": "/home/chucho/pruebas/exp-cortex-jev/specs/SPEC-001-cortex-landing.md",
+      "spec_bytes": 2288
+    }
+  },
+  {
+    "phase_id": 3,
+    "phase_name": "3_Utterance_Gate_Casual_Trap",
+    "condition": "baseline",
+    "tool_called": "direct_unfiltered",
+    "duration_ms": 4.2,
+    "context_tokens": 337,
+    "context_chars": 1348,
+    "prompt_tokens_est": 407,
+    "completion_tokens_est": 120,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": "unfiltered_accepted",
+    "utterance_accepted": true,
+    "status": "POLLUTED",
+    "raw_snippet": "Baseline: No gate active. Query treated as episodic memory candidate.",
+    "details": {
+      "gate": "none",
+      "pollution": true
+    }
+  },
+  {
+    "phase_id": 3,
+    "phase_name": "3_Utterance_Gate_Casual_Trap",
+    "condition": "jev",
+    "tool_called": "typesafe_utterance_gate",
+    "duration_ms": 1014.51,
+    "context_tokens": 0,
+    "context_chars": 0,
+    "prompt_tokens_est": 137,
+    "completion_tokens_est": 60,
+    "candidates_retrieved": 1,
+    "candidates_retained": 0,
+    "noise_dropped_pct": 100.0,
+    "utterance_decision": "work=question, remember=0.10, session=0.23",
+    "utterance_accepted": false,
+    "status": "BLOCKED_CLEAN",
+    "raw_snippet": "JEV System One: Choice=question, worth_remembering=0.10. Gated away from memory.",
+    "details": {
+      "work": {
+        "type": "choice",
+        "choice": "question",
+        "confidence": 1.0,
+        "probabilities": {
+          "question": 1.0,
+          "implement": 0.0,
+          "done": 0.0,
+          "chore": 0.0
+        }
+      },
+      "worth_remembering": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "needs_session": {
+        "type": "noul",
+        "noul": 0.23
+      }
+    }
+  },
+  {
+    "phase_id": 4,
+    "phase_name": "4_Search_Squeeze_Visualizer",
+    "condition": "baseline",
+    "tool_called": "cortex_search",
+    "duration_ms": 3.28,
+    "context_tokens": 566,
+    "context_chars": 2264,
+    "prompt_tokens_est": 738,
+    "completion_tokens_est": 380,
+    "candidates_retrieved": 5,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "## Context for: 'patr\u00f3n de visualizaci\u00f3n del pipeline cognitivo desde prompt hasta LLM con bypass de gating'  - [SEMANTIC] **Cortex Product Spec** (/home/chucho/pruebas/exp-cortex-baseline/.cortex/vault/CORTEX_PRODUCT_SPEC.md)   > # Cortex: Cognitive",
+    "details": {
+      "hits": 1
+    }
+  },
+  {
+    "phase_id": 4,
+    "phase_name": "4_Search_Squeeze_Visualizer",
+    "condition": "jev",
+    "tool_called": "cortex_search",
+    "duration_ms": 3.0,
+    "context_tokens": 559,
+    "context_chars": 2239,
+    "prompt_tokens_est": 731,
+    "completion_tokens_est": 380,
+    "candidates_retrieved": 5,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 50.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "## Context for: 'patr\u00f3n de visualizaci\u00f3n del pipeline cognitivo desde prompt hasta LLM con bypass de gating'  - [SEMANTIC] **Cortex Product Spec** (/home/chucho/pruebas/exp-cortex-jev/.cortex/vault/CORTEX_PRODUCT_SPEC.md)   > # Cortex: Cognitive Oper",
+    "details": {
+      "hits": 1
+    }
+  },
+  {
+    "phase_id": 5,
+    "phase_name": "5_Implementation_Checkpoint",
+    "condition": "baseline",
+    "tool_called": "cortex_session_checkpoint",
+    "duration_ms": 6.18,
+    "context_tokens": 24,
+    "context_chars": 98,
+    "prompt_tokens_est": 224,
+    "completion_tokens_est": 250,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Error ejecutando cortex_session_checkpoint: Cannot append checkpoint to session in status \"closed\"",
+    "details": {
+      "index_ok": true,
+      "css_ok": true,
+      "js_ok": true
+    }
+  },
+  {
+    "phase_id": 5,
+    "phase_name": "5_Implementation_Checkpoint",
+    "condition": "jev",
+    "tool_called": "cortex_session_checkpoint",
+    "duration_ms": 5.93,
+    "context_tokens": 24,
+    "context_chars": 98,
+    "prompt_tokens_est": 224,
+    "completion_tokens_est": 250,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Error ejecutando cortex_session_checkpoint: Cannot append checkpoint to session in status \"closed\"",
+    "details": {
+      "index_ok": true,
+      "css_ok": true,
+      "js_ok": true
+    }
+  },
+  {
+    "phase_id": 6,
+    "phase_name": "6_Review_ADR_and_Close",
+    "condition": "baseline",
+    "tool_called": "cortex_session_close",
+    "duration_ms": 9.1,
+    "context_tokens": 19,
+    "context_chars": 78,
+    "prompt_tokens_est": 199,
+    "completion_tokens_est": 300,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Session closed: True",
+    "details": {
+      "session_closed": true
+    }
+  },
+  {
+    "phase_id": 6,
+    "phase_name": "6_Review_ADR_and_Close",
+    "condition": "jev",
+    "tool_called": "cortex_session_close",
+    "duration_ms": 8.83,
+    "context_tokens": 19,
+    "context_chars": 78,
+    "prompt_tokens_est": 199,
+    "completion_tokens_est": 300,
+    "candidates_retrieved": 1,
+    "candidates_retained": 1,
+    "noise_dropped_pct": 0.0,
+    "utterance_decision": null,
+    "utterance_accepted": true,
+    "status": "OK",
+    "raw_snippet": "Session closed: True",
+    "details": {
+      "session_closed": true
+    }
+  }
+]

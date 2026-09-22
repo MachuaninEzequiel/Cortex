@@ -4,6 +4,8 @@
 //! comandos y utilidades para tests/examples.
 
 pub mod commands;
+pub mod judgement_cmds;
+pub mod judgement_squeeze;
 pub mod memory;
 pub mod memory_cmds;
 pub mod paths;

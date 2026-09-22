@@ -134,6 +134,89 @@ pub fn to_compact(ctx: &EnrichedBundle) -> String {
     parts.join("\n")
 }
 
+/// Vista del pack (spec 07). El adapter arma esto; Jev no genera el texto.
+pub struct PackCanonicalView {
+    pub path: String,
+    pub title: String,
+    pub noul: f64,
+    pub source: &'static str,
+    pub body: String,
+}
+
+pub struct PackPointerView {
+    pub path: String,
+    pub rel: String,
+    pub line: String,
+}
+
+pub struct ContextPackView {
+    pub family: String,
+    pub canonical: Vec<PackCanonicalView>,
+    pub pointers: Vec<PackPointerView>,
+    pub dropped: usize,
+}
+
+const PACK_PROMPT_CHARS: usize = 1800;
+const PACK_BODY_CHARS: usize = 800;
+
+fn pack_source_tag(source: &str) -> &'static str {
+    if source == "episodic" {
+        "EPISODIC"
+    } else {
+        "SEMANTIC"
+    }
+}
+
+fn render_pack(pack: &ContextPackView, expand: bool, verbose: bool) -> String {
+    let body_n = if expand { usize::MAX } else { PACK_BODY_CHARS };
+    let mut parts: Vec<String> = vec![
+        "## Context pack".into(),
+        format!(
+            "family: {}",
+            if pack.family.is_empty() {
+                "other"
+            } else {
+                &pack.family
+            }
+        ),
+        format!("canonical: {}", pack.canonical.len()),
+    ];
+    for c in &pack.canonical {
+        let body: String = c.body.chars().take(body_n).collect();
+        parts.push(String::new());
+        parts.push(format!("### {} [{}]", c.title, pack_source_tag(c.source)));
+        parts.push(format!("path: {}", c.path));
+        parts.push(format!("noul: {:.2}", c.noul));
+        parts.push(body);
+    }
+    if !pack.pointers.is_empty() {
+        parts.push(String::new());
+        parts.push("## Pointers".into());
+        for p in &pack.pointers {
+            let line: String = p.line.chars().take(80).collect();
+            parts.push(format!("- {}  — {} — {}", p.path, p.rel, line));
+        }
+    }
+    if verbose {
+        parts.push(String::new());
+        parts.push(format!("dropped: {}", pack.dropped));
+    }
+    let out = parts.join("\n");
+    if expand {
+        out
+    } else {
+        out.chars().take(PACK_PROMPT_CHARS).collect()
+    }
+}
+
+pub fn to_pack_compact(pack: &ContextPackView, expand: bool) -> String {
+    render_pack(pack, expand, false)
+}
+
+pub fn to_pack_markdown(pack: &ContextPackView, expand: bool) -> String {
+    render_pack(pack, expand, true)
+}
+
 /// Grupos por doc_type (label upper, OTHER al final implícito), ordenados por
 /// max enriched_score desc; orden estable para empates (first-appearance).
 pub fn to_markdown_grouped(ctx: &EnrichedBundle) -> String {
@@ -306,5 +389,52 @@ mod tests {
         let pos_alto = md.find("[ADR]").unwrap();
         let pos_other = md.find("[OTHER]").unwrap();
         assert!(pos_alto < pos_other);
+    }
+
+    fn sample_pack() -> ContextPackView {
+        ContextPackView {
+            family: "session".into(),
+            canonical: vec![PackCanonicalView {
+                path: "verification.md".into(),
+                title: "verification".into(),
+                noul: 0.92,
+                source: "semantic",
+                body: "checkpoint verification quality gates native".into(),
+            }],
+            pointers: vec![PackPointerView {
+                path: "sessions.rs.md".into(),
+                rel: "related".into(),
+                line: "sessions tui".into(),
+            }],
+            dropped: 1,
+        }
+    }
+
+    #[test]
+    fn pack_compact_shape_and_budget() {
+        let s = to_pack_compact(&sample_pack(), false);
+        assert!(s.starts_with("## Context pack"));
+        assert!(s.contains("family: session"));
+        assert!(s.contains("path: verification.md"));
+        assert!(s.contains("- sessions.rs.md  — related — sessions tui"));
+        assert!(!s.contains("Matched by:"));
+        assert!(!s.contains("> excerpt"));
+        assert!(!s.contains("dropped:"));
+        assert!(s.chars().count() <= 1800);
+    }
+
+    #[test]
+    fn pack_markdown_verbose_lists_dropped() {
+        let s = to_pack_markdown(&sample_pack(), false);
+        assert!(s.contains("dropped: 1"));
+    }
+
+    #[test]
+    fn to_compact_unchanged_by_pack_helpers() {
+        let bundle = ctx(vec![item("n", "hello world")]);
+        let compact = to_compact(&bundle);
+        assert!(compact.contains("## 🧠 Cortex Context"));
+        assert!(compact.contains("Matched by:"));
+        assert!(!compact.starts_with("## Context pack"));
     }
 }

@@ -29,9 +29,9 @@ def _normalize_summary(text: str, max_chars: int = 220) -> str:
 def _semantic_node_type(rel_path: str, tags: list[str]) -> str:
     rel_lower = rel_path.replace("\\", "/").lower()
     tag_set = {tag.lower() for tag in tags}
-    if "spec" in tag_set or rel_lower.startswith("specs/"):
+    if "spec" in tag_set or rel_lower.startswith(("specs/", ".cortex/vault/specs/")):
         return "semantic_spec"
-    if "session" in tag_set or rel_lower.startswith("sessions/"):
+    if "session" in tag_set or rel_lower.startswith(("sessions/", "session-notes/", "session_notes/")):
         return "semantic_session"
     return "semantic_doc"
 
@@ -65,11 +65,19 @@ class SemanticSource:
         episodic_cfg = self._runtime_config.get("episodic", {})
         semantic_cfg = self._runtime_config.get("semantic", {})
         configured_vault_path = semantic_cfg.get("vault_path", "vault")
-        self.vault_path = (
+        resolved_vault = (
             vault_path.resolve()
             if vault_path is not None
             else self._layout.resolve_workspace_relative(configured_vault_path)
         )
+        if not resolved_vault.exists():
+            new_vault = self._layout.workspace_root / "vault"
+            legacy_vault = self._layout.repo_root / "vault"
+            if new_vault.is_dir():
+                resolved_vault = new_vault
+            elif legacy_vault.is_dir():
+                resolved_vault = legacy_vault
+        self.vault_path = resolved_vault
         self.reader = reader or VaultReader(
             vault_path=str(self.vault_path),
             embedding_model=episodic_cfg.get("embedding_model", "all-MiniLM-L6-v2"),

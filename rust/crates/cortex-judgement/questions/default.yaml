@@ -1,0 +1,33 @@
+# Catálogo embebido de questions v1 (search_squeeze).
+# Instructions/criteria copiados literal de TypeSafeAI/eval/squeeze.py.
+version: 1
+model: jev-1.13.0
+thresholds:
+  compass_confidence_below: 0.50
+  drop_below: 0.25
+  overfetch: 30
+  stage2_keep: 12
+  prompt_keep: 8
+  candidate_chars: 800
+families:
+  session: Session lifecycle, checkpoints, verification, quality gates
+  retrieval: Hybrid search, RRF, intent, embeddings used for retrieve
+  documenter: Finish-session, reconstruction, contradiction detection, ADRs
+  brain: Local assistant router and tools, not the TUI chrome
+  enterprise: Org vault, promotion, review-required, governance
+  autopilot: Task detectors and policies over a session
+  actions: ActionEngine / cortex next scheduler and catalog
+  embeddings: Choosing onnx/fastembed/openai embedders, per-language
+  mcp: The MCP server, tool catalog, 32 tools
+  webgraph: Memory graph, wiki-links, cosine neighbors
+  other: None of the above / several families at once
+compass:
+  type: choice
+  instructions:
+    question: Which Cortex subsystem is this query primarily about?
+    focus: The mechanism the user wants explained, not a UI that happens to mention it.
+noul:
+  type: noul
+  criteria:
+    true: Explains the module or contract the query asks for.
+    false: Keyword overlap, chrome, tests, or a neighboring subsystem.

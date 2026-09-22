@@ -129,6 +129,7 @@ export interface OrgKnowledgeItem {
   reason?: string | null;
   updated_at: string;
   is_promoted: boolean;
+  noul?: number | null;
 }
 
 export interface OrgMemoryPayload {
@@ -176,3 +177,37 @@ export interface SetupTarget {
   doctor_checks: number;
   ides: IdeStatus[];
 }
+
+// ── SystemOne & Model Router ──────────────────────────────────────────────────
+
+export interface ProviderModelInfo {
+  provider: string;
+  model_id: string;
+  canonical_id: string;
+  display_name: string;
+  source_cli: string;
+  is_active: boolean;
+}
+
+export interface JudgementSettingsPayload {
+  enabled: boolean;
+  search_squeeze: boolean;
+  promotion: boolean;
+  context_pack: boolean;
+  utterance: boolean;
+  session_compact: boolean;
+  model_routing: boolean;
+  model: string;
+  status: string;
+  key_configured: boolean;
+  has_project: boolean;
+  detected_host: string;
+  host_id: string;
+  host_policy: string;
+  available_models: ProviderModelInfo[];
+  designer_model?: string | null;
+  implementer_model?: string | null;
+  documenter_model?: string | null;
+  auditor_model?: string | null;
+}
+
