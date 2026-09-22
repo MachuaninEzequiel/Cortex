@@ -146,15 +146,15 @@ En una evaluación experimental controlada de **18 turnos continuos** (benchmark
 
 Lo primero que se instala es la aplicación. Desde ahí se inicializa un proyecto, se conecta el IDE y se usa Cortex **sin clonar este repositorio y sin `pip` ni `cargo`**.
 
-**Descarga** (versión 0.2.6):
-
-[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6)
+**Descargas** (0.2.7):
+ 
+[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7)
 
 | Sistema | Archivo |
 | :--- | :--- |
-| Linux | `Cortex.Brain_0.2.6_amd64.deb` |
-| Windows | `Cortex.Brain_0.2.6_x64-setup.exe` |
-| macOS (Apple Silicon) | `Cortex.Brain_0.2.6_aarch64.dmg` |
+| Linux | `Cortex.Brain_0.2.7_amd64.deb` |
+| Windows | `Cortex.Brain_0.2.7_x64-setup.exe` |
+| macOS (Apple Silicon) | `Cortex.Brain_0.2.7_aarch64.dmg` |
 
 Instalá el paquete y abrí **Cortex Brain**.
 

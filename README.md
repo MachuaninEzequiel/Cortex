@@ -145,15 +145,15 @@ In a controlled **18-turn temporal benchmark** simulating an extended developmen
 
 Install the app first. From there you can initialize a project, connect an IDE, and use Cortex **without cloning this repository and without `pip` or `cargo`**.
 
-**Download** (0.2.6):
+**Download** (0.2.7):
 
-[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.6)
+[github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7](https://github.com/MachuaninEzequiel/Cortex/releases/tag/brain-v0.2.7)
 
 | System | File |
 | :--- | :--- |
-| Linux | `Cortex.Brain_0.2.6_amd64.deb` |
-| Windows | `Cortex.Brain_0.2.6_x64-setup.exe` |
-| macOS (Apple Silicon) | `Cortex.Brain_0.2.6_aarch64.dmg` |
+| Linux | `Cortex.Brain_0.2.7_amd64.deb` |
+| Windows | `Cortex.Brain_0.2.7_x64-setup.exe` |
+| macOS (Apple Silicon) | `Cortex.Brain_0.2.7_aarch64.dmg` |
 
 Install the package and open **Cortex Brain**.
 
