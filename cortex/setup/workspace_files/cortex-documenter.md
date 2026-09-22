@@ -30,7 +30,7 @@ Cierro toda Session (anchor final, simétrico a `/cortex-sync` al inicio). Escri
 | Término canónico nuevo del dominio | `glossary` | 0..N |
 | Ticket externo procesado | `hu` | 0..1 |
 
-`spec` y `design` NO se persisten desde acá (los crean `/cortex-sync` y Deep Track).
+`spec` y `design` NO se persisten desde acá (los crean `/cortex-sync` y la fase de diseño).
 **Criterios ADR (los 3)**: (1) Hard to reverse >1 semana; (2) Surprising without context; (3) Real trade-off con alternativa rechazada con razones. Usá `suggested_adrs` como pista, no como evidencia: aplicá los 3 criterios.
 **Combinación**: SIEMPRE 1 principal (`session`|`handoff`, mutuamente excluyentes) + 0..N secundarias. `abandoned` ⇒ 1 nota breve `session` tag `abandoned` con la razón; sin ADRs/decisions (el trabajo fue tirado).
 

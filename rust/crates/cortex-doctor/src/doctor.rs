@@ -298,6 +298,10 @@ fn run_doctor_inner(
     // ── Pluggable Middle health ───────────────────────────────────
     checks.extend(pluggable_middle_health(&layout));
 
+    if raw_config.get("judgement").is_some() {
+        checks.push(judgement_check(&raw_config));
+    }
+
     // ── Enterprise ────────────────────────────────────────────────
     if matches!(scope, DoctorScope::Enterprise | DoctorScope::All) {
         checks.extend(validate_enterprise(
@@ -780,6 +784,25 @@ fn validate_enterprise_promotion(
         records.display().to_string(),
     ));
     checks
+}
+
+fn judgement_check(raw: &serde_yaml::Value) -> DoctorCheck {
+    let cfg: cortex_config::JudgementConfig = raw
+        .get("judgement")
+        .cloned()
+        .and_then(|v| serde_yaml::from_value(v).ok())
+        .unwrap_or_default();
+    if !cfg.enabled || cfg.provider != cortex_config::JudgementProvider::Typesafe {
+        return DoctorCheck::new("judgement", true, "info", "disabled");
+    }
+    let has_key = std::env::var(&cfg.api_key_env)
+        .ok()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    if !has_key {
+        return DoctorCheck::new("judgement", false, "warn", "enabled-but-no-key");
+    }
+    DoctorCheck::new("judgement", true, "info", "ok")
 }
 
 fn yaml_to_json(value: &serde_yaml::Value) -> serde_json::Value {

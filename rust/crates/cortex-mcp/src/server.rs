@@ -405,7 +405,12 @@ impl<M: MemoryBackend + 'static> CortexMcpServer<M> {
                                 handlers_search::search_vector_text(&mut *guard, arguments)
                             }
                             "cortex_context" => {
-                                handlers_search::context_text(&mut *guard, arguments)
+                                let handle = handlers_search::judgement_handle(&self.project_root);
+                                handlers_search::context_text_with_pack(
+                                    &mut *guard,
+                                    arguments,
+                                    handle.as_ref(),
+                                )
                             }
                             _ => handlers_search::build_sync_ticket_context(
                                 &mut *guard,
@@ -721,12 +726,80 @@ mod transport {
     }
 
     /// Sirve por stdio (bloquea hasta EOF del cliente).
+    ///
+    /// Clientes como Antigravity / Gemini CLI (`agy`) envían sondas pre-init
+    /// como `server/discover` antes de `initialize`. `rmcp` 0.8 asume que el primer
+    /// mensaje recibido en el transporte es estrictamente `initialize` y cierra
+    /// la conexión si recibe cualquier otro método.
+    ///
+    /// Para interoperar limpiamente sin romper ningún cliente estándar (VSCode,
+    /// Claude Code, Windsurf, Cursor):
+    /// 1. Leemos línea por línea de stdin.
+    /// 2. Si es una sonda pre-init (`server/discover`), respondemos con el error
+    ///    estándar JSON-RPC MethodNotFound (-32601), lo que hace que el cliente
+    ///    haga fallback inmediato al `initialize` estándar de MCP.
+    /// 3. En cuanto llega el mensaje de inicialización (u otro mensaje no-sonda),
+    ///    lo reinyectamos al inicio del stream con `Cursor::chain` y transferimos
+    ///    el control completo a `rmcp`.
     pub fn serve_stdio_blocking(server: CortexMcpServer) -> Result<(), String> {
+        use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+
         tokio::runtime::Runtime::new()
             .map_err(|e| format!("tokio runtime: {e}"))?
             .block_on(async move {
+                let stdin = tokio::io::stdin();
+                let mut stdout = tokio::io::stdout();
+                let mut reader = tokio::io::BufReader::new(stdin);
+                let mut line = String::new();
+                let mut initial_buffer = Vec::new();
+
+                loop {
+                    line.clear();
+                    let n = reader
+                        .read_line(&mut line)
+                        .await
+                        .map_err(|e| format!("read_line: {e}"))?;
+                    if n == 0 {
+                        // EOF del cliente sin mensajes
+                        return Ok(());
+                    }
+
+                    // Comprobar si es una sonda previa a initialize
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
+                        if let Some(method) = val.get("method").and_then(|m| m.as_str()) {
+                            if method == "server/discover" {
+                                let id = val.get("id").cloned().unwrap_or(serde_json::Value::Null);
+                                let err_resp = serde_json::json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "error": {
+                                        "code": -32601,
+                                        "message": "Method not found"
+                                    }
+                                });
+                                let mut out = serde_json::to_vec(&err_resp)
+                                    .map_err(|e| format!("serialize err: {e}"))?;
+                                out.push(b'\n');
+                                stdout
+                                    .write_all(&out)
+                                    .await
+                                    .map_err(|e| format!("write_all: {e}"))?;
+                                stdout.flush().await.map_err(|e| format!("flush: {e}"))?;
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Mensaje no-sonda (ej. `initialize` estándar): se guarda y se cede a rmcp
+                    initial_buffer.extend_from_slice(line.as_bytes());
+                    break;
+                }
+
+                let prepended_input = std::io::Cursor::new(initial_buffer).chain(reader);
+                let transport = (prepended_input, stdout);
+
                 let service = CortexMcpService::new(server)
-                    .serve(rmcp::transport::stdio())
+                    .serve(transport)
                     .await
                     .map_err(|e| format!("serve: {e}"))?;
                 service

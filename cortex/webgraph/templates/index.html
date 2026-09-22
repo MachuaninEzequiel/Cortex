@@ -3,118 +3,319 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cortex WebGraph</title>
+    <title>Cortex WebGraph — Knowledge & Memory Graph</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <main class="shell">
-        <header class="hero">
-            <h1>Cortex WebGraph</h1>
-            <p>Explore the visible brain of Cortex across semantic notes, episodic memories, and the explainable links between them.</p>
+    <div class="app-shell">
+        <!-- Top Navigation Bar -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">Cortex WebGraph</span>
+                    <span class="brand-subtitle">Interactive Knowledge & Memory Graph</span>
+                </div>
+            </div>
+
+            <!-- Mode Selector as Segmented Tabs -->
+            <div class="mode-tabs" role="tablist" aria-label="Graph Mode">
+                <button type="button" class="mode-tab {% if default_mode == 'hybrid' or not default_mode %}active{% endif %}" data-mode="hybrid">
+                    <span class="mode-dot dot-hybrid"></span> Hybrid
+                </button>
+                <button type="button" class="mode-tab {% if default_mode == 'semantic' %}active{% endif %}" data-mode="semantic">
+                    <span class="mode-dot dot-semantic"></span> Semantic
+                </button>
+                <button type="button" class="mode-tab {% if default_mode == 'episodic' %}active{% endif %}" data-mode="episodic">
+                    <span class="mode-dot dot-episodic"></span> Episodic
+                </button>
+                <!-- Keep select element for programmatic/backwards-compatible bindings -->
+                <select id="mode" class="sr-only" aria-label="Mode">
+                    <option value="hybrid" {% if default_mode == "hybrid" %}selected{% endif %}>Hybrid</option>
+                    <option value="semantic" {% if default_mode == "semantic" %}selected{% endif %}>Semantic</option>
+                    <option value="episodic" {% if default_mode == "episodic" %}selected{% endif %}>Episodic</option>
+                </select>
+            </div>
+
+            <!-- Quick Global Controls -->
+            <div class="nav-actions">
+                <button id="toggle-physics" class="btn btn-secondary btn-icon" title="Toggle simulation physics (Freeze / Relax nodes)">
+                    <span class="btn-indicator active" id="physics-indicator"></span>
+                    <span id="physics-label">Physics Active</span>
+                </button>
+                <button id="fit-view" class="btn btn-secondary btn-icon" title="Fit all nodes to view">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                    <span>Fit</span>
+                </button>
+                <button id="reload" class="btn btn-primary btn-icon" title="Reload graph snapshot">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span>Reload</span>
+                </button>
+                <button id="reset-view" class="btn btn-secondary btn-icon" disabled title="Reset view from focused subgraph">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                    <span>Reset View</span>
+                </button>
+            </div>
         </header>
 
-        <section class="workspace">
-            <section class="canvas-panel">
-                <div class="toolbar">
-                    <div class="toolbar-group">
-                        <label for="mode">Mode</label>
-                        <select id="mode">
-                            <option value="hybrid" {% if default_mode == "hybrid" %}selected{% endif %}>Hybrid</option>
-                            <option value="semantic" {% if default_mode == "semantic" %}selected{% endif %}>Semantic</option>
-                            <option value="episodic" {% if default_mode == "episodic" %}selected{% endif %}>Episodic</option>
-                        </select>
-                    </div>
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Left Canvas Area -->
+            <section class="canvas-section">
+                <!-- Comprehensive Filter & Control Bar -->
+                <div class="filter-bar">
+                    <!-- Row 1: Primary Filters -->
+                    <div class="filter-row">
+                        <!-- Project Filter -->
+                        <div class="filter-field">
+                            <label for="project-filter">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                Project
+                            </label>
+                            <div class="select-wrapper">
+                                <select id="project-filter">
+                                    <option value="all">All projects</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="toolbar-group">
-                        <label for="project-filter">Project</label>
-                        <select id="project-filter">
-                            <option value="all">All projects</option>
-                        </select>
-                    </div>
+                        <!-- Node Type Filter -->
+                        <div class="filter-field">
+                            <label for="type-filter">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                                Node Type
+                            </label>
+                            <div class="select-wrapper">
+                                <select id="type-filter">
+                                    <option value="all">All node types</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="toolbar-group">
-                        <label for="type-filter">Node Type</label>
-                        <select id="type-filter">
-                            <option value="all">All node types</option>
-                        </select>
-                    </div>
+                        <!-- Time Window -->
+                        <div class="filter-field">
+                            <label for="time-filter">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                Time Window
+                            </label>
+                            <div class="select-wrapper">
+                                <select id="time-filter">
+                                    <option value="all">All time</option>
+                                    <option value="7d">Last 7 days</option>
+                                    <option value="30d">Last 30 days</option>
+                                    <option value="90d">Last 90 days</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="toolbar-group">
-                        <label for="time-filter">Time Window</label>
-                        <select id="time-filter">
-                            <option value="all">All time</option>
-                            <option value="7d">Last 7 days</option>
-                            <option value="30d">Last 30 days</option>
-                            <option value="90d">Last 90 days</option>
-                        </select>
-                    </div>
+                        <!-- Edge / Relation Filter (Crucial for dense graphs) -->
+                        <div class="filter-field">
+                            <label for="edge-filter">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                Edges
+                            </label>
+                            <div class="select-wrapper">
+                                <select id="edge-filter">
+                                    <option value="all">All relations</option>
+                                    <option value="structural">Structural only (no soft links)</option>
+                                    <option value="semantic_only">Semantic neighbors only</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="toolbar-group">
-                        <label for="search">Search</label>
-                        <div class="search-row">
-                            <input id="search" type="search" placeholder="Find a node by label">
-                            <button id="search-button">Find</button>
+                        <!-- Label Visibility Mode -->
+                        <div class="filter-field">
+                            <label for="label-mode">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                                Labels
+                            </label>
+                            <div class="select-wrapper">
+                                <select id="label-mode">
+                                    <option value="hubs" selected>Hubs only (Clean)</option>
+                                    <option value="all">All labels</option>
+                                    <option value="hover">On hover only</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="toolbar-group">
-                        <label for="depth">Depth</label>
-                        <select id="depth">
-                            <option value="1" selected>1 hop</option>
-                            <option value="2">2 hops</option>
-                        </select>
-                    </div>
+                    <!-- Row 2: Search, Depth & Quick Find -->
+                    <div class="filter-row filter-row-secondary">
+                        <div class="search-box">
+                            <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input id="search" type="search" placeholder="Search by name, file path, tags, summary..." autocomplete="off">
+                            <span id="search-counter" class="search-counter" style="display:none;"></span>
+                            <button id="search-button" class="btn btn-search">Find</button>
+                        </div>
 
-                    <div class="toolbar-group toolbar-actions">
-                        <button id="reload">Reload</button>
-                        <button id="reset-view" disabled>Reset View</button>
+                        <div class="filter-field depth-field">
+                            <label for="depth">Depth</label>
+                            <div class="select-wrapper">
+                                <select id="depth">
+                                    <option value="1" selected>1 hop</option>
+                                    <option value="2">2 hops</option>
+                                    <option value="3">3 hops</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="filter-field layout-preset-field">
+                            <label for="layout-spacing">Spacing</label>
+                            <div class="select-wrapper">
+                                <select id="layout-spacing">
+                                    <option value="spacious" selected>Spacious (Adaptive)</option>
+                                    <option value="wide">Wide</option>
+                                    <option value="compact">Compact</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Status & Metrics Ribbon -->
                 <div class="statusbar">
-                    <div class="status-item"><span class="status-label">Scope</span><span id="status-scope">full</span></div>
-                    <div class="status-item"><span class="status-label">Mode</span><span id="status-mode">-</span></div>
-                    <div class="status-item"><span class="status-label">Nodes</span><span id="status-nodes">0</span></div>
-                    <div class="status-item"><span class="status-label">Edges</span><span id="status-edges">0</span></div>
-                    <div class="status-item"><span class="status-label">Fingerprint</span><span id="status-fingerprint">-</span></div>
+                    <div class="status-pill status-pill-scope">
+                        <span class="status-label">Scope</span>
+                        <span id="status-scope" class="status-value">full</span>
+                    </div>
+                    <div class="status-pill">
+                        <span class="status-label">Mode</span>
+                        <span id="status-mode" class="status-value">-</span>
+                    </div>
+                    <div class="status-pill status-pill-metric">
+                        <span class="status-dot dot-nodes"></span>
+                        <span class="status-label">Nodes</span>
+                        <span id="status-nodes" class="status-value highlight">0</span>
+                    </div>
+                    <div class="status-pill status-pill-metric">
+                        <span class="status-dot dot-edges"></span>
+                        <span class="status-label">Edges</span>
+                        <span id="status-edges" class="status-value highlight">0</span>
+                    </div>
+                    <div class="status-pill">
+                        <span class="status-label">Fingerprint</span>
+                        <span id="status-fingerprint" class="status-value mono">-</span>
+                    </div>
+                    <div id="sim-status" class="status-pill status-pill-sim">
+                        <span class="status-label">Simulation</span>
+                        <span id="status-sim" class="status-value">Ready</span>
+                    </div>
                 </div>
 
+                <!-- Network Canvas Container -->
                 <div class="network-wrapper">
                     <div id="network" class="network-canvas" aria-label="Cortex graph canvas"></div>
+
+                    <!-- Canvas Floating HUD Overlay (Legend & Zoom Controls) -->
+                    <div class="canvas-controls">
+                        <button id="zoom-in" class="canvas-btn" title="Zoom in">+</button>
+                        <button id="zoom-out" class="canvas-btn" title="Zoom out">−</button>
+                        <button id="zoom-fit" class="canvas-btn" title="Reset view">⛶</button>
+                        <button id="toggle-legend" class="canvas-btn legend-btn" title="Toggle Legend">Legend</button>
+                    </div>
+
+                    <!-- Interactive Collapsible Legend Drawer -->
+                    <div id="legend-drawer" class="legend-drawer" style="display:none;">
+                        <div class="legend-header">
+                            <span class="legend-title">Graph Legend</span>
+                            <button id="close-legend" class="legend-close">&times;</button>
+                        </div>
+                        <div class="legend-content">
+                            <div class="legend-section">
+                                <span class="legend-subtitle">Node Types</span>
+                                <div id="legend-nodes" class="legend-items"></div>
+                            </div>
+                            <div class="legend-section">
+                                <span class="legend-subtitle">Edge Types</span>
+                                <div id="legend-edges" class="legend-items"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Node Inspection Card (Follows cursor on hover) -->
+                    <div id="node-hover-card" class="node-hover-card" style="display:none;">
+                        <div class="hover-header">
+                            <span id="hover-badge" class="badge"></span>
+                            <span id="hover-source" class="badge badge-muted"></span>
+                            <span id="hover-degree" class="badge badge-degree"></span>
+                        </div>
+                        <h4 id="hover-title" class="hover-title"></h4>
+                        <div id="hover-path" class="hover-path mono"></div>
+                        <p id="hover-summary" class="hover-summary"></p>
+                    </div>
                 </div>
             </section>
 
-            <aside class="detail-panel">
-                <section class="detail-card">
-                    <p class="eyebrow">Selection</p>
-                    <h2 id="detail-title">No node selected</h2>
+            <!-- Right Detail Sidebar -->
+            <aside class="detail-sidebar">
+                <section class="detail-card main-detail-card">
+                    <div class="card-header">
+                        <span class="eyebrow">Selection</span>
+                        <span id="detail-type-badge" class="badge" style="display:none;"></span>
+                    </div>
+
+                    <h2 id="detail-title" class="detail-title">No node selected</h2>
+
                     <p id="detail-summary" class="detail-summary">
-                        Click a node to inspect its memory details, related artifacts, and available actions.
+                        Click on any node in the graph to inspect memory details, explainable connections, and available source actions.
                     </p>
+
                     <div id="detail-meta" class="detail-meta"></div>
+
                     <div class="detail-actions">
-                        <button id="open-node" disabled>Open Document</button>
-                        <button id="load-subgraph" disabled>Load Subgraph</button>
+                        <button id="open-node" class="btn btn-primary" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            <span>Open Document</span>
+                        </button>
+                        <button id="load-subgraph" class="btn btn-secondary" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                            <span>Focus Subgraph</span>
+                        </button>
                     </div>
                 </section>
 
+                <!-- Direct Relationships Card -->
                 <section class="detail-card">
-                    <p class="eyebrow">Relations</p>
+                    <div class="card-header">
+                        <span class="eyebrow">Explainable Relations</span>
+                        <span id="relation-count" class="badge-count">0</span>
+                    </div>
                     <ul id="relation-list" class="detail-list">
                         <li class="detail-empty">No relationships yet.</li>
                     </ul>
                 </section>
 
+                <!-- Immediate Neighbors Card -->
                 <section class="detail-card">
-                    <p class="eyebrow">Neighbors</p>
-                    <ul id="neighbor-list" class="detail-list">
+                    <div class="card-header">
+                        <span class="eyebrow">Connected Neighbors</span>
+                        <span id="neighbor-count" class="badge-count">0</span>
+                    </div>
+                    <ul id="neighbor-list" class="detail-list neighbor-list">
                         <li class="detail-empty">Select a node to inspect its local neighborhood.</li>
                     </ul>
                 </section>
             </aside>
-        </section>
-    </main>
+        </main>
+    </div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

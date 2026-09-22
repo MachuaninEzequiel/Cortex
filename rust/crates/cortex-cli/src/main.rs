@@ -150,6 +150,7 @@ fn dispatch_native(argv: &[String]) -> bool {
         "webgraph" => commands::webgraph::run(rest),
         "autopilot" => commands::autopilot::run(rest),
         "search" => cortex_cli::memory_cmds::run_search(rest),
+        "judgement" => cortex_cli::judgement_cmds::run(rest),
         "context" => cortex_cli::memory_cmds::run_context(rest),
         "stats" => cortex_cli::memory_cmds::run_stats(rest),
         "session" => cortex_cli::commands::session_cmd::run(argv),

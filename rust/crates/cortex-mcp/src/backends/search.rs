@@ -139,6 +139,7 @@ impl SearchBackend for NativeSearchBackend {
                 items.push(EnrichedItemMirror {
                     source: "episodic".into(),
                     title: first_line(&e.content),
+                    path: e.files.first().cloned().unwrap_or_default(),
                     content: truncate(&e.content, 400),
                     files_mentioned: e.files.clone(),
                     date_iso: Some(now_iso_date()),
@@ -157,6 +158,7 @@ impl SearchBackend for NativeSearchBackend {
                 items.push(EnrichedItemMirror {
                     source: "semantic".into(),
                     title: d.title.clone(),
+                    path: d.path.clone(),
                     content: truncate(&d.content, 400),
                     files_mentioned: vec![],
                     date_iso: None,
@@ -186,6 +188,7 @@ impl SearchBackend for NativeSearchBackend {
                     items.push(EnrichedItemMirror {
                         source: "episodic".into(),
                         title: first_line(&e.content),
+                        path: e.files.first().cloned().unwrap_or_default(),
                         content: truncate(&e.content, 400),
                         files_mentioned: e.files.clone(),
                         date_iso: None,
@@ -308,7 +311,9 @@ fn rrf_fuse<'a>(
             entries.push(None);
             docs.push(None);
         }
-        scores[i] += sem_w * (1.0 / (RRF_K + rank as f64 + 1.0));
+        let is_archive = d.tags.iter().any(|t| t == "archive" || t == "tier:archive");
+        let weight = if is_archive { sem_w * 0.2 } else { sem_w };
+        scores[i] += weight * (1.0 / (RRF_K + rank as f64 + 1.0));
         docs[i] = Some(d);
     }
     let mut order: Vec<usize> = (0..scores.len()).collect();
@@ -381,6 +386,7 @@ fn doc_item_for_path(
     Some(EnrichedItemMirror {
         source: "semantic".into(),
         title,
+        path: rel.to_string(),
         content: truncate(&content, 400),
         files_mentioned: vec![],
         date_iso: None,

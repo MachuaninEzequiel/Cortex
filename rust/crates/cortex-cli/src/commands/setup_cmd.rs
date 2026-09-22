@@ -120,9 +120,10 @@ fn install_ide(root: &Path, ide: &str) -> Result<Vec<String>, String> {
         home: &home,
         now: Utc::now(),
     };
+    let canon = cortex_setup::ide::normalize_ide(ide);
     let adapter = all_adapters()
         .into_iter()
-        .find(|a| a.name() == ide)
+        .find(|a| a.name() == canon)
         .ok_or_else(|| format!("Unknown IDE '{ide}'"))?;
     let prompts = build_all_prompts(&ctx);
     let mut made = adapter.inject_profiles(&ctx, &prompts)?;
@@ -366,8 +367,7 @@ fn composed(argv: &[String]) -> bool {
         dry(
             "composed",
             &[
-                ".cortex/skills/composed/ (8 skills + INSTALL-COMPOSED.md)".into(),
-                ".cortex/skills/ (triada thin + craft on-demand)".into(),
+                ".agents/skills/ (8 skills + INSTALL-COMPOSED.md)".into(),
                 "bloque ## Agent skills en CLAUDE.md/AGENTS.md".into(),
             ],
         );
@@ -376,11 +376,9 @@ fn composed(argv: &[String]) -> bool {
     let result = (|| -> Result<Vec<String>, String> {
         let mut made: Vec<String> = Vec::new();
         let fam = cortex_setup::skills_bundle::install_composed_family(
-            &root.join(".cortex/skills/composed"),
+            &root.join(".agents/skills"),
         );
         made.extend(fam.into_iter().map(|n| format!("composed/{n}")));
-        let tri = cortex_setup::skills_bundle::install_triad_skills(&root.join(".cortex/skills"));
-        made.extend(tri);
         let block = cortex_setup::skills_bundle::agent_skills_block();
         let mut docs: Vec<String> = Vec::new();
         for name in ["CLAUDE.md", "AGENTS.md"] {
@@ -423,15 +421,11 @@ pub fn run(argv: &[String]) -> bool {
         Some("composed") => composed(&argv[1..]),
         Some("webgraph") => web(&argv[1..]),
         Some("enterprise") => enterprise(&argv[1..]),
+        Some(first) if first.starts_with('-') => common(argv, "agent"),
         Some(first) => {
             eprintln!("No such command '{first}'.");
             std::process::exit(2);
         }
-        None => {
-            eprintln!(
-                "cortex setup: se requiere un perfil (agent|pipeline|full|composed|webgraph|enterprise)"
-            );
-            std::process::exit(2);
-        }
+        None => common(argv, "agent"),
     }
 }

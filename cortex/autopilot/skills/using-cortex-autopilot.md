@@ -45,17 +45,17 @@ Llama `cortex_context` en formato compacto. No ejecutes `sync-vault` salvo insta
 
 Todo cambio observado requiere cierre con `cortex_autopilot_finish` o un checkpoint. Si no documentas, queda auto-draft incompleto.
 
-## Tracks
+## Modo de ejecucion
 
-- **Fast Track por defecto**: tareas de 1-2 archivos, cambios simples.
-- **Deep Track solo si**: complejidad alta, multiples sistemas, o el usuario pide SDD explicitamente.
+- **Directo por defecto**: implementar sin subagentes para tareas cotidianas.
+- **Subagentes / SDD solo a pedido**: si el usuario lo solicita explicitamente o acepta una propuesta.
 
 ## Manejo de fallas de tool
 
 Si una tool falla:
 1. Informa el error en el checkpoint.
 2. No inventes resultado.
-3. Decide si continuar, degradar a Fast Track, o pedir confirmacion al usuario.
+3. Decide si continuar, resolver directamente, o pedir confirmacion al usuario.
 
 ## Senales de que estas saltando el flujo
 

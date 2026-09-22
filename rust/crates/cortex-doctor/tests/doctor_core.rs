@@ -210,3 +210,40 @@ fn pm_documenter_module_ok_si_load_spec_anda() {
     );
     assert_eq!(doc_check.severity, "info");
 }
+
+#[test]
+fn judgement_absent_is_not_a_check() {
+    let (_tmp, root) = fixture("noj", false);
+    let report = run_doctor(&root, DoctorScope::Project).unwrap();
+    assert!(
+        report.checks.iter().all(|c| c.name != "judgement"),
+        "sin bloque judgement el doctor community no gana un check nuevo"
+    );
+}
+
+#[test]
+fn judgement_enabled_without_key_is_warn() {
+    let tmp = tempfile::tempdir_in(std::env::temp_dir()).unwrap();
+    let root = tmp.path().join("jwarn");
+    fs::create_dir_all(root.join("vault/specs")).unwrap();
+    fs::write(
+        root.join("config.yaml"),
+        "semantic:\n  vault_path: vault\njudgement:\n  enabled: true\n  provider: typesafe\n  purposes:\n    search_squeeze: on\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("vault/specs/spec.md"),
+        "---\ntitle: Spec\ntags: [spec]\n---\n\n# Spec\n\nHello\n",
+    )
+    .unwrap();
+    std::env::remove_var("TYPESAFE_API_KEY");
+    let report = run_doctor(&root, DoctorScope::Project).unwrap();
+    let c = report
+        .checks
+        .iter()
+        .find(|c| c.name == "judgement")
+        .expect("con bloque judgement el check existe");
+    assert!(!c.ok);
+    assert_eq!(c.severity, "warn");
+    assert_eq!(c.detail, "enabled-but-no-key");
+}

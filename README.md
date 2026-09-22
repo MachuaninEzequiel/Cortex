@@ -25,6 +25,7 @@
     <img src="https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&style=flat-square" alt="Tauri 2" />
     <img src="https://img.shields.io/badge/LLM-Liquid_LFM2.5-purple?style=flat-square" alt="Liquid LFM" />
     <img src="https://img.shields.io/badge/Embeddings-ONNX-green?style=flat-square" alt="ONNX" />
+    <img src="https://img.shields.io/badge/System_One-JEV_1.13-cyan?style=flat-square" alt="System One JEV" />
     <img src="https://img.shields.io/badge/MCP-32_tools-blueviolet?style=flat-square" alt="MCP" />
     <img src="https://img.shields.io/badge/Brain-0.2.6-informational?style=flat-square" alt="Brain 0.2.6" />
   </p>
@@ -110,6 +111,27 @@ The IDE agent and Liquid drink from the **same** index. There is no one truth fo
 Knowledge is not a list. It is a graph: modules, specs, ADRs, files, dependency edges. WebGraph makes it **visible, orbital, queryable**.
 
 Liquid does not hallucinate topology: it **asks**. A node pins into chat; Doctor and Org Memory hang off the same map. What memory remembers, the graph shows; what the graph shows, the model can cite.
+
+### System One — Fast cognition, gating & context shielding (powered by JEV)
+
+Inspired by dual-process cognitive theory, Cortex incorporates a two-tier architecture: while the deliberative agent (**System Two**) reasons over code and executes complex implementations, **System One** acts as an ultra-fast, low-latency perceptual gatekeeper that filters, distills, and compacts context **before** it reaches the primary model.
+
+This layer is currently powered in production by **JEV** (`jev-1.13.0` / TypeSafe System One).
+
+#### What System One does
+- **Utterance Gating (Intent Filtering):** Evaluates incoming prompts in milliseconds. When a developer asks casual, conversational, or trivia questions (`casual_trap`), System One answers or routes them directly **without opening spurious sessions** and without polluting repository memory with noise.
+- **Search Squeeze & Context Pack v2 (Context Distillation):** Instead of dumping massive raw documentation chunks or exposing lexical distractors, it suppresses noise and condenses the working dossier down to exact canonical variables and active architectural constraints.
+- **Session Compaction (History Compression):** Automatically compacts verbose outputs from linters, test runners, and tool invocations (compressing 1,400+ token dumps into clean 15-token semantic summaries), preventing quadratic context window explosion.
+- **ADR Compliance & Drift Shielding:** Guarantees that even under sparse, cold-start prompts, the agent strictly adheres to existing Architecture Decision Records (ADRs), eliminating hallucinated dependencies or incompatible design patterns.
+
+#### Operational impact and empirical results
+In a controlled **18-turn temporal benchmark** simulating an extended development sprint (ConaISI evaluation):
+- **Versus a Raw Agent (No Cortex):**
+  - **-53.2% cumulative token savings** by the end of the session (14,856 vs. 31,756 tokens).
+  - **The Economic Crossover Point (Turn 9):** Starting from Turn 9, Cortex + System One becomes **strictly cheaper than running without Cortex**, while the raw agent suffers severe amnesia and drops to a **61.1%** architectural compliance rate compared to **100%** with System One.
+- **Versus Baseline Cortex (Without System One):**
+  - **-68.6% cumulative token reduction** (14,856 vs. 47,368 tokens), completely eliminating the context explosion caused by raw tool outputs and unpruned search hits.
+  - **-52.8% reduction in reasoning overhead (*thinking waste*):** Free of distracting lexical noise, the primary model stops burning reasoning cycles on irrelevant context.
 
 <img src="assets/cortex-brain.png" alt="Cortex Brain" width="92%" />
 

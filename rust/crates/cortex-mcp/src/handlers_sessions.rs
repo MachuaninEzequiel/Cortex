@@ -329,7 +329,29 @@ pub fn session_status_text(b: &mut dyn SessionsBackend, args: &Value) -> Result<
         },
         Some(id) => b.get_session(id)?,
     };
-    Ok(to_string_ensure_ascii_false(&dump_record(&record)))
+    let mut dumped = dump_record(&record);
+    if let Value::Object(ref mut map) = dumped {
+        let has_unverified = record
+            .checkpoints
+            .iter()
+            .any(|c| !c.unverified_claims.is_empty());
+        let has_pending = record
+            .tasks
+            .iter()
+            .any(|t| t.status == "pending" || t.status == "in-progress");
+        let is_closing = record.status == "closed";
+        let specialists = cortex_judgement::rebuild_specialist_menu(
+            record.checkpoints.len(),
+            has_unverified,
+            has_pending,
+            is_closing,
+        );
+        map.insert(
+            "available_specialists".into(),
+            serde_json::to_value(&specialists).unwrap_or(Value::Array(vec![])),
+        );
+    }
+    Ok(to_string_ensure_ascii_false(&dumped))
 }
 
 pub fn session_list_text(b: &mut dyn SessionsBackend, args: &Value) -> Result<String, String> {
@@ -1082,4 +1104,40 @@ mod tests {
         let out = validate_handoff_text(&json!({"handoff_yaml": " "})).unwrap();
         assert!(out.contains("handoff_yaml is required"));
     }
+
+    #[test]
+    fn session_status_includes_dynamic_specialist_menu() {
+        struct MockActiveBackend;
+        impl SessionsBackend for MockActiveBackend {
+            fn open_session(&mut self, _: &str, _: &str, _: &str) -> Result<SRecord, String> { unimplemented!() }
+            fn checkpoint_session(&mut self, _: &str, _: &str, _: Vec<String>, _: Vec<String>, _: Vec<String>, _: String, _: Option<&str>) -> Result<SRecord, String> { unimplemented!() }
+            fn close_session(&mut self, _: &str, _: &str, _: &str, _: Option<String>, _: Vec<String>) -> Result<SRecord, String> { unimplemented!() }
+            fn get_active_session(&mut self) -> Result<Option<SRecord>, String> {
+                Ok(Some(SRecord {
+                    session_id: "2026-09-19_dyn".into(),
+                    status: "open".into(),
+                    checkpoints: vec![],
+                    tasks: vec![],
+                    ..Default::default()
+                }))
+            }
+            fn get_session(&mut self, _: &str) -> Result<SRecord, String> { unimplemented!() }
+            fn list_sessions(&mut self, _: Option<String>) -> Result<Vec<SRecord>, String> { unimplemented!() }
+            fn list_tasks(&mut self, _: &str, _: Option<String>) -> Result<Vec<STask>, String> { unimplemented!() }
+            fn add_task(&mut self, _: &str, _: STask) -> Result<(), String> { unimplemented!() }
+            fn update_task(&mut self, _: &str, _: &str, _: &str, _: String, _: Option<i64>) -> Result<(), String> { unimplemented!() }
+            fn save_session_note(&mut self, _: &Value) -> Result<String, String> { unimplemented!() }
+            fn spec_files_in_scope(&mut self, _: &str) -> Result<Vec<String>, String> { unimplemented!() }
+        }
+
+        let mut b = MockActiveBackend;
+        let res = session_status_text(&mut b, &json!({})).unwrap();
+        let parsed: Value = serde_json::from_str(&res).unwrap();
+        let specialists = parsed.get("available_specialists").and_then(Value::as_array).unwrap();
+        assert_eq!(specialists.len(), 4);
+        let arch = specialists.iter().find(|s| s.get("role") == Some(&json!("architect"))).unwrap();
+        assert_eq!(arch.get("eligible"), Some(&json!(true)));
+        assert_eq!(arch.get("recommended"), Some(&json!(true)));
+    }
 }
+

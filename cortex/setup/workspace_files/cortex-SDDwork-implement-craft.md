@@ -68,11 +68,11 @@ Antes del checkpoint, lee tu propio diff como si fuera de otro dev. Busca:
 
 | Situacion | Camino |
 |---|---|
-| 1-2 archivos, logica simple, cero decisiones de arquitectura | **FAST TRACK** directo |
+| 1-2 archivos, logica simple, cero decisiones de arquitectura | **DIRECTO** sin subagentes |
 | Necesidad de exploracion (mapear dependencias, entender un sistema ajeno) | Delegar a `cortex-code-explorer` ANTES de tocar codigo |
 | Cambio de arquitectura / data model / contratos | Delegar a `cortex-code-designer` y seguir su design doc |
 | Implementacion mecanica sobre un design cerrado | Delegar a `cortex-code-implementer` con el design doc |
-| Varios archivos pero territorio conocido y spec clara | **FAST TRACK** — el costo de delegar supera el beneficio |
+| Varios archivos pero territorio conocido y spec clara | **DIRECTO** — el costo de delegar supera el beneficio |
 
 Regla de oro: cuando el subagente delegado necesita GUIAR una decision que
 cambia el design, eso es señal de que la delegacion fue prematura. La

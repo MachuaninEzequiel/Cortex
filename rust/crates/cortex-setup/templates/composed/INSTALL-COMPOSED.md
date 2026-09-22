@@ -15,12 +15,12 @@ grill → to-spec → to-tickets → implement (tdd | diagnose) → review → (
 cortex setup composed            # en la raiz del proyecto destino
 ```
 
-Copia la familia a `.cortex/skills/composed/` del proyecto (byte-exacta) y escribe el bloque `## Agent skills` en `CLAUDE.md`/`AGENTS.md` para que tu agente sepa que existen.
+Copia la familia a `.agents/skills/` del proyecto (estándar abierto de la industria) y escribe el bloque `## Agent skills` en `CLAUDE.md`/`AGENTS.md` para que tu agente sepa que existen.
 
 ### Manual (standalone, antes de A11 o en un proyecto sin cortex-cli)
 
 ```bash
-cp -r rust/crates/cortex-setup/templates/composed <proyecto>/.cortex/skills/composed
+cp -r rust/crates/cortex-setup/templates/composed/* <proyecto>/.agents/skills/
 ```
 
 ## Importar flujos externos

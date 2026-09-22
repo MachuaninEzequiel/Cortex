@@ -377,6 +377,12 @@ impl BrainEngine {
         self.reap_locked(&mut map);
         let _cwd = ChdirGuard::nuevo(project)?;
         let lang = Self::fijar_idioma(project);
+        if !project.trim().is_empty() {
+            if let Some(h) = crate::judgement_settings::handle_for_project(std::path::Path::new(project))
+            {
+                crate::utterance_gate::maybe_open_session_for_project(project, text, &h);
+            }
+        }
 
         let active_model_name = self.active_model();
         let ts = map.entry(project.to_string()).or_insert_with(|| {

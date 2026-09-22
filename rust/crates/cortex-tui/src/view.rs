@@ -185,6 +185,12 @@ pub fn draw_sessions(frame: &mut Frame<'_>, area: Rect, state: &AppState, theme:
         .title_style(Style::default().fg(theme.accent).add_modifier(Modifier::BOLD));
 
     match &state.sessions {
+        LoadState::Ready(data) if data.rows.is_empty() => {
+            let p = Paragraph::new("(no sessions on disk)")
+                .style(Style::default().fg(theme.muted))
+                .block(block);
+            frame.render_widget(p, area);
+        }
         LoadState::Ready(data) => {
             let items: Vec<ListItem> = data
                 .rows

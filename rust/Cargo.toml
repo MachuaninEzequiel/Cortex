@@ -8,6 +8,7 @@ members = [
     "crates/cortex-cli",
     # Obra 07 (migración total): docs/transformacion/08-MIGRACION-TOTAL-RUST.md
     "crates/cortex-config",
+    "crates/cortex-judgement",
     "crates/cortex-app",
     # Obra 07 P12A-5 (spec/note services, stream A): doc 09 §3.15/§7
     "crates/cortex-services",
@@ -75,3 +76,10 @@ ureq = "3"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# Reduce drásticamente el tamaño de los artefactos de debug al omitir
+# símbolos DWARF pesados en dependencias de terceros (Tauri, Tokio, Axum, ORT, etc.),
+# manteniendo depuración completa en todos los crates del workspace.
+[profile.dev.package."*"]
+debug = 0
+

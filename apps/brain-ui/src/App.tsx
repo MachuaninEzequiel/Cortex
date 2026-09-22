@@ -824,6 +824,7 @@ export function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        projectPath={selectedProjectPath}
         models={models}
         selectedModel={selectedModel}
         onSelectModel={handleSelectModel}

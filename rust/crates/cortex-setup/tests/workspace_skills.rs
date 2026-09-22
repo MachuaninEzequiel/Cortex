@@ -102,8 +102,8 @@ fn sddwork_skill_is_thin_and_references_craft_on_demand() {
         "pre-flight mensaje exacto"
     );
     assert!(
-        text.to_lowercase().contains("fast track") && text.to_lowercase().contains("deep track"),
-        "vías de ejecución conservadas"
+        !text.to_lowercase().contains("fast track") && !text.to_lowercase().contains("deep track"),
+        "Fast/Deep Track eliminados de la UX (spec 08)"
     );
     assert!(
         text.contains("cortex-SDDwork-implement-craft.md"),

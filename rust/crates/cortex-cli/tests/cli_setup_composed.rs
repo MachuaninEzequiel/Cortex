@@ -16,12 +16,6 @@ fn composed_template(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-fn sso(rel: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../cortex/setup/workspace_files")
-        .join(rel)
-}
-
 fn read(p: &Path) -> String {
     std::fs::read_to_string(p).unwrap_or_else(|e| panic!("no se pudo leer {}: {e}", p.display()))
 }
@@ -47,41 +41,23 @@ fn setup_composed_installs_family_triad_and_agents_block() {
         String::from_utf8_lossy(&out.stderr)
     );
 
-    // familia byte-igual al template
+    // familia byte-igual al template en .agents/skills (estándar abierto de la industria)
     assert_eq!(
-        read(&root.join(".cortex/skills/composed/grill/SKILL.md")),
+        read(&root.join(".agents/skills/grill/SKILL.md")),
         read(&composed_template("grill/SKILL.md")),
         "grill/SKILL.md byte-exact"
     );
     assert_eq!(
-        read(&root.join(".cortex/skills/composed/tdd/references/tdd-craft.md")),
+        read(&root.join(".agents/skills/tdd/references/tdd-craft.md")),
         read(&composed_template("tdd/references/tdd-craft.md")),
         "references/ se despliega"
     );
     assert!(root
-        .join(".cortex/skills/composed/INSTALL-COMPOSED.md")
+        .join(".agents/skills/INSTALL-COMPOSED.md")
         .exists());
     assert!(root
-        .join(".cortex/skills/composed/glossary/agents/openai.yaml")
+        .join(".agents/skills/glossary/agents/openai.yaml")
         .exists());
-
-    // ítem 1 cross-task: los craft files acompañan al thin en proyecto fresco
-    assert_eq!(
-        read(&root.join(".cortex/skills/cortex-sync.md")),
-        read(&sso("cortex-sync.md")),
-        "thin byte-igual al SSoT"
-    );
-    for craft in [
-        "cortex-sync-spec-craft.md",
-        "cortex-sync-proposal-craft.md",
-        "cortex-SDDwork-implement-craft.md",
-        "cortex-documenter-close-craft.md",
-    ] {
-        assert!(
-            root.join(".cortex/skills").join(craft).exists(),
-            "craft {craft} desplegado"
-        );
-    }
 
     // sin docs previos ⇒ nace AGENTS.md con el bloque marcado (R12:
     // marcadores DEDICADOS, no los canónicos de la sección codex)
@@ -125,9 +101,9 @@ fn setup_composed_upserts_existing_docs_and_preserves_user_edits() {
     );
 
     // skip-if-exists: ediciones del usuario nunca se pisan
-    std::fs::write(root.join(".cortex/skills/cortex-sync.md"), b"custom").unwrap();
+    std::fs::write(root.join(".agents/skills/grill/SKILL.md"), b"custom").unwrap();
     assert!(bin().args(args).output().unwrap().status.success());
-    assert_eq!(read(&root.join(".cortex/skills/cortex-sync.md")), "custom");
+    assert_eq!(read(&root.join(".agents/skills/grill/SKILL.md")), "custom");
 }
 
 #[test]
@@ -245,7 +221,7 @@ fn installed_docs_match_fixed_sso_items_2_and_3() {
         .unwrap()
         .status
         .success());
-    let doc = read(&root.join(".cortex/skills/composed/INSTALL-COMPOSED.md"));
+    let doc = read(&root.join(".agents/skills/INSTALL-COMPOSED.md"));
     assert!(
         !doc.contains("cortex session current --json     # mode"),
         "INSTALL-COMPOSED no debe prometer mode en `session current`"
@@ -254,7 +230,7 @@ fn installed_docs_match_fixed_sso_items_2_and_3() {
         doc.contains("cortex session list --json"),
         "la verificacion correcta usa session list"
     );
-    let tickets = read(&root.join(".cortex/skills/composed/to-tickets/SKILL.md"));
+    let tickets = read(&root.join(".agents/skills/to-tickets/SKILL.md"));
     assert!(
         tickets.contains("files_in_scope"),
         "to-tickets documenta el scope de .scratch"

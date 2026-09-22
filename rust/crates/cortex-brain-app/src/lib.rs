@@ -19,9 +19,12 @@ use tauri::Manager;
 pub mod chat;
 pub mod graph;
 pub mod ipc;
+pub mod judgement_settings;
 pub mod onboard;
+pub mod utterance_gate;
 pub mod org_memory;
 pub mod projects;
+pub mod session_compact;
 
 /// Roles del binario unificado `cortex-brain` (decisión del dueño,
 /// doc 20 §12.1 opción C). En G-A1 sólo se implementa `App`; los
@@ -263,6 +266,17 @@ async fn load_chat_history(project: String) -> Vec<chat::ChatMessagePayload> {
             messages.push(msg);
         }
     }
+    if !project.trim().is_empty() {
+        if let Some(h) = crate::judgement_settings::handle_for_project(std::path::Path::new(&project)) {
+            if h.client.enabled(cortex_judgement::Purpose::SessionCompact) {
+                return crate::session_compact::compact_chat_messages(
+                    &h,
+                    messages,
+                    cortex_judgement::DEFAULT_PIN_LAST_N,
+                );
+            }
+        }
+    }
     messages
 }
 
@@ -414,6 +428,44 @@ async fn open_webgraph_browser(project: String) -> Result<String, String> {
 }
 
 /// Command Tauri: obtiene el estado de la memoria organizacional y los candidatos.
+#[tauri::command]
+async fn get_judgement_settings(project: String) -> judgement_settings::JudgementSettingsPayload {
+    judgement_settings::get_settings(&project)
+}
+
+#[tauri::command]
+async fn save_judgement_settings(
+    project: String,
+    enabled: bool,
+    search_squeeze: bool,
+    promotion: bool,
+    context_pack: bool,
+    utterance: bool,
+    session_compact: bool,
+    model_routing: Option<bool>,
+    designer_model: Option<String>,
+    implementer_model: Option<String>,
+    documenter_model: Option<String>,
+    auditor_model: Option<String>,
+    api_key: Option<String>,
+) -> Result<judgement_settings::JudgementSettingsPayload, String> {
+    judgement_settings::save_settings(judgement_settings::SaveJudgementArgs {
+        project,
+        enabled,
+        search_squeeze,
+        promotion,
+        context_pack,
+        utterance,
+        session_compact,
+        model_routing,
+        designer_model,
+        implementer_model,
+        documenter_model,
+        auditor_model,
+        api_key,
+    })
+}
+
 #[tauri::command]
 async fn get_org_memory(project: String) -> Result<org_memory::OrgMemoryPayload, String> {
     eprintln!("[cortex-brain] Consultando memoria organizacional para '{project}'...");
@@ -626,6 +678,7 @@ fn handle_connection(
 /// Pilar 2: atajo global flotante (toggle de visibilidad con Ctrl+Shift+B).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    judgement_settings::hydrate_process_env();
     // Un engine compartido: el server IPC y el command `chat_turn`
     // (estado Tauri) operan sobre el MISMO estado conversacional por
     // proyecto. Los turnos están serializados por el lock interno del
@@ -721,6 +774,8 @@ pub fn run() {
             run_doctor_inspect,
             open_webgraph_browser,
             log_to_terminal,
+            get_judgement_settings,
+            save_judgement_settings,
             get_org_memory,
             approve_org_candidate,
             reject_org_candidate,
@@ -1089,5 +1144,41 @@ mod tests {
             engine.active_model(),
             "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
         );
+    }
+
+    #[test]
+    fn load_chat_history_session_compact_fail_open_preserva_mensajes() {
+        tauri::async_runtime::block_on(async {
+            let tmp =
+                std::env::temp_dir().join(format!("cortex-brain-compact-test-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&tmp);
+            std::fs::create_dir_all(&tmp.join(".cortex")).unwrap();
+
+            // Config con session_compact encendido
+            std::fs::write(
+                tmp.join(".cortex/config.yaml"),
+                "judgement:\n  enabled: true\n  provider: typesafe\n  purposes:\n    session_compact: on\n",
+            )
+            .unwrap();
+
+            let proj_str = tmp.to_string_lossy().into_owned();
+
+            let tool_msg = chat::ChatMessagePayload {
+                id: "tool-1".into(),
+                sender: "brain".into(),
+                text: "⚡ **Resultado de `cortex memory.search jwt`:**\n\n```\noutput\n```".into(),
+                timestamp: 123456789,
+                tool_calls: None,
+                backend: None,
+            };
+            save_chat_message(proj_str.clone(), tool_msg.clone()).await.unwrap();
+
+            // Cargar: sin key o fail-open debe devolver el mensaje intacto
+            let loaded = load_chat_history(proj_str.clone()).await;
+            assert_eq!(loaded.len(), 1);
+            assert_eq!(loaded[0], tool_msg, "fail-open preserva el mensaje original intacto");
+
+            let _ = std::fs::remove_dir_all(&tmp);
+        });
     }
 }

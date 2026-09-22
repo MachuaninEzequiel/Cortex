@@ -84,9 +84,9 @@ pub fn apply_setup(
         SetupAction::Pipeline => apply_pipeline(&root),
         SetupAction::Full => {
             let mut r = apply_agent(&root)?;
-            let p = apply_pipeline(&root)?;
-            r.files.extend(p.files);
-            r.log.extend(p.log);
+            let c = apply_composed(&root)?;
+            r.files.extend(c.files);
+            r.log.extend(c.log);
             let wg = write_rel(
                 &root,
                 ".cortex/webgraph/workspace.yaml",
@@ -216,9 +216,12 @@ fn plan_files(root: &Path, action: SetupAction, ide: Option<&str>) -> Vec<Planne
             for rel in agent_rels() {
                 out.push(plan_entry(root, rel, "setup full"));
             }
-            for rel in pipeline_rels() {
-                out.push(plan_entry(root, rel, "setup full"));
-            }
+            out.push(plan_entry(
+                root,
+                ".agents/skills",
+                "familia composed (estándar abierto)",
+            ));
+            out.push(plan_entry(root, "AGENTS.md", "bloque Agent skills"));
             out.push(plan_entry(
                 root,
                 ".cortex/webgraph/workspace.yaml",
@@ -231,10 +234,9 @@ fn plan_files(root: &Path, action: SetupAction, ide: Option<&str>) -> Vec<Planne
         SetupAction::Composed => {
             out.push(plan_entry(
                 root,
-                ".cortex/skills/composed",
-                "familia composed",
+                ".agents/skills",
+                "familia composed (estándar abierto)",
             ));
-            out.push(plan_entry(root, ".cortex/skills", "tríada thin+craft"));
             out.push(plan_entry(root, "AGENTS.md", "bloque Agent skills"));
         }
         SetupAction::Ide | SetupAction::IdeRemove => {
@@ -361,13 +363,11 @@ fn apply_enterprise(root: &Path, preset: &str) -> Result<ApplyResult, String> {
 
 fn apply_composed(root: &Path) -> Result<ApplyResult, String> {
     let mut files = Vec::new();
-    let fam = skills_bundle::install_composed_family(&root.join(".cortex/skills/composed"));
+    let fam = skills_bundle::install_composed_family(&root.join(".agents/skills"));
     files.extend(
         fam.into_iter()
-            .map(|n| format!(".cortex/skills/composed/{n}")),
+            .map(|n| format!(".agents/skills/{n}")),
     );
-    let tri = skills_bundle::install_triad_skills(&root.join(".cortex/skills"));
-    files.extend(tri.into_iter().map(|n| format!(".cortex/skills/{n}")));
     let block = skills_bundle::agent_skills_block();
     let agents = root.join("AGENTS.md");
     if agents.exists() {
@@ -579,6 +579,33 @@ mod tests {
     }
 
     #[test]
+    fn preview_full_no_contiene_scripts_ni_github() {
+        let tmp = TempDir::new().unwrap();
+        let plan =
+            preview_setup(tmp.path(), SetupAction::Full, None, None).expect("preview full");
+        assert!(
+            plan.iter().any(|p| p.path.contains(".agents/skills")),
+            "debe incluir skills composed"
+        );
+        assert!(
+            plan.iter().any(|p| p.path.contains("AGENTS.md")),
+            "debe incluir AGENTS.md"
+        );
+        assert!(
+            plan.iter().any(|p| p.path.contains("workspace.yaml")),
+            "debe incluir webgraph"
+        );
+        assert!(
+            !plan.iter().any(|p| p.path.contains("scripts/")),
+            "preview full NO debe contener scripts/"
+        );
+        assert!(
+            !plan.iter().any(|p| p.path.contains(".github/")),
+            "preview full NO debe contener .github/"
+        );
+    }
+
+    #[test]
     fn apply_agent_crea_y_es_idempotente() {
         let tmp = TempDir::new().unwrap();
         let root = tmp.path();
@@ -595,12 +622,25 @@ mod tests {
     }
 
     #[test]
-    fn apply_full_incluye_pipeline_y_webgraph() {
+    fn apply_full_instala_agente_skills_y_webgraph_sin_pipeline() {
         let tmp = TempDir::new().unwrap();
         let root = tmp.path();
         apply_setup(root, SetupAction::Full, None, None).expect("full");
-        assert!(root.join(".github/workflows/ci-feature.yml").is_file());
+        assert!(root.join(".cortex/config.yaml").is_file());
+        assert!(root.join(".agents/skills").is_dir());
+        assert!(root.join("AGENTS.md").is_file());
         assert!(root.join(".cortex/webgraph/workspace.yaml").is_file());
+        assert!(!root.join(".github").exists(), "Setup full NO debe crear .github");
+        assert!(!root.join("scripts").exists(), "Setup full NO debe crear scripts/");
+    }
+
+    #[test]
+    fn apply_pipeline_instala_workflows_y_scripts() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        apply_setup(root, SetupAction::Pipeline, None, None).expect("pipeline");
+        assert!(root.join(".github/workflows/ci-feature.yml").is_file());
+        assert!(root.join("scripts/devsecdocops.sh").is_file());
     }
 
     #[test]
@@ -621,7 +661,7 @@ mod tests {
     fn apply_composed_instala_skills() {
         let tmp = TempDir::new().unwrap();
         apply_setup(tmp.path(), SetupAction::Composed, None, None).expect("composed");
-        assert!(tmp.path().join(".cortex/skills/composed").is_dir());
+        assert!(tmp.path().join(".agents/skills").is_dir());
         assert!(tmp.path().join("AGENTS.md").is_file());
     }
 

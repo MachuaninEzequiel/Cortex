@@ -933,6 +933,7 @@ fn two_item_bundle() -> EnrichedMirror {
             EnrichedItemMirror {
                 source: "episodic".into(),
                 title: "[SESSION] Implementamos login".into(),
+                path: String::new(),
                 content: "Implementamos login con JWT y refresh tokens".into(),
                 files_mentioned: vec!["src/auth.py".into()],
                 date_iso: Some("2026-08-25T10:00:00".into()),
@@ -943,6 +944,7 @@ fn two_item_bundle() -> EnrichedMirror {
             EnrichedItemMirror {
                 source: "semantic".into(),
                 title: "Auth spec".into(),
+                path: String::new(),
                 content: "Spec del módulo de autenticación".into(),
                 files_mentioned: vec![],
                 date_iso: Some("2026-08-01T09:30:00".into()),

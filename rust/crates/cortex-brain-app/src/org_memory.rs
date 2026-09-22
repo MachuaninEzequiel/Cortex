@@ -29,6 +29,8 @@ pub struct OrgKnowledgeItem {
     pub reason: Option<String>,
     pub updated_at: String,
     pub is_promoted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub noul: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,6 +128,7 @@ fn item_from_candidate(
             .map(|r| r.updated_at.clone())
             .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
         is_promoted,
+        noul: None,
     }
 }
 
@@ -148,6 +151,7 @@ fn item_from_record(record: &PromotionRecord, local_vault: &Path) -> OrgKnowledg
         reason: record.decision.as_ref().and_then(|d| d.reason.clone()),
         updated_at: record.updated_at.clone(),
         is_promoted,
+        noul: None,
     }
 }
 
@@ -230,6 +234,7 @@ fn payload_from_local_scan(project_root: &Path) -> OrgMemoryPayload {
             reason: None,
             updated_at: chrono::Utc::now().to_rfc3339(),
             is_promoted: false,
+            noul: None,
         });
     }
 
@@ -258,10 +263,63 @@ fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// Extrae metadatos y candidatos de memoria organizacional para un proyecto.
 pub fn get_project_org_memory(project_root: &Path) -> OrgMemoryPayload {
-    match open_service(project_root) {
+    let mut payload = match open_service(project_root) {
         Ok(mut svc) => payload_from_service(&mut svc),
         Err(_) => payload_from_local_scan(project_root),
+    };
+    apply_promotion_rank(project_root, &mut payload.items);
+    payload
+}
+
+/// Jev reordena candidatos (no promulgados). Fail-open = orden estructural.
+/// El approve humano no se veta.
+fn apply_promotion_rank(project_root: &Path, items: &mut Vec<OrgKnowledgeItem>) {
+    let Some(handle) = crate::judgement_settings::handle_for_project(project_root) else {
+        return;
+    };
+    if !handle.client.enabled(cortex_judgement::Purpose::Promotion) {
+        return;
     }
+    let pending: Vec<usize> = items
+        .iter()
+        .enumerate()
+        .filter(|(_, it)| !it.is_promoted && it.status != "rejected")
+        .map(|(i, _)| i)
+        .collect();
+    if pending.is_empty() {
+        return;
+    }
+    let cands: Vec<cortex_judgement::Candidate> = pending
+        .iter()
+        .map(|&i| {
+            let it = &items[i];
+            cortex_judgement::Candidate {
+                id: it.origin_id.clone(),
+                path: it.rel_path.clone(),
+                title: it.title.clone(),
+                text: String::new(),
+            }
+        })
+        .collect();
+    let scored = cortex_judgement::rank_promotion(&*handle.client, &handle.catalog, cands);
+    let mut noul_by_pending = vec![None; pending.len()];
+    for s in &scored {
+        if s.original_index < noul_by_pending.len() {
+            noul_by_pending[s.original_index] = if s.noul > 0.0 { Some(s.noul) } else { None };
+        }
+    }
+    for (slot, noul) in pending.iter().zip(noul_by_pending.into_iter()) {
+        items[*slot].noul = noul;
+    }
+    let mut pending_items: Vec<OrgKnowledgeItem> =
+        pending.iter().map(|&i| items[i].clone()).collect();
+    pending_items.sort_by(|a, b| b.noul.unwrap_or(0.0).total_cmp(&a.noul.unwrap_or(0.0)));
+    let rest: Vec<OrgKnowledgeItem> = items
+        .iter()
+        .filter(|it| it.is_promoted || it.status == "rejected")
+        .cloned()
+        .collect();
+    *items = pending_items.into_iter().chain(rest).collect();
 }
 
 /// Aprueba y promulga un documento al conocimiento organizacional.

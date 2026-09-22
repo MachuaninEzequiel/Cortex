@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cortex Brain — Instrumento local de precisión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   CORTEX BRAIN · Rebranding "Cobre sobre Carbono"
+   Instrumento de precisión local — tokens de diseño
+   ============================================================ */
+:root{
+  --bg0:#0B0A08; --bg1:#100F0D; --bg2:#161512; --bg3:#1D1B17; --bg4:#26231D;
+  --line:#28251F; --line2:#3A362C;
+  --tx1:#EDE9DF; --tx2:#A39D8D; --tx3:#6C675A;
+  --cu:#D98C4F; --cu-hi:#F2B077; --cu-dim:#7A5636; --cu-ink:#1A120A;
+  --ok:#93C47D; --warn:#E0B45C; --danger:#E0685A;
+  --steel:#7FA3C7; --sand:#D8C27A; --sage:#97C77E;
+  --mono:"IBM Plex Mono",monospace; --ui:"Archivo",sans-serif;
+  --r:6px; --r2:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg0);color:var(--tx1);font-family:var(--ui);font-size:14px;overflow:auto}
+/* grano físico sutil sobre todo el sistema */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:200;opacity:.028;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>")}
+::selection{background:var(--cu);color:var(--cu-ink)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px;border:2px solid var(--bg1)}
+::-webkit-scrollbar-track{background:transparent}
+.mono{font-family:var(--mono)}
+.disp{font-stretch:125%;letter-spacing:.01em}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--tx1);background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--cu-dim);box-shadow:0 0 0 3px rgba(217,140,79,.12)}
+svg{flex-shrink:0}
+
+/* ---------- estructura de la app ---------- */
+#app{display:grid;grid-template-rows:54px 1fr 34px;height:100vh;min-width:1140px;min-height:680px}
+#main{display:grid;grid-template-columns:266px 1fr;min-height:0}
+
+/* ---------- topbar ---------- */
+#topbar{display:flex;align-items:center;gap:20px;padding:0 18px;background:var(--bg1);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:13px;height:13px;border:1.5px solid var(--cu);transform:rotate(45deg);position:relative;flex-shrink:0}
+.mark::after{content:"";position:absolute;inset:3px;background:var(--cu)}
+.brand h1{font-stretch:125%;font-weight:800;font-size:15px;letter-spacing:.04em}
+.brand h1 b{color:var(--cu);font-weight:800}
+.brand small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.22em;color:var(--tx3);margin-top:2px}
+.ruler{flex:1;height:10px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 14px);opacity:.7;min-width:40px}
+.model-zone{display:flex;align-items:center;gap:10px}
+.model-zone label{font-family:var(--mono);font-size:10px;color:var(--tx3);letter-spacing:.1em}
+.sel-wrap{position:relative}
+.sel-wrap select{appearance:none;font-family:var(--mono);font-size:11.5px;padding:7px 30px 7px 11px;cursor:pointer;min-width:210px}
+.sel-wrap::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;border-right:1.5px solid var(--tx3);border-bottom:1.5px solid var(--tx3);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.qbadge{font-family:var(--mono);font-size:10px;padding:5px 9px;border:1px solid var(--cu-dim);color:var(--cu);border-radius:var(--r);letter-spacing:.05em;white-space:nowrap}
+.icon-btn{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line2);border-radius:var(--r);color:var(--tx2);transition:.15s}
+.icon-btn:hover{color:var(--tx1);border-color:var(--cu-dim)}
+
+/* ---------- sidebar ---------- */
+#sidebar{background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.sb-head{display:flex;align-items:center;gap:8px;padding:14px 14px 10px}
+.sb-head h2{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--tx3);font-weight:500}
+.sb-head .count{font-family:var(--mono);font-size:10px;color:var(--cu);border:1px solid var(--cu-dim);border-radius:4px;padding:1px 6px}
+.sb-head .sp{flex:1}
+.sb-head .icon-btn{width:26px;height:26px}
+.sb-head .icon-btn svg{width:13px;height:13px}
+.sb-head .icon-btn.spin svg{animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+#projList{flex:1;overflow-y:auto;padding:2px 8px 8px}
+.proj{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;border-left:2px solid transparent;margin-bottom:2px;transition:.12s}
+.proj:hover{background:var(--bg3)}
+.proj.active{background:var(--bg3);border-left-color:var(--cu)}
+.proj-marker{width:6px;height:6px;transform:rotate(45deg);background:var(--line2);flex-shrink:0;transition:.15s}
+.proj.active .proj-marker{background:var(--cu)}
+.proj-main{flex:1;min-width:0}
+.proj-name{font-size:13px;font-weight:600;color:var(--tx2);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
+.proj.active .proj-name{color:var(--tx1)}
+.proj-path{font-family:var(--mono);font-size:10px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.proj-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.branch{font-family:var(--mono);font-size:9.5px;color:var(--tx3);border:1px solid var(--line);padding:1px 6px;border-radius:4px}
+.sess-dot{width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.sess-dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(147,196,125,.15)}
+.badge-cfg{font-family:var(--mono);font-size:9px;color:var(--danger);border:1px solid rgba(224,104,90,.4);padding:0 5px;border-radius:4px}
+.sb-foot{border-top:1px solid var(--line);padding:12px}
+.install-btn{width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid var(--line2);border-radius:var(--r2);text-align:left;transition:.15s}
+.install-btn:hover{border-color:var(--cu-dim);background:var(--bg3)}
+.install-btn .mark{width:10px;height:10px}
+.install-btn strong{display:block;font-size:12.5px;font-weight:600}
+.install-btn span{font-family:var(--mono);font-size:9.5px;color:var(--tx3);letter-spacing:.06em}
+
+/* ---------- stage / vista chat ---------- */
+#stage{min-width:0;display:flex;flex-direction:column;background:var(--bg1)}
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.on{display:flex}
+.gbar{display:flex;align-items:center;gap:8px;padding:9px 18px;border-bottom:1px solid var(--line);background:var(--bg1)}
+.session-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:5px 11px;border-radius:20px;border:1px solid var(--line2);color:var(--tx3)}
+.session-badge .d{width:6px;height:6px;border-radius:50%;background:var(--tx3)}
+.session-badge.on{border-color:rgba(147,196,125,.35);color:var(--ok)}
+.session-badge.on .d{background:var(--ok)}
+.gsep{width:1px;height:18px;background:var(--line2)}
+.gbtn{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--tx2);padding:6px 11px;border:1px solid var(--line2);border-radius:var(--r);transition:.13s;position:relative}
+.gbtn:hover{color:var(--tx1);border-color:var(--cu-dim)}
+.gbtn svg{width:13px;height:13px}
+.gbtn .nb{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--cu);color:var(--cu-ink);font-size:9.5px;font-weight:600;display:grid;place-items:center;padding:0 4px}
+#pinnedChips{margin-left:auto;display:flex;gap:6px;overflow-x:auto;max-width:46%;padding:2px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--cu-hi);border:1px solid var(--cu-dim);background:rgba(217,140,79,.06);padding:4px 6px 4px 10px;border-radius:14px;white-space:nowrap;animation:chipIn .2s ease}
+@keyframes chipIn{from{opacity:0;transform:translateY(-4px)}}
+.chip button{color:var(--tx3);display:grid;place-items:center;width:15px;height:15px;border-radius:50%}
+.chip button:hover{color:var(--danger);background:var(--bg3)}
+.chip button svg{width:10px;height:10px}
+
+.chat-head{display:flex;align-items:flex-end;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--line)}
+.chat-head h3{font-stretch:125%;font-weight:700;font-size:19px}
+.chat-sub{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--tx3);margin-top:4px}
+.chat-sub b{color:var(--cu);font-weight:500}
+
+#msgs{flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:18px}
+.msg{max-width:82%}
+.msg.user{align-self:flex-end;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r2) var(--r2) 3px var(--r2);padding:10px 14px}
+.msg.user .meta,.msg.cortex .meta{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--tx3);margin-bottom:6px}
+.msg.user .meta{text-align:right;margin:-2px 0 6px}
+.msg.cortex{border-left:2px solid var(--cu-dim);padding-left:15px}
+.msg.cortex .meta b{color:var(--cu);font-weight:500}
+.msg .body{line-height:1.62;color:var(--tx2);font-size:13.5px}
+.msg .body p{margin:0 0 9px}
+.msg .body p:last-child{margin-bottom:0}
+.msg .body strong{color:var(--tx1)}
+.msg .body ul{margin:2px 0 10px 18px}
+.msg .body li{margin-bottom:4px}
+.msg .body blockquote{border-left:2px solid var(--cu-dim);padding:2px 0 2px 12px;color:var(--tx3);font-style:italic;margin:0 0 9px}
+.msg .body code{font-family:var(--mono);font-size:11.5px;background:var(--bg3);border:1px solid var(--line);padding:1px 5px;border-radius:4px;color:var(--cu-hi)}
+.msg .body pre{background:var(--bg0);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;margin:4px 0 10px}
+.msg .body pre code{background:none;border:none;padding:0;color:var(--tx2);font-size:11.5px;line-height:1.6}
+.msg .body h4{font-stretch:118%;font-size:13px;color:var(--tx1);margin:6px 0 8px}
+.kw{color:var(--cu)}.str{color:var(--sage)}.cm{color:var(--tx3);font-style:italic}.num{color:var(--steel)}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--cu);vertical-align:-2px;animation:blink 1s steps(2) infinite;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+.msg.system{align-self:center;max-width:90%;font-family:var(--mono);font-size:10px;color:var(--tx3);letter-spacing:.06em;text-align:center;line-height:1.7}
+.msg.system.cpx{border:1px dashed var(--cu-dim);border-radius:var(--r2);padding:12px 18px;color:var(--tx2);text-align:left}
+.msg.system.cpx b{color:var(--cu);font-weight:500}
+.typing{display:inline-flex;gap:3px;align-items:flex-end;height:14px}
+.typing i{width:3px;background:var(--cu);animation:ty 1s ease-in-out infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes ty{0%,100%{height:5px}50%{height:14px}}
+
+/* tarjetas de propuesta de herramientas */
+.tool-card{border:1px solid var(--line2);border-radius:var(--r2);margin:10px 0 4px;background:var(--bg2);overflow:hidden}
+.tool-card.mut{border-style:dashed;border-color:rgba(224,104,90,.5)}
+.tc-head{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid var(--line)}
+.tc-head svg{width:14px;height:14px;color:var(--cu)}
+.tc-name{font-family:var(--mono);font-size:12px;color:var(--tx1);font-weight:500}
+.tc-tag{margin-left:auto;font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;padding:2px 7px;border-radius:4px;border:1px solid var(--cu-dim);color:var(--cu)}
+.tool-card.mut .tc-tag{border-color:rgba(224,104,90,.5);color:var(--danger)}
+.tc-sec{padding:9px 13px;border-bottom:1px solid var(--line)}
+.tc-lab{font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:var(--tx3);margin-bottom:5px}
+.tc-params{font-family:var(--mono);font-size:11px;color:var(--tx2);white-space:pre;line-height:1.6}
+.tc-cli{font-family:var(--mono);font-size:11px;color:var(--sage)}
+.tc-cli::before{content:"$ ";color:var(--tx3)}
+.tc-actions{display:flex;gap:8px;padding:10px 13px}
+.tc-status{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:10px 13px;display:flex;align-items:center;gap:8px}
+.tc-status.run{color:var(--warn)}.tc-status.done{color:var(--ok)}.tc-status.dec{color:var(--tx3)}
+.tc-result{border-top:1px solid var(--line);padding:10px 13px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--tx2)}
+.tc-result div::before{content:"· ";color:var(--cu)}
+
+/* empty state del chat */
+.chat-empty{margin:auto;text-align:center;max-width:430px;padding:30px}
+.chat-empty .mark{width:18px;height:18px;margin:0 auto 20px}
+.chat-empty h3{font-stretch:125%;font-weight:700;font-size:20px;margin-bottom:8px}
+.chat-empty p{color:var(--tx3);font-size:13px;line-height:1.6;margin-bottom:22px}
+.sugg{display:block;width:100%;text-align:left;font-family:var(--mono);font-size:11.5px;color:var(--tx2);border:1px solid var(--line2);border-radius:var(--r);padding:10px 14px;margin-bottom:7px;transition:.13s}
+.sugg:hover{border-color:var(--cu-dim);color:var(--cu-hi)}
+.sugg::before{content:"→ ";color:var(--cu)}
+
+/* composer */
+.composer{margin:0 26px 20px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--bg2);transition:border-color .15s}
+.composer:focus-within{border-color:var(--cu-dim);box-shadow:0 0 0 3px rgba(217,140,79,.1)}
+.composer textarea{width:100%;background:none;border:none;resize:none;padding:13px 15px 6px;line-height:1.55;color:var(--tx1);max-height:150px}
+.composer textarea::placeholder{color:var(--tx3)}
+.comp-foot{display:flex;align-items:center;padding:6px 9px 9px 15px}
+.comp-hint{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--tx3)}
+#btnSend{margin-left:auto;width:34px;height:34px;border-radius:var(--r);background:var(--cu);color:var(--cu-ink);display:grid;place-items:center;transition:.13s}
+#btnSend:hover{background:var(--cu-hi)}
+#btnSend:disabled{background:var(--bg4);color:var(--tx3);cursor:not-allowed}
+
+/* ---------- statusbar + pulso MarkRam ---------- */
+#statusbar{display:flex;align-items:center;gap:0;padding:0 14px;background:var(--bg1);border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--tx3);letter-spacing:.06em}
+.st-item{display:flex;align-items:center;gap:7px;padding:0 14px;height:100%;border-right:1px solid var(--line)}
+.st-item b{color:var(--tx2);font-weight:500}
+.lamp{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--tx3)}
+.lamp.warm{border-color:var(--warn);background:linear-gradient(90deg,var(--warn) 50%,transparent 50%)}
+.lamp.awake{border-color:var(--ok);background:var(--ok);animation:ping 1.4s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(147,196,125,.45)}100%{box-shadow:0 0 0 7px rgba(147,196,125,0)}}
+#stState.warm{color:var(--warn)}#stState.awake{color:var(--ok)}
+#pulseWrap{display:flex;align-items:center;height:100%;padding:0 6px;border-right:1px solid var(--line)}
+.st-right{margin-left:auto;display:flex;align-items:center;height:100%}
+.st-right .st-item{border-right:none;border-left:1px solid var(--line)}
+
+/* ---------- botones genéricos ---------- */
+.btn{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;padding:8px 14px;border:1px solid var(--line2);border-radius:var(--r);color:var(--tx2);background:var(--bg3);transition:.13s;text-transform:uppercase}
+.btn:hover{color:var(--tx1);border-color:var(--cu-dim)}
+.btn svg{width:13px;height:13px}
+.btn.primary{background:var(--cu);border-color:var(--cu);color:var(--cu-ink);font-weight:600}
+.btn.primary:hover{background:var(--cu-hi);border-color:var(--cu-hi)}
+.btn.danger{color:var(--danger);border-color:rgba(224,104,90,.4)}
+.btn.danger:hover{border-color:var(--danger)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* ---------- overlays y modales ---------- */
+.overlay{position:fixed;inset:0;background:rgba(8,7,5,.74);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:80;padding:24px}
+.overlay.on{display:flex;animation:ovIn .18s ease}
+@keyframes ovIn{from{opacity:0}}
+.modal{background:var(--bg1);border:1px solid var(--line2);border-radius:14px;width:560px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 32px 90px rgba(0,0,0,.55);animation:mIn .2s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(10px) scale(.985)}}
+.m-head{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line)}
+.m-head svg{width:16px;height:16px;color:var(--cu)}
+.m-head h3{font-stretch:122%;font-weight:700;font-size:14px;letter-spacing:.03em;flex:1}
+.m-body{overflow-y:auto;padding:20px}
+.m-foot{display:flex;justify-content:flex-end;gap:9px;padding:14px 20px;border-top:1px solid var(--line)}
+.m-wide{width:1060px}
+.field-lab{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--tx3);display:block;margin:0 0 7px}
+
+/* WebGraph */
+.wg-tools{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+#wgSearch{font-family:var(--mono);font-size:11.5px;padding:8px 12px;width:240px}
+.wg-f{display:flex;gap:6px;margin-left:8px}
+.wg-ft{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:6px 10px;border:1px solid var(--line2);border-radius:var(--r);color:var(--tx3);display:inline-flex;align-items:center;gap:6px}
+.wg-ft i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.wg-ft.on{color:var(--tx1);border-color:var(--line2);background:var(--bg3)}
+.wg-ft:not(.on){opacity:.45}
+#wgCanvasWrap{flex:1;position:relative;min-height:0;background:var(--bg0)}
+#wgCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
+.wg-legend{display:flex;gap:22px;padding:11px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--tx3)}
+.wg-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:-1px}
+.wg-hint{margin-left:auto;color:var(--tx3)}
+.wg-hint b{color:var(--cu);font-weight:500}
+
+/* Doctor */
+.doc-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r2);border:1px solid var(--line2);margin-bottom:16px;font-size:13px}
+.doc-banner.ok{border-color:rgba(147,196,125,.35);color:var(--ok)}
+.doc-banner.warn{border-color:rgba(224,180,92,.35);color:var(--warn)}
+.doc-banner .mark{border-color:currentColor}
+.doc-banner .mark::after{background:currentColor}
+.doc-item{display:flex;align-items:flex-start;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line)}
+.doc-item:last-child{border-bottom:none}
+.doc-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.doc-item .st-ok .doc-name{color:var(--tx2)}
+.doc-name{font-family:var(--mono);font-size:12px;color:var(--tx1)}
+.doc-detail{font-size:12px;color:var(--tx3);margin-top:3px;line-height:1.5}
+.doc-state{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.14em;padding:2px 8px;border-radius:4px;flex-shrink:0}
+.doc-state.ok{color:var(--ok);border:1px solid rgba(147,196,125,.35)}
+.doc-state.warn{color:var(--warn);border:1px solid rgba(224,180,92,.35)}
+.doc-state.fixing{color:var(--cu);border:1px solid var(--cu-dim)}
+
+/* OrgMemory */
+.org-card{border:1px solid var(--line2);border-radius:var(--r2);margin-bottom:16px;overflow:hidden;transition:.3s}
+.org-card.out{opacity:0;transform:translateX(24px)}
+.org-head{padding:13px 16px;border-bottom:1px solid var(--line)}
+.org-title{font-weight:600;font-size:13.5px}
+.org-src{font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:3px}
+.org-diff{background:var(--bg0);font-family:var(--mono);font-size:11px;line-height:1.7;padding:12px 16px;border-bottom:1px solid var(--line);white-space:pre;color:var(--tx2);overflow-x:auto}
+.org-diff .add{color:var(--sage)}.org-diff .del{color:var(--danger)}
+.org-form{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;padding:13px 16px}
+.org-form input{font-size:12px;padding:8px 11px}
+.org-actions{display:flex;gap:9px;padding:0 16px 15px}
+
+/* Settings */
+.set-tabs{display:flex;border-bottom:1px solid var(--line)}
+.set-tab{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--tx3);padding:13px 18px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.set-tab.on{color:var(--cu);border-bottom-color:var(--cu)}
+.set-row{display:flex;align-items:center;gap:14px;padding:15px 2px;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:none}
+.set-info{flex:1}
+.set-info b{font-size:13px;font-weight:600;display:block}
+.set-info span{font-size:11.5px;color:var(--tx3);line-height:1.5;display:block;margin-top:2px}
+.switch{width:38px;height:21px;border-radius:12px;border:1px solid var(--line2);background:var(--bg3);position:relative;transition:.15s;flex-shrink:0}
+.switch::after{content:"";position:absolute;top:2.5px;left:3px;width:13px;height:13px;border-radius:50%;background:var(--tx3);transition:.15s}
+.switch.on{background:var(--cu);border-color:var(--cu)}
+.switch.on::after{left:19px;background:var(--cu-ink)}
+.mdl-row{display:flex;align-items:center;gap:14px;padding:13px 2px;border-bottom:1px solid var(--line)}
+.mdl-name{flex:1}
+.mdl-name b{font-size:13px;display:block}
+.mdl-name span{font-family:var(--mono);font-size:10px;color:var(--tx3)}
+.dl-bar{width:170px;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;display:none}
+.dl-bar.on{display:block}
+.dl-bar i{display:block;height:100%;width:0;background:var(--cu);transition:width .2s}
+.dl-txt{font-family:var(--mono);font-size:9.5px;color:var(--cu);display:none;min-width:170px;text-align:right}
+.dl-txt.on{display:block}
+.range-wrap{display:flex;align-items:center;gap:12px}
+.range-wrap input[type=range]{width:150px;accent-color:var(--cu);background:none;border:none;box-shadow:none}
+.range-val{font-family:var(--mono);font-size:11px;color:var(--cu);min-width:44px}
+input[type=text].wide{width:100%;font-size:12.5px;padding:9px 12px;font-family:var(--mono)}
+select.mini{font-family:var(--mono);font-size:11.5px;padding:7px 10px}
+
+/* ---------- Vista Setup ---------- */
+#viewSetup{overflow-y:auto}
+.setup-inner{max-width:1060px;width:100%;margin:0 auto;padding:30px 34px 60px}
+.setup-inner>h2{font-stretch:125%;font-weight:800;font-size:24px}
+.setup-lead{color:var(--tx3);font-size:13px;margin:8px 0 24px;line-height:1.6;max-width:640px}
+.folder-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+#setupPath{font-family:var(--mono);font-size:12px;color:var(--tx2);background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:9px 14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diag-chips{display:flex;gap:8px;margin-bottom:30px;flex-wrap:wrap}
+.dchip{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:6px 12px;border-radius:20px;border:1px solid var(--line2);color:var(--tx3);display:inline-flex;align-items:center;gap:7px}
+.dchip i{width:6px;height:6px;border-radius:50%;background:var(--tx3)}
+.dchip.on{color:var(--ok);border-color:rgba(147,196,125,.35)}
+.dchip.on i{background:var(--ok)}
+.dchip.warn{color:var(--warn);border-color:rgba(224,180,92,.35)}
+.dchip.warn i{background:var(--warn)}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:start}
+.sec-title{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--tx3);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.pkg{display:flex;gap:13px;padding:14px;border:1px solid var(--line2);border-radius:var(--r2);margin-bottom:9px;cursor:pointer;transition:.13s;position:relative}
+.pkg:hover{border-color:var(--cu-dim)}
+.pkg.sel{border-color:var(--cu);background:rgba(217,140,79,.05)}
+.pkg-radio{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--tx3);margin-top:2px;flex-shrink:0;position:relative}
+.pkg.sel .pkg-radio{border-color:var(--cu)}
+.pkg.sel .pkg-radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--cu)}
+.pkg b{font-size:13.5px;display:block}
+.pkg p{font-size:11.5px;color:var(--tx3);line-height:1.55;margin-top:3px}
+.pkg .tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;color:var(--cu);border:1px solid var(--cu-dim);padding:2px 7px;border-radius:4px;vertical-align:2px;margin-left:8px}
+.pkg .tag.opt{color:var(--warn);border-color:rgba(224,180,92,.4)}
+.pkg select{margin-top:9px;font-family:var(--mono);font-size:11px;padding:6px 10px;display:none;width:100%}
+.pkg.sel.pkg-ent select{display:block}
+.guarantee{font-family:var(--mono);font-size:9.5px;color:var(--sage);margin-top:7px;display:flex;align-items:center;gap:6px}
+.ide-row{display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.ide-name{font-size:13px;font-weight:600;flex:1}
+.tier{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;color:var(--tx3);border:1px solid var(--line);padding:2px 7px;border-radius:4px}
+.ide-on{font-family:var(--mono);font-size:10px;color:var(--ok)}
+.ide-btns{display:flex;gap:6px}
+.mini-btn{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:5px 10px;border:1px solid var(--line2);border-radius:5px;color:var(--tx2);transition:.12s}
+.mini-btn:hover{color:var(--tx1);border-color:var(--cu-dim)}
+.mini-btn.dz:hover{color:var(--danger);border-color:rgba(224,104,90,.5)}
+.plan-panel{border:1px solid var(--line2);border-radius:var(--r2);background:var(--bg2);position:sticky;top:20px}
+.plan-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.plan-head svg{width:14px;height:14px;color:var(--cu)}
+.plan-head b{font-stretch:120%;font-size:13px}
+#planCount{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--tx3)}
+#planList{padding:10px 16px;max-height:300px;overflow-y:auto}
+.plan-file{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;padding:6px 0;color:var(--tx2)}
+.ptag{font-size:8.5px;letter-spacing:.1em;padding:1px 7px;border-radius:4px;min-width:64px;text-align:center}
+.ptag.c{color:var(--sage);border:1px solid rgba(151,199,126,.4)}
+.ptag.u{color:var(--steel);border:1px solid rgba(127,163,199,.4)}
+.plan-foot{display:flex;gap:9px;padding:13px 16px;border-top:1px solid var(--line)}
+.plan-note{font-family:var(--mono);font-size:9px;color:var(--tx3);padding:0 16px 13px;letter-spacing:.04em;line-height:1.6}
+#setupLogs{background:var(--bg0);border:1px solid var(--line);border-radius:var(--r2);font-family:var(--mono);font-size:11px;line-height:1.9;padding:14px 18px;color:var(--tx2);min-height:88px;margin-top:30px;white-space:pre-wrap}
+#setupLogs .ok-l{color:var(--sage)}#setupLogs .up-l{color:var(--steel)}#setupLogs .end-l{color:var(--cu)}
+.setup-footer{display:flex;justify-content:flex-end;margin-top:22px}
+
+/* toasts */
+#toasts{position:fixed;right:18px;bottom:46px;z-index:120;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.toast{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--line2);border-left:2px solid var(--cu);border-radius:var(--r);padding:11px 16px;font-size:12.5px;color:var(--tx1);box-shadow:0 12px 40px rgba(0,0,0,.45);animation:tIn .22s ease;max-width:380px}
+.toast.ok{border-left-color:var(--ok)}.toast.warn{border-left-color:var(--warn)}.toast.err{border-left-color:var(--danger)}
+.toast svg{width:14px;height:14px;color:var(--tx2)}
+@keyframes tIn{from{opacity:0;transform:translateX(14px)}}
+.toast.bye{opacity:0;transform:translateX(14px);transition:.25s}
+
+/* picker de carpetas (diálogo nativo simulado) */
+.pck-row{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:12px;padding:11px 13px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;margin-bottom:7px;color:var(--tx2)}
+.pck-row:hover{border-color:var(--cu-dim);color:var(--tx1)}
+.pck-row svg{width:14px;height:14px;color:var(--cu)}
+textarea ta{width:100%}
+#cpText,#confBody{width:100%}
+#cpText{min-height:90px;resize:vertical;font-size:13px;padding:11px 13px;line-height:1.55}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════ 1 · TOPBAR ══════════ -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1 class="disp">CORTEX <b>BRAIN</b></h1>
+        <small>LFM2.5 · LOCAL EXPERT</small>
+      </div>
+    </div>
+    <div class="ruler"></div>
+    <div class="model-zone">
+      <label>MODEL:</label>
+      <div class="sel-wrap"><select id="modelSelect"></select></div>
+      <span class="qbadge" id="modelBadge">Q4_K_M · 1.2 GB</span>
+    </div>
+    <button class="icon-btn" id="btnSettingsTop" title="Configuración"><i data-lucide="settings-2"></i></button>
+  </header>
+
+  <!-- ══════════ 2 + 3 · MAIN ══════════ -->
+  <div id="main">
+    <aside id="sidebar">
+      <div class="sb-head">
+        <h2>PROJECTS</h2><span class="count" id="projCount">3</span>
+        <span class="sp"></span>
+        <button class="icon-btn" id="btnRefresh" title="Re-escanear directorios"><i data-lucide="refresh-cw"></i></button>
+      </div>
+      <div id="projList"></div>
+      <div class="sb-foot">
+        <button class="install-btn" id="btnInstall">
+          <div class="mark"></div>
+          <div><strong>Instalar Cortex</strong><span>en una carpeta → setup</span></div>
+        </button>
+      </div>
+    </aside>
+
+    <section id="stage">
+
+      <!-- VISTA 1 · Gobernanza + Chat -->
+      <div class="view on" id="viewChat">
+        <div class="gbar">
+          <span class="session-badge" id="sessionBadge"><span class="d"></span><span id="sessionTxt">SIN SESIÓN ACTIVA</span></span>
+          <span class="gsep"></span>
+          <button class="gbtn" id="btnWebGraph"><i data-lucide="waypoints"></i>WEBGRAPH</button>
+          <button class="gbtn" id="btnDoctor"><i data-lucide="stethoscope"></i>DOCTOR</button>
+          <button class="gbtn" id="btnOrg"><i data-lucide="building-2"></i>MEMORIA ORG.<span class="nb" id="orgBadge">2</span></button>
+          <button class="gbtn" id="btnCheckpoint"><i data-lucide="flag"></i>CHECKPOINT</button>
+          <div id="pinnedChips"></div>
+        </div>
+
+        <div class="chat-head">
+          <div>
+            <h3 class="disp" id="chatTitle">—</h3>
+            <div class="chat-sub" id="chatSub">—</div>
+          </div>
+          <button class="btn ghost" id="btnClear"><i data-lucide="eraser"></i>Nueva conversación</button>
+        </div>
+
+        <div id="msgs"></div>
+
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Preguntale cualquier cosa a este proyecto…"></textarea>
+          <div class="comp-foot">
+            <span class="comp-hint">ENTER ENVIAR · SHIFT+ENTER SALTO DE LÍNEA · 100% LOCAL</span>
+            <button id="btnSend" disabled><i data-lucide="arrow-up"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 2 · Setup -->
+      <div class="view" id="viewSetup">
+        <div class="setup-inner">
+          <h2 class="disp">Instalar Cortex</h2>
+          <p class="setup-lead">Inicializá la capa de gobernanza en cualquier carpeta — vacía o con un proyecto existente. Nada se escribe en disco hasta que apliques el plan, y jamás inyectamos scripts o workflows sin tu pedido explícito.</p>
+
+          <div class="folder-row">
+            <button class="btn" id="btnPickFolder"><i data-lucide="folder-open"></i>Elegir carpeta</button>
+            <div id="setupPath">— ninguna carpeta seleccionada —</div>
+          </div>
+          <div class="diag-chips" id="diagChips"></div>
+
+          <div class="setup-grid">
+            <div>
+              <div class="sec-title">PAQUETES DE INSTALACIÓN</div>
+              <div id="pkgList"></div>
+              <div class="sec-title" style="margin-top:26px">INTEGRACIONES CON IDES</div>
+              <div id="ideList"></div>
+            </div>
+            <div class="plan-panel">
+              <div class="plan-head"><i data-lucide="clipboard-list"></i><b>Plan de ejecución</b><span id="planCount">0 archivos</span></div>
+              <div id="planList"></div>
+              <div class="plan-note">El plan se recalcula en vivo según el paquete y los IDEs seleccionados. Tus repositorios no se modifican hasta que presiones Aplicar.</div>
+              <div class="plan-foot">
+                <button class="btn primary" id="btnApply" style="flex:1;justify-content:center"><i data-lucide="play"></i>Aplicar plan</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="setupLogs">$ cortex init — esperando plan…</div>
+          <div class="setup-footer">
+            <button class="btn primary" id="btnOpenBrain" disabled><i data-lucide="brain"></i>Abrir esta carpeta en Brain</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- ══════════ 4 · STATUSBAR + PULSO ══════════ -->
+  <footer id="statusbar">
+    <div class="st-item">proyectos <b id="stProjects">3</b></div>
+    <div class="st-item">sesiones activas <b id="stSessions">1</b></div>
+    <div class="st-item">cargados <b id="stLoaded">1</b></div>
+    <div class="st-item"><span class="lamp" id="lamp"></span><span id="stState">AWAKE</span></div>
+    <div id="pulseWrap"><canvas id="pulse" width="180" height="24"></canvas></div>
+    <div class="st-item">markram <b id="stTimer">—</b></div>
+    <div class="st-right">
+      <div class="st-item" id="stSize">1.2 GB en RAM</div>
+      <div class="st-item">socket <b>/tmp/cortex-brain-1000.sock</b></div>
+      <div class="st-item"><button class="icon-btn" id="btnSettingsBottom" style="width:22px;height:22px"><i data-lucide="sliders-horizontal" style="width:12px;height:12px"></i></button></div>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════ MODALES ══════════ -->
+<div class="overlay" id="ovWebGraph">
+  <div class="modal m-wide" style="height:680px">
+    <div class="m-head"><i data-lucide="waypoints"></i><h3>WebGraph · Mapa cognitivo del proyecto</h3>
+      <button class="btn ghost" id="btnWgBrowser"><i data-lucide="external-link"></i>Abrir en navegador</button>
+      <button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="wg-tools">
+      <input id="wgSearch" type="text" placeholder="filtrar nodos…">
+      <div class="wg-f" id="wgFilters"></div>
+    </div>
+    <div id="wgCanvasWrap"><canvas id="wgCanvas"></canvas></div>
+    <div class="wg-legend" id="wgLegend"><span class="wg-hint">Clic en un nodo → <b>fijar como contexto</b> del chat</span></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovDoctor">
+  <div class="modal" style="width:640px">
+    <div class="m-head"><i data-lucide="stethoscope"></i><h3>Doctor · Auditoría de gobernanza</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body">
+      <div class="doc-banner warn" id="doctorBanner"></div>
+      <div id="doctorList"></div>
+    </div>
+    <div class="m-foot"><button class="btn primary" id="btnDoctorFix"><i data-lucide="wand-2"></i>Corregir / Auto-fix</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovOrg">
+  <div class="modal" style="width:660px">
+    <div class="m-head"><i data-lucide="building-2"></i><h3>Memoria organizacional · Candidatos</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body" id="orgList"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovSettings">
+  <div class="modal" style="width:700px">
+    <div class="m-head"><i data-lucide="settings-2"></i><h3>Configuración</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="set-tabs" id="setTabs"></div>
+    <div class="m-body" id="setBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovTool">
+  <div class="modal" style="width:560px">
+    <div class="m-head"><i data-lucide="shield-alert"></i><h3>Aprobación de herramienta</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body" id="toolBody"></div>
+    <div class="m-foot">
+      <button class="btn" data-close>Cancelar</button>
+      <button class="btn primary" id="btnToolExec"><i data-lucide="check"></i>Aprobar &amp; ejecutar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovConfirm">
+  <div class="modal" style="width:440px">
+    <div class="m-head"><i data-lucide="alert-triangle"></i><h3 id="confTitle">Confirmar</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body"><p id="confBody" style="color:var(--tx2);font-size:13px;line-height:1.6"></p></div>
+    <div class="m-foot"><button class="btn" data-close>Cancelar</button><button class="btn danger" id="confOk">Confirmar</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovCheckpoint">
+  <div class="modal" style="width:500px">
+    <div class="m-head"><i data-lucide="flag"></i><h3>Registrar checkpoint</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body">
+      <label class="field-lab">DESCRIBÍ EL PROGRESO O HITO A CONGELAR EN LA SESIÓN</label>
+      <textarea id="cpText" placeholder="Ej: auth migrada a rotación de 15 min, specs actualizadas…"></textarea>
+    </div>
+    <div class="m-foot"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="cpOk"><i data-lucide="flag"></i>Congelar en sesión</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovPicker">
+  <div class="modal" style="width:480px">
+    <div class="m-head"><i data-lucide="folder-open"></i><h3>Elegir carpeta</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+    <div class="m-body" id="pickerList"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ═══════════════════════ UTILIDADES ═══════════════════════ */
+const $=s=>document.querySelector(s);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const hh=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const icons=()=>window.lucide&&lucide.createIcons();
+let uid=1;
+
+function toast(msg,kind='info',icon='info'){
+  const t=document.createElement('div');t.className='toast '+kind;
+  t.innerHTML=`<i data-lucide="${icon}"></i><span>${msg}</span>`;
+  $('#toasts').appendChild(t);icons();
+  setTimeout(()=>{t.classList.add('bye');setTimeout(()=>t.remove(),300)},3400);
+}
+function openOv(id){$('#'+id).classList.add('on')}
+function closeOv(ov){ov.classList.remove('on')}
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('mousedown',e=>{if(e.target===ov)closeOv(ov)});
+  ov.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeOv(ov)));
+});
+addEventListener('keydown',e=>{
+  if(e.key==='Escape')document.querySelectorAll('.overlay.on').forEach(closeOv);
+});
+
+/* ═══════════════════════ ESTADO GLOBAL ═══════════════════════ */
+const S={
+  projects:[
+    {id:'p1',name:'cortex-brain',path:'workspace/cortex-brain',branch:'main',session:'2025-06-12_refactor-auth',config:true},
+    {id:'p2',name:'atlas-api',path:'workspace/atlas-api',branch:'feat/auth',session:null,config:true},
+    {id:'p3',name:'portfolio-web',path:'dev/portfolio-web',branch:null,session:null,config:false},
+  ],
+  activeId:'p1',
+  threads:{}, pins:{p1:new Set(['core/engine.rs']),p2:new Set(),p3:new Set()},
+  thinking:false,
+  settings:{idle:90,judgement:true,lang:'es',aot:false,roots:['/home/dev','/mnt/work']},
+  orgQueue:2,
+  models:[
+    {id:'m1',name:'LFM2.5 1.2B Instruct',q:'Q4_K_M',size:'1.2 GB',owned:true},
+    {id:'m2',name:'LFM2.5 1.2B Instruct',q:'Q8_0',size:'1.4 GB',owned:true},
+  ],
+  modelId:'m1',
+};
+const proj=id=>S.projects.find(p=>p.id===id);
+const activeP=()=>proj(S.activeId);
+S.threads.p1=[
+  {role:'user',time:'14:02',text:'¿El flujo de auth está alineado con el ADR-007?'},
+  {role:'cortex',time:'14:02',blocks:[
+    {t:'md',text:'Revisé el vault y el módulo `auth/`. Estado general:\n\n- **ADR-007 (purga MarkRam)** se cumple: `auth/service.rs` libera el contexto a los 90 s.\n- `auth/tokens.rs` todavía rota tokens cada 30 min; el estándar pide **15 min**.\n- La spec `spec/login-flow` quedó desactualizada respecto del flujo real.\n\nTe dejo la consulta al grafo que sostiene el diagnóstico:'},
+    {t:'tool',tool:{name:'cortex_search',params:{query:'token rotation',scope:'auth/'},cli:'cortex search "token rotation" --scope auth/',status:'done',mut:false,result:['auth/tokens.rs · L64 — rotate_interval: 30m','spec/login-flow.md · §4 — intervalo requerido: 15m']}},
+    {t:'md',text:'**Conclusión:** la única desviación es el intervalo de rotación. ¿Querés que prepare el parche para `auth/tokens.rs` y actualice la spec?'}
+  ]}
+];
+S.threads.p2=[];S.threads.p3=[];
+
+/* ═══════════════════════ MARKDOWN MÍNIMO ═══════════════════════ */
+function hl(code){
+  let s=esc(code);
+  s=s.replace(/(&quot;[^&]*?&quot;|'[^']*')/g,'<span class="str">$1</span>');
+  s=s.replace(/(^|\n)(\s*)(#[^\n]*|\/\/[^\n]*)/g,(m,a,b,c)=>a+b+'<span class="cm">'+c+'</span>');
+  s=s.replace(/\b(fn|pub|let|const|async|await|return|if|else|for|while|import|from|def|class|struct|impl|match|use|new|true|false)\b/g,'<span class="kw">$1</span>');
+  s=s.replace(/\b(\d+(?:\.\d+)?)\b/g,'<span class="num">$1</span>');
+  return s;
+}
+function mdToHtml(src){
+  const lines=src.split('\n');let out='',inCode=false,codeBuf='',list=false;
+  const inline=t=>esc(t)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^&gt; (.*)/,'<blockquote>$1</blockquote>');
+  for(const ln of lines){
+    if(ln.startsWith('```')){ 
+      if(inCode){out+=`<pre><code>${hl(codeBuf)}</code></pre>`;codeBuf='';inCode=false}
+      else{if(list){out+='</ul>';list=false}inCode=true}
+      continue;
+    }
+    if(inCode){codeBuf+=ln+'\n';continue}
+    if(/^[-•] /.test(ln)){if(!list){out+='<ul>';list=true}out+='<li>'+inline(ln.slice(2))+'</li>';continue}
+    if(list){out+='</ul>';list=false}
+    if(/^####?\s/.test(ln)){out+='<h4>'+inline(ln.replace(/^#+\s/,''))+'</h4>';continue}
+    if(ln.trim()==='')continue;
+    out+='<p>'+inline(ln)+'</p>';
+  }
+  if(list)out+='</ul>';if(inCode)out+='<pre><code>'+hl(codeBuf)+'</code></pre>';
+  return out;
+}
+
+/* ═══════════════════════ SIDEBAR ═══════════════════════ */
+function renderSidebar(){
+  $('#projCount').textContent=S.projects.length;
+  $('#projList').innerHTML=S.projects.map(p=>`
+    <div class="proj ${p.id===S.activeId?'active':''}" data-act="proj" data-id="${p.id}">
+      <div class="proj-marker"></div>
+      <div class="proj-main">
+        <div class="proj-name">${esc(p.name)}${!p.config?'<span class="badge-cfg">!config</span>':''}</div>
+        <div class="proj-path">${esc(p.path)}</div>
+      </div>
+      <div class="proj-side">
+        <span class="branch">${p.branch?esc(p.branch):'sin rama'}</span>
+        <span class="sess-dot ${p.session?'on':''}"></span>
+      </div>
+    </div>`).join('');
+  updateStatus();
+}
+ $('#btnRefresh').addEventListener('click',function(){
+  this.classList.add('spin');
+  setTimeout(()=>{
+    this.classList.remove('spin');
+    toast(`Escaneo completo · ${S.projects.length} proyectos con configuración válida (prof. máx. 8)`,'ok','folder-search');
+  },1100);
+});
+ $('#btnInstall').addEventListener('click',()=>{showView('setup')});
+function showView(v){
+  $('#viewChat').classList.toggle('on',v==='chat');
+  $('#viewSetup').classList.toggle('on',v==='setup');
+  if(v==='setup')renderSetup();
+}
+
+/* ═══════════════════════ CHAT ═══════════════════════ */
+function setActiveProject(id){
+  S.activeId=id;renderSidebar();renderChatHead();renderPins();renderMessages();showView('chat');
+}
+function renderChatHead(){
+  const p=activeP();
+  $('#chatTitle').textContent=p.name;
+  $('#chatSub').innerHTML=`ENGINE: <b>LIQUID LFM2.5</b> · llama.cpp · ${p.session?'SESIÓN <b>'+p.session+'</b>':'SIN SESIÓN'}`;
+}
+function renderSession(){
+  const p=activeP(),b=$('#sessionBadge');
+  if(p.session){b.classList.add('on');$('#sessionTxt').textContent='SESIÓN · '+p.session}
+  else{b.classList.remove('on');$('#sessionTxt').textContent='SIN SESIÓN ACTIVA'}
+}
+function renderPins(){
+  const pins=S.pins[S.activeId]||new Set();
+  $('#pinnedChips').innerHTML=[...pins].map(nid=>{
+    const n=GRAPH.nodes.find(n=>n.id===nid);
+    return `<span class="chip">[${n.chip}]<button data-act="unpin" data-node="${nid}"><i data-lucide="x"></i></button></span>`;
+  }).join('');
+  icons();
+}
+function renderMessages(){
+  const wrap=$('#msgs'),th=S.threads[S.activeId];
+  if(!th.length){
+    const p=activeP();
+    wrap.innerHTML=`
+      <div class="chat-empty">
+        <div class="mark"></div>
+        <h3 class="disp">${esc(p.name)}</h3>
+        <p>${p.config?'Sesión lista. El motor descargó sus pesos de RAM al terminar el último ciclo — nada de este proyecto sale de tu máquina.':'Este proyecto tiene <span style="color:var(--danger)">config.yaml ausente o inválido</span>: el modo lectura está limitado. Corré el Doctor o reinstalá desde Setup.'}</p>
+        <button class="sugg" data-act="sugg" data-q="Resumime la arquitectura actual del proyecto">Resumime la arquitectura actual del proyecto</button>
+        <button class="sugg" data-act="sugg" data-q="¿Qué specs quedaron sin cerrar en esta sesión?">¿Qué specs quedaron sin cerrar en esta sesión?</button>
+        <button class="sugg" data-act="sugg" data-q="Auditá la carpeta auth/ y sus dependencias">Auditá la carpeta auth/ y sus dependencias</button>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML=th.map(renderMsg).join('');
+  icons();scrollBottom(true);
+}
+function renderMsg(m,i){
+  if(m.role==='system')return `<div class="msg system ${m.cpx?'cpx':''}">${m.html}</div>`;
+  if(m.role==='user')return `<div class="msg user"><div class="meta">VOS · ${m.time}</div><div class="body">${esc(m.text)}</div></div>`;
+  return `<div class="msg cortex"><div class="meta"><b>CORTEX</b> · ${m.time}</div><div class="body">${m.blocks.map((b,j)=>{
+    if(b.t==='md')return mdToHtml(b.text)+(b.streaming?'<span class="cursor"></span>':'');
+    if(b.t==='tool')return toolCardHTML(b.tool,i,j);
+    return '';
+  }).join('')}</div></div>`;
+}
+function scrollBottom(force){
+  const w=$('#msgs');
+  if(force||w.scrollHeight-w.scrollTop-w.clientHeight<160)w.scrollTop=w.scrollHeight;
+}
+function updateComposer(){
+  const inp=$('#input');
+  inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,150)+'px';
+  $('#btnSend').disabled=!inp.value.trim()||S.thinking;
+}
+ $('#input').addEventListener('input',updateComposer);
+ $('#input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCurrent()}
+});
+ $('#btnSend').addEventListener('click',sendCurrent);
+function sendCurrent(){
+  const t=$('#input').value.trim();if(!t||S.thinking)return;
+  $('#input').value='';updateComposer();
+  pushUser(t);
+  wake();
+  S.thinking=true;updateComposer();
+  const ty=document.createElement('div');ty.className='msg cortex';ty.id='typingRow';
+  ty.innerHTML=`<div class="meta"><b>CORTEX</b> · ${hh()}</div><div class="typing"><i></i><i></i><i></i></div>`;
+  $('#msgs').querySelector('.chat-empty')&&(renderMessages());
+  $('#msgs').appendChild(ty);scrollBottom(true);
+  setTimeout(()=>{
+    $('#typingRow')?.remove();
+    streamBlocks(S.activeId,routeReply(t),()=>{S.thinking=false;updateComposer()});
+  },700);
+}
+function pushUser(text){
+  S.threads[S.activeId].push({role:'user',time:hh(),text});
+  if($('#typingRow'))$('#typingRow').remove();
+  const w=$('#msgs');w.querySelector('.chat-empty')&&(w.innerHTML='');
+  w.insertAdjacentHTML('beforeend',renderMsg({role:'user',time:hh(),text},-1));
+  scrollBottom(true);
+}
+/* streaming de tokens, bloque por bloque */
+function streamBlocks(pid,blocks,done){
+  const th=S.threads[pid];
+  const msg={role:'cortex',time:hh(),blocks:[]};th.push(msg);
+  const w=$('#msgs');const el=document.createElement('div');w.appendChild(el);scrollBottom(true);
+  let bi=0;
+  function nextBlock(){
+    if(bi>=blocks.length){el.remove();renderMessages();icons();done&&done();return}
+    const b=blocks[bi++];
+    if(b.t==='md'){
+      const mb={t:'md',text:'',streaming:true};msg.blocks.push(mb);
+      let ci=0;const full=b.text;
+      const iv=setInterval(()=>{
+        ci=Math.min(full.length,ci+2+Math.floor(Math.random()*3));
+        mb.text=full.slice(0,ci);
+        el.outerHTML='';el=document.createElement('div');
+        el.innerHTML=renderMsg(msg,th.length-1);w.appendChild(el);
+        scrollBottom(true);
+        if(ci>=full.length){clearInterval(iv);mb.streaming=false;setTimeout(nextBlock,140)}
+      },14);
+    }else{
+      msg.blocks.push(b);el.innerHTML=renderMsg(msg,th.length-1);icons();scrollBottom(true);
+      setTimeout(nextBlock,260);
+    }
+  }
+  nextBlock();
+}
+/* enrutador de respuestas simuladas */
+let mutOffered=false;
+function routeReply(q){
+  const pins=[...(S.pins[S.activeId]||new Set())];
+  if(/arquitect|resum/i.test(q))return [{t:'md',text:'**Resumen arquitectónico** de `'+activeP().name+'` (rama '+(activeP().branch||'—')+'):\n\n1. **`cortex-core`** — motor de inferencia y gestión MarkRam del modelo.\n2. **`cortex-server`** — expone el socket IPC `/tmp/cortex-brain-$UID.sock` y las tools del agente.\n3. **`cortex-ui`** — esta GUI en Tauri, sin lógica de negocio propia.\n\n> El acople más sensible está entre server y auth: todo pasa por `auth/service.rs`.'}];
+  if(/auth|login|token/i.test(q))return [
+    {t:'md',text:'Voy a consultar el grafo y el vault antes de contestar, así no te tiro de memoria:'},
+    {t:'tool',tool:{name:'cortex_search',params:{query:'token rotation + session guard',scope:'auth/'},cli:'cortex search "token rotation" --scope auth/',status:'proposed',mut:false}}
+  ];
+  if(/patch|edit|modific|refactor|cambi|escrib|correg/i.test(q)||mutOffered===false&&/rotación|rotacion/i.test(q)){
+    mutOffered=true;
+    return [
+      {t:'md',text:'Puedo aplicar el cambio yo mismo, pero **es una mutación de código**: necesita tu aprobación explícita antes de tocar el disco. Esto es lo que propongo:'},
+      {t:'tool',tool:{name:'cortex_apply_patch',params:{file:'src/auth/tokens.rs',change:'rotate_interval: 30m → 15m',spec_sync:'spec/login-flow.md §4'},cli:'cortex patch src/auth/tokens.rs --set rotate_interval=15m',status:'proposed',mut:true}}
+    ];
+  }
+  return [
+    {t:'md',text:'Buena pregunta. Antes de responder quiero anclar la respuesta al código real, no a mi memoria episódica — te propongo una consulta al contexto:'},
+    {t:'tool',tool:{name:'cortex_context',params:{node:pins[0]||'core/engine.rs',depth:2},cli:'cortex context '+(pins[0]||'core/engine.rs')+' --depth 2',status:'proposed',mut:false}}
+  ];
+}
+/* tarjetas de herramienta */
+function toolCardHTML(tb,mi,ti){
+  const card=`<div class="tool-card ${tb.mut?'mut':''}">
+    <div class="tc-head"><i data-lucide="${tb.mut?'file-pen':'wrench'}"></i>
+      <span class="tc-name">${tb.name}</span>
+      <span class="tc-tag">${tb.mut?'MUTACIÓN · REQUIERE APROBACIÓN':'READ-ONLY'}</span></div>
+    <div class="tc-sec"><div class="tc-lab">PARÁMETROS</div><div class="tc-params">${esc(JSON.stringify(tb.params,null,2))}</div></div>
+    <div class="tc-sec"><div class="tc-lab">COMANDO CLI EQUIVALENTE</div><div class="tc-cli">${esc(tb.cli)}</div></div>
+    ${tb.status==='proposed'?`<div class="tc-actions">
+      <button class="btn primary" data-act="${tb.mut?'tool-review':'tool-ok'}" data-mi="${mi}" data-ti="${ti}"><i data-lucide="${tb.mut?'shield-check':'play'}"></i>${tb.mut?'Revisar y ejecutar':'Aprobar y ejecutar'}</button>
+      <button class="btn danger" data-act="tool-no" data-mi="${mi}" data-ti="${ti}"><i data-lucide="ban"></i>Rechazar</button>
+    </div>`:''}
+    ${tb.status==='running'?`<div class="tc-status run"><div class="typing"><i></i><i></i><i></i></div> ejecutando en Rust…</div>`:''}
+    ${tb.status==='declined'?`<div class="tc-status dec"><i data-lucide="ban"></i> rechazada por el usuario — el modelo fue notificado</div>`:''}
+    ${tb.status==='done'&&tb.result?`<div class="tc-result">${tb.result.map(r=>`<div>${esc(r)}</div>`).join('')}</div>`:''}
+  </div>`;
+  return card;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const act=b.dataset.act;
+  if(act==='proj')return setActiveProject(b.dataset.id);
+  if(act==='sugg'){$('#input').value=b.dataset.q;updateComposer();sendCurrent();return}
+  if(act==='unpin'){S.pins[S.activeId].delete(b.dataset.node);renderPins();return}
+  if(act==='tool-ok'||act==='tool-no'||act==='tool-review'){
+    const th=S.threads[S.activeId];const tb=th[b.dataset.mi].blocks[b.dataset.ti].tool;
+    if(act==='tool-no'){
+      tb.status='declined';renderMessages();
+      S.threads[S.activeId].push({role:'system',html:`acción <b style="color:var(--danger)">${tb.name}</b> rechazada — continúo con contexto local`});
+      streamBlocks(S.activeId,[{t:'md',text:'Entendido, sigo sin esa consulta. Trabajando solo con lo ya cargado en contexto: el módulo parece consistente, aunque te recomiendo pasar el **Doctor** para confirmarlo.'}],()=>{S.thinking=false});
+      return;
+    }
+    if(act==='tool-review'){openToolApproval(tb,b.dataset.mi,b.dataset.ti);return}
+    /* aprobación read-only inline */
+    tb.status='running';renderMessages();
+    setTimeout(()=>{
+      tb.status='done';
+      tb.result=['auth/tokens.rs · L64 — rotate_interval: 30m','auth/service.rs · L118 — purge_ctx ok','spec/login-flow.md · §4 — intervalo requerido: 15m'];
+      renderMessages();
+      streamBlocks(S.activeId,[{t:'md',text:'Con el resultado en la mano: la desviación está en `auth/tokens.rs` L64. ¿Querés que prepare el **parche** y sincronice la spec? Podés decirme *"aplicá la rotación"*.'}],()=>{S.thinking=false});
+    },1000);
+  }
+});
+ $('#btnClear').addEventListener('click',()=>{
+  openConfirm('Nueva conversación','Se eliminan los mensajes locales de este proyecto y se guarda una instantánea vacía en <span class="mono" style="font-size:11px">.cortex/sessions/</span>. Esta acción no toca tu código.',()=>{
+    S.threads[S.activeId]=[{role:'system',html:'historial descartado · instantánea vacía guardada en <b>.cortex/sessions/</b>'}];
+    renderMessages();toast('Conversación reiniciada','ok','eraser');
+  });
+});
+/* checkpoint — compositor propio, sin window.prompt */
+ $('#btnCheckpoint').addEventListener('click',()=>{openOv('ovCheckpoint');$('#cpText').focus()});
+ $('#cpOk').addEventListener('click',()=>{
+  const t=$('#cpText').value.trim();if(!t)return;
+  $('#cpText').value='';closeOv($('#ovCheckpoint'));
+  const p=activeP();if(!p.session)p.session='2025-06-12_'+p.name.toLowerCase().slice(0,10);
+  renderSession();renderChatHead();
+  S.threads[S.activeId].push({role:'system',cpx:true,html:`<b>CHECKPOINT CONGELADO</b> → .cortex/sessions/${p.session}.yaml<br><span style="color:var(--tx3)">“${esc(t)}”</span>`});
+  renderMessages();toast('Checkpoint persistido en la sesión','ok','flag');wake();
+});
+
+/* ═══════════════════════ MARKRAM + PULSO EEG ═══════════════════════ */
+const MR={state:'awake',left:0,warnedIdle:false};
+function wake(){MR.state='awake';MR.left=0;MR.warnedIdle=false}
+function setWarm(){if(MR.state!=='awake')return;MR.state='warm';MR.left=S.settings.idle}
+function mrTick(){
+  if(MR.state==='warm'){
+    MR.left-=0.25;
+    if(MR.left<=0){MR.state='idle';
+      if(!MR.warnedIdle){MR.warnedIdle=true;toast('MarkRam · modelo descargado de memoria — RAM liberada','ok','battery-charging')}
+    }
+  }
+  const l=$('#lamp'),st=$('#stState'),tm=$('#stTimer'),ld=$('#stLoaded');
+  l.className='lamp '+(MR.state==='idle'?'':MR.state);
+  st.textContent=MR.state.toUpperCase();
+  st.className=MR.state==='idle'?'':MR.state;
+  tm.textContent=MR.state==='warm'?Math.ceil(MR.left)+'s':MR.state==='awake'?'activo':'purga ok';
+  ld.textContent=MR.state==='idle'?'0':'1';
+  $('#stSize').textContent=MR.state==='idle'?'0 B en RAM':(S.models.find(m=>m.id===S.modelId)?.size||'1.2 GB')+' en RAM';
+  setTimeout(mrTick,250);
+}
+/* canvas de pulso */
+const pc=$('#pulse'),pctx=pc.getContext('2d');
+const samples=new Array(90).fill(0);let pt=0;
+setInterval(()=>{
+  pt++;
+  let s;
+  if(MR.state==='idle')s=(Math.random()-.5)*1.4+Math.sin(pt*.4)*.7;
+  else if(MR.state==='warm')s=Math.sin(pt*1.6)*2.4+(Math.random()-.5)*1.6;
+  else{s=Math.sin(pt*4.5)*2.6+Math.sin(pt*11)*1.8+(Math.random()-.5)*2.4;if(Math.random()<.04)s*=3.2}
+  samples.push(s);samples.shift();
+  const w=pc.width,h=pc.height;
+  pctx.clearRect(0,0,w,h);
+  pctx.strokeStyle='#1E1B16';pctx.beginPath();pctx.moveTo(0,h/2);pctx.lineTo(w,h/2);pctx.stroke();
+  pctx.strokeStyle=MR.state==='idle'?'#4A463C':MR.state==='warm'?'#E0B45C':'#93C47D';
+  pctx.lineWidth=1.4;pctx.beginPath();
+  samples.forEach((v,i)=>{const x=i*(w/samples.length),y=h/2+v;i?pctx.lineTo(x,y):pctx.moveTo(x,y)});
+  pctx.stroke();
+},34);
+
+/* telemetría de la statusbar */
+function updateStatus(){
+  $('#stProjects').textContent=S.projects.length;
+  $('#stSessions').textContent=S.projects.filter(p=>p.session).length;
+}
+
+/* ═══════════════════════ SELECTOR DE MODELO ═══════════════════════ */
+function renderModelSelect(){
+  const owned=S.models.filter(m=>m.owned);
+  $('#modelSelect').innerHTML=owned.map(m=>`<option value="${m.id}" ${m.id===S.modelId?'selected':''}>${m.name} · ${m.q}</option>`).join('');
+  const m=owned.find(x=>x.id===S.modelId);
+  $('#modelBadge').textContent=(m?m.q:'—')+' · '+(m?m.size:'—');
+}
+ $('#modelSelect').addEventListener('change',e=>{
+  S.modelId=e.target.value;renderModelSelect();
+  const m=S.models.find(x=>x.id===S.modelId);
+  toast(`Backend anterior descargado · ${m.name} (${m.q}) vinculado sin reiniciar la app`,'ok','cpu');
+  wake();
+});
+
+/* ═══════════════════════ WEBGRAPH ═══════════════════════ */
+const TYPE={code:{c:'#D98C4F',l:'Código'},spec:{c:'#7FA3C7',l:'Specs / Tareas'},adr:{c:'#D8C27A',l:'ADRs'},mod:{c:'#97C77E',l:'Módulos'}};
+const GRAPH={nodes:[
+  {id:'core/engine.rs',t:'code',chip:'module: core'},{id:'core/model.rs',t:'code',chip:'module: core'},
+  {id:'ipc/socket.rs',t:'code',chip:'module: ipc'},{id:'auth/service.rs',t:'code',chip:'module: auth'},
+  {id:'auth/tokens.rs',t:'code',chip:'module: auth'},{id:'api/routes.rs',t:'code',chip:'module: api'},
+  {id:'db/repo.rs',t:'code',chip:'module: db'},{id:'ui/chat.rs',t:'code',chip:'module: ui'},
+  {id:'spec/login-flow',t:'spec',chip:'spec: login'},{id:'spec/session-memory',t:'spec',chip:'spec: sessions'},
+  {id:'task/migrate-llama.cpp',t:'spec',chip:'task: migrate'},
+  {id:'ADR-004 · local-only',t:'adr',chip:'adr: 004'},{id:'ADR-007 · markram purge',t:'adr',chip:'adr: 007'},
+  {id:'ADR-011 · socket ipc',t:'adr',chip:'adr: 011'},
+  {id:'cortex-core',t:'mod',chip:'crate: core'},{id:'cortex-server',t:'mod',chip:'crate: server'},
+  {id:'cortex-ui',t:'mod',chip:'crate: ui'},
+],edges:[[0,14],[1,14],[2,15],[3,15],[4,15],[5,15],[6,14],[7,16],[3,4],[0,1],[7,8],[7,9],[1,11],[2,12],[2,13],[8,11],[9,12],[15,14],[5,13],[10,14]]};
+const WG={pos:[],vel:[],open:false,drag:null,moved:0,hover:-1,q:'',filters:{code:true,spec:true,adr:true,mod:true}};
+function wgInit(){
+  WG.pos=GRAPH.nodes.map((n,i)=>{
+    const a=i/GRAPH.nodes.length*Math.PI*2;
+    return{x:520+Math.cos(a)*(150+(i%4)*45),y:300+Math.sin(a)*(110+(i%3)*40),vx:0,vy:0};
+  });
+  WG.vel=GRAPH.nodes.map(()=>({x:0,y:0}));
+}
+function wgLoop(){
+  if(!WG.open)return;
+  const P=WG.pos,V=WG.vel,E=GRAPH.edges;
+  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){
+    let dx=P[j].x-P[i].x,dy=P[j].y-P[i].y,d2=Math.max(dx*dx+dy*dy,120);
+    const f=Math.min(900/d2,3);const d=Math.sqrt(d2);
+    dx/=d;dy/=d;V[i].x-=dx*f;V[i].y-=dy*f;V[j].x+=dx*f;V[j].y+=dy*f;
+  }
+  for(const[a,b]of E){
+    const dx=P[b].x-P[a].x,dy=P[b].y-P[a].y,d=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(d-130)*.004;V[a].x+=dx/d*f;V[a].y+=dy/d*f;V[b].x-=dx/d*f;V[b].y-=dy/d*f;
+  }
+  for(let i=0;i<P.length;i++){
+    if(WG.drag===i)continue;
+    V[i].x+=(520-P[i].x)*.0012;V[i].y+=(300-P[i].y)*.0012;
+    V[i].x*=.85;V[i].y*=.85;P[i].x+=V[i].x;P[i].y+=V[i].y;
+  }
+  wgDraw();requestAnimationFrame(wgLoop);
+}
+function wgDraw(){
+  const cv=$('#wgCanvas'),ctx=cv.getContext('2d');
+  const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#17151180';
+  for(let x=14;x<W;x+=28)for(let y=14;y<H;y+=28)ctx.fillRect(x,y,1,1);
+  const pins=S.pins[S.activeId]||new Set();
+  const visible=GRAPH.nodes.map(n=>WG.filters[n.t]&&(!WG.q||n.id.toLowerCase().includes(WG.q)));
+  ctx.strokeStyle='#2A2720';ctx.lineWidth=1;
+  for(const[a,b]of GRAPH.edges){
+    if(!visible[a]||!visible[b])continue;
+    ctx.globalAlpha=(WG.hover===a||WG.hover===b)?.85:.5;
+    ctx.beginPath();ctx.moveTo(WG.pos[a].x,WG.pos[a].y);ctx.lineTo(WG.pos[b].x,WG.pos[b].y);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  GRAPH.nodes.forEach((n,i)=>{
+    if(!visible[i])return;
+    const{x,y}=WG.pos[i];const c=TYPE[n.t].c,hov=WG.hover===i;
+    if(pins.has(n.id)){ctx.strokeStyle='#D98C4F';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.stroke()}
+    ctx.fillStyle=c;ctx.globalAlpha=WG.q&&!n.id.toLowerCase().includes(WG.q)?.15:1;
+    ctx.beginPath();ctx.arc(x,y,hov?7:5,0,7);ctx.fill();
+    ctx.globalAlpha=1;ctx.font='10px "IBM Plex Mono"';
+    ctx.fillStyle=hov||pins.has(n.id)?'#EDE9DF':'#6C675A';
+    ctx.textAlign='center';ctx.fillText(n.id,x,y-12);
+  });
+}
+function wgNearest(mx,my){
+  let best=-1,bd=14*14;
+  WG.pos.forEach((p,i)=>{const d=(p.x-mx)**2+(p.y-my)**2;if(d<bd){bd=d;best=i}});
+  return best;
+}
+const wgCv=$('#wgCanvas');
+wgCv.addEventListener('mousedown',e=>{const r=wgCv.getBoundingClientRect();const i=wgNearest(e.clientX-r.left,e.clientY-r.top);if(i>=0){WG.drag=i;WG.moved=0;wgCv.style.cursor='grabbing'}});
+addEventListener('mousemove',e=>{
+  if(!WG.open)return;const r=wgCv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(WG.drag!==null){WG.moved+=Math.abs(e.movementX)+Math.abs(e.movementY);WG.pos[WG.drag].x=mx;WG.pos[WG.drag].y=my;WG.vel[WG.drag]={x:0,y:0}}
+  else{WG.hover=wgNearest(mx,my);wgCv.style.cursor=WG.hover>=0?'pointer':'grab'}
+});
+addEventListener('mouseup',e=>{
+  if(!WG.open||WG.drag===null)return;
+  if(WG.moved<5){
+    const nid=GRAPH.nodes[WG.drag].id,pins=S.pins[S.activeId];
+    if(pins.has(nid)){pins.delete(nid);toast('Nodo desfijado del contexto','info','pin-off')}
+    else{pins.add(nid);toast(`Nodo fijado → [${GRAPH.nodes[WG.drag].chip}] · inyectado como contexto priorizado`,'ok','pin')}
+    renderPins();
+  }
+  WG.drag=null;wgCv.style.cursor='grab';
+});
+ $('#wgSearch').addEventListener('input',e=>{WG.q=e.target.value.toLowerCase()});
+ $('#btnWebGraph').addEventListener('click',()=>{
+  openOv('ovWebGraph');WG.open=true;
+  $('#wgFilters').innerHTML=Object.entries(TYPE).map(([k,v])=>
+    `<button class="wg-ft on" data-act="wgf" data-t="${k}"><i style="background:${v.c}"></i>${v.l.toUpperCase()}</button>`).join('');
+  $('#wgLegend').innerHTML=Object.entries(TYPE).map(([k,v])=>
+    `<span><i style="background:${v.c}"></i>${v.l}</span>`).join('')+
+    '<span class="wg-hint">Clic en un nodo → <b>fijar como contexto</b> del chat</span>';
+  wgInit();requestAnimationFrame(wgLoop);
+});
+ $('#btnWgBrowser').addEventListener('click',()=>toast('Servidor local abierto en 127.0.0.1:47441 · grafo enviado al navegador del sistema','ok','external-link'));
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-act="wgf"]');if(!f)return;
+  WG.filters[f.dataset.t]=!WG.filters[f.dataset.t];f.classList.toggle('on');
+});
+
+/* ═══════════════════════ DOCTOR ═══════════════════════ */
+let DOCTOR=[
+  {name:'cortex-layout',detail:'.cortex/ presente · permisos rw- para el usuario',st:'ok'},
+  {name:'config-file',detail:'config.yaml válido · 14 parámetros parseados',st:'ok'},
+  {name:'org-alignment',detail:'org.yaml: preset small-company · 2 reglas desactualizadas vs vault',st:'warn',fix:'Sincronizar reglas organizacionales'},
+  {name:'vault-index',detail:'índice vectorial desactualizado (último pase hace 6 días · 42 docs)',st:'warn',fix:'Reindexar vault completo'},
+  {name:'active-sessions',detail:'1 sesión activa · consistente con active.txt',st:'ok'},
+  {name:'git-cleanliness',detail:'3 artefactos de .cortex/ sin trackear en el árbol',st:'warn',fix:'Registrar en .gitignore interno'},
+];
+function renderDoctor(){
+  const warns=DOCTOR.filter(d=>d.st!=='ok').length;
+  const b=$('#doctorBanner');
+  if(!warns){b.className='doc-banner ok';b.innerHTML='<div class="mark"></div>Proyecto en perfecto estado de gobernanza — todas las verificaciones pasan.'}
+  else{b.className='doc-banner warn';b.innerHTML=`<div class="mark"></div>Se detectaron <b style="margin:0 4px">${warns}</b> detalles para corregir. El resto del proyecto está sano.`}
+  $('#doctorList').innerHTML=DOCTOR.map((d,i)=>`
+    <div class="doc-item">
+      <span class="doc-dot" style="background:${d.st==='ok'?'var(--ok)':d.st==='fixing'?'var(--cu)':'var(--warn)'}"></span>
+      <div><div class="doc-name">${d.name}</div><div class="doc-detail">${d.st==='fixing'?d.fix+'…':d.detail}</div></div>
+      <span class="doc-state ${d.st==='fixing'?'fixing':d.st}">${d.st==='ok'?'OK':d.st==='fixing'?'FIXING…':'WARN'}</span>
+    </div>`).join('');
+}
+ $('#btnDoctor').addEventListener('click',()=>{renderDoctor();openOv('ovDoctor')});
+ $('#btnDoctorFix').addEventListener('click',async()=>{
+  const idx=DOCTOR.map((d,i)=>d.st==='warn'?i:-1).filter(i=>i>=0);
+  if(!idx.length)return toast('Nada para corregir — el proyecto está sano','ok','check-circle');
+  for(const i of idx){
+    DOCTOR[i].st='fixing';renderDoctor();
+    await new Promise(r=>setTimeout(r,900));
+    DOCTOR[i].st='ok';DOCTOR[i].detail=DOCTOR[i].fix+' · hecho por cortex doctor';delete DOCTOR[i].fix;
+    renderDoctor();
+  }
+  toast('Auto-fix completo · '+idx.length+' discrepancias reparadas','ok','wand-2');
+});
+
+/* ═══════════════════════ MEMORIA ORGANIZACIONAL ═══════════════════════ */
+let ORG=[
+  {id:1,title:'ADR-009 · Rotación de tokens de sesión a 15 min',src:'cortex-brain → .cortex/vault/decisions/ADR-009.md',
+   diff:'+ rotate_interval: 15m        # antes: 30m\n+ rationale: reduce ventana de\n+ robo de sesión a la mitad, sin\n+ costo medible de UX (ADR-007).'},
+  {id:2,title:'Runbook · Purga de sesión en caliente',src:'cortex-brain → .cortex/vault/runbooks/purge-hot.md',
+   diff:'+ 1. marcar sesión stale en active.txt\n+ 2. emitir cortex_context --flush\n+ 3. esperar ack del socket (≤2s)\n+ 4. loguear en episodic memory'},
+];
+function renderOrg(){
+  if(!ORG.length){$('#orgList').innerHTML='<div class="chat-empty" style="padding:40px"><div class="mark"></div><h3 class="disp" style="font-size:16px">Sin candidatos pendientes</h3><p>Cuando el agente detecte conocimiento valioso para otras áreas, va a aparecer acá para tu revisión.</p></div>';return}
+  $('#orgList').innerHTML=ORG.map(c=>`
+    <div class="org-card" id="org${c.id}">
+      <div class="org-head"><div class="org-title">${c.title}</div><div class="org-src">origen: ${c.src}</div></div>
+      <div class="org-diff">${c.diff.split('\n').map(l=>l.startsWith('+')?`<span class="add">${esc(l)}</span>`:`<span class="del">${esc(l)}</span>`).join('\n')}</div>
+      <div class="org-form">
+        <div><label class="field-lab">REVISOR / AUTOR</label><input type="text" id="orgRev${c.id}" placeholder="tu nombre"></div>
+        <div><label class="field-lab">RAZÓN / JUSTIFICACIÓN TÉCNICA</label><input type="text" id="orgWhy${c.id}" placeholder="por qué debe ser estándar organizacional"></div>
+      </div>
+      <div class="org-actions">
+        <button class="btn primary" data-act="org-ok" data-id="${c.id}"><i data-lucide="check-check"></i>Aprobar y promulgar</button>
+        <button class="btn danger" data-act="org-no" data-id="${c.id}"><i data-lucide="x"></i>Rechazar candidato</button>
+      </div>
+    </div>`).join('');icons();
+}
+ $('#btnOrg').addEventListener('click',()=>{renderOrg();openOv('ovOrg')});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act^="org-"]');if(!b)return;
+  const id=+b.dataset.id,c=ORG.find(o=>o.id===id);
+  if(b.dataset.act==='org-ok'){
+    if(!$('#orgRev'+id).value.trim())return toast('Indicá quién revisa antes de promulgar','warn','user-check');
+    $('#org'+id).classList.add('out');
+    setTimeout(()=>{ORG=ORG.filter(o=>o.id!==id);S.orgQueue=ORG.length;$('#orgBadge').textContent=S.orgQueue;renderOrg();
+      toast('Promulgado en el vault organizacional · reglas globales actualizadas','ok','check-check')},320);
+  }else{
+    $('#org'+id).classList.add('out');
+    setTimeout(()=>{ORG=ORG.filter(o=>o.id!==id);S.orgQueue=ORG.length;$('#orgBadge').textContent=S.orgQueue;renderOrg();
+      toast('Candidato rechazado · motivo registrado para evitar re-propuestas','info','archive-x')},320);
+  }
+});
+
+/* ═══════════════════════ TOOL APPROVAL MODAL ═══════════════════════ */
+let pendingTool=null;
+function openToolApproval(tb,mi,ti){
+  pendingTool={tb,mi,ti};
+  $('#toolBody').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span class="tc-name" style="font-size:14px">${tb.name}</span>
+      <span class="tc-tag" style="border-color:rgba(224,104,90,.5);color:var(--danger)">MUTACIÓN DE CÓDIGO</span>
+    </div>
+    <div class="tc-sec" style="border:1px solid var(--line);border-radius:8px;margin-bottom:12px"><div class="tc-lab">PARÁMETROS ENVIADOS POR EL MODELO</div><div class="tc-params">${esc(JSON.stringify(tb.params,null,2))}</div></div>
+    <div class="tc-sec" style="border:1px solid var(--line);border-radius:8px"><div class="tc-lab">COMANDO EQUIVALENTE EN CONSOLA</div><div class="tc-cli">${esc(tb.cli)}</div></div>
+    <p style="font-size:12px;color:var(--tx3);margin-top:14px;line-height:1.6">El repositorio no se modifica hasta que des luz verde explícita. Al aprobar, la operación corre en Rust y queda registrada en la memoria episódica de la sesión.</p>`;
+  openOv('ovTool');
+}
+ $('#btnToolExec').addEventListener('click',()=>{
+  if(!pendingTool)return;const{tb,mi,ti}=pendingTool;
+  closeOv($('#ovTool'));tb.status='running';renderMessages();
+  setTimeout(()=>{
+    tb.status='done';tb.result=['patch aplicado → src/auth/tokens.rs (1 hunhunk)','spec/login-flow.md §4 sincronizada','checkpoint sugerido: "rotación a 15m aplicada"'];
+    renderMessages();
+    streamBlocks(S.activeId,[{t:'md',text:'Parche aplicado y spec sincronizada. Te sugiero congelar un **checkpoint** de esta etapa desde la barra de gobernanza.'}],()=>{S.thinking=false});
+    toast('Operación ejecutada · cambios escritos en disco','ok','file-check');
+  },1200);
+  pendingTool=null;
+});
+
+/* ═══════════════════════ CONFIRM GENÉRICO ═══════════════════════ */
+let confCb=null;
+function openConfirm(title,body,cb){$('#confTitle').textContent=title;$('#confBody').innerHTML=body;confCb=cb;openOv('ovConfirm')}
+ $('#confOk').addEventListener('click',()=>{closeOv($('#ovConfirm'));confCb&&confCb()});
+
+/* ═══════════════════════ SETTINGS ═══════════════════════ */
+const SET_TABS=[['model','MODELO LOCAL'],['scan','PROYECTOS Y ESCANEO'],['judge','JUDGEMENT'],['general','GENERAL']];
+let setTab='model';
+ $('#btnSettingsTop').addEventListener('click',openSettings);
+ $('#btnSettingsBottom').addEventListener('click',openSettings);
+function openSettings(){renderSetTabs();renderSetBody();openOv('ovSettings')}
+function renderSetTabs(){
+  $('#setTabs').innerHTML=SET_TABS.map(([k,l])=>`<button class="set-tab ${setTab===k?'on':''}" data-act="settab" data-t="${k}">${l}</button>`).join('');
+}
+function renderSetBody(){
+  const B=$('#setBody');
+  if(setTab==='model'){
+    B.innerHTML=`<label class="field-lab">EN EJECUCIÓN AHORA</label>
+      <div class="set-row" style="border-bottom:1px solid var(--line);padding-top:4px">
+        <i data-lucide="cpu" style="color:var(--cu)"></i>
+        <div class="set-info"><b>${S.models.find(m=>m.id===S.modelId).name}</b><span>llama.cpp · backend nativo · descarga automática de pesos tras inactividad</span></div>
+      </div>
+      <label class="field-lab" style="margin-top:20px">CATÁLOGO CURADO</label>
+      ${S.models.map(m=>`
+        <div class="mdl-row">
+          <div class="mdl-name"><b>${m.name}</b><span>${m.q} · ${m.size}</span></div>
+          <div class="dl-bar" id="dlb${m.id}"><i></i></div><div class="dl-txt" id="dlt${m.id}"></div>
+          ${m.id===S.modelId?'<span class="ide-on">· en uso</span>':m.owned?'<button class="mini-btn" data-act="use-mdl" data-id="'+m.id+'">USAR</button>':'<button class="btn ghost" data-act="dl" data-id="'+m.id+'" style="padding:6px 12px">Descargar</button>'}
+        </div>`).join('')}
+      <label class="field-lab" style="margin-top:20px">DESCARGA PERSONALIZADA (HUGGING FACE · GGUF)</label>
+      <div style="display:flex;gap:9px"><input type="text" class="wide" id="urlInp" placeholder="https://huggingface.co/…/modelo-Q4_K_M.gguf"><button class="btn" data-act="add-url">Agregar</button></div>`;
+  }
+  if(setTab==='scan'){
+    B.innerHTML=`<label class="field-lab">RUTAS RAÍZ DE ESCANEO (HASTA 8 NIVELES DE PROFUNDIDAD)</label>
+      ${S.settings.roots.map(r=>`<div class="set-row"><i data-lucide="folder" style="color:var(--cu)"></i><div class="set-info"><b class="mono" style="font-size:12px;font-weight:500">${r}</b></div><span class="ide-on">· activa</span></div>`).join('')}
+      <div class="set-row"><i data-lucide="folder-plus" style="color:var(--tx3)"></i>
+        <div class="set-info"><b>Agregar ruta raíz</b><span>El escaneo busca marcas .cortex/ de forma recursiva, sin seguir symlinks</span></div>
+        <button class="mini-btn" data-act="fake-add-root">AGREGAR</button></div>
+      <div class="set-row"><i data-lucide="battery-charging" style="color:var(--cu)"></i>
+        <div class="set-info"><b>Idle timeout de MarkRam</b><span>Segundos de inactividad antes de purgar el modelo de la RAM y liberar recursos para tu IDE</span></div>
+        <div class="range-wrap"><input type="range" min="15" max="300" step="15" value="${S.settings.idle}" id="idleRange"><span class="range-val" id="idleVal">${S.settings.idle}s</span></div></div>`;
+    $('#idleRange').addEventListener('input',e=>{
+      S.settings.idle=+e.target.value;$('#idleVal').textContent=e.target.value+'s';
+      if(MR.state==='warm')MR.left=S.settings.idle;
+    });
+  }
+  if(setTab==='judge'){
+    B.innerHTML=`<div class="set-row"><i data-lucide="scale" style="color:var(--cu)"></i>
+      <div class="set-info"><b>Motor de políticas Judgement</b><span>Verificación de ADRs y estándares de arquitectura en tiempo real, mientras escribís. Desactivarlo durante prototipado rápido evita interrupciones.</span></div>
+      <button class="switch ${S.settings.judgement?'on':''}" data-act="tgl-judge"></button></div>
+      <div class="set-row"><i data-lucide="shield-half" style="color:var(--tx3)"></i>
+      <div class="set-info"><b>Modo prototipado (pausa suave)</b><span>Pausa las reglas de cumplimiento 2 horas sin apagar el motor</span></div>
+      <button class="mini-btn" data-act="proto">PAUSAR 2H</button></div>`;
+  }
+  if(setTab==='general'){
+    B.innerHTML=`<div class="set-row"><i data-lucide="languages" style="color:var(--cu)"></i>
+      <div class="set-info"><b>Idioma de la interfaz</b><span>Copy, placeholders y mensajes del sistema</span></div>
+      <select class="mini" id="langSel"><option value="es" ${S.settings.lang==='es'?'selected':''}>Español</option><option value="en" ${S.settings.lang==='en'?'selected':''}>English</option></select></div>
+      <div class="set-row"><i data-lucide="pin" style="color:var(--cu)"></i>
+      <div class="set-info"><b>Siempre al frente</b><span>Mantener Brain flotando por encima de tu IDE mientras trabajás</span></div>
+      <button class="switch ${S.settings.aot?'on':''}" data-act="tgl-aot"></button></div>`;
+    $('#langSel').addEventListener('change',e=>{S.settings.lang=e.target.value;toast('Language preference saved · '+e.target.value.toUpperCase(),'ok','languages')});
+  }
+  icons();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act="settab"]');
+  if(t){setTab=t.dataset.t;renderSetTabs();renderSetBody();return}
+  const sw=e.target.closest('[data-act="tgl-judge"]');
+  if(sw){S.settings.judgement=!S.settings.judgement;sw.classList.toggle('on');
+    toast(S.settings.judgement?'Judgement activado · políticas aplicadas en tiempo real':'Judgement pausado · prototipá sin interrupciones',S.settings.judgement?'ok':'warn','scale');return}
+  const ao=e.target.closest('[data-act="tgl-aot"]');
+  if(ao){S.settings.aot=!S.settings.aot;ao.classList.toggle('on');
+    toast(S.settings.aot?'Brain queda anclado por encima de las demás ventanas':'Brain vuelve al orden normal de ventanas','info','pin');return}
+  const dl=e.target.closest('[data-act="dl"]');
+  if(dl){simulateDownload(dl.dataset.id);return}
+  const um=e.target.closest('[data-act="use-mdl"]');
+  if(um){S.modelId=um.dataset.id;renderModelSelect();toast('Modelo vinculado · backend anterior purgado','ok','cpu');wake();renderSetBody();return}
+  const au=e.target.closest('[data-act="add-url"]');
+  if(au){const v=$('#urlInp').value.trim();
+    if(!/\.gguf($|\?)/i.test(v))return toast('La URL debe apuntar a un archivo .gguf compatible','err','file-x');
+    const name=v.split('/').pop().replace('.gguf','').slice(0,34);
+    S.models.push({id:'c'+Date.now(),name,q:'custom',size:'—',owned:true});
+    renderModelSelect();renderSetBody();toast('Modelo personalizado registrado en el catálogo','ok','package-plus');return}
+  const fr=e.target.closest('[data-act="fake-add-root"]');
+  if(fr)return toast('Diálogo nativo de directorios abierto (simulado en el prototipo)','info','folder-plus');
+  const pr=e.target.closest('[data-act="proto"]');
+  if(pr)return toast('Reglas de cumplimiento pausadas hasta las '+new Date(Date.now()+7200000).toTimeString().slice(0,5),'warn','shield-half');
+});
+function simulateDownload(id){
+  const m=S.models.find(x=>x.id===id);const bar=$('#dlb'+id),txt=$('#dlt'+id),fill=bar.querySelector('i');
+  bar.classList.add('on');txt.classList.add('on');
+  let p=0;const total=parseFloat(m.size);
+  const iv=setInterval(()=>{
+    p+=1.4+Math.random()*2.2;if(p>=100)p=100;
+    fill.style.width=p+'%';
+    txt.textContent=`${Math.round(p)}% · ${(total*p/100).toFixed(1)}/${total} GB · ${(9+Math.random()*8).toFixed(1)} MB/s`;
+    if(p>=100){clearInterval(iv);m.owned=true;renderModelSelect();renderSetBody();
+      toast(`${m.name} (${m.q}) descargado y listo en ~/.cache/cortex/models`,'ok','hard-drive-download')}
+  },120);
+}
+
+/* ═══════════════════════ VISTA SETUP ═══════════════════════ */
+const FOLDERS=[
+  {path:'/home/dev/workspace/nova-app',cortex:false,org:false,doctor:'none'},
+  {path:'/home/dev/workspace/atlas-api',cortex:true,org:true,doctor:'warn'},
+  {path:'/home/dev/workspace/empty-lab',cortex:false,org:false,doctor:'none'},
+];
+const PKGS={
+  full:{name:'Full Workspace',tag:'RECOMENDADO',desc:'Agente base en .cortex/ + Skills compuestas en .agents/skills/ + AGENTS.md + WebGraph.',files:[
+    ['.cortex/config.yaml','c'],['.cortex/org.yaml','c'],['.cortex/vault/decisions/ADR-000-bootstrap.md','c'],['.cortex/webgraph.json','c'],
+    ['.agents/skills/adr-draft/SKILL.md','c'],['.agents/skills/gov-check/SKILL.md','c'],['AGENTS.md','u']]},
+  init:{name:'Init (Básico)',desc:'Inicializa únicamente .cortex/: config, org.yaml, vault y memoria episódica.',files:[
+    ['.cortex/config.yaml','c'],['.cortex/org.yaml','c'],['.cortex/vault/','c'],['.cortex/episodic/','c']]},
+  skills:{name:'Skills composed',desc:'Familia de skills compuestas bajo el estándar abierto .agents/skills/ + bloque vinculado en AGENTS.md.',files:[
+    ['.agents/skills/adr-draft/SKILL.md','c'],['.agents/skills/gov-check/SKILL.md','c'],['.agents/skills/context-pin/SKILL.md','c'],['AGENTS.md','u']]},
+  ent:{name:'Enterprise',desc:'Gobernanza corporativa completa a partir de un preset organizacional.',ent:true,files:[
+    ['.cortex/org.yaml','u'],['.cortex/policies/arch-standards.yaml','c'],['.cortex/policies/review-gates.yaml','c']]},
+  cicd:{name:'CI/CD Pipeline',tag:'OPCIONAL',opt:true,desc:'Workflows de GitHub Actions + script orquestador. Solo si lo pedís explícitamente — nunca se inyecta solo.',files:[
+    ['.github/workflows/ci-feature.yml','c'],['.github/workflows/ci-pull-request.yml','c'],['.github/workflows/cd-deploy.yml','c'],['scripts/devsecdocops.sh','c']]},
+};
+const IDES=[
+  {id:'claude',name:'Claude Code',tier:'target',on:true,file:'~/.claude/agents/cortex.md · create + .mcp.json · update'},
+  {id:'cursor',name:'Cursor',tier:'target',on:false,file:'~/.cursor/mcp.json · update'},
+  {id:'zed',name:'Zed',tier:'target',on:false,file:'.zed/settings.json · update'},
+  {id:'codex',name:'Codex',tier:'experimental',on:false,file:'~/.codex/config.toml · update'},
+  {id:'opencode',name:'OpenCode',tier:'community',on:false,file:'~/.config/opencode/config.json · update'},
+];
+let SU={folder:null,pkg:'full',ides:new Set(['claude']),applied:false};
+function renderSetup(){
+  $('#setupPath').textContent=SU.folder?SU.folder.path:'— ninguna carpeta seleccionada —';
+  const f=SU.folder;
+  const chips=f?[
+    ['.cortex',f.cortex],['org.yaml',f.org],
+    [f.doctor==='warn'?'Doctor con avisos':f.doctor==='ok'?'Doctor OK':'Sin auditoría',f.doctor==='ok'],
+    [f.cortex?'Proyecto Cortex detectado':'Listo para init',f.cortex],
+  ]:[['.cortex',false],['org.yaml',false],['Doctor',false],['esperando carpeta…',false]];
+  $('#diagChips').innerHTML=chips.map(([l,on])=>`<span class="dchip ${on?'on':''}"><i></i>${l}</span>`).join('');
+  $('#pkgList').innerHTML=Object.entries(PKGS).map(([k,p])=>`
+    <div class="pkg ${SU.pkg===k?'sel':''} ${p.ent?'pkg-ent':''}" data-act="pkg" data-k="${k}">
+      <div class="pkg-radio"></div>
+      <div><b>${p.name}${p.tag?`<span class="tag ${p.opt?'opt':''}">${p.tag}</span>`:''}</b>
+      <p>${p.desc}</p>
+      ${p.ent?'<select id="entPreset"><option>small-company</option><option>multi-project-team</option><option>regulated-organization</option></select>':''}
+      ${k==='full'?'<div class="guarantee"><i data-lucide="shield-check"></i>cero scripts en scripts/ · cero workflows en .github/</div>':''}
+      </div></div>`).join('');
+  $('#ideList').innerHTML=IDES.map(d=>`
+    <div class="ide-row">
+      <span class="ide-name">${d.name}</span><span class="tier">${d.tier}</span>
+      ${d.on?'<span class="ide-on">· on</span>':''}
+      <div class="ide-btns">
+        <button class="mini-btn" data-act="ide-tgl" data-id="${d.id}">${d.on?'QUITAR':'ACTIVAR'}</button>
+      </div></div>`).join('');
+  renderPlan();icons();
+}
+function renderPlan(){
+  const files=[...PKGS[SU.pkg].files];
+  IDES.filter(d=>d.on).forEach(d=>{
+    d.file.split(' + ').forEach(part=>{
+      const[path,op]=part.split(' · ');
+      files.push([path,op==='update'?'u':'c']);
+    });
+  });
+  $('#planCount').textContent=files.length+' archivos';
+  $('#planList').innerHTML=files.map(([f,op])=>
+    `<div class="plan-file"><span class="ptag ${op==='c'?'c':'u'}">${op==='c'?'CREAR':'ACTUALIZAR'}</span>${esc(f)}</div>`).join('')
+    ||'<p style="font-family:var(--mono);font-size:11px;color:var(--tx3)">seleccioná un paquete…</p>';
+}
+document.addEventListener('click',e=>{
+  const p=e.target.closest('[data-act="pkg"]');
+  if(p){SU.pkg=p.dataset.k;renderSetup();return}
+  const it=e.target.closest('[data-act="ide-tgl"]');
+  if(it){const d=IDES.find(x=>x.id===it.dataset.id);d.on=!d.on;
+    toast(d.on?`Perfil MCP inyectable en ${d.name} agregado al plan`:`Inyección de ${d.name} removida del plan`,'info','plug');
+    renderSetup();return}
+});
+ $('#btnPickFolder').addEventListener('click',()=>{
+  $('#pickerList').innerHTML=FOLDERS.map((f,i)=>
+    `<div class="pck-row" data-act="pick" data-i="${i}"><i data-lucide="folder"></i>${f.path}</div>`).join('')+
+    '<p style="font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:10px">↑ diálogo nativo del SO simulado en el prototipo (tauri-plugin-dialog)</p>';
+  icons();openOv('ovPicker');
+});
+document.addEventListener('click',e=>{
+  const p=e.target.closest('[data-act="pick"]');if(!p)return;
+  SU.folder=FOLDERS[+p.dataset.i];SU.applied=false;$('#btnOpenBrain').disabled=true;
+  closeOv($('#ovPicker'));renderSetup();
+  toast('Carpeta diagnosticada en vivo','info','scan-search');
+});
+ $('#btnApply').addEventListener('click',()=>{
+  if(!SU.folder)return toast('Elegí primero una carpeta de destino','warn','folder-x');
+  const log=$('#setupLogs');log.textContent='';
+  const files=[...PKGS[SU.pkg].files];
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i>=files.length){
+      clearInterval(iv);
+      log.innerHTML+=' <span class="end-l">— plan aplicado · '+files.length+' operaciones · cero sorpresas —</span>\n';
+      SU.applied=true;$('#btnOpenBrain').disabled=false;
+      toast('Plan aplicado en '+SU.folder.path,'ok','hard-drive-upload');return;
+    }
+    const[f,op]=files[i++];
+    log.innerHTML+=`<span class="${op==='c'?'ok-l':'up-l'}">${op==='c'?'✓ created':'↻ updated'}</span>  ${esc(f)}\n`;
+    log.scrollTop=log.scrollHeight;
+  },240);
+  wake();
+});
+ $('#btnOpenBrain').addEventListener('click',()=>{
+  if(!SU.applied)return;
+  const name=SU.folder.path.split('/').pop();
+  const p={id:'p'+Date.now(),name,path:SU.folder.path.replace('/home/dev/',''),branch:null,session:null,config:true};
+  S.projects.push(p);S.threads[p.id]=[];S.pins[p.id]=new Set();
+  setActiveProject(p.id);
+  toast(`"${name}" registrado · proyecto seleccionado y listo para conversar`,'ok','brain');
+});
+
+/* ═══════════════════════ ARRANQUE ═══════════════════════ */
+renderSidebar();renderChatHead();renderSession();renderPins();renderMessages();
+renderModelSelect();updateComposer();mrTick();wgInit();icons();
+setTimeout(setWarm,3500);
+setTimeout(()=>toast('Motor vinculado a /tmp/cortex-brain-1000.sock · CLI y plugins pueden conectarse','info','cable'),1600);
+</script>
+</body>
+</html>

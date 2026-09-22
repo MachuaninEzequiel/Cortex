@@ -1,0 +1,34 @@
+{
+  "_comment": "Configuración del observador pasivo Cortex BlackBox Probe",
+  "version": "1.0.0",
+  "active_mode": "python_legacy",
+  "environment_label": "week1_python_baseline",
+  "team_id": "cortex-dev-team",
+  "repo_name": "auto_detect",
+  "anonymize_code": true,
+  "commands": {
+    "python_legacy": [
+      "python3",
+      "-m",
+      "cortex.mcp.server"
+    ],
+    "python_legacy_fallback": [
+      "python",
+      "-m",
+      "cortex.mcp.server"
+    ],
+    "rust_systemone": [
+      "cortex-cli",
+      "mcp-server",
+      "--stdio"
+    ],
+    "rust_systemone_fallback": [
+      "cortex-mcp"
+    ]
+  },
+  "metrics": {
+    "token_estimation_char_ratio": 3.8,
+    "log_raw_payloads": false,
+    "track_git_commits": true
+  }
+}

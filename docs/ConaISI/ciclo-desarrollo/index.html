@@ -1,0 +1,2597 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortex Cognitive OS — Arquitectura UML, Red Molecular & Secuencia</title>
+  <meta name="description" content="Visualizador interactivo del ciclo de desarrollo de Cortex. Arquitectura UML con BDDs cilíndricas, Red Neuronal Molecular colapsable, Diagrama de Secuencia 21 pasos y 32 Tools MCP en Rust.">
+
+  <!-- Google Fonts: IBM Plex Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM: OLED Dark Modernist & High-Contrast Visual Engineering
+       ========================================================================== */
+    :root {
+      --bg-base: #060911;
+      --bg-surface: #0b111e;
+      --bg-surface-card: #10192d;
+      --bg-surface-elevated: #16223d;
+      
+      --border-subtle: #1e293b;
+      --border-glow: #334155;
+      --border-accent: #38bdf8;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      /* Semantic Accents */
+      --accent-cyan: #38bdf8;
+      --accent-purple: #c084fc;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-indigo: #818cf8;
+      --accent-teal: #06b6d4;
+      --accent-gold: #fbbf24;
+
+      --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+      --shadow-glow-cyan: 0 0 25px rgba(56, 189, 248, 0.18);
+      --shadow-glow-emerald: 0 0 25px rgba(16, 185, 129, 0.18);
+      --shadow-glow-purple: 0 0 25px rgba(192, 132, 252, 0.18);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-base);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-glow);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    .container {
+      max-width: 1720px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ==========================================================================
+       TOP NAVIGATION BAR
+       ========================================================================== */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(6, 9, 17, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .nav-brand-badge {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-cyan);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .btn-view-toggle {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-glow);
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-view-toggle:hover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-surface-elevated);
+    }
+
+    /* ==========================================================================
+       HERO & EXECUTIVE STATS
+       ========================================================================== */
+    .hero {
+      padding: 3.5rem 0 2rem;
+      text-align: center;
+    }
+
+    .hero-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.35rem 1rem;
+      border-radius: var(--radius-full);
+      color: var(--accent-cyan);
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      max-width: 900px;
+      margin: 0 auto 2.5rem;
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      line-height: 1.7;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .stat-card {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-glow);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .stat-card.cyan::before { background: var(--accent-cyan); }
+    .stat-card.emerald::before { background: var(--accent-emerald); }
+    .stat-card.purple::before { background: var(--accent-purple); }
+    .stat-card.amber::before { background: var(--accent-amber); }
+
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-sub {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
+       SECTION HEADERS & TOOLBARS
+       ========================================================================== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .section-title-group h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title-group p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Interactive Canvas Controls */
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 0.4rem 0.8rem;
+      border-radius: var(--radius-md);
+    }
+
+    .btn-tool {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-glow);
+      color: var(--text-main);
+      padding: 0.35rem 0.7rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-tool:hover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-surface-elevated);
+      color: var(--accent-cyan);
+    }
+
+    .zoom-level-text {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      min-width: 45px;
+      text-align: center;
+    }
+
+    /* ==========================================================================
+       INTERACTIVE CANVAS CONTAINER & PAN/ZOOM
+       ========================================================================== */
+    .canvas-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 3.5rem;
+    }
+
+    .canvas-viewport {
+      width: 100%;
+      height: 820px;
+      overflow: hidden;
+      position: relative;
+      cursor: grab;
+      user-select: none;
+      background-image: radial-gradient(circle, #1a243b 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    .canvas-viewport.is-dragging {
+      cursor: grabbing;
+    }
+
+    .canvas-content {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      transition: transform 80ms ease-out;
+      padding: 40px;
+      min-width: 1500px;
+    }
+
+    /* ==========================================================================
+       UML DIAGRAM STYLES (ACTOR, COMPONENTS, DATABASE CYLINDERS)
+       ========================================================================== */
+    .uml-layout-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 340px;
+      gap: 35px;
+      align-items: start;
+    }
+
+    /* UML Database Cylinder (Standard 3-Layer Persisted DB) */
+    .uml-db-cylinder {
+      position: relative;
+      width: 100%;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 1.5px solid var(--accent-amber);
+      border-radius: 20px / 12px;
+      padding: 22px 16px 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), 0 0 15px rgba(245, 158, 11, 0.15);
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+      margin-bottom: 16px;
+    }
+
+    .uml-db-cylinder:hover {
+      transform: translateY(-3px) scale(1.02);
+      border-color: var(--accent-gold);
+    }
+
+    /* Top Ellipse Cap */
+    .uml-db-cylinder::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -1.5px;
+      right: -1.5px;
+      height: 20px;
+      border: 1.5px solid var(--accent-amber);
+      border-radius: 50%;
+      background: #334155;
+      box-shadow: inset 0 2px 5px rgba(255,255,255,0.2);
+    }
+
+    .db-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .db-icon-svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent-amber);
+    }
+
+    .db-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+
+    .db-file-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+    }
+
+    .db-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* UML Component Card with Stereotype and Tabs */
+    .uml-component {
+      background: var(--bg-surface-card);
+      border: 1.5px solid var(--border-glow);
+      border-radius: var(--radius-md);
+      position: relative;
+      box-shadow: var(--shadow-card);
+      transition: all 0.2s ease;
+      margin-bottom: 20px;
+    }
+
+    .uml-component:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    /* UML Component Protruding Tabs */
+    .uml-component-tabs {
+      position: absolute;
+      top: 14px;
+      right: -8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .uml-tab-rect {
+      width: 12px;
+      height: 7px;
+      background: var(--border-glow);
+      border: 1.5px solid var(--border-glow);
+      border-radius: 2px;
+    }
+
+    .uml-component-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .uml-stereotype {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .uml-comp-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .uml-collapse-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: transform 0.2s ease;
+    }
+
+    .uml-component.collapsed .uml-collapse-btn {
+      transform: rotate(-90deg);
+    }
+
+    .uml-component-body {
+      padding: 16px;
+    }
+
+    .uml-component.collapsed .uml-component-body {
+      display: none;
+    }
+
+    /* UML Actor Card */
+    .uml-actor-box {
+      background: var(--bg-surface-elevated);
+      border: 2px solid var(--accent-cyan);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: center;
+      box-shadow: var(--shadow-glow-cyan);
+      cursor: pointer;
+      margin-bottom: 24px;
+    }
+
+    .uml-actor-svg {
+      width: 48px;
+      height: 64px;
+      stroke: var(--accent-cyan);
+      fill: none;
+      stroke-width: 2.5;
+      margin: 0 auto 10px;
+      display: block;
+    }
+
+    .uml-actor-name {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text-main);
+    }
+
+    .uml-actor-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* UML Lollipop Interface (Provided / Required) */
+    .uml-port-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .uml-lollipop {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(129, 140, 248, 0.12);
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--accent-indigo);
+    }
+
+    .lollipop-circle {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-indigo);
+      background: var(--bg-surface);
+    }
+
+    /* Nested Atomic Elements */
+    .atomic-pill-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .atomic-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 0.82rem;
+    }
+
+    .atomic-item:hover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-surface-elevated);
+    }
+
+    .atomic-item .name {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .atomic-item .desc {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+
+    /* ==========================================================================
+       INTERACTIVE SEQUENCE FLOW (21 MOLECULAR STEPS)
+       ========================================================================== */
+    .sequence-stepper-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: var(--bg-surface-elevated);
+      padding: 0.85rem 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-glow);
+    }
+
+    .stepper-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sequence-step-counter {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Lifeline Headers Sticky Row */
+    .lifeline-headers {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-surface-elevated);
+      border-bottom: 2px solid var(--border-glow);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .lifeline-col-header {
+      text-align: center;
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 4px;
+    }
+
+    .lifeline-icon {
+      font-size: 1.25rem;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .lifeline-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .lifeline-role {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* Steps Flow Container */
+    .sequence-timeline {
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+
+    .sequence-step-card {
+      display: grid;
+      grid-template-columns: 80px 1fr 180px;
+      gap: 16px;
+      align-items: center;
+      background: var(--bg-surface-card);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .sequence-step-card:hover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-surface-elevated);
+      transform: translateX(4px);
+    }
+
+    .sequence-step-card.active {
+      border-color: var(--accent-cyan);
+      box-shadow: var(--shadow-glow-cyan);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .step-num-badge {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.85rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glow);
+      color: var(--accent-cyan);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-flow-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-actors-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    .step-source { color: var(--accent-cyan); font-weight: 600; }
+    .step-arrow-sym { color: var(--text-dim); }
+    .step-target { color: var(--accent-emerald); font-weight: 600; }
+
+    .step-msg-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .step-detail-snip {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .step-meta-col {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .phase-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .phase-bootstrap { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); }
+    .phase-intent { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+    .phase-session { background: rgba(129, 140, 248, 0.15); color: var(--accent-indigo); }
+    .phase-work { background: rgba(192, 132, 252, 0.15); color: var(--accent-purple); }
+    .phase-audit { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); }
+    .phase-close { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+
+    .step-latency {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
+       ATOMIC INSPECTOR SLIDE-OUT DRAWER
+       ========================================================================== */
+    .inspector-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .inspector-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .inspector-drawer {
+      position: fixed;
+      top: 0;
+      right: -560px;
+      width: min(540px, 92vw);
+      height: 100vh;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-glow);
+      box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .inspector-drawer.open {
+      right: 0;
+    }
+
+    .inspector-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface-elevated);
+    }
+
+    .inspector-title-group h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .inspector-title-group .sub {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-cyan);
+    }
+
+    .btn-close-drawer {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-glow);
+      color: var(--text-main);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .inspector-body {
+      padding: 1.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .inspector-prop-block {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+
+    .inspector-prop-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .inspector-prop-val {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--text-main);
+      word-break: break-all;
+    }
+
+    .inspector-code-box {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-emerald);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    /* ==========================================================================
+       TOOLS CATALOG GRID
+       ========================================================================== */
+    .tools-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-chip {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.45rem 1rem;
+      border-radius: var(--radius-full);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip.active, .filter-chip:hover {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: #060911;
+    }
+
+    .tools-search {
+      width: 100%;
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1.25rem;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      font-family: var(--font-sans);
+      margin-bottom: 2rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .tools-search:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: var(--shadow-glow-cyan);
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 4rem;
+    }
+
+    .tool-card {
+      background: var(--bg-surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tool-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+
+    .tool-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .tool-name {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .tool-family-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+    }
+
+    .tool-backend {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-indigo);
+      margin-bottom: 0.5rem;
+    }
+
+    .tool-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 0.75rem;
+    }
+
+    .tool-params {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
+       NEURAL NETWORK GRAPH STYLES (SYNAPTIC CLUSTERS)
+       ========================================================================== */
+    .neural-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      min-width: 1400px;
+    }
+
+    .neural-cluster {
+      background: var(--bg-surface-card);
+      border: 1.5px solid var(--border-glow);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .neural-cluster.cyan { border-color: var(--accent-cyan); box-shadow: 0 0 15px rgba(56, 189, 248, 0.12); }
+    .neural-cluster.emerald { border-color: var(--accent-emerald); box-shadow: 0 0 15px rgba(16, 185, 129, 0.12); }
+    .neural-cluster.indigo { border-color: var(--accent-indigo); box-shadow: 0 0 15px rgba(129, 140, 248, 0.12); }
+    .neural-cluster.purple { border-color: var(--accent-purple); box-shadow: 0 0 15px rgba(192, 132, 252, 0.12); }
+    .neural-cluster.amber { border-color: var(--accent-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.12); }
+    .neural-cluster.teal { border-color: var(--accent-teal); box-shadow: 0 0 15px rgba(6, 182, 212, 0.12); }
+    .neural-cluster.gold { border-color: var(--accent-gold); box-shadow: 0 0 15px rgba(251, 191, 36, 0.12); }
+
+    .neural-cluster-header {
+      padding: 12px 16px;
+      background: var(--bg-surface-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .neural-cluster-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .neural-cluster-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .neural-cluster.collapsed .neural-cluster-body {
+      display: none;
+    }
+
+    .synaptic-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .synaptic-node:hover {
+      border-color: var(--accent-cyan);
+      transform: translateX(3px);
+      background: var(--bg-surface-elevated);
+    }
+
+    .synaptic-node-name {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .synaptic-node-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 2.5rem 0;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 1024px) {
+      .uml-layout-grid {
+        grid-template-columns: 1fr;
+      }
+      .lifeline-headers {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .sequence-step-card {
+        grid-template-columns: 50px 1fr;
+      }
+      .step-meta-col {
+        grid-column: span 2;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       1. TOP NAVIGATION BAR
+       ========================================================================== -->
+  <nav class="top-nav">
+    <a href="#" class="nav-brand">
+      <span>⚡ CORTEX</span>
+      <span class="nav-brand-badge">Cognitive OS 2.2</span>
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="#uml-architecture">🏗️ Arquitectura UML & BDDs</a></li>
+      <li><a href="#neural-network">🧠 Red Neuronal Sináptica</a></li>
+      <li><a href="#sequence-diagram">⏱️ Secuencia (21 Pasos)</a></li>
+      <li><a href="#sandwich-cycle">🥪 Ciclo Sandwich</a></li>
+      <li><a href="#tools-catalog">🛠️ 32 Tools MCP</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <button class="btn-view-toggle" id="btn-global-macro">
+        <span>🌐 Modo Macro</span>
+      </button>
+      <button class="btn-view-toggle" id="btn-global-atomic">
+        <span>🔬 Modo Atómico</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ==========================================================================
+         2. HERO SECTION & KEY METRICS
+         ========================================================================== -->
+    <header class="hero">
+      <div class="hero-badge-pill">
+        <span>🚀 100% Rust Nativo · Zero Python Legacy · rmcp 2.2 Stdio Protocol</span>
+      </div>
+      <h1>Ciclo de Desarrollo Molecular & Arquitectura de Sistemas</h1>
+      <p>
+        Mapa interactivo de ingeniería cognitiva de Cortex: micro-decisiones reflejas de SystemOne sub-10ms,
+        orquestación de subagentes, catálogo exhaustivo de 32 Tools MCP y persistencia híbrida en disco.
+      </p>
+
+      <div class="stats-grid">
+        <div class="stat-card cyan">
+          <div class="stat-value">32</div>
+          <div class="stat-label">MCP Tools Catalogadas</div>
+          <div class="stat-sub">Servidor stdio rmcp v2.2 tipado en Rust</div>
+        </div>
+        <div class="stat-card emerald">
+          <div class="stat-value">&lt; 10 ms</div>
+          <div class="stat-label">SystemOne (Kahneman S1)</div>
+          <div class="stat-sub">Decisiones deterministas libres de inferencia LLM</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-value">20 %</div>
+          <div class="stat-label">Peso Memoria Tier Archive</div>
+          <div class="stat-sub">Fusión RRF (k=60) anti-distracción de contexto</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-value">5 BDDs</div>
+          <div class="stat-label">Almacenes Persistentes</div>
+          <div class="stat-sub">Episódica, Vault Markdown, Vector V3, Config, Org</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==========================================================================
+         3. SECTION: DIAGRAMA DE ARQUITECTURA UML FORMAL
+         ========================================================================== -->
+    <section id="uml-architecture" class="mb-12">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>🏗️ Diagrama de Arquitectura UML Formal (Componentes, Bases de Datos & Interfaces)</h2>
+          <p>Modelado canónico UML 2.5: Actor Humano, Guardias ToS, Componentes con estereotipos, puertos e Interfaces lollipop, y Bases de Datos Cilíndricas</p>
+        </div>
+
+        <div class="canvas-toolbar">
+          <button class="btn-tool" id="btn-uml-zoom-in">＋ Zoom</button>
+          <button class="btn-tool" id="btn-uml-zoom-out">－ Zoom</button>
+          <span class="zoom-level-text" id="uml-zoom-display">100%</span>
+          <button class="btn-tool" id="btn-uml-reset">Ajustar</button>
+          <button class="btn-tool" id="btn-uml-expand-all">➕ Expandir Todo</button>
+          <button class="btn-tool" id="btn-uml-collapse-all">➖ Contraer Todo</button>
+        </div>
+      </div>
+
+      <div class="canvas-card">
+        <div class="canvas-viewport" id="canvas-uml-viewport">
+          <div class="canvas-content" id="canvas-uml-content">
+            
+            <div class="uml-layout-grid">
+              
+              <!-- COLUMNA 1: ACTOR Y HOSTS -->
+              <div class="uml-col">
+                <!-- Actor UML -->
+                <div class="uml-actor-box" onclick="inspectElement('actor_dev')">
+                  <svg class="uml-actor-svg" viewBox="0 0 32 48">
+                    <circle cx="16" cy="10" r="6"/>
+                    <line x1="16" y1="16" x2="16" y2="32"/>
+                    <line x1="6" y1="22" x2="26" y2="22"/>
+                    <line x1="16" y1="32" x2="8" y2="46"/>
+                    <line x1="16" y1="32" x2="24" y2="46"/>
+                  </svg>
+                  <div class="uml-actor-name">Desarrollador (Dev)</div>
+                  <div class="uml-actor-sub">&laquo;actor: human&raquo;</div>
+                </div>
+
+                <!-- Host Environments Component -->
+                <div class="uml-component" id="comp-hosts">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-hosts')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;host-environment&raquo;</div>
+                      <div class="uml-comp-title">Entornos Host & IDEs</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <p class="desc" style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;">
+                      Detectores de entorno, adaptadores y aislamiento de políticas:
+                    </p>
+                    <div class="atomic-pill-grid">
+                      <div class="atomic-item" onclick="inspectElement('host_agy')">
+                        <span class="name">Google Antigravity</span>
+                        <span class="desc">Aislamiento ToS estricto (Google-only)</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('host_pi')">
+                        <span class="name">Pi Coding Agent</span>
+                        <span class="desc">OpenRouter / Anthropic soportado</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('host_claude')">
+                        <span class="name">Claude Code CLI</span>
+                        <span class="desc">Anthropic provider directo</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('host_shield')">
+                        <span class="name">HostPolicyShield</span>
+                        <span class="desc">Escudo regulatorio en Rust</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cortex Brain Desktop App -->
+                <div class="uml-component" id="comp-brain">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-brain')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;desktop-app&raquo;</div>
+                      <div class="uml-comp-title">Cortex Brain App</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <div class="atomic-item" onclick="inspectElement('brain_ui')">
+                      <span class="name">brain-ui (React 19)</span>
+                      <span class="desc">Tauri GUI, Tab de Memoria Org y Settings</span>
+                    </div>
+                    <div class="atomic-item" style="margin-top: 8px;" onclick="inspectElement('local_llama')">
+                      <span class="name">Local llama.cpp (GGUF)</span>
+                      <span class="desc">Inferencia soberana offline en ~/.cache/</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- COLUMNA 2: NÚCLEO CORTEX, SYSTEMONE & LLMS -->
+              <div class="uml-col">
+                
+                <!-- Cortex MCP Server Component -->
+                <div class="uml-component" id="comp-mcp">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-mcp')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;mcp-server&raquo;</div>
+                      <div class="uml-comp-title">cortex-mcp v2.2 (Daemon stdio)</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <div class="uml-port-group">
+                      <div class="uml-lollipop"><span class="lollipop-circle"></span> rmcp 2.2 JSON-RPC 2.0</div>
+                      <div class="uml-lollipop"><span class="lollipop-circle"></span> Stdio Interface</div>
+                      <div class="uml-lollipop"><span class="lollipop-circle"></span> 32 Tools Catalog</div>
+                    </div>
+
+                    <div style="margin-top: 14px;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-indigo);">Puertos de Herramientas MCP:</span>
+                      <div class="atomic-pill-grid" style="margin-top: 8px;">
+                        <div class="atomic-item" onclick="inspectElement('tool_search_fam')">
+                          <span class="name">Retrieval (5 Tools)</span>
+                          <span class="desc">search, search_vector, context...</span>
+                        </div>
+                        <div class="atomic-item" onclick="inspectElement('tool_session_fam')">
+                          <span class="name">Sessions & Tasks (9 Tools)</span>
+                          <span class="desc">open, checkpoint, close, status...</span>
+                        </div>
+                        <div class="atomic-item" onclick="inspectElement('tool_spec_fam')">
+                          <span class="name">Spec & HU (5 Tools)</span>
+                          <span class="desc">create_spec, emit_proposal...</span>
+                        </div>
+                        <div class="atomic-item" onclick="inspectElement('tool_audit_fam')">
+                          <span class="name">Audit & Claims (2 Tools)</span>
+                          <span class="desc">verify_session_claims, review</span>
+                        </div>
+                        <div class="atomic-item" onclick="inspectElement('tool_doc_fam')">
+                          <span class="name">Documenter (5 Tools)</span>
+                          <span class="desc">finish_session, write_doc, adr...</span>
+                        </div>
+                        <div class="atomic-item" onclick="inspectElement('tool_auto_fam')">
+                          <span class="name">Autopilot (5 Tools)</span>
+                          <span class="desc">start, preflight, checkpoint...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SystemOne Kahneman Subsystem -->
+                <div class="uml-component" id="comp-systemone">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-systemone')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;system-one&raquo;</div>
+                      <div class="uml-comp-title">SystemOne (Kahneman S1 sub-10ms)</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <div class="atomic-pill-grid">
+                      <div class="atomic-item" onclick="inspectElement('so_gate')">
+                        <span class="name">Utterance Gate (&lt;10ms)</span>
+                        <span class="desc">Clasificador de intención: work/audit/done</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('so_router')">
+                        <span class="name">Model Router (Confidence &ge; 0.85)</span>
+                        <span class="desc">Asignación de modelos según políticas Host</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('so_squeeze')">
+                        <span class="name">Search Squeeze</span>
+                        <span class="desc">Poda semántica de distractores y noul</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('so_compact')">
+                        <span class="name">Session Compact (JEV Engine)</span>
+                        <span class="desc">Compresión de historial conservando decisiones</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('so_worth')">
+                        <span class="name">worth_remembering Gate</span>
+                        <span class="desc">Filtro de persistencia: cero ruido</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('so_score')">
+                        <span class="name">Primitiva Score (0.0..2.0)</span>
+                        <span class="desc">Evaluador de impacto de ADRs</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Deliberative LLMs & Subagents -->
+                <div class="uml-component" id="comp-llms">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-llms')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;deliberative-intelligence&raquo;</div>
+                      <div class="uml-comp-title">Modelos LLM & Subagentes Especializados</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <div class="atomic-pill-grid">
+                      <div class="atomic-item" onclick="inspectElement('sub_arch')">
+                        <span class="name">cortex-code-designer</span>
+                        <span class="desc">Subagente de arquitectura y specs (SDD)</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('sub_impl')">
+                        <span class="name">implement-craft</span>
+                        <span class="desc">Subagente de implementación y tests TDD</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('sub_doc')">
+                        <span class="name">cortex-documenter</span>
+                        <span class="desc">Documenter bottom: ADRs y Vault sync</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('llm_remote')">
+                        <span class="name">Modelos Remotos de Frontera</span>
+                        <span class="desc">Gemini 2.5 Pro / Claude 3.5 Sonnet / GPT-4o</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Hybrid Memory Engine RRF -->
+                <div class="uml-component" id="comp-memory-engine">
+                  <div class="uml-component-tabs">
+                    <div class="uml-tab-rect"></div>
+                    <div class="uml-tab-rect"></div>
+                  </div>
+                  <div class="uml-component-header" onclick="toggleUmlComponent('comp-memory-engine')">
+                    <div>
+                      <div class="uml-stereotype">&laquo;memory-engine&raquo;</div>
+                      <div class="uml-comp-title">Motor de Recuperación Híbrida (cortex-core)</div>
+                    </div>
+                    <button class="uml-collapse-btn">▼</button>
+                  </div>
+                  <div class="uml-component-body">
+                    <div class="atomic-pill-grid">
+                      <div class="atomic-item" onclick="inspectElement('rrf_engine')">
+                        <span class="name">Reciprocal Rank Fusion (k=60)</span>
+                        <span class="desc">Unificación matemática léxica + semántica</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('bm25_engine')">
+                        <span class="name">BM25 Léxico Substring</span>
+                        <span class="desc">Búsqueda exacta en archivos Markdown</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('vector_engine')">
+                        <span class="name">Embeddings Cosine k-NN</span>
+                        <span class="desc">cortex-embed Mean-Pool L2 normalizado</span>
+                      </div>
+                      <div class="atomic-item" onclick="inspectElement('tiered_router')">
+                        <span class="name">Tiered Memory (Active vs Archive)</span>
+                        <span class="desc">Archivos atenuados al 20% (0.2x score)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- COLUMNA 3: PERSISTENCIA FÍSICA - CILINDROS DE BASE DE DATOS UML -->
+              <div class="uml-col">
+                <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                  <span class="uml-stereotype">&laquo;persistence-layer&raquo;</span>
+                  <span style="font-size: 0.75rem; color: var(--accent-amber); font-weight: 700;">5 ALMACENES (.cortex/)</span>
+                </div>
+
+                <!-- BDD 1: Sesiones Episódicas -->
+                <div class="uml-db-cylinder" onclick="inspectElement('db_sessions')">
+                  <div class="db-header">
+                    <svg class="db-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span class="db-title">BDD Episódica</span>
+                  </div>
+                  <span class="db-file-badge">.cortex/sessions/*.yaml</span>
+                  <p class="db-desc">Historial completo, checkpoints de git HEAD, claims y eventos en session_events.jsonl.</p>
+                </div>
+
+                <!-- BDD 2: Vault Semántico Markdown -->
+                <div class="uml-db-cylinder" onclick="inspectElement('db_vault')">
+                  <div class="db-header">
+                    <svg class="db-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span class="db-title">BDD Semántica (Vault)</span>
+                  </div>
+                  <span class="db-file-badge">.cortex/vault/**/*.md</span>
+                  <p class="db-desc">Specs técnicas, ADRs arquitectónicos, diagramas, notas canónicas e índices Obsidian.</p>
+                </div>
+
+                <!-- BDD 3: Almacén Vectorial V3 -->
+                <div class="uml-db-cylinder" onclick="inspectElement('db_vectors')">
+                  <div class="db-header">
+                    <svg class="db-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span class="db-title">BDD Vectorial V3</span>
+                  </div>
+                  <span class="db-file-badge">.cortex/vectors.v3.bin</span>
+                  <p class="db-desc">Embeddings normalizados CCTXV3 binarios para búsqueda k-NN sin dependencias externas.</p>
+                </div>
+
+                <!-- BDD 4: Memoria Episódica & Config -->
+                <div class="uml-db-cylinder" onclick="inspectElement('db_config')">
+                  <div class="db-header">
+                    <svg class="db-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span class="db-title">BDD Config & Layout</span>
+                  </div>
+                  <span class="db-file-badge">.cortex/workspace.toml & config.yaml</span>
+                  <p class="db-desc">Ajustes de Model Router, SystemOne threshold (&ge;0.85) y estado de los 22 crates.</p>
+                </div>
+
+                <!-- BDD 5: Base de Datos Corporativa Enterprise -->
+                <div class="uml-db-cylinder" onclick="inspectElement('db_enterprise')">
+                  <div class="db-header">
+                    <svg class="db-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span class="db-title">BDD Org Enterprise</span>
+                  </div>
+                  <span class="db-file-badge">.cortex/org.yaml</span>
+                  <p class="db-desc">Reglas de promoción corporativa, central vault sincronizado y memoria organizacional.</p>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         4. SECTION: RED NEURONAL CONCEPTUAL MOLECULAR (CONEXIONES SINÁPTICAS)
+         ========================================================================== -->
+    <section id="neural-network" class="mb-12">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>🧠 Red Neuronal Conceptual Molecular (Grafo Sináptico de Subsistemas)</h2>
+          <p>Mapeo sináptico de todas las conexiones entre hosts, micro-decisiones de SystemOne, subagentes y memoria híbrida en Rust</p>
+        </div>
+
+        <div class="canvas-toolbar">
+          <button class="btn-tool" id="btn-nn-zoom-in">＋ Zoom</button>
+          <button class="btn-tool" id="btn-nn-zoom-out">－ Zoom</button>
+          <span class="zoom-level-text" id="nn-zoom-display">100%</span>
+          <button class="btn-tool" id="btn-nn-reset">Ajustar</button>
+          <button class="btn-tool" id="btn-nn-expand-all">➕ Expandir Todo</button>
+          <button class="btn-tool" id="btn-nn-collapse-all">➖ Contraer Todo</button>
+        </div>
+      </div>
+
+      <div class="canvas-card">
+        <div class="canvas-viewport" id="canvas-nn-viewport">
+          <div class="canvas-content" id="canvas-nn-content">
+            <div class="neural-grid">
+              <!-- Cluster 1: Hosts & Aislamiento ToS -->
+              <div class="neural-cluster cyan" id="cluster-host">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-host')">
+                  <div class="neural-cluster-title">🖥️ 1. Entornos Host & ToS</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('host_agy')">
+                    <span class="synaptic-node-name">Google Antigravity CLI</span>
+                    <span class="synaptic-node-desc">Escudo ToS Google-only estricto</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('host_pi')">
+                    <span class="synaptic-node-name">Pi Coding Agent</span>
+                    <span class="synaptic-node-desc">Multi-proveedor OpenRouter / Anthropic</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('host_shield')">
+                    <span class="synaptic-node-name">HostPolicyShield</span>
+                    <span class="synaptic-node-desc">Guarda en Rust de aislamiento regulatorio</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 2: Servidor MCP Gateway -->
+              <div class="neural-cluster indigo" id="cluster-mcp">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-mcp')">
+                  <div class="neural-cluster-title">🔷 2. Servidor MCP Gateway</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('tool_session_fam')">
+                    <span class="synaptic-node-name">cortex-mcp (rmcp 2.2 stdio)</span>
+                    <span class="synaptic-node-desc">32 herramientas JSON-RPC 2.0 nativas</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('tool_search_fam')">
+                    <span class="synaptic-node-name">Gateway de Retrieval & Búsqueda</span>
+                    <span class="synaptic-node-desc">cortex_context, cortex_search, vector</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('tool_audit_fam')">
+                    <span class="synaptic-node-name">Verification Claims Gateway</span>
+                    <span class="synaptic-node-desc">cortex_verify_session_claims, checkpoints</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 3: SystemOne Kahneman Sub-10ms -->
+              <div class="neural-cluster emerald" id="cluster-s1">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-s1')">
+                  <div class="neural-cluster-title">⚡ 3. SystemOne (Kahneman S1)</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('so_gate')">
+                    <span class="synaptic-node-name">Utterance Gate (&lt;10ms)</span>
+                    <span class="synaptic-node-desc">Clasificación refleja determinista</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('so_router')">
+                    <span class="synaptic-node-name">Model Router (&ge;0.85 cert)</span>
+                    <span class="synaptic-node-desc">Despacho de modelos según rol y host</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('so_squeeze')">
+                    <span class="synaptic-node-name">Search Squeeze</span>
+                    <span class="synaptic-node-desc">Poda semántica de ruido y noul</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('so_compact')">
+                    <span class="synaptic-node-name">Session Compact (JEV)</span>
+                    <span class="synaptic-node-desc">Compresión inteligente de turnos largos</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('so_worth')">
+                    <span class="synaptic-node-name">worth_remembering</span>
+                    <span class="synaptic-node-desc">Portero inmutable anti-ruido en disco</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 4: Modelos LLM & Razonamiento -->
+              <div class="neural-cluster purple" id="cluster-llm">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-llm')">
+                  <div class="neural-cluster-title">🧠 4. Modelos Deliberativos</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('llm_remote')">
+                    <span class="synaptic-node-name">Gemini 2.5 Pro / Claude Sonnet</span>
+                    <span class="synaptic-node-desc">Razonamiento deliberativo profundo (S2)</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('local_llama')">
+                    <span class="synaptic-node-name">Local llama.cpp (GGUF)</span>
+                    <span class="synaptic-node-desc">Inferencia soberana en Cortex Brain</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 5: Subagentes Especializados -->
+              <div class="neural-cluster amber" id="cluster-subagents">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-subagents')">
+                  <div class="neural-cluster-title">🎭 5. Subagentes Especializados</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('sub_arch')">
+                    <span class="synaptic-node-name">cortex-code-designer</span>
+                    <span class="synaptic-node-desc">Arquitecto y especificador técnico (Top)</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('sub_impl')">
+                    <span class="synaptic-node-name">implement-craft</span>
+                    <span class="synaptic-node-desc">Artesano de código y tests TDD (Middle)</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('sub_doc')">
+                    <span class="synaptic-node-name">cortex-documenter</span>
+                    <span class="synaptic-node-desc">Sintetizador de ADRs y cierre (Bottom)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 6: Memoria Híbrida RRF -->
+              <div class="neural-cluster teal" id="cluster-mem">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-mem')">
+                  <div class="neural-cluster-title">🌐 6. Memoria Cognitiva RRF</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body">
+                  <div class="synaptic-node" onclick="inspectElement('rrf_engine')">
+                    <span class="synaptic-node-name">RRF Fusion (k=60)</span>
+                    <span class="synaptic-node-desc">Fórmula híbrida léxico + semántico</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('bm25_engine')">
+                    <span class="synaptic-node-name">BM25 Léxico Substring</span>
+                    <span class="synaptic-node-desc">Búsqueda exacta en archivos Markdown</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('vector_engine')">
+                    <span class="synaptic-node-name">Embeddings Cosine k-NN</span>
+                    <span class="synaptic-node-desc">Vectores V3 normalizados CCTXV3</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('tiered_router')">
+                    <span class="synaptic-node-name">Tiered Memory Router</span>
+                    <span class="synaptic-node-desc">20% peso memoria histórica (0.2x)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cluster 7: Almacenamiento Persistente en Disco -->
+              <div class="neural-cluster gold" id="cluster-disk" style="grid-column: span 2;">
+                <div class="neural-cluster-header" onclick="toggleNeuralCluster('cluster-disk')">
+                  <div class="neural-cluster-title">🛢️ 7. Persistencia Física en Disco (.cortex/)</div>
+                  <button class="uml-collapse-btn">▼</button>
+                </div>
+                <div class="neural-cluster-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="synaptic-node" onclick="inspectElement('db_sessions')">
+                    <span class="synaptic-node-name">.cortex/sessions/*.yaml</span>
+                    <span class="synaptic-node-desc">Historial y checkpoints de git</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('db_vault')">
+                    <span class="synaptic-node-name">.cortex/vault/**/*.md</span>
+                    <span class="synaptic-node-desc">Specs, ADRs y Obsidian Vault</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('db_vectors')">
+                    <span class="synaptic-node-name">.cortex/vectors.v3.bin</span>
+                    <span class="synaptic-node-desc">Almacén binario de embeddings V3</span>
+                  </div>
+                  <div class="synaptic-node" onclick="inspectElement('db_enterprise')">
+                    <span class="synaptic-node-name">.cortex/org.yaml</span>
+                    <span class="synaptic-node-desc">Gobernanza y Vault corporativo</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         5. SECTION: DIAGRAMA DE SECUENCIA INTERACTIVO (21 PASOS MOLECULARES)
+         ========================================================================== -->
+    <section id="sequence-diagram" class="mb-12">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>⏱️ Diagrama de Secuencia End-to-End (21 Pasos Moleculares)</h2>
+          <p>Líneas de vida sincronizadas de los 9 actores/componentes del sistema. Inspección de payloads y paso a paso</p>
+        </div>
+      </div>
+
+      <div class="sequence-stepper-bar">
+        <div class="stepper-controls">
+          <button class="btn-tool" id="btn-seq-prev">◀ Paso Anterior</button>
+          <button class="btn-tool" id="btn-seq-next">Paso Siguiente ▶</button>
+          <button class="btn-tool" id="btn-seq-play">⏯ Reproducir Auto</button>
+          <button class="btn-tool" id="btn-seq-show-all">Mostrar Todo</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Paso actual:</span>
+          <div class="sequence-step-counter" id="seq-current-counter">Paso 1 de 21</div>
+        </div>
+      </div>
+
+      <div class="canvas-card">
+        <!-- Sticky Lifeline Column Headers -->
+        <div class="lifeline-headers">
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">👤</span>
+            <div class="lifeline-name">Desarrollador</div>
+            <div class="lifeline-role">&laquo;humano&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">💻</span>
+            <div class="lifeline-name">Host IDE / CLI</div>
+            <div class="lifeline-role">&laquo;antigravity/pi&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">⚡</span>
+            <div class="lifeline-name">SystemOne Gate</div>
+            <div class="lifeline-role">&laquo;cortex-judgement&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">🔷</span>
+            <div class="lifeline-name">Servidor MCP</div>
+            <div class="lifeline-role">&laquo;cortex-mcp 2.2&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">🔀</span>
+            <div class="lifeline-name">Model Router</div>
+            <div class="lifeline-role">&laquo;system-one&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">🧠</span>
+            <div class="lifeline-name">Subagente LLM</div>
+            <div class="lifeline-role">&laquo;remote/local&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">🌐</span>
+            <div class="lifeline-name">Memoria RRF</div>
+            <div class="lifeline-role">&laquo;cortex-core&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">📜</span>
+            <div class="lifeline-name">Doc & Auditor</div>
+            <div class="lifeline-role">&laquo;cortex-app&raquo;</div>
+          </div>
+          <div class="lifeline-col-header">
+            <span class="lifeline-icon">🛢️</span>
+            <div class="lifeline-name">Almacén Persistente</div>
+            <div class="lifeline-role">&laquo;.cortex/ fs&raquo;</div>
+          </div>
+        </div>
+
+        <!-- 21 Step Cards Timeline -->
+        <div class="sequence-timeline" id="sequence-steps-container">
+          <!-- Poblado dinámicamente con los 21 pasos interactivos -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         5. SECTION: EL CICLO SANDWICH CANÓNICO (FASES 0 A 7)
+         ========================================================================== -->
+    <section id="sandwich-cycle" class="mb-12">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>🥪 El Ciclo Sandwich Canónico (Fases 0 a 7)</h2>
+          <p>La estructura tripartita de Cortex: Top de Sincronización, Middle de Implementación Directa y Bottom de Documenter Inmutable</p>
+        </div>
+      </div>
+
+      <div class="tools-grid">
+        <div class="tool-card" style="border-left: 4px solid var(--accent-cyan);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 0: Detección & Host Isolation</span>
+            <span class="phase-badge phase-bootstrap">Bootstrap</span>
+          </div>
+          <p class="tool-desc">
+            HostDetector inspecciona el proceso padre. Si detecta Google Antigravity, activa el escudo ToS estricto: bloquea llamadas de Anthropic o claves directas y activa solo Gemini Pro/Flash. En Pi o Cursor, expone OpenRouter libremente.
+          </p>
+          <div class="tool-params">crate: cortex-setup · HostPolicyShield · zero-trust</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-emerald);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 1: Utterance Gate (SystemOne)</span>
+            <span class="phase-badge phase-intent">Micro-Reflejo</span>
+          </div>
+          <p class="tool-desc">
+            Ante el primer prompt del usuario, Utterance Gate clasifica en &lt;10ms si la intención es trivial (chat/status) o de desarrollo sustancial (work: implement, refactor). Si es sustancial, exige apertura de sesión para asegurar trazabilidad.
+          </p>
+          <div class="tool-params">crate: cortex-judgement · Kahneman System 1 · &lt;10ms latency</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-indigo);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 2: Top del Sandwich (Sync & Apertura)</span>
+            <span class="phase-badge phase-session">Top Sandwich</span>
+          </div>
+          <p class="tool-desc">
+            Invocación obligatoria de cortex_session_open o cortex_sync_ticket. Se crea el SessionRecord en .cortex/sessions/, se congela el commit base de git (start_commit=HEAD) y se ancla la especificación formal del trabajo.
+          </p>
+          <div class="tool-params">tools: cortex_session_open, cortex_sync_ticket, cortex_create_spec</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-purple);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 3: Ruteo Dinámico de Subagentes</span>
+            <span class="phase-badge phase-work">Rebuild Menu</span>
+          </div>
+          <p class="tool-desc">
+            cortex_session_status evalúa el estado vivo de la sesión. Sin checkpoints previos, recomienda al Architect (cortex-code-designer). Con diseño listo, despacha al Implementer. Model Router selecciona el mejor modelo con confianza &ge; 0.85.
+          </p>
+          <div class="tool-params">tools: cortex_session_status · purpose: ModelRouting · score 0..2</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-teal);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 4: Recuperación Híbrida & Search Squeeze</span>
+            <span class="phase-badge phase-work">Context Pack</span>
+          </div>
+          <p class="tool-desc">
+            cortex_context fusiona búsqueda léxica BM25 y vectorial V3 con algoritmo RRF (k=60). Tiered Memory atenúa documentos históricos/archivo al 20% de peso. Search Squeeze poda distractores y ruido cognitivo.
+          </p>
+          <div class="tool-params">tools: cortex_context, cortex_search · RRF k=60 · Tier archive 0.2</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-rose);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 5: Checkpoints & Verification Gate</span>
+            <span class="phase-badge phase-audit">Quality Audit</span>
+          </div>
+          <p class="tool-desc">
+            Durante la codificación se registran checkpoints con claims específicos y archivos tocados. Antes de cerrar, cortex_verify_session_claims audita los tests y el git diff. Si hay contradicciones o fallas, el cierre se rechaza.
+          </p>
+          <div class="tool-params">tools: cortex_session_checkpoint, cortex_verify_session_claims</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-amber);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 6: Bottom del Sandwich (Documenter)</span>
+            <span class="phase-badge phase-close">Bottom Sandwich</span>
+          </div>
+          <p class="tool-desc">
+            Al terminar la tarea, el orquestador tiene prohibido cerrar sin documentar. Invocación de cortex_finish_session: el subagente Documenter analiza el diff completo, escribe las notas de sesión y redacta el nuevo ADR canónico en el Vault.
+          </p>
+          <div class="tool-params">tools: cortex_finish_session, cortex_documenter_briefing, cortex_write_doc</div>
+        </div>
+
+        <div class="tool-card" style="border-left: 4px solid var(--accent-gold);">
+          <div class="tool-card-header">
+            <span class="tool-name">Fase 7: Filtro worth_remembering & Sellado</span>
+            <span class="phase-badge phase-close">Persistencia</span>
+          </div>
+          <p class="tool-desc">
+            SystemOne evalúa los aprendizajes de la sesión: solo persiste soluciones a problemas reales o decisiones de arquitectura, eliminando ruido efímero. Se guardan en .cortex/memory/ (JSONL), se actualiza vectors.v3.bin y se sella la sesión.
+          </p>
+          <div class="tool-params">tools: cortex_session_close · evaluate_worth_remembering · vectors.v3</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         6. SECTION: CATÁLOGO INTERACTIVO DE LAS 32 TOOLS MCP
+         ========================================================================== -->
+    <section id="tools-catalog" class="mb-12">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>🛠️ Catálogo Completo de las 32 Tools MCP de Cortex</h2>
+          <p>Exploración milimétrica de handlers nativos, backends de Rust y parámetros por familia funcional</p>
+        </div>
+      </div>
+
+      <div class="tools-filter-bar" id="filter-bar">
+        <button class="filter-chip active" data-filter="all">Todas (32)</button>
+        <button class="filter-chip" data-filter="retrieval">Búsqueda & Contexto (5)</button>
+        <button class="filter-chip" data-filter="session">Sesión & Tareas (9)</button>
+        <button class="filter-chip" data-filter="spec">Especificación & HU (5)</button>
+        <button class="filter-chip" data-filter="audit">Auditoría & Claims (2)</button>
+        <button class="filter-chip" data-filter="finish">Documenter & Cierre (5)</button>
+        <button class="filter-chip" data-filter="autopilot">Autopilot (5)</button>
+        <button class="filter-chip" data-filter="system">Sistema (1)</button>
+      </div>
+
+      <input type="text" class="tools-search" id="tools-search" placeholder="🔍 Buscar tool por nombre, backend de Rust o función...">
+
+      <div class="tools-grid" id="tools-container">
+        <!-- Poblado dinámicamente vía JavaScript con los datos oficiales de tools_catalog.rs -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==========================================================================
+       7. ATOMIC INSPECTOR SLIDE-OUT DRAWER
+       ========================================================================== -->
+  <div class="inspector-overlay" id="inspector-overlay" onclick="closeInspector()"></div>
+  <aside class="inspector-drawer" id="inspector-drawer">
+    <div class="inspector-header">
+      <div class="inspector-title-group">
+        <h3 id="insp-title">Elemento Inspeccionado</h3>
+        <div class="sub" id="insp-sub">&laquo;uml-component&raquo;</div>
+      </div>
+      <button class="btn-close-drawer" onclick="closeInspector()">&times;</button>
+    </div>
+
+    <div class="inspector-body" id="insp-body">
+      <!-- Contenido molecular dinámico -->
+    </div>
+  </aside>
+
+  <footer>
+    Cortex Cognitive OS · Arquitectura Nativa en Rust · Spec ConaISI · Servidor MCP v2.2 (32 Tools Catalogadas)
+  </footer>
+
+  <!-- ==========================================================================
+       8. INTERACTIVE ENGINE: JAVASCRIPT
+       ========================================================================== -->
+  <script>
+    // ==========================================================================
+    // DATA OFICIAL: LAS 32 TOOLS MCP DE CORTEX (tools_catalog.rs)
+    // ==========================================================================
+    const CORTEX_TOOLS = [
+      { name: "cortex_ping", family: "system", backend: "server.rs", desc: "Health-check de conectividad stdio, latencia y versión del servidor (2.2).", params: "Ninguno" },
+      { name: "cortex_search_vector", family: "retrieval", backend: "search.rs", desc: "Búsqueda vectorial k-NN pura sobre fragmentos normalizados en vectors.v3.bin.", params: "query, top_k" },
+      { name: "cortex_search", family: "retrieval", backend: "search.rs", desc: "Búsqueda híbrida RRF (k=60) combinando léxico BM25 y memoria episódica.", params: "query, top_k, filters" },
+      { name: "cortex_context", family: "retrieval", backend: "search.rs", desc: "Recuperación de contexto enriquecido multi-estrategia con presupuesto de tokens y poda.", params: "query, max_chars, max_items" },
+      { name: "cortex_sync_ticket", family: "retrieval", backend: "search.rs", desc: "Inyecta y ancla un ticket o historia externa en el contexto de la sesión activa.", params: "ticket_id, request" },
+      { name: "cortex_sync_vault", family: "retrieval", backend: "search.rs (inline)", desc: "Sincroniza y recalcula estadísticas BM25 (IDF, avgdl) y embeddings del Vault.", params: "Ninguno" },
+      
+      { name: "cortex_create_spec", family: "spec", backend: "spec.rs", desc: "Crea una especificación técnica formal en vault/specs/ y abre la sesión asociada.", params: "spec_id, title, summary, scope" },
+      { name: "cortex_emit_proposal", family: "spec", backend: "spec.rs", desc: "Emite una propuesta de cambio de diseño antes de modificar archivos críticos.", params: "spec_id, changes_summary, touched_files" },
+      { name: "cortex_validate_handoff", family: "spec", backend: "spec.rs", desc: "Valida que el diseño arquitectónico cumple las precondiciones antes de pasar a código.", params: "spec_id, checklist" },
+      { name: "cortex_import_hu", family: "spec", backend: "spec.rs", desc: "Importa una Historia de Usuario estructurada en formato markdown al Vault.", params: "hu_id, content" },
+      { name: "cortex_get_hu", family: "spec", backend: "spec.rs", desc: "Recupera los criterios de aceptación y alcance de una HU activa.", params: "hu_id" },
+
+      { name: "cortex_session_open", family: "session", backend: "sessions.rs", desc: "Abre una sesión de desarrollo formal, congelando start_commit=HEAD en git.", params: "spec_id, summary" },
+      { name: "cortex_session_checkpoint", family: "session", backend: "sessions.rs", desc: "Registra claims verificables y archivos tocados en el SessionRecord YAML.", params: "session_id, claims, touched_files" },
+      { name: "cortex_session_close", family: "session", backend: "sessions.rs", desc: "Cierra la sesión de trabajo tras verificación, congelando end_commit=HEAD.", params: "session_id, status, notes" },
+      { name: "cortex_session_status", family: "session", backend: "sessions.rs", desc: "Retorna el estado vivo de la sesión y el menú dinámico de especialistas.", params: "session_id" },
+      { name: "cortex_session_list", family: "session", backend: "sessions.rs", desc: "Lista todas las sesiones históricas y su estado de cumplimiento.", params: "limit, status_filter" },
+      { name: "cortex_save_session", family: "session", backend: "sessions.rs", desc: "Persiste el snapshot en memoria de la sesión a disco de forma atómica.", params: "session_id" },
+      { name: "cortex_close_session", family: "session", backend: "sessions.rs", desc: "Comando de sellado alternativo con validación de invariantes de git.", params: "session_id, reason" },
+      { name: "cortex_session_task_list", family: "session", backend: "sessions.rs", desc: "Lista el desglose de tareas pendientes y completadas de la sesión activa.", params: "session_id" },
+      { name: "cortex_session_task_update", family: "session", backend: "sessions.rs", desc: "Actualiza el progreso porcentual o estado de una tarea atómica.", params: "session_id, task_id, status" },
+
+      { name: "cortex_verify_session_claims", family: "audit", backend: "sessions.rs", desc: "Quality Gate: audita que cada claim del checkpoint tenga pruebas o diffs reales.", params: "session_id" },
+      { name: "cortex_review_checkpoint", family: "audit", backend: "sessions.rs", desc: "Realiza una auditoría heurística del código antes de autorizar el cierre.", params: "session_id, checkpoint_id" },
+
+      { name: "cortex_finish_session", family: "finish", backend: "sessions.rs", desc: "Bottom del Sandwich: dispara la síntesis final del Documenter y ADRs.", params: "session_id" },
+      { name: "cortex_documenter_briefing", family: "finish", backend: "sessions.rs", desc: "Genera el briefing contextual para que cortex-documenter redacte el ADR.", params: "session_id" },
+      { name: "cortex_self_review_note", family: "finish", backend: "sessions.rs", desc: "Registra notas de auto-revisión y lecciones aprendidas durante la sesión.", params: "session_id, notes" },
+      { name: "cortex_write_doc", family: "finish", backend: "sessions.rs", desc: "Escribe de forma canónica documentos (ADR, spec, session) en el Vault.", params: "doc_type, title, content, tags" },
+      { name: "write_design_note_canonical", family: "finish", backend: "sessions.rs", desc: "Registra una nota de diseño arquitectónico canónico indexada en Obsidian.", params: "note_id, title, content" },
+
+      { name: "cortex_autopilot_start", family: "autopilot", backend: "autopilot.rs", desc: "Inicia la máquina de estados de ejecución autónoma guiada por objetivos.", params: "goal, max_iterations" },
+      { name: "cortex_autopilot_preflight", family: "autopilot", backend: "autopilot.rs", desc: "Chequea precondiciones ambientales, git limpio y tests antes de la autonomía.", params: "goal" },
+      { name: "cortex_autopilot_checkpoint", family: "autopilot", backend: "autopilot.rs", desc: "Punto de control intermedio de la máquina de estados autónoma.", params: "iteration, state" },
+      { name: "cortex_autopilot_finish", family: "autopilot", backend: "autopilot.rs", desc: "Finaliza y consolida los resultados de la ejecución autónoma.", params: "success, report" },
+      { name: "cortex_autopilot_status", family: "autopilot", backend: "autopilot.rs", desc: "Inspecciona la fase activa y métricas del ciclo de autopilot.", params: "Ninguno" }
+    ];
+
+    // ==========================================================================
+    // DATA OFICIAL: LOS 21 PASOS MOLECULARES DE LA SECUENCIA END-TO-END
+    // ==========================================================================
+    const SEQUENCE_STEPS = [
+      { num: 1, source: "Dev", target: "Host IDE", phase: "bootstrap", title: "Abre CLI/IDE en el proyecto", desc: "El desarrollador inicia una sesión en su terminal o editor (Antigravity, Pi, Claude Code).", latency: "< 5ms" },
+      { num: 2, source: "Host IDE", target: "Almacén", phase: "bootstrap", title: "WorkspaceLayout::discover()", desc: "Lectura de la jerarquía .cortex/, detección de workspace.toml y validación de layout.", latency: "1.2ms" },
+      { num: 3, source: "Host IDE", target: "Host IDE", phase: "bootstrap", title: "HostDetector & Escudo ToS", desc: "Detecta si el host es Google Antigravity (fuerza Google ToS) o Pi/Cursor (habilita OpenRouter).", latency: "0.8ms" },
+      { num: 4, source: "Host IDE", target: "Almacén", phase: "bootstrap", title: "CLI Model Discovery", desc: "Lectura pasiva de ~/.config/ para descubrir qué modelos tiene logueados el usuario en sus CLIs.", latency: "3.5ms" },
+      { num: 5, source: "Host IDE", target: "Servidor MCP", phase: "bootstrap", title: "Lanza cortex-mcp (stdio)", desc: "Inicializa el daemon nativo rmcp 2.2 comunicándose mediante JSON-RPC 2.0 por entrada/salida estándar.", latency: "8.5ms" },
+      { num: 6, source: "Servidor MCP", target: "Host IDE", phase: "bootstrap", title: "Server Ready (32 Tools)", desc: "El servidor MCP responde confirmando disponibilidad de su catálogo completo de 32 tools.", latency: "0.4ms" },
+      
+      { num: 7, source: "Dev", target: "Host IDE", phase: "intent", title: "Prompt de Usuario", desc: "El usuario escribe: 'Implementar validación de tokens JWT en middleware con expiración'.", latency: "Humano" },
+      { num: 8, source: "Host IDE", target: "SystemOne Gate", phase: "intent", title: "classify_utterance(prompt)", desc: "Micro-decisión de Kahneman System 1: clasifica en &lt;10ms. Resultado: work=implement, needs_session=alto.", latency: "4.2ms" },
+      { num: 9, source: "SystemOne Gate", target: "Host IDE", phase: "intent", title: "Decisión: implement (Needs Session)", desc: "Indica al host que esta tarea requiere trazabilidad formal antes de modificar el código.", latency: "0.1ms" },
+
+      { num: 10, source: "Host IDE", target: "Servidor MCP", phase: "session", title: "cortex_session_open(spec_id)", desc: "Top del Sandwich: Apertura formal de sesión vinculada a la spec técnica 'jwt-auth'.", latency: "2.8ms" },
+      { num: 11, source: "Servidor MCP", target: "Almacén", phase: "session", title: "Escribe .cortex/sessions/<id>.yaml", desc: "Persiste el SessionRecord con start_commit=HEAD de git para auditar los cambios exactos.", latency: "3.1ms" },
+      { num: 12, source: "Host IDE", target: "Servidor MCP", phase: "session", title: "cortex_session_status()", desc: "Solicita el estado vivo de la sesión para reconstruir el menú dinámico de especialistas.", latency: "1.5ms" },
+      { num: 13, source: "Servidor MCP", target: "Model Router", phase: "session", title: "rebuild_specialist_menu()", desc: "Al no haber checkpoints previos, recomienda al Architect (cortex-code-designer) como especialista.", latency: "2.0ms" },
+      { num: 14, source: "Model Router", target: "Host IDE", phase: "session", title: "Ruteo de Modelo (Confidence &ge; 0.85)", desc: "Router asigna Gemini 2.5 Pro (si es Antigravity) o Claude 3.5 Sonnet (si es Pi) según las políticas del Host.", latency: "5.1ms" },
+
+      { num: 15, source: "Host IDE", target: "Servidor MCP", phase: "work", title: "cortex_context(query='JWT')", desc: "Recuperación de contexto enriquecido: fusiona notas de seguridad y especificaciones.", latency: "18.4ms" },
+      { num: 16, source: "Servidor MCP", target: "Memoria RRF", phase: "work", title: "Búsqueda Híbrida BM25 + Vector V3", desc: "Fusión RRF (k=60). Tiered Memory atenúa documentos viejos al 20% y Search Squeeze poda ruido.", latency: "12.3ms" },
+      { num: 17, source: "Host IDE", target: "Subagente LLM", phase: "work", title: "Generación de Código & Tests", desc: "Subagente implement-craft genera el middleware en src/auth.rs y tests verdes en tests/auth_test.rs.", latency: "Deliberativo" },
+      { num: 18, source: "Host IDE", target: "Servidor MCP", phase: "work", title: "cortex_session_checkpoint(claims)", desc: "Registra checkpoint intermedio: claims declarados ('JWT signature validada', 'Expiry check enforceado').", latency: "4.0ms" },
+
+      { num: 19, source: "Host IDE", target: "Servidor MCP", phase: "audit", title: "cortex_verify_session_claims()", desc: "Verification Gate audita git diff y resultados de tests contra los claims declarados.", latency: "15.2ms" },
+      
+      { num: 20, source: "Host IDE", target: "Servidor MCP", phase: "close", title: "cortex_finish_session()", desc: "Bottom del Sandwich: Documenter analiza git diff entre start_commit y HEAD y redacta ADR en Vault.", latency: "42.0ms" },
+      { num: 21, source: "Servidor MCP", target: "Almacén", phase: "close", title: "worth_remembering & Close", desc: "SystemOne filtra aprendizajes reales a .cortex/memory/ (JSONL), actualiza vectors.v3.bin y sella sesión.", latency: "16.8ms" },
+    ];
+
+    // ==========================================================================
+    // DETALLES PARA EL INSPECTOR ATÓMICO
+    // ==========================================================================
+    const ELEMENT_DETAILS = {
+      actor_dev: {
+        title: "Actor: Desarrollador de Software",
+        stereotype: "«actor: human»",
+        crate: "Interacción Externa (CLI / IDE)",
+        latency: "Tiempo Humano",
+        desc: "Ingeniero de software que opera el CLI o IDE. Emite prompts, autoriza propuestas arquitectónicas y ejecuta la suite de tests locales. Cortex actúa como copiloto cognitivo amplificando su memoria y disciplina arquitectónica.",
+        code: `// Flujo Humano:\n1. Prompt de trabajo\n2. Aprobación de spec técnica\n3. Verificación de claims\n4. Validación de cierre documentado`
+      },
+      host_agy: {
+        title: "Google Antigravity IDE / CLI",
+        stereotype: "«host-environment: google-tos»",
+        crate: "cortex-setup::ide::adapters::antigravity",
+        latency: "< 1 ms detección",
+        desc: "Entorno oficial de Google. Cortex detecta variables de entorno específicas de Antigravity y aplica el Escudo de Políticas ToS: restringe llamadas hacia APIs de Anthropic para proteger al usuario de infracciones de términos de servicio y promueve modelos Gemini 2.5 Pro y Flash.",
+        code: `pub fn detect_host() -> HostType {\n    if std::env::var("ANTIGRAVITY_APP").is_ok() {\n        HostType::Antigravity\n    } else {\n        HostType::Generic\n    }\n}`
+      },
+      host_pi: {
+        title: "Pi Coding Agent (pi.dev)",
+        stereotype: "«host-environment: open-router»",
+        crate: "cortex-setup::ide::adapters::pi",
+        latency: "< 1 ms detección",
+        desc: "Agente de código abierto y multi-proveedor. Permite enrutar libremente hacia OpenRouter, Anthropic Claude 3.5 Sonnet y modelos locales soberanos.",
+        code: `// Soporta asignación de claves libres en ~/.pi/agent/`
+      },
+      host_shield: {
+        title: "HostPolicyShield",
+        stereotype: "«security-guard: rust»",
+        crate: "cortex-setup::ide::host_detector",
+        latency: "< 0.5 ms",
+        desc: "Escudo regulatorio de políticas. Previene fugas de contexto cruzado y valida que el Model Router nunca despache un modelo prohibido en el Host activo.",
+        code: `pub struct HostPolicyShield {\n    pub host: HostType,\n    pub allow_external_auth: bool,\n}`
+      },
+      so_gate: {
+        title: "Utterance Gate (SystemOne)",
+        stereotype: "«classifier: kahneman-system-1»",
+        crate: "cortex-judgement::utterance_gate",
+        latency: "3.8 ms (sub-10ms)",
+        desc: "Clasificador reflejo instantáneo en Rust. Determina la intención del usuario sin incurrir en costos de inferencia LLM. Clasifica en: implement, audit, status, chat o done.",
+        code: `pub fn classify_utterance(prompt: &str) -> UtteranceClassification {\n    // Kahneman System 1 determinista\n    // needs_session: true si work != Chat\n}`
+      },
+      so_router: {
+        title: "Model Router (SystemOne)",
+        stereotype: "«router: policy-driven»",
+        crate: "cortex-judgement::catalog::ModelRoutingDecision",
+        latency: "5.1 ms",
+        desc: "Enrutador de modelos con umbral de certeza &ge; 0.85. Mapea subagentes (Designer, Implementer, Documenter) con modelos específicos autenticados en los CLIs del usuario.",
+        code: `pub struct ModelRoutingDecision {\n    pub role: Purpose,\n    pub selected_model: String,\n    pub score: Score,\n    pub confidence: f32,\n}`
+      },
+      so_squeeze: {
+        title: "Search Squeeze",
+        stereotype: "«filter: noise-reduction»",
+        crate: "cortex-cli::judgement_squeeze",
+        latency: "4.5 ms",
+        desc: "Algoritmo de compresión de contexto que poda el ruido ('noul') antes de inyectar fragmentos al LLM, reduciendo drásticamente la distracción del modelo deliberativo.",
+        code: `pub fn apply_squeeze(context: &mut Vec<Hit>) {\n    context.retain(|h| h.score >= 0.35);\n}`
+      },
+      so_compact: {
+        title: "Session Compact (JEV Engine)",
+        stereotype: "«reducer: context-compaction»",
+        crate: "cortex-brain-app::session_compact",
+        latency: "< 25 ms",
+        desc: "Poda y compactación inteligente del historial de turnos en sesiones largas. Conserva decisiones de diseño y arquitectura eliminando intentos fallidos y logs verborrágicos.",
+        code: `// Elimina turnos redundantes conservando el hilo conductor`
+      },
+      so_worth: {
+        title: "worth_remembering Gate",
+        stereotype: "«gatekeeper: memory-filter»",
+        crate: "cortex-judgement::worth_remembering",
+        latency: "2.1 ms",
+        desc: "Portero de la memoria a largo plazo. Solo autoriza persistir soluciones genuinas, evitando ensuciar el Vault con notas triviales o transitorias.",
+        code: `pub fn evaluate_worth_remembering(learning: &str) -> bool {\n    // Califica utilidad heurística\n}`
+      },
+      so_score: {
+        title: "Primitiva Score (0.0..2.0)",
+        stereotype: "«evaluator: rust-primitive»",
+        crate: "cortex-judgement::catalog::Score",
+        latency: "< 0.1 ms",
+        desc: "Tipo seguro en Rust que representa la escala 0..2 (Trivial=0, Notorio=1, Disruptivo=2) para calificar el impacto de decisiones y selección de modelos.",
+        code: `#[derive(Clone, Copy, Debug)]\npub struct Score(pub f32); // Validado en rango 0.0..=2.0`
+      },
+      db_sessions: {
+        title: "BDD Episódica (.cortex/sessions/)",
+        stereotype: "«database: yaml-and-jsonl»",
+        crate: "cortex-app::context::presenter",
+        latency: "Disco NVMe / SSD",
+        desc: "Almacén persistente de cada sesión de desarrollo. Guarda: session_id, spec_id, start_commit, end_commit, checkpoints con claims verificados y session_events.jsonl.",
+        code: `session_id: "jwt-auth-20260920"\nstart_commit: "4f8a91b"\ncheckpoints:\n  - claims: ["JWT verified"]\nstatus: "closed"`
+      },
+      db_vault: {
+        title: "BDD Semántica / Vault (.cortex/vault/)",
+        stereotype: "«database: obsidian-markdown»",
+        crate: "cortex-core / cortex-services",
+        latency: "Indexado BM25 en memoria",
+        desc: "Base de conocimiento canónica estructurada en Markdown compatible con Obsidian. Contiene specs técnicas, ADRs arquitectónicos numerados y notas indexadas por frontmatter YAML.",
+        code: `.cortex/vault/\n├── specs/     # Especificaciones SDD\n├── adrs/      # Architecture Decision Records\n└── notes/     # Notas de diseño canónicas`
+      },
+      db_vectors: {
+        title: "BDD Vectorial V3 (.cortex/vectors.v3.bin)",
+        stereotype: "«database: binary-cctxv3»",
+        crate: "cortex-embed",
+        latency: "< 5 ms búsqueda k-NN",
+        desc: "Almacén vectorial binario propietario optimizado para CPU. Vectores normalizados de fragmentos de código y documentación, compatible con mean-pooling L2.",
+        code: `// Formato CCTXV3:\n[MAGIC: 4 bytes][COUNT: u32][DIM: u32]\n[EMBEDDINGS: f32 x DIM x COUNT]`
+      },
+      db_config: {
+        title: "BDD Config & Layout (.cortex/workspace.toml)",
+        stereotype: "«database: toml-and-yaml»",
+        crate: "cortex-config",
+        latency: "Carga única al boot",
+        desc: "Configuración integral del espacio de trabajo. Contiene políticas del Model Router, umbrales de certeza y mapeos entre crates de Rust.",
+        code: `[router]\ndefault_threshold = 0.85\n[host]\nenforce_policy = true`
+      },
+      db_enterprise: {
+        title: "BDD Corporativa Org (.cortex/org.yaml)",
+        stereotype: "«database: enterprise-rules»",
+        crate: "cortex-enterprise",
+        latency: "Sincronización remota",
+        desc: "Reglas de promoción y gobierno corporativo. Permite a múltiples desarrolladores compartir ADRs y aprendizajes de arquitectura validados en un Vault central.",
+        code: `promotion_rules:\n  min_score: 1.5\n  require_claims_audit: true`
+      },
+      rrf_engine: {
+        title: "Reciprocal Rank Fusion (k=60)",
+        stereotype: "«algorithm: hybrid-search»",
+        crate: "cortex-core::search",
+        latency: "1.2 ms",
+        desc: "Fórmula de fusión que combina resultados de ranking léxico (BM25) y vectorial (k-NN) asignando a cada documento el score: sum(1 / (k + rank)). Elimina sesgos de escala.",
+        code: `pub fn rrf_score(rank_bm25: usize, rank_vec: usize, k: usize) -> f64 {\n    1.0 / (k + rank_bm25) as f64 + 1.0 / (k + rank_vec) as f64\n}`
+      },
+      tiered_router: {
+        title: "Tiered Memory Router (20% Weight)",
+        stereotype: "«router: memory-tier»",
+        crate: "cortex-core::tiered_memory",
+        latency: "< 0.5 ms",
+        desc: "Atenúa documentos marcados como 'tier: archive' multiplicando su score final por 0.2 (20% de peso). Mantiene el historial disponible sin ahogar el contexto activo.",
+        code: `if doc.tier == Tier::Archive {\n    final_score *= 0.20; // Atenuación del 80%\n}`
+      }
+    };
+
+    // ==========================================================================
+    // RENDERIZADO DE LAS 32 TOOLS MCP
+    // ==========================================================================
+    const toolsContainer = document.getElementById("tools-container");
+    const filterButtons = document.querySelectorAll(".filter-chip");
+    const searchInput = document.getElementById("tools-search");
+
+    let currentFilter = "all";
+    let currentSearch = "";
+
+    function renderTools() {
+      toolsContainer.innerHTML = "";
+
+      const filtered = CORTEX_TOOLS.filter(t => {
+        const matchesFilter = (currentFilter === "all") || (t.family === currentFilter);
+        const matchesSearch = t.name.toLowerCase().includes(currentSearch) ||
+                              t.desc.toLowerCase().includes(currentSearch) ||
+                              t.backend.toLowerCase().includes(currentSearch);
+        return matchesFilter && matchesSearch;
+      });
+
+      filtered.forEach(t => {
+        const card = document.createElement("div");
+        card.className = "tool-card";
+        card.onclick = () => {
+          showInspector(t.name, `«mcp-tool: ${t.family}»`, `cortex-mcp::backends::${t.backend}`, "< 10 ms", t.desc, `// Invocación JSON-RPC 2.0:\n{\n  "method": "tools/call",\n  "params": {\n    "name": "${t.name}",\n    "arguments": { ${t.params} }\n  }\n}`);
+        };
+
+        const famColors = {
+          retrieval: "background: rgba(56, 189, 248, 0.15); color: #38bdf8;",
+          session: "background: rgba(129, 140, 248, 0.15); color: #818cf8;",
+          spec: "background: rgba(192, 132, 252, 0.15); color: #c084fc;",
+          audit: "background: rgba(244, 63, 94, 0.15); color: #f43f5e;",
+          finish: "background: rgba(245, 158, 11, 0.15); color: #f59e0b;",
+          autopilot: "background: rgba(16, 185, 129, 0.15); color: #10b981;",
+          system: "background: rgba(148, 163, 184, 0.15); color: #94a3b8;"
+        };
+
+        card.innerHTML = `
+          <div class="tool-card-header">
+            <span class="tool-name">${t.name}</span>
+            <span class="tool-family-tag" style="${famColors[t.family] || ''}">${t.family}</span>
+          </div>
+          <div class="tool-backend">backend: ${t.backend}</div>
+          <p class="tool-desc">${t.desc}</p>
+          <div class="tool-params">args: ${t.params}</div>
+        `;
+        toolsContainer.appendChild(card);
+      });
+    }
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        filterButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderTools();
+      });
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      currentSearch = e.target.value.trim().toLowerCase();
+      renderTools();
+    });
+
+    renderTools();
+
+    // ==========================================================================
+    // RENDERIZADO DEL DIAGRAMA DE SECUENCIA (21 PASOS)
+    // ==========================================================================
+    const sequenceContainer = document.getElementById("sequence-steps-container");
+    const currentCounterEl = document.getElementById("seq-current-counter");
+    let activeStepIndex = 0;
+    let autoPlayInterval = null;
+
+    function renderSequenceSteps() {
+      sequenceContainer.innerHTML = "";
+
+      SEQUENCE_STEPS.forEach((step, idx) => {
+        const card = document.createElement("div");
+        card.className = `sequence-step-card ${idx === activeStepIndex ? 'active' : ''}`;
+        card.id = `seq-card-${step.num}`;
+        card.onclick = () => {
+          setActiveSequenceStep(idx);
+          showInspector(`Paso ${step.num}: ${step.title}`, `«secuencia: fase-${step.phase}»`, `${step.source} ➔ ${step.target}`, step.latency, step.desc, `// Flujo en Rust:\n${step.source} -> ${step.target}\nPayload: ${step.title}\nLatencia estimada: ${step.latency}`);
+        };
+
+        card.innerHTML = `
+          <div class="step-num-badge">#${step.num}</div>
+          <div class="step-flow-info">
+            <div class="step-actors-bar">
+              <span class="step-source">${step.source}</span>
+              <span class="step-arrow-sym">────────▶</span>
+              <span class="step-target">${step.target}</span>
+            </div>
+            <div class="step-msg-title">${step.title}</div>
+            <div class="step-detail-snip">${step.desc}</div>
+          </div>
+          <div class="step-meta-col">
+            <span class="phase-badge phase-${step.phase}">${step.phase}</span>
+            <span class="step-latency">${step.latency}</span>
+          </div>
+        `;
+        sequenceContainer.appendChild(card);
+      });
+
+      currentCounterEl.innerText = `Paso ${activeStepIndex + 1} de ${SEQUENCE_STEPS.length}`;
+    }
+
+    function setActiveSequenceStep(idx) {
+      activeStepIndex = Math.max(0, Math.min(SEQUENCE_STEPS.length - 1, idx));
+      document.querySelectorAll(".sequence-step-card").forEach((c, i) => {
+        c.classList.toggle("active", i === activeStepIndex);
+      });
+      currentCounterEl.innerText = `Paso ${activeStepIndex + 1} de ${SEQUENCE_STEPS.length}`;
+
+      const activeCard = document.getElementById(`seq-card-${SEQUENCE_STEPS[activeStepIndex].num}`);
+      if (activeCard) {
+        activeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    document.getElementById("btn-seq-next").addEventListener("click", () => {
+      setActiveSequenceStep(activeStepIndex + 1);
+    });
+
+    document.getElementById("btn-seq-prev").addEventListener("click", () => {
+      setActiveSequenceStep(activeStepIndex - 1);
+    });
+
+    document.getElementById("btn-seq-play").addEventListener("click", function() {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        this.innerText = "⏯ Reproducir Auto";
+      } else {
+        this.innerText = "⏸ Pausar";
+        autoPlayInterval = setInterval(() => {
+          if (activeStepIndex >= SEQUENCE_STEPS.length - 1) {
+            setActiveSequenceStep(0);
+          } else {
+            setActiveSequenceStep(activeStepIndex + 1);
+          }
+        }, 1600);
+      }
+    });
+
+    document.getElementById("btn-seq-show-all").addEventListener("click", () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        document.getElementById("btn-seq-play").innerText = "⏯ Reproducir Auto";
+      }
+      document.querySelectorAll(".sequence-step-card").forEach(c => c.classList.remove("active"));
+      currentCounterEl.innerText = "Vista General (21 Pasos)";
+    });
+
+    renderSequenceSteps();
+
+    // ==========================================================================
+    // PAN & ZOOM ENGINE PARA EL CANVAS UML
+    // ==========================================================================
+    class CanvasPanZoom {
+      constructor(viewportId, contentId, zoomDisplayId) {
+        this.viewport = document.getElementById(viewportId);
+        this.content = document.getElementById(contentId);
+        this.display = document.getElementById(zoomDisplayId);
+
+        this.scale = 1.0;
+        this.panX = 0;
+        this.panY = 0;
+        this.isDragging = false;
+        this.startX = 0;
+        this.startY = 0;
+
+        this.initEvents();
+        this.updateTransform();
+      }
+
+      updateTransform() {
+        this.content.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.scale})`;
+        if (this.display) {
+          this.display.innerText = `${Math.round(this.scale * 100)}%`;
+        }
+      }
+
+      zoom(factor) {
+        const newScale = Math.max(0.3, Math.min(3.5, this.scale * factor));
+        this.scale = newScale;
+        this.updateTransform();
+      }
+
+      reset() {
+        this.scale = 0.95;
+        this.panX = 20;
+        this.panY = 20;
+        this.updateTransform();
+      }
+
+      initEvents() {
+        this.viewport.addEventListener("mousedown", (e) => {
+          if (e.target.closest("button") || e.target.closest(".atomic-item") || e.target.closest(".uml-db-cylinder")) return;
+          this.isDragging = true;
+          this.viewport.classList.add("is-dragging");
+          this.startX = e.clientX - this.panX;
+          this.startY = e.clientY - this.panY;
+        });
+
+        window.addEventListener("mousemove", (e) => {
+          if (!this.isDragging) return;
+          this.panX = e.clientX - this.startX;
+          this.panY = e.clientY - this.startY;
+          this.updateTransform();
+        });
+
+        window.addEventListener("mouseup", () => {
+          this.isDragging = false;
+          this.viewport.classList.remove("is-dragging");
+        });
+
+        this.viewport.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+          this.zoom(zoomFactor);
+        }, { passive: false });
+      }
+    }
+
+    const umlCanvas = new CanvasPanZoom("canvas-uml-viewport", "canvas-uml-content", "uml-zoom-display");
+    document.getElementById("btn-uml-zoom-in").addEventListener("click", () => umlCanvas.zoom(1.2));
+    document.getElementById("btn-uml-zoom-out").addEventListener("click", () => umlCanvas.zoom(0.83));
+    document.getElementById("btn-uml-reset").addEventListener("click", () => umlCanvas.reset());
+
+    const nnCanvas = new CanvasPanZoom("canvas-nn-viewport", "canvas-nn-content", "nn-zoom-display");
+    document.getElementById("btn-nn-zoom-in").addEventListener("click", () => nnCanvas.zoom(1.2));
+    document.getElementById("btn-nn-zoom-out").addEventListener("click", () => nnCanvas.zoom(0.83));
+    document.getElementById("btn-nn-reset").addEventListener("click", () => nnCanvas.reset());
+
+    // ==========================================================================
+    // EXPAND / COLLAPSE ENGINE (MACRO VS ATOMICO)
+    // ==========================================================================
+    function toggleUmlComponent(compId) {
+      const comp = document.getElementById(compId);
+      if (comp) comp.classList.toggle("collapsed");
+    }
+
+    function toggleNeuralCluster(clusterId) {
+      const cluster = document.getElementById(clusterId);
+      if (cluster) cluster.classList.toggle("collapsed");
+    }
+
+    function setAllUmlComponents(collapsed) {
+      document.querySelectorAll(".uml-component").forEach(comp => {
+        comp.classList.toggle("collapsed", collapsed);
+      });
+    }
+
+    function setAllNeuralClusters(collapsed) {
+      document.querySelectorAll(".neural-cluster").forEach(cluster => {
+        cluster.classList.toggle("collapsed", collapsed);
+      });
+    }
+
+    document.getElementById("btn-uml-expand-all").addEventListener("click", () => setAllUmlComponents(false));
+    document.getElementById("btn-uml-collapse-all").addEventListener("click", () => setAllUmlComponents(true));
+
+    document.getElementById("btn-nn-expand-all").addEventListener("click", () => setAllNeuralClusters(false));
+    document.getElementById("btn-nn-collapse-all").addEventListener("click", () => setAllNeuralClusters(true));
+
+    document.getElementById("btn-global-macro").addEventListener("click", () => {
+      setAllUmlComponents(true);
+      setAllNeuralClusters(true);
+      umlCanvas.zoom(0.8);
+      nnCanvas.zoom(0.8);
+    });
+
+    document.getElementById("btn-global-atomic").addEventListener("click", () => {
+      setAllUmlComponents(false);
+      setAllNeuralClusters(false);
+      umlCanvas.reset();
+      nnCanvas.reset();
+    });
+
+    // ==========================================================================
+    // ATOMIC INSPECTOR DRAWER CONTROLLER
+    // ==========================================================================
+    const inspectorDrawer = document.getElementById("inspector-drawer");
+    const inspectorOverlay = document.getElementById("inspector-overlay");
+    const inspTitle = document.getElementById("insp-title");
+    const inspSub = document.getElementById("insp-sub");
+    const inspBody = document.getElementById("insp-body");
+
+    function showInspector(title, stereotype, crate, latency, desc, code) {
+      inspTitle.innerText = title;
+      inspSub.innerText = stereotype;
+
+      inspBody.innerHTML = `
+        <div class="inspector-prop-block">
+          <div class="inspector-prop-title">Crate / Módulo en Rust</div>
+          <div class="inspector-prop-val">${crate}</div>
+        </div>
+
+        <div class="inspector-prop-block">
+          <div class="inspector-prop-title">Latencia / SLA Garantizado</div>
+          <div class="inspector-prop-val" style="color: var(--accent-emerald); font-weight: 700;">${latency}</div>
+        </div>
+
+        <div class="inspector-prop-block">
+          <div class="inspector-prop-title">Descripción Molecular</div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">${desc}</p>
+        </div>
+
+        ${code ? `
+          <div class="inspector-prop-block">
+            <div class="inspector-prop-title">Especificación & Contrato</div>
+            <pre class="inspector-code-box">${code}</pre>
+          </div>
+        ` : ''}
+      `;
+
+      inspectorDrawer.classList.add("open");
+      inspectorOverlay.classList.add("open");
+    }
+
+    function inspectElement(key) {
+      const el = ELEMENT_DETAILS[key];
+      if (el) {
+        showInspector(el.title, el.stereotype, el.crate, el.latency, el.desc, el.code);
+      }
+    }
+
+    function closeInspector() {
+      inspectorDrawer.classList.remove("open");
+      inspectorOverlay.classList.remove("open");
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeInspector();
+    });
+  </script>
+</body>
+</html>

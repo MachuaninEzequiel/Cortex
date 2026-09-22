@@ -65,6 +65,8 @@ pub struct EnrichedItemMirror {
     /// "episodic" | "semantic"
     pub source: String,
     pub title: String,
+    /// Path de vault. No se imprime en `to_prompt_format` (paridad Python).
+    pub path: String,
     pub content: String,
     pub files_mentioned: Vec<String>,
     /// ISO local; el formato `%Y-%m-%d` son los primeros 10 caracteres.
@@ -448,10 +450,109 @@ pub fn search_text_dispatch(b: &mut dyn SearchBackend, args: &Value) -> Result<S
     Ok(mirror.to_prompt_format())
 }
 
-/// Handler `cortex_context` → `_enrich_context(...).to_prompt_format()`.
+/// Handler `cortex_context` → pack (spec 07) o `to_prompt_format` nativo.
 pub fn context_text(b: &mut dyn SearchBackend, args: &Value) -> Result<String, String> {
-    let mirror = enrich_context(b, args)?;
-    Ok(mirror.to_prompt_format())
+    context_text_with_pack(b, args, None)
+}
+
+pub fn context_text_with_pack(
+    b: &mut dyn SearchBackend,
+    args: &Value,
+    handle: Option<&cortex_judgement::JudgementHandle>,
+) -> Result<String, String> {
+    let pack_on = handle
+        .map(|h| h.client.enabled(cortex_judgement::Purpose::ContextPack))
+        .unwrap_or(false);
+    let mirror = enrich_context_inner(b, args, pack_on)?;
+    Ok(format_context_prompt(&mirror, args, handle))
+}
+
+/// Compact pack para el agente; fail-open al texto nativo.
+pub fn format_context_prompt(
+    mirror: &EnrichedMirror,
+    args: &Value,
+    handle: Option<&cortex_judgement::JudgementHandle>,
+) -> String {
+    let Some(h) = handle else {
+        return mirror.to_prompt_format();
+    };
+    if !h.client.enabled(cortex_judgement::Purpose::ContextPack) {
+        return mirror.to_prompt_format();
+    }
+    let bundle = mirror_to_bundle(mirror, args);
+    cortex_app::context::judgement_pack::format_pack(h, &bundle, true, false)
+        .unwrap_or_else(|| mirror.to_prompt_format())
+}
+
+fn mirror_to_bundle(
+    mirror: &EnrichedMirror,
+    args: &Value,
+) -> cortex_app::context::models::EnrichedBundle {
+    use cortex_app::context::models::{EnrichedBundle, EnrichedItem, WorkContext};
+    let query = args
+        .get("query")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let changed_files = normalize_string_list(args.get("changed_files"));
+    let items: Vec<EnrichedItem> = mirror
+        .items
+        .iter()
+        .map(|it| {
+            let path = if !it.path.is_empty() {
+                it.path.clone()
+            } else if let Some(f) = it.files_mentioned.first() {
+                f.clone()
+            } else {
+                it.title.clone()
+            };
+            EnrichedItem {
+                source: if it.source == "episodic" {
+                    "episodic"
+                } else {
+                    "semantic"
+                },
+                source_id: path,
+                title: it.title.clone(),
+                content: it.content.clone(),
+                score: 0.0,
+                enriched_score: 0.0,
+                matched_by: it.matched_by.clone(),
+                files_mentioned: it.files_mentioned.clone(),
+                date: it.date_iso.clone(),
+                tags: it.tags.clone(),
+                doc_type: None,
+                status: None,
+                vault_scope: "local".into(),
+                origin_project_id: None,
+                matched_chunk_id: None,
+                matched_section_title: None,
+            }
+        })
+        .collect();
+    let total_chars: usize = items.iter().map(|i| i.content.chars().count()).sum();
+    EnrichedBundle {
+        work: WorkContext {
+            search_queries: if query.is_empty() {
+                vec![]
+            } else {
+                vec![query]
+            },
+            changed_files,
+            pr_title: args
+                .get("pr_title")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            ..Default::default()
+        },
+        items,
+        total_searches: 0,
+        total_raw_hits: mirror.total_items,
+        total_chars,
+        within_budget_override: None,
+    }
 }
 
 /// `_enrich_context`: convierte argumentos MCP en un request de enriquecido
@@ -459,6 +560,14 @@ pub fn context_text(b: &mut dyn SearchBackend, args: &Value) -> Result<String, S
 pub fn enrich_context(
     b: &mut dyn SearchBackend,
     arguments: &Value,
+) -> Result<EnrichedMirror, String> {
+    enrich_context_inner(b, arguments, false)
+}
+
+fn enrich_context_inner(
+    b: &mut dyn SearchBackend,
+    arguments: &Value,
+    pack_on: bool,
 ) -> Result<EnrichedMirror, String> {
     let query = arguments
         .get("query")
@@ -498,12 +607,41 @@ pub fn enrich_context(
     let task_type = strip_opt("task_type");
     let complexity = strip_opt("complexity");
 
-    let top_k: Option<usize> = task_type.as_deref().map(|tt| {
+    let mut top_k: Option<usize> = task_type.as_deref().map(|tt| {
         use cortex_app::context::budget_resolver::resolve_budget_profile;
         resolve_budget_profile(Some(tt), complexity.as_deref()).top_k
     });
+    if pack_on {
+        top_k = Some(cortex_judgement::pack_fetch_k(top_k.unwrap_or(8)));
+    }
 
     b.enrich(changed_files, keywords, pr_title, top_k)
+}
+
+/// Handle Jev desde config del proyecto. None ≡ Direct.
+pub fn judgement_handle(
+    project_root: &std::path::Path,
+) -> Option<cortex_judgement::JudgementHandle> {
+    let layout = cortex_workspace::WorkspaceLayout::discover(project_root);
+    let text = std::fs::read_to_string(layout.config_path()).ok()?;
+    let cfg: cortex_config::CortexConfig = serde_yaml::from_str(&text).ok()?;
+    let ws = layout
+        .workspace_root
+        .join("judgement")
+        .join("questions.yaml");
+    let repo = layout
+        .repo_root
+        .join(".cortex")
+        .join("judgement")
+        .join("questions.yaml");
+    let q = if ws.exists() {
+        Some(ws)
+    } else if repo.exists() {
+        Some(repo)
+    } else {
+        None
+    };
+    cortex_app::context::judgement_pack::handle_from_config(&cfg.judgement, q.as_deref())
 }
 
 /// `str(v)` de Python para valores no-string (números/bools).
@@ -682,5 +820,203 @@ mod tests {
             build_sync_ticket_context(&mut b, &serde_json::json!({}), std::path::Path::new("."))
                 .unwrap_err();
         assert_eq!(err, "user_request es obligatorio para cortex_sync_ticket.");
+    }
+
+    fn pack_mirror() -> EnrichedMirror {
+        EnrichedMirror {
+            total_items: 3,
+            items: vec![
+                EnrichedItemMirror {
+                    source: "semantic".into(),
+                    title: "sessions".into(),
+                    content: "mcp sessions backend wrapper chrome".into(),
+                    files_mentioned: vec!["sessions.rs.md".into()],
+                    matched_by: vec!["topic".into()],
+                    ..Default::default()
+                },
+                EnrichedItemMirror {
+                    source: "semantic".into(),
+                    title: "verification".into(),
+                    content: "checkpoint verification quality gates native".into(),
+                    files_mentioned: vec!["verification.md".into()],
+                    matched_by: vec!["topic".into()],
+                    ..Default::default()
+                },
+                EnrichedItemMirror {
+                    source: "semantic".into(),
+                    title: "other".into(),
+                    content: "unrelated keyword overlap".into(),
+                    files_mentioned: vec!["other.md".into()],
+                    matched_by: vec!["topic".into()],
+                    ..Default::default()
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn context_prompt_without_handle_is_native_byte_identical() {
+        let mirror = pack_mirror();
+        let native = mirror.to_prompt_format();
+        let out = format_context_prompt(
+            &mirror,
+            &serde_json::json!({"query": "checkpoint verification"}),
+            None,
+        );
+        assert_eq!(out, native, "pack off ⇒ to_prompt_format bit-idéntico");
+        assert!(out.contains("Matched by:"));
+        assert!(!out.starts_with("## Context pack"));
+    }
+
+    struct ScriptPack {
+        calls: std::sync::Mutex<Vec<cortex_judgement::JudgementResponse>>,
+    }
+    impl cortex_judgement::JudgementClient for ScriptPack {
+        fn enabled(&self, purpose: cortex_judgement::Purpose) -> bool {
+            matches!(purpose, cortex_judgement::Purpose::ContextPack)
+        }
+        fn evaluate(
+            &self,
+            _request: &cortex_judgement::JudgementRequest,
+        ) -> Result<cortex_judgement::JudgementResponse, cortex_judgement::JudgementError> {
+            let mut g = self.calls.lock().unwrap();
+            if g.is_empty() {
+                return Err(cortex_judgement::JudgementError::Http(429));
+            }
+            Ok(g.remove(0))
+        }
+    }
+
+    fn family_ok() -> cortex_judgement::JudgementResponse {
+        let mut answers = serde_json::Map::new();
+        answers.insert(
+            "family".into(),
+            serde_json::json!({"choice": "session", "confidence": 1.0}),
+        );
+        cortex_judgement::JudgementResponse {
+            model: "jev-1.13.0".into(),
+            answers,
+            usage: Default::default(),
+            backend: "typesafe".into(),
+        }
+    }
+
+    fn dual_ok() -> cortex_judgement::JudgementResponse {
+        let mut answers = serde_json::Map::new();
+        for (k, n) in [
+            ("rel_c0_body", 0.10),
+            ("rel_c0_ptr", 0.40),
+            ("rel_c1_body", 0.92),
+            ("rel_c1_ptr", 0.95),
+            ("rel_c2_body", 0.05),
+            ("rel_c2_ptr", 0.10),
+        ] {
+            answers.insert(k.into(), serde_json::json!({ "noul": n }));
+        }
+        cortex_judgement::JudgementResponse {
+            model: "jev-1.13.0".into(),
+            answers,
+            usage: Default::default(),
+            backend: "typesafe".into(),
+        }
+    }
+
+    fn pack_handle(
+        calls: Vec<cortex_judgement::JudgementResponse>,
+    ) -> cortex_judgement::JudgementHandle {
+        cortex_judgement::JudgementHandle {
+            client: std::sync::Arc::new(ScriptPack {
+                calls: std::sync::Mutex::new(calls),
+            }),
+            catalog: cortex_judgement::Catalog::embedded().unwrap(),
+        }
+    }
+
+    #[test]
+    fn context_prompt_pack_on_is_pack_not_wrapper() {
+        let mirror = pack_mirror();
+        let handle = pack_handle(vec![family_ok(), dual_ok()]);
+        let out = format_context_prompt(
+            &mirror,
+            &serde_json::json!({"query": "checkpoint verification"}),
+            Some(&handle),
+        );
+        assert!(out.starts_with("## Context pack"));
+        assert!(out.contains("verification.md"));
+        assert!(!out.contains("Matched by:"));
+        assert!(!out.contains("4 searches"));
+        assert!(out.chars().count() <= 1800);
+    }
+
+    #[test]
+    fn context_prompt_429_is_native() {
+        let mirror = pack_mirror();
+        let handle = pack_handle(vec![]);
+        let out = format_context_prompt(
+            &mirror,
+            &serde_json::json!({"query": "checkpoint verification"}),
+            Some(&handle),
+        );
+        assert_eq!(out, mirror.to_prompt_format());
+    }
+
+    struct TopKStub {
+        seen: std::sync::Mutex<Option<usize>>,
+    }
+    impl SearchBackend for TopKStub {
+        fn retrieve(&mut self, _q: &str, _k: usize, _emb: bool) -> Result<RetrievalMirror, String> {
+            Ok(RetrievalMirror::default())
+        }
+        fn enrich(
+            &mut self,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Option<String>,
+            top_k: Option<usize>,
+        ) -> Result<EnrichedMirror, String> {
+            *self.seen.lock().unwrap() = top_k;
+            Ok(EnrichedMirror::default())
+        }
+        fn enrich_structural(
+            &mut self,
+            _: &str,
+            _: usize,
+            _: &str,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Vec<String>,
+            _: Option<i64>,
+            _: Vec<String>,
+            _: bool,
+        ) -> Result<EnrichedMirror, StructuralError> {
+            Err(StructuralError::Runtime("unused".into()))
+        }
+    }
+
+    #[test]
+    fn context_text_pack_on_overfetches() {
+        let mut b = TopKStub {
+            seen: std::sync::Mutex::new(None),
+        };
+        let handle = pack_handle(vec![]);
+        let _ = context_text_with_pack(&mut b, &serde_json::json!({"query": "q"}), Some(&handle))
+            .unwrap();
+        assert_eq!(*b.seen.lock().unwrap(), Some(16));
+    }
+
+    #[test]
+    fn context_text_without_handle_does_not_overfetch() {
+        let mut b = TopKStub {
+            seen: std::sync::Mutex::new(None),
+        };
+        let _ = context_text(&mut b, &serde_json::json!({"query": "q"})).unwrap();
+        assert_eq!(*b.seen.lock().unwrap(), None);
+    }
+
+    #[test]
+    fn judgement_handle_missing_config_is_none() {
+        assert!(judgement_handle(std::path::Path::new("/tmp/cortex-no-such-project")).is_none());
     }
 }

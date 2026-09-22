@@ -99,6 +99,17 @@ pub fn run_remember(argv: &[String]) -> bool {
     } else {
         args.content.clone()
     };
+    if let Some(h) = &mem.judgement {
+        if !cortex_judgement::allow_remember(
+            &*h.client,
+            &h.catalog,
+            &args.content,
+            &args.file,
+        ) {
+            echo("Memory skipped (not worth remembering).");
+            return true;
+        }
+    }
     let params = AppendParams {
         content,
         memory_type: args.r#type,
