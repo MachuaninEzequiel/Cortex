@@ -9,6 +9,9 @@ on:
 
 jobs:
   build-cortex-brain:
+    permissions:
+      actions: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +32,11 @@ jobs:
             artifact_name: 'cortex-brain-macos-arm64'
 
     runs-on: ${{ matrix.platform }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      CMAKE_C_COMPILER_LAUNCHER: "sccache"
+      CMAKE_CXX_COMPILER_LAUNCHER: "sccache"
 
     steps:
       - name: Checkout Repository
@@ -44,10 +52,16 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Setup sccache
+        uses: mozilla/sccache-action@v0.0.8
+
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: rust -> target
+          workspaces: "rust -> target"
+          shared-key: "brain-${{ matrix.target }}"
+          cache-all-crates: "true"
+          save-if: ${{ always() }}
 
       - name: Install Linux dependencies
         if: startsWith(matrix.platform, 'ubuntu-')
@@ -70,8 +84,11 @@ jobs:
           npm install
           npm run build
 
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@cargo-binstall
+
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2.0.0" --locked
+        run: cargo binstall --no-confirm tauri-cli
 
       - name: Build cortex-cli sidecar
         working-directory: rust
@@ -80,6 +97,10 @@ jobs:
       - name: Build Cortex Brain Bundle
         working-directory: rust/crates/cortex-brain-app
         run: cargo tauri build ${{ matrix.args }} --target ${{ matrix.target }}
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
